@@ -18,10 +18,19 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     Future.delayed(const Duration(seconds: 1), () {
       setState(() => _isLoading = false);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainLayout()),
-      );
+      final username = _usernameController.text;
+      final validStudents = ['2001230219', '2001230430', '2001230914', 'admin'];
+      
+      if (validStudents.contains(username)) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainLayout()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sai MSSV hoặc mật khẩu! Hãy thử 2001230219')),
+        );
+      }
     });
   }
 
@@ -126,34 +135,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: _isLoading 
                               ? const CircularProgressIndicator(color: Colors.white)
                               : const Text('ĐĂNG NHẬP', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      
-                      const Row(
-                        children: [
-                          Expanded(child: Divider()),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Text('Hoặc', style: TextStyle(color: Colors.grey)),
-                          ),
-                          Expanded(child: Divider()),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: OutlinedButton.icon(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          icon: const Icon(Icons.window, color: Color(0xFF0284c7)),
-                          label: const Text('Đăng nhập bằng HUIT SSO', style: TextStyle(color: Color(0xFF0f172a), fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
                         ),
                       ),
                     ],

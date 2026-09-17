@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-profile',
@@ -11,6 +12,14 @@ import { FormsModule } from '@angular/forms';
 })
 export class Profile {
   activeTab: 'info' | 'password' | 'settings' = 'info';
+
+  constructor(private route: ActivatedRoute) {
+    this.route.queryParams.subscribe(params => {
+      if (params['tab']) {
+        this.activeTab = params['tab'];
+      }
+    });
+  }
 
   userInfo = {
     fullName: 'Nguyễn Văn A',

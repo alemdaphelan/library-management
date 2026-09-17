@@ -39,7 +39,7 @@
           <span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span>
           <span class="nav-item-text">Biên mục Sách & Bản sao</span>
         </a>
-        <a routerLink="/admin/imports" routerLinkActive="active" class="nav-item">
+        <a *ngIf="authService.getRole() === 'ADMIN'" routerLink="/admin/imports" routerLinkActive="active" class="nav-item">
           <span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg></span>
           <span class="nav-item-text">Quản lý Nhập kho sách</span>
         </a>
@@ -56,7 +56,7 @@
       <!-- Section 3 -->
       <div class="nav-section">
         <div class="nav-section-title">3. BẠN ĐỌC & QUẢN TRỊ</div>
-        <a routerLink="/admin/accounts" routerLinkActive="active" class="nav-item">
+        <a *ngIf="authService.getRole() === 'ADMIN'" routerLink="/admin/accounts" routerLinkActive="active" class="nav-item">
           <span class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
           <span class="nav-item-text">Hồ sơ Bạn đọc & Thẻ</span>
         </a>
@@ -94,13 +94,19 @@
           <span class="icon">&#128276;</span>
           <span class="badge">5</span>
         </div>
-        <div class="tb-user">
-          <div class="user-ava">TT</div>
-          <div class="user-info">
-            <div class="user-name">Thủ thư Trực ban</div>
-            <div class="user-role">Quản trị Nghiệp vụ</div>
+        <div class="tb-user" style="position: relative;">
+          <div class="user-ava" (click)="toggleUserMenu()">{{ authService.getCurrentUser()?.substring(0, 2) | uppercase }}</div>
+          <div class="user-info" (click)="toggleUserMenu()">
+            <div class="user-name">{{ authService.getCurrentUser() }}</div>
+            <div class="user-role">{{ authService.getRole() === 'ADMIN' ? 'Quản trị viên' : 'Thủ thư' }}</div>
           </div>
-          <span class="icon arrow">&#9662;</span>
+          <span class="icon arrow" (click)="toggleUserMenu()">&#9662;</span>
+          
+          <div class="user-dropdown" *ngIf="isUserMenuOpen">
+            <a routerLink="/profile" [queryParams]="{tab: 'settings'}">Cài đặt</a>
+            <a routerLink="/profile" [queryParams]="{tab: 'password'}">Đổi mật khẩu</a>
+            <a (click)="logout()" class="logout" style="cursor: pointer;">Đăng xuất</a>
+          </div>
         </div>
       </div>
     </header>

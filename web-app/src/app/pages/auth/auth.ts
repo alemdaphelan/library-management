@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-auth',
@@ -20,7 +21,7 @@ export class Auth implements OnInit {
   successMessage = '';
   errorMessage = '';
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private authService: AuthService) {}
 
   ngOnInit() {
     // Check if url contains 'forgot-password'
@@ -46,20 +47,20 @@ export class Auth implements OnInit {
     
     setTimeout(() => {
       this.isSubmitting = false;
-      if (this.loginData.username === 'admin') {
-        this.router.navigate(['/admin']);
+      const validStudents = ['2001230219', '2001230430', '2001230914'];
+      
+      if (this.loginData.username === 'admin' || this.loginData.username === 'thuthu' || validStudents.includes(this.loginData.username)) {
+        const role = this.authService.login(this.loginData.username);
+        if (role === 'ADMIN' || role === 'LIBRARIAN') {
+          this.router.navigate(['/admin']);
+        } else {
+          this.router.navigate(['/']); // Go to portal
+        }
       } else {
-        this.router.navigate(['/']); // Go to portal
+        this.errorMessage = 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!';
+        alert(this.errorMessage);
       }
-    }, 1500);
-  }
-
-  onLoginSSO() {
-    this.isSubmitting = true;
-    setTimeout(() => {
-      this.isSubmitting = false;
-      this.router.navigate(['/']);
-    }, 1500);
+    }, 1000);
   }
 
   onForgotPassword() {

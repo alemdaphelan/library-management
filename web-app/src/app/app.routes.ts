@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { AuthGuard } from './guards/auth.guard';
 
 // Layouts
 import { PortalLayout } from './layouts/portal-layout/portal-layout';
@@ -51,11 +52,13 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: AdminLayout,
+    canActivate: [AuthGuard],
+    data: { roles: ['ADMIN', 'LIBRARIAN'] },
     children: [
       { path: '', component: Dashboard, title: 'Dashboard' },
-      { path: 'accounts', component: Accounts, title: 'Quản lý tài khoản' },
+      { path: 'accounts', component: Accounts, title: 'Quản lý tài khoản', data: { roles: ['ADMIN'] } },
       { path: 'books', component: Books, title: 'Quản lý sách' },
-      { path: 'imports', component: Imports, title: 'Quản lý nhập kho' },
+      { path: 'imports', component: Imports, title: 'Quản lý nhập kho', data: { roles: ['ADMIN'] } },
       { path: 'circulation', component: Circulation, title: 'Quầy mượn trả' },
       { path: 'borrows', component: Borrows, title: 'Quản lý nợ phạt' },
       { path: 'digital-assets', component: DigitalAssets, title: 'Quản trị Tài liệu số' },

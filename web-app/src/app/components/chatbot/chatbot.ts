@@ -2,6 +2,7 @@ import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-chatbot',
@@ -13,11 +14,11 @@ import { HttpClient } from '@angular/common/http';
 export class Chatbot {
   private http = inject(HttpClient);
   private cdr = inject(ChangeDetectorRef);
-  private apiKey = ''; // TODO: Thêm API Key vào đây hoặc dùng biến môi trường (Environment Variable)
+  private apiKey = environment.cohereApiKey;
 
   isOpen = false;
   userInput = '';
-  
+
   messages: { sender: string, text: string, time: string, suggests: string[] }[] = [
     { sender: 'bot', text: 'Xin chào! Tôi là Trợ lý AI của HUIT Library. Tôi có thể giúp gì cho bạn?', time: '20:34', suggests: ['Quy định mượn sách?', 'Giờ mở cửa thư viện?'] }
   ];
@@ -44,11 +45,11 @@ export class Chatbot {
 
   callGeminiAPI(query: string) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${this.apiKey}`;
-    
+
     // RAG System Prompt
     const payload = {
       contents: [{
-        parts: [{ 
+        parts: [{
           text: `Bạn là trợ lý AI của Thư viện Đại học Công Thương TP.HCM (HUIT). 
 Hãy đóng vai lịch sự, thân thiện. 
 Dựa vào Dữ liệu (Context) sau đây để trả lời câu hỏi của sinh viên:
@@ -62,7 +63,7 @@ Yêu cầu BẮT BUỘC: Ở cuối câu trả lời, hãy gợi ý chính xác 
 Mỗi câu hỏi phải được đặt sau chữ [SUGGEST]. Tuyệt đối KHÔNG gạch đầu dòng, KHÔNG xuống dòng ở phần gợi ý.
 Ví dụ định dạng trả lời: Trả lời ABC... [SUGGEST]Làm sao để đăng nhập?[SUGGEST]Vị trí kệ sách?
 
-Câu hỏi của sinh viên: ${query}` 
+Câu hỏi của sinh viên: ${query}`
         }]
       }]
     };

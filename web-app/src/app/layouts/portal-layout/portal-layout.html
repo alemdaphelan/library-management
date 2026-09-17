@@ -12,7 +12,7 @@
         </div>
         <div class="topbar-right">
           <span class="tb-item lang-switch">VN | EN</span>
-          <a routerLink="/login" class="tb-btn-dark"><span class="icon">&#128274;</span> Đăng nhập HUIT SSO</a>
+          <a *ngIf="!authService.isLoggedIn()" routerLink="/login" class="tb-btn-dark"><span class="icon">&#128274;</span> Đăng nhập</a>
         </div>
       </div>
     </div>
@@ -33,12 +33,21 @@
           </div>
         </div>
 
-        <div class="header-user-area">
+        <div class="header-user-area" *ngIf="authService.isLoggedIn()">
           <button class="btn-reader-card" routerLink="/profile">
-            <span class="icon">&#128179;</span> Tài khoản Độc giả / Thẻ thư viện
+            <span class="icon">&#128179;</span> Thẻ thư viện
           </button>
-          <div class="user-avatar-circle" routerLink="/profile" style="cursor: pointer;">
-            <span class="icon">&#128100;</span>
+          
+          <div class="user-menu-container">
+            <div class="user-avatar-circle" (click)="toggleUserMenu()">
+              <span class="icon">&#128100;</span>
+            </div>
+            
+            <div class="user-dropdown" *ngIf="isUserMenuOpen">
+              <a routerLink="/profile" [queryParams]="{tab: 'settings'}">Cài đặt</a>
+              <a routerLink="/profile" [queryParams]="{tab: 'password'}">Đổi mật khẩu</a>
+              <a (click)="logout()" class="logout" style="cursor: pointer;">Đăng xuất</a>
+            </div>
           </div>
         </div>
       </div>
@@ -50,7 +59,7 @@
         <nav class="huit-nav">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">TRANG CHỦ</a>
           <a routerLink="/about" routerLinkActive="active" class="nav-link">GIỚI THIỆU</a>
-          <a routerLink="/search" routerLinkActive="active" class="nav-link">TÌM KIẾM & TRA CỨU (OPAC)</a>
+          <a routerLink="/search" routerLinkActive="active" class="nav-link">TÌM KIẾM & TRA CỨU</a>
           <a routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
           <a routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
           <a routerLink="/digital" routerLinkActive="active" class="nav-link">TÀI NGUYÊN SỐ & CSDL</a>
@@ -116,7 +125,7 @@
       <div class="footer-col">
         <h3 class="footer-heading">Tiện ích bạn đọc</h3>
         <ul class="footer-links">
-          <li><a href="#">Tra cứu Mục lục Trực tuyến (OPAC)</a></li>
+          <li><a href="#">Tra cứu Mục lục Trực tuyến</a></li>
           <li><a href="#">Đăng ký phòng học nhóm & Thảo luận</a></li>
           <li><a href="#">Gia hạn và Đặt trước tài liệu</a></li>
         </ul>

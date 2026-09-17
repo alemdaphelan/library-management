@@ -23,19 +23,10 @@
           <p>Truy cập vào Cổng tri thức số HUIT</p>
         </div>
 
-        <button class="btn-sso" (click)="onLoginSSO()" [disabled]="isSubmitting">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="ms-icon">
-          Đăng nhập bằng HUIT SSO (Sinh viên/Giảng viên)
-        </button>
-
-        <div class="divider">
-          <span>hoặc đăng nhập bằng tài khoản nội bộ</span>
-        </div>
-
         <form (ngSubmit)="onLogin()">
           <div class="form-group">
-            <label>Tên đăng nhập / MSSV</label>
-            <input type="text" [(ngModel)]="loginData.username" name="username" placeholder="Nhập tên đăng nhập" required class="glass-input">
+            <label>Mã sinh viên</label>
+            <input type="text" [(ngModel)]="loginData.username" name="username" placeholder="Nhập mã sinh viên" required class="glass-input">
           </div>
           
           <div class="form-group">
