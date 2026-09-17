@@ -1,0 +1,132 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-title">Hồ sơ Bạn đọc & Thẻ</h1>
+      <p style="color: var(--text-muted); margin-top: 5px;">Quản lý danh sách sinh viên, trạng thái thẻ thư viện và import dữ liệu từ hệ thống Đào tạo.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        Tạo thủ công
+      </button>
+      <button class="btn-primary" (click)="openImportModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        Import Excel
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-toolbar">
+      <div class="search-box">
+        <span class="icon search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
+        <input type="text" placeholder="Tra cứu MSSV, Email, Họ tên..." class="form-control" style="width: 350px; padding-left: 35px;">
+      </div>
+      <div class="filter-chips">
+        <select class="form-control" style="width: 150px;">
+          <option>Tất cả trạng thái</option>
+          <option>Hoạt động</option>
+          <option>Bị khóa</option>
+          <option>Hết hạn</option>
+        </select>
+        <button class="btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          Lọc
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th width="35%">Thông tin Sinh viên</th>
+            <th width="15%">MSSV</th>
+            <th width="15%">Lớp</th>
+            <th width="10%" class="text-center">Sách mượn</th>
+            <th width="15%">Trạng thái thẻ</th>
+            <th width="10%" class="text-right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let st of students">
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar">{{ st.name.charAt(0) }}</div>
+                <div class="user-details">
+                  <div class="user-name">{{ st.name }}</div>
+                  <div class="user-email">{{ st.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td><strong>{{ st.id }}</strong></td>
+            <td>{{ st.class }}</td>
+            <td class="text-center">{{ st.borrowed }} cuốn</td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-available': st.status === 'active',
+                'badge-danger': st.status === 'locked',
+                'badge-warning': st.status === 'expired'
+              }">
+                {{ st.status === 'active' ? 'Hoạt động' : st.status === 'locked' ? 'Bị khóa' : 'Hết hạn' }}
+              </span>
+            </td>
+            <td class="text-right">
+              <button class="action-btn edit-btn" title="Cập nhật">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <button class="action-btn" title="Khóa thẻ" *ngIf="st.status === 'active'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 0.85rem; color: #64748b;">Hiển thị 1-5 của 15,200 sinh viên</span>
+      <div style="display: flex; gap: 5px;">
+        <button class="btn-outline btn-sm">Trước</button>
+        <button class="btn-primary btn-sm">1</button>
+        <button class="btn-outline btn-sm">2</button>
+        <button class="btn-outline btn-sm">3</button>
+        <button class="btn-outline btn-sm">Sau</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import Modal overlay -->
+<div class="modal-overlay" *ngIf="isImportModalOpen" (click)="closeImportModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Import Danh sách Sinh viên</h3>
+      <button class="close-btn" (click)="closeImportModal()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">
+        Tải lên file Excel (.xlsx, .csv) danh sách sinh viên được xuất từ hệ thống Quản lý Đào tạo.
+      </p>
+      
+      <!-- Drag & Drop Zone -->
+      <div class="dropzone">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <h4>Kéo thả file vào đây</h4>
+        <p>hoặc</p>
+        <button class="btn-outline btn-sm">Chọn file từ máy tính</button>
+        <span class="file-hint">Hỗ trợ: .xlsx, .xls, .csv (Tối đa 5MB)</span>
+      </div>
+
+      <div style="margin-top: 20px; font-size: 0.85rem; color: #475569;">
+        <a href="#" style="color: #0284c7; text-decoration: none;">Tải file mẫu (Template)</a>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" (click)="closeImportModal()">Hủy bỏ</button>
+      <button class="btn-primary" (click)="closeImportModal()">Bắt đầu Import</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,109 @@
+<div class="admin-page notifications-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-title">Thông báo & Nhắc hạn</h1>
+      <p class="page-subtitle">Quản lý và gửi thông báo đẩy (Push Notifications) tới ứng dụng của Sinh viên.</p>
+    </div>
+  </div>
+
+  <div class="noti-layout">
+    <!-- Cột trái: Form Soạn thông báo & Thống kê -->
+    <div class="noti-left">
+      <!-- Thống kê nhanh -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val">{{ stats.totalSent }}</div>
+          <div class="stat-lbl">Đã gửi</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val warning">{{ stats.overdueWarnings }}</div>
+          <div class="stat-lbl">Cảnh báo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val info">{{ stats.systemNotices }}</div>
+          <div class="stat-lbl">Hệ thống</div>
+        </div>
+      </div>
+
+      <!-- Quick Compose Form -->
+      <div class="compose-card">
+        <h3 class="compose-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          Soạn thông báo mới
+        </h3>
+        
+        <div class="form-group">
+          <label>Đối tượng nhận</label>
+          <select class="form-control">
+            <option>Tất cả Sinh viên</option>
+            <option>Sinh viên đang mượn sách</option>
+            <option>Sinh viên có sách quá hạn</option>
+            <option>Sinh viên sắp đến hạn (còn <= 2 ngày)</option>
+            <option>Khoa Công nghệ Thông tin</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Loại thông báo</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="type" checked> <span><div class="dot info"></div> Thông tin chung</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="type"> <span><div class="dot reminder"></div> Nhắc nhở</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="type"> <span><div class="dot overdue"></div> Quá hạn/Phạt</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Tiêu đề</label>
+          <input type="text" class="form-control" placeholder="Nhập tiêu đề thông báo...">
+        </div>
+
+        <div class="form-group">
+          <label>Nội dung</label>
+          <textarea class="form-control" rows="4" placeholder="Nhập nội dung sẽ hiển thị trên app sinh viên..."></textarea>
+        </div>
+
+        <button class="btn-primary btn-send" (click)="sendNotification()" [disabled]="isSending">
+          <span *ngIf="!isSending">Gửi thông báo ngay</span>
+          <span *ngIf="isSending">Đang gửi...</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Cột phải: Lịch sử -->
+    <div class="noti-right">
+      <div class="history-card">
+        <div class="history-header">
+          <h3 class="history-title">Lịch sử gửi</h3>
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" class="form-control" placeholder="Tìm...">
+          </div>
+        </div>
+
+        <div class="history-list">
+          <div class="history-item" *ngFor="let h of history">
+            <div class="h-icon" [ngClass]="h.type">
+              <svg *ngIf="h.type === 'overdue'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              <svg *ngIf="h.type === 'reminder'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <svg *ngIf="h.type === 'info'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </div>
+            <div class="h-content">
+              <div class="h-title">{{ h.title }}</div>
+              <div class="h-meta">Gửi tới: <strong>{{ h.target }}</strong></div>
+              <div class="h-date">{{ h.date }}</div>
+            </div>
+            <div class="h-status">
+              <span class="badge badge-available">Đã gửi</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

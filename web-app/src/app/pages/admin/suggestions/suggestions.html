@@ -1,0 +1,133 @@
+<div class="admin-page suggestions-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-title">Quản lý Đề xuất sách</h1>
+      <p class="page-subtitle">Duyệt hoặc từ chối các yêu cầu đề xuất mua sách mới từ Sinh viên.</p>
+    </div>
+  </div>
+
+  <!-- Custom Tabs -->
+  <div class="custom-tabs">
+    <button class="tab-btn" [class.active]="activeTab === 'pending'" (click)="setTab('pending')">
+      Chờ duyệt <span class="tab-badge pending">3</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'approved'" (click)="setTab('approved')">
+      Đã duyệt
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'rejected'" (click)="setTab('rejected')">
+      Đã từ chối
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'all'" (click)="setTab('all')">
+      Tất cả
+    </button>
+  </div>
+
+  <!-- Data Table -->
+  <div class="table-container">
+    <div class="table-toolbar">
+      <div class="search-box">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" class="form-control" placeholder="Tìm tên sách, sinh viên...">
+      </div>
+    </div>
+
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th width="35%">Tên Sách / Tác Giả</th>
+          <th width="20%">Sinh viên đề xuất</th>
+          <th width="12%">Ngày gửi</th>
+          <th width="10%" class="text-center">Số Vote</th>
+          <th width="13%" class="text-center">Trạng thái</th>
+          <th width="10%" class="text-center">Xử lý</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let s of filteredSuggestions">
+          <td>
+            <div style="font-weight: 600; color: #0f172a; margin-bottom: 4px;">{{ s.title }}</div>
+            <div style="font-size: 0.85rem; color: #64748b;">Tác giả: {{ s.author }}</div>
+          </td>
+          <td>{{ s.student }}</td>
+          <td>{{ s.date }}</td>
+          <td class="text-center">
+            <span class="vote-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg> {{ s.votes }}</span>
+          </td>
+          <td class="text-center">
+            <span class="badge badge-warning" *ngIf="s.status === 'pending'">Chờ duyệt</span>
+            <span class="badge badge-available" *ngIf="s.status === 'approved'">Đã duyệt</span>
+            <span class="badge badge-danger" *ngIf="s.status === 'rejected'">Từ chối</span>
+          </td>
+          <td class="text-center">
+            <button class="btn-primary btn-sm" style="padding: 6px 12px;" (click)="openDrawer(s)" *ngIf="s.status === 'pending'">Duyệt ngay</button>
+            <button class="btn-outline btn-sm" (click)="openDrawer(s)" *ngIf="s.status !== 'pending'">Xem chi tiết</button>
+          </td>
+        </tr>
+        <tr *ngIf="filteredSuggestions.length === 0">
+          <td colspan="6" class="text-center" style="padding: 40px; color: #64748b;">
+            Không có dữ liệu đề xuất nào trong trạng thái này.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Drawer Phê Duyệt -->
+<div class="drawer-overlay" [class.active]="isDrawerOpen" (click)="closeDrawer()"></div>
+<div class="drawer-panel" [class.open]="isDrawerOpen">
+  <div class="drawer-header">
+    <h2 class="drawer-title">Chi tiết Đề xuất sách</h2>
+    <button class="drawer-close" (click)="closeDrawer()">&times;</button>
+  </div>
+  
+  <div class="drawer-body" *ngIf="selectedSuggestion">
+    <div class="detail-card">
+      <div class="detail-title">{{ selectedSuggestion.title }}</div>
+      <div class="detail-author">Tác giả: {{ selectedSuggestion.author }}</div>
+      
+      <div class="detail-meta">
+        <div class="meta-item">
+          <div class="meta-label">Người đề xuất</div>
+          <div class="meta-val">{{ selectedSuggestion.student }}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Mã yêu cầu</div>
+          <div class="meta-val">{{ selectedSuggestion.id }}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Ngày gửi</div>
+          <div class="meta-val">{{ selectedSuggestion.date }}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Lượt bình chọn</div>
+          <div class="meta-val"><span class="vote-pill">{{ selectedSuggestion.votes }} votes</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top: 20px;">
+      <label>Lý do đề xuất (từ sinh viên):</label>
+      <div class="reason-box">"{{ selectedSuggestion.reason }}"</div>
+    </div>
+
+    <div class="form-group" style="margin-top: 20px;" *ngIf="selectedSuggestion.status === 'pending'">
+      <label>Ghi chú của Thủ thư (Lý do từ chối hoặc Note duyệt):</label>
+      <textarea class="form-control" rows="4" placeholder="Nhập ghi chú..."></textarea>
+    </div>
+    
+    <div class="status-banner" *ngIf="selectedSuggestion.status === 'approved'">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+      Đề xuất này đã được DUYỆT.
+    </div>
+    <div class="status-banner error" *ngIf="selectedSuggestion.status === 'rejected'">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+      Đề xuất này đã bị TỪ CHỐI.
+    </div>
+  </div>
+  
+  <div class="drawer-footer" *ngIf="selectedSuggestion?.status === 'pending'">
+    <button class="btn-outline btn-reject" (click)="rejectSuggestion()">Từ chối</button>
+    <button class="btn-primary" (click)="approveSuggestion()">Duyệt Đề xuất</button>
+  </div>
+</div>

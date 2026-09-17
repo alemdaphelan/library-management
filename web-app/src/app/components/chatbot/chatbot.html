@@ -1,0 +1,79 @@
+<div class="chatbot-wrapper" [class.open]="isOpen">
+  <!-- Nút Floating bật Chatbot -->
+  <button class="chat-toggle-btn" (click)="toggleChat()" *ngIf="!isOpen">
+    <svg viewBox="0 0 24 24" width="30" height="30" fill="white">
+      <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 2.98.97 4.29L1.5 22l5.71-1.47c1.31.61 2.75.97 4.29.97 5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.35 0-2.65-.33-3.81-.92l-3.37.87.87-3.37A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/>
+      <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+    </svg>
+  </button>
+
+  <!-- Cửa sổ Chatbot -->
+  <div class="chat-window" *ngIf="isOpen">
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="header-left">
+        <div class="bot-avatar">
+          <svg viewBox="0 0 24 24" fill="white" width="24" height="24">
+            <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a3 3 0 013 3v2h2v4h-2v1a3 3 0 01-3 3H10a3 3 0 01-3-3v-1H5v-4h2V10a3 3 0 013-3h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2zm-2 10a1 1 0 100 2 1 1 0 000-2zm4 0a1 1 0 100 2 1 1 0 000-2zm-2 4h-2v2h4v-2h-2z"/>
+          </svg>
+        </div>
+        <div class="header-info">
+          <h3>AI Trợ lý Thư viện</h3>
+          <span class="status">Trực tuyến</span>
+        </div>
+      </div>
+      <button class="close-btn" (click)="toggleChat()">&#10005;</button>
+    </div>
+
+    <!-- Message List -->
+    <div class="chat-body" #scrollMe>
+      <div class="msg-row" *ngFor="let msg of messages" [class.user-row]="msg.sender === 'user'" [class.bot-row]="msg.sender === 'bot'">
+        <div class="msg-avatar" *ngIf="msg.sender === 'bot'">
+          <svg viewBox="0 0 24 24" fill="white" width="16" height="16">
+            <path d="M12 2a2 2 0 012 2v3h1a3 3 0 013 3v2h2v4h-2v1a3 3 0 01-3 3H10a3 3 0 01-3-3v-1H5v-4h2V10a3 3 0 013-3h1V7V4a2 2 0 012-2z"/>
+          </svg>
+        </div>
+        
+        <div class="msg-content-wrapper">
+          <div class="msg-bubble" [class.user-bubble]="msg.sender === 'user'" [class.bot-bubble]="msg.sender === 'bot'">
+            <div class="msg-text" [innerHTML]="msg.text | slice:0"></div>
+            <div class="msg-time">{{ msg.time }}</div>
+          </div>
+          
+          <!-- Render Suggest Buttons -->
+          <div class="suggest-group" *ngIf="msg.suggests && msg.suggests.length > 0">
+            <button class="suggest-btn" *ngFor="let s of msg.suggests" (click)="handleSuggestClick(s)">
+              {{ s }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typing Indicator -->
+      <div class="msg-row bot-row" *ngIf="isTyping">
+        <div class="msg-avatar">
+          <svg viewBox="0 0 24 24" fill="white" width="16" height="16">
+            <path d="M12 2a2 2 0 012 2v3h1a3 3 0 013 3v2h2v4h-2v1a3 3 0 01-3 3H10a3 3 0 01-3-3v-1H5v-4h2V10a3 3 0 013-3h1V7V4a2 2 0 012-2z"/>
+          </svg>
+        </div>
+        <div class="msg-content-wrapper">
+          <div class="msg-bubble bot-bubble typing-bubble">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-footer">
+      <input type="text" class="chat-input" placeholder="Hỏi AI về thư viện..." [(ngModel)]="userInput" (keyup.enter)="sendMessage()">
+      <button class="send-btn" (click)="sendMessage()">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>

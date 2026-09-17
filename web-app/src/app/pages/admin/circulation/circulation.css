@@ -1,0 +1,293 @@
+.circulation-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: white;
+  padding: 10px 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  border: 1px solid #f1f5f9;
+}
+
+.pos-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.pos-tab {
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  color: #64748b;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s;
+}
+
+.pos-tab:hover {
+  background: #e2e8f0;
+}
+
+.pos-tab.active {
+  background: #0284c7;
+  color: white;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2);
+}
+
+.pos-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.status-indicator {
+  width: 10px; height: 10px; background-color: #10b981; border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Grid Layout */
+.pos-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  flex: 1;
+  min-height: 0; /* Cho phép scroll bên trong */
+}
+
+.pos-grid.return-mode {
+  grid-template-columns: 1fr; /* Trả sách không cần cột Sinh viên */
+}
+
+.pos-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-title {
+  padding: 16px 20px;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+
+/* Big Scanner Input */
+.scanner-input-wrapper {
+  padding: 20px;
+  position: relative;
+  display: flex;
+  gap: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.scanner-icon {
+  position: absolute;
+  left: 35px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.scanner-input {
+  flex: 1;
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  padding: 16px 20px 16px 50px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.scanner-input:focus {
+  border-color: #0284c7;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1);
+}
+
+.book-scanner {
+  font-size: 1.25rem; /* Ô quét sách bự hơn */
+  padding: 20px 20px 20px 55px;
+}
+
+.btn-scan {
+  background: #0f172a; color: white; border: none; padding: 0 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
+}
+.btn-scan:hover { background: #1e293b; }
+
+/* Empty States */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #94a3b8;
+  text-align: center;
+  padding: 40px 20px;
+}
+.empty-state p { margin-top: 15px; font-size: 1rem; }
+
+/* Student Profile Card */
+.student-card {
+  padding: 20px;
+}
+
+.student-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.student-ava {
+  width: 60px; height: 60px; background-color: #e0f2fe; color: #0284c7; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 1.5rem;
+}
+
+.student-info h3 { margin: 0 0 5px 0; font-size: 1.2rem; color: #0f172a; }
+.student-info p { margin: 0; font-size: 0.9rem; color: #64748b; }
+
+.student-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.stat-label { font-size: 0.9rem; color: #64748b; font-weight: 500; }
+.stat-val { font-size: 1rem; font-weight: 700; color: #0f172a; }
+.text-warning { color: #ca8a04; }
+
+.badge {
+  padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+}
+.badge-available { background: #dcfce7; color: #16a34a; }
+
+.alert-box {
+  background-color: #fef9c3;
+  border: 1px solid #fde047;
+  color: #854d0e;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.4;
+}
+
+/* Cart Items */
+.cart-container {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8fafc;
+}
+
+.cart-items {
+  padding: 10px;
+}
+
+.cart-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.item-info h4 { margin: 0 0 5px 0; font-size: 1.1rem; color: #0f172a; }
+.item-info p { margin: 0; font-size: 0.85rem; color: #64748b; }
+
+.remove-btn {
+  background: #fee2e2; color: #dc2626; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+}
+.remove-btn:hover { background: #fca5a5; }
+
+/* POS Footer (Checkout) */
+.pos-footer {
+  padding: 20px;
+  background: white;
+  border-top: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pos-summary {
+  display: flex;
+  flex-direction: column;
+}
+.pos-summary span:first-child { font-size: 0.9rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+.summary-total { font-size: 1.8rem; font-weight: 800; color: #0f172a; }
+
+.pos-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.btn-cancel {
+  background: white; border: 2px solid #cbd5e1; color: #475569; padding: 0 24px; border-radius: 8px; font-weight: 700; font-size: 1.1rem; cursor: pointer;
+}
+.btn-cancel:hover { background: #f8fafc; }
+
+.btn-checkout {
+  background: #10b981; color: white; border: none; padding: 16px 32px; border-radius: 8px; font-weight: 800; font-size: 1.2rem; cursor: pointer; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); transition: all 0.2s;
+}
+.btn-checkout:hover:not([disabled]) { background: #059669; transform: translateY(-2px); }
+.btn-checkout[disabled] { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.7; }
+
+/* Success Banner */
+.success-banner {
+  background-color: #dcfce7;
+  color: #166534;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+  border-bottom: 1px solid #bbf7d0;
+  animation: fadeIn 0.3s ease-out;
+}

@@ -1,0 +1,81 @@
+<div class="admin-page digital-assets-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-title">Quản trị Tài liệu số / Sách điện tử</h1>
+      <p class="page-subtitle">Upload và quản lý các file tài liệu số (PDF, EPUB, AUDIO) để chia sẻ cho sinh viên.</p>
+    </div>
+  </div>
+
+  <!-- Khu vực Upload Kéo Thả -->
+  <div class="upload-zone" [class.drag-active]="isDragging" (click)="fileInput.click()">
+    <input type="file" #fileInput (change)="onFileSelected($event)" style="display: none;" accept=".pdf,.epub,.pptx,.mp3">
+    
+    <div class="upload-content" *ngIf="!isUploading">
+      <div class="upload-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      </div>
+      <h3 class="upload-title">Kéo thả file vào đây để tải lên</h3>
+      <p class="upload-hint">Hoặc click để chọn file từ máy tính. Hỗ trợ PDF, EPUB, AUDIO.</p>
+    </div>
+
+    <!-- Tiến trình Upload -->
+    <div class="upload-progress-container" *ngIf="isUploading" (click)="$event.stopPropagation()">
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="uploadProgress"></div>
+      </div>
+      <p class="progress-text">Đang tải lên... {{ uploadProgress }}%</p>
+    </div>
+  </div>
+
+  <!-- Thanh công cụ lọc & tìm kiếm -->
+  <div class="toolbar-section">
+    <div class="search-wrap">
+      <svg class="icon-search" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" class="search-input" placeholder="Tìm kiếm tên file, mã tài liệu...">
+    </div>
+    <div class="filter-wrap">
+      <select class="filter-select">
+        <option value="">Tất cả định dạng</option>
+        <option value="PDF">PDF</option>
+        <option value="EPUB">EPUB</option>
+        <option value="AUDIO">Audio</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Lưới danh sách Tài liệu số -->
+  <div class="assets-grid">
+    <div class="asset-card" *ngFor="let asset of assets">
+      <!-- Thumbnail Section -->
+      <div class="asset-thumb" [ngClass]="'type-' + asset.type.toLowerCase()">
+        <div class="file-extension">{{ asset.type }}</div>
+      </div>
+      
+      <!-- Info Section -->
+      <div class="asset-info">
+        <div class="asset-name" [title]="asset.name">{{ asset.name }}</div>
+        <div class="asset-meta">
+          <span>{{ asset.size }}</span> • <span>{{ asset.date }}</span>
+        </div>
+        
+        <div class="book-link" [class.unlinked]="asset.bookRef === 'Chưa liên kết'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+          {{ asset.bookRef }}
+        </div>
+      </div>
+
+      <!-- Actions Section -->
+      <div class="asset-actions">
+        <button class="btn-action view" title="Xem trước">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </button>
+        <button class="btn-action link" title="Gán vào sách">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"></path></svg>
+        </button>
+        <button class="btn-action delete" title="Xóa file" (click)="deleteAsset(asset.id)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

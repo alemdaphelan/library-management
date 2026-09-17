@@ -1,0 +1,84 @@
+<div class="search-page container">
+  <!-- Search Header -->
+  <div class="search-header">
+    <div class="search-box-large">
+      <input type="text" placeholder="Tìm kiếm sách, tác giả, chủ đề..." class="search-input-large">
+      <button class="btn-primary">Tìm kiếm</button>
+    </div>
+  </div>
+
+  <div class="search-layout">
+    <!-- Filters Sidebar -->
+    <aside class="filters-sidebar card">
+      <h3 class="filter-title">Bộ lọc tìm kiếm</h3>
+      
+      <div class="filter-group">
+        <h4>Trạng thái</h4>
+        <label class="checkbox-label"><input type="checkbox" checked> Có sẵn</label>
+        <label class="checkbox-label"><input type="checkbox"> Đang mượn</label>
+      </div>
+
+      <div class="filter-group">
+        <h4>Thể loại</h4>
+        <label class="checkbox-label"><input type="checkbox"> Khoa học máy tính</label>
+        <label class="checkbox-label"><input type="checkbox"> Hệ thống thông tin</label>
+        <label class="checkbox-label"><input type="checkbox"> Đồ họa</label>
+        <label class="checkbox-label"><input type="checkbox"> Lập trình Web</label>
+      </div>
+
+      <button class="btn-outline w-100">Xóa bộ lọc</button>
+    </aside>
+
+    <!-- Search Results -->
+    <main class="search-results">
+      <div class="results-meta">
+        <span>Tìm thấy <strong>{{ books.length }}</strong> kết quả phù hợp</span>
+        
+        <div class="meta-actions">
+          <!-- View Toggle -->
+          <div class="view-toggle">
+            <button class="toggle-btn" [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')" title="Lưới">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </button>
+            <button class="toggle-btn" [class.active]="viewMode === 'list'" (click)="setViewMode('list')" title="Danh sách">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </button>
+          </div>
+          
+          <select class="sort-select">
+            <option>Mới nhất</option>
+            <option>Tên A-Z</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Book Grid/List -->
+      <div class="book-container" [ngClass]="viewMode === 'grid' ? 'book-grid' : 'book-list'">
+        
+        <div class="card book-card" *ngFor="let book of books">
+          <div class="book-cover-wrapper" routerLink="/book/1" style="cursor: pointer;">
+            <img [src]="book.cover" alt="{{ book.title }}" class="book-cover-img">
+            <div class="book-overlay">
+              <button class="btn-primary btn-sm" routerLink="/book/1">Xem chi tiết</button>
+            </div>
+          </div>
+          <div class="book-info">
+            <span class="badge-available" *ngIf="book.status === 'available'">Có sẵn</span>
+            <span class="badge-pending" *ngIf="book.status === 'borrowed'">Đã mượn hết</span>
+            <div class="book-cat">{{ book.category }}</div>
+            <h3 class="book-name" routerLink="/book/1" style="cursor: pointer;">{{ book.title }}</h3>
+            <p class="book-author">{{ book.author }}</p>
+          </div>
+        </div>
+
+      </div>
+      
+      <!-- Pagination -->
+      <div class="pagination">
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">Tiếp &rsaquo;</button>
+      </div>
+    </main>
+  </div>
+</div>

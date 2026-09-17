@@ -1,0 +1,141 @@
+<div class="portal-container">
+  <!-- Header -->
+  <!-- Header Mới 3 Tầng -->
+  <header class="huit-header">
+    <!-- Tầng 1: Topbar -->
+    <div class="topbar">
+      <div class="container-fluid topbar-inner">
+        <div class="topbar-left">
+          <span class="tb-item">&#9202; T2 - T7: 07:30 - 20:30</span>
+          <span class="tb-item">&#128222; Hotline: (028) 3816 1673</span>
+          <a href="#" class="tb-item tb-link">&#10067; Hướng dẫn độc giả</a>
+        </div>
+        <div class="topbar-right">
+          <span class="tb-item lang-switch">VN | EN</span>
+          <a routerLink="/login" class="tb-btn-dark"><span class="icon">&#128274;</span> Đăng nhập HUIT SSO</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tầng 2: Main Header -->
+    <div class="main-header">
+      <div class="container-fluid main-inner">
+        <div class="logo-area" routerLink="/">
+          <div class="logo-icon-large">
+            <svg viewBox="0 0 24 24" fill="white" width="28" height="28">
+              <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/>
+            </svg>
+          </div>
+          <div class="logo-text-group">
+            <div class="uni-name">ĐẠI HỌC CÔNG THƯƠNG TP. HỒ CHÍ MINH</div>
+            <div class="lib-name">TRUNG TÂM THÔNG TIN - THƯ VIỆN</div>
+            <div class="lib-sub">HUIT LIBRARY & INFORMATION CENTER</div>
+          </div>
+        </div>
+
+        <div class="header-user-area">
+          <button class="btn-reader-card" routerLink="/profile">
+            <span class="icon">&#128179;</span> Tài khoản Độc giả / Thẻ thư viện
+          </button>
+          <div class="user-avatar-circle" routerLink="/profile" style="cursor: pointer;">
+            <span class="icon">&#128100;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tầng 3: Navigation -->
+    <div class="nav-bar">
+      <div class="container-fluid nav-inner">
+        <nav class="huit-nav">
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">TRANG CHỦ</a>
+          <a routerLink="/about" routerLinkActive="active" class="nav-link">GIỚI THIỆU</a>
+          <a routerLink="/search" routerLinkActive="active" class="nav-link">TÌM KIẾM & TRA CỨU (OPAC)</a>
+          <a routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
+          <a routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
+          <a routerLink="/digital" routerLinkActive="active" class="nav-link">TÀI NGUYÊN SỐ & CSDL</a>
+          <a routerLink="/guide" routerLinkActive="active" class="nav-link">HƯỚNG DẪN BẠN ĐỌC</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="portal-content">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Footer -->
+  <footer class="huit-footer">
+    <div class="container-fluid footer-grid">
+      <!-- Col 1 -->
+      <div class="footer-col brand-col">
+        <div class="footer-logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="white" width="20" height="20">
+              <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/>
+            </svg>
+          </div>
+          <div class="logo-text-wrap">
+            <div class="logo-title">HUIT LIBRARY</div>
+            <div class="logo-sub">Trung tâm Thông tin - Thư viện</div>
+          </div>
+        </div>
+        <p class="footer-desc">
+          Không gian tri thức mở, đổi mới sáng tạo và chuyển đổi số phục vụ đào tạo, nghiên cứu khoa học của Trường Đại học Công Thương TP. Hồ Chí Minh.
+        </p>
+      </div>
+
+      <!-- Col 2 -->
+      <div class="footer-col">
+        <h3 class="footer-heading">Cơ quan & Địa chỉ</h3>
+        <ul class="footer-list">
+          <li class="icon-item">
+            <span class="icon">&#x1F4CD;</span>
+            <span>140 Lê Trọng Tấn, Phường Tây Thạnh, Quận Tân Phú, TP. Hồ Chí Minh</span>
+          </li>
+          <li class="icon-item">
+            <span class="icon">&#x1F4DE;</span>
+            <span>(028) 3816 1673 - Số nội bộ: 136</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Col 3 -->
+      <div class="footer-col">
+        <h3 class="footer-heading">Thời gian phục vụ</h3>
+        <div class="time-card">
+          <h4 class="time-title">Khu vực đọc & Không gian tự học:</h4>
+          <p class="time-desc">Thứ Hai - Thứ Bảy: 07:30 - 20:30</p>
+          <h4 class="time-title">Quầy Mượn - Trả tài liệu:</h4>
+          <p class="time-desc">Sáng: 07:30 - 11:30 | Chiều: 13:00 - 17:00</p>
+        </div>
+      </div>
+
+      <!-- Col 4 -->
+      <div class="footer-col">
+        <h3 class="footer-heading">Tiện ích bạn đọc</h3>
+        <ul class="footer-links">
+          <li><a href="#">Tra cứu Mục lục Trực tuyến (OPAC)</a></li>
+          <li><a href="#">Đăng ký phòng học nhóm & Thảo luận</a></li>
+          <li><a href="#">Gia hạn và Đặt trước tài liệu</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Bottom Bar -->
+    <div class="footer-bottom">
+      <div class="container-fluid bottom-inner">
+        <div class="copyright">
+          Bản quyền &copy; 2026 Trung tâm Thông tin - Thư viện, Trường Đại học Công Thương TP. Hồ Chí Minh (HUIT).
+        </div>
+        <div class="bottom-links">
+          <a href="#">Chính sách</a> &bull; <a href="#">Điều khoản</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Chatbot Widget -->
+  <app-chatbot></app-chatbot>
+</div>

@@ -1,0 +1,180 @@
+<div class="admin-page imports-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-title">Quản lý Nhập kho sách</h1>
+      <p style="color: #64748b; margin-top: 5px;">Ghi nhận và quản lý các lô tài nguyên nhập về thư viện.</p>
+    </div>
+    <button class="btn-primary" (click)="openDrawer()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Tạo Phiếu Nhập
+    </button>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>
+      <div class="stat-content">
+        <p class="stat-title">Tổng phiếu nhập</p>
+        <h3 class="stat-value">{{ stats.totalImports }}</h3>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div>
+      <div class="stat-content">
+        <p class="stat-title">Sách đã nhận</p>
+        <h3 class="stat-value">{{ stats.booksReceived }} cuốn</h3>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
+      <div class="stat-content">
+        <p class="stat-title">Tổng giá trị</p>
+        <h3 class="stat-value">{{ stats.totalSpent }}</h3>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon bg-orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+      <div class="stat-content">
+        <p class="stat-title">Đang xử lý</p>
+        <h3 class="stat-value">{{ stats.pending }} phiếu</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bảng Dữ Liệu -->
+  <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); padding: 20px; border: 1px solid #f1f5f9;">
+    <div class="table-toolbar">
+      <div class="search-box" style="flex: 1; max-width: 300px;">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" class="form-control" style="padding-left: 35px;" placeholder="Tìm mã phiếu, nhà cung cấp...">
+      </div>
+      <div class="filter-chips">
+        <span class="chip active">Tất cả</span>
+        <span class="chip">Hoàn thành</span>
+        <span class="chip">Đang xử lý</span>
+      </div>
+    </div>
+
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Mã Phiếu</th>
+          <th>Ngày Nhập</th>
+          <th>Nhà Cung Cấp</th>
+          <th class="text-center">Số Lượng</th>
+          <th class="text-right">Tổng Tiền</th>
+          <th class="text-center">Trạng Thái</th>
+          <th class="text-center">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let receipt of importReceipts">
+          <td style="font-weight: 600; color: #0284c7;">{{ receipt.id }}</td>
+          <td>{{ receipt.date }}</td>
+          <td>{{ receipt.supplier }}</td>
+          <td class="text-center">{{ receipt.qty }}</td>
+          <td class="text-right" style="font-weight: 600;">{{ receipt.total }}</td>
+          <td class="text-center">
+            <span class="badge" [ngClass]="{'badge-available': receipt.status === 'Hoàn thành', 'badge-warning': receipt.status === 'Đang xử lý'}">
+              {{ receipt.status }}
+            </span>
+          </td>
+          <td class="text-center">
+            <button class="action-btn view-btn" title="Xem chi tiết">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 0.85rem; color: #64748b;">Hiển thị 1-5 của 124 kết quả</span>
+      <div style="display: flex; gap: 5px;">
+        <button class="btn-outline btn-sm">Trước</button>
+        <button class="btn-primary btn-sm">1</button>
+        <button class="btn-outline btn-sm">2</button>
+        <button class="btn-outline btn-sm">3</button>
+        <button class="btn-outline btn-sm">Sau</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Offcanvas Drawer: Tạo Phiếu Nhập -->
+<div class="drawer-overlay" [class.active]="isDrawerOpen" (click)="closeDrawer()"></div>
+<div class="drawer-panel" [class.open]="isDrawerOpen" style="width: 700px;">
+  <div class="drawer-header">
+    <h2 class="drawer-title">Tạo Phiếu Nhập Sách</h2>
+    <button class="drawer-close" (click)="closeDrawer()">&times;</button>
+  </div>
+  
+  <div class="drawer-body import-form">
+    <div class="form-section">
+      <h3>Thông tin chung</h3>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>Nhà Cung Cấp <span class="required">*</span></label>
+          <select class="form-control">
+            <option value="">-- Chọn Nhà cung cấp --</option>
+            <option *ngFor="let s of suppliers" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="form-group flex-1">
+          <label>Ngày Nhập</label>
+          <input type="date" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ghi chú</label>
+        <textarea class="form-control" rows="2" placeholder="Nhập ghi chú cho lô hàng này..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="margin: 0;">Danh sách tài nguyên nhập</h3>
+        <button class="btn-outline btn-sm" (click)="addLine()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Thêm dòng
+        </button>
+      </div>
+      
+      <table class="import-lines-table">
+        <thead>
+          <tr>
+            <th width="20%">ISBN / Mã ĐKCB</th>
+            <th width="40%">Tên sách</th>
+            <th width="15%">Số lượng</th>
+            <th width="20%">Đơn giá (đ)</th>
+            <th width="5%"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let line of newImportLines; let i = index">
+            <td><input type="text" class="form-control input-sm" placeholder="Mã sách"></td>
+            <td><input type="text" class="form-control input-sm" placeholder="Tên sách"></td>
+            <td><input type="number" class="form-control input-sm text-center" value="1" min="1"></td>
+            <td><input type="number" class="form-control input-sm text-right" placeholder="0"></td>
+            <td>
+              <button class="action-btn delete-btn" (click)="removeLine(i)" title="Xóa dòng" [disabled]="newImportLines.length === 1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div class="import-summary">
+        <div>Tổng số lượng: <strong>0</strong></div>
+        <div>Tổng tiền: <strong>0 đ</strong></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="drawer-footer">
+    <button class="btn-outline" (click)="closeDrawer()">Hủy bỏ</button>
+    <button class="btn-primary" (click)="saveImport()">Lưu Phiếu Nhập</button>
+  </div>
+</div>

@@ -1,0 +1,95 @@
+/* You can add global styles to this file, and also import other style files */
+:root {
+  /* Primary & Brand Color */
+  --primary-color: #0284c7; /* Ocean Blue / Cerulean */
+  --brand-blue-light: #0369a1; /* HUIT Royal Blue */
+  --brand-blue-dark: #1e40af; /* HUIT Royal Blue */
+
+  /* Light Surface / Background */
+  --bg-color: #f8f9ff;
+  --bg-white: #ffffff;
+  --surface-color-1: #eff4ff;
+  --surface-color-2: #f1f5f9;
+
+  /* Text & Accents */
+  --text-main: #0f172a; /* Dark Navy */
+  --text-muted: #475569;
+
+  /* Status Colors */
+  --status-available: #10b981; /* Emerald */
+  --status-pending: #f59e0b; /* Amber */
+  --status-danger: #ef4444; /* Red */
+  
+  /* Utilities */
+  --border-radius: 8px;
+  --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.container {
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 40px;
+  box-sizing: border-box;
+}
+
+.container-fluid {
+  width: 100%;
+  padding: 0 40px;
+  box-sizing: border-box;
+}
+
+.card {
+  background-color: var(--bg-white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.surface-card {
+  background-color: var(--surface-color-1);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.btn-primary:hover {
+  background-color: var(--brand-blue-light);
+}
+
+.badge-available {
+  background-color: var(--status-available);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.badge-pending {
+  background-color: var(--status-pending);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}

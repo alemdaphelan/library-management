@@ -1,0 +1,242 @@
+.about-page {
+  background-color: #f8f9ff;
+  min-height: 100vh;
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: white;
+  padding: 80px 20px;
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 15px;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.about-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 80px;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 40px;
+}
+
+/* Quy định Không gian */
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.rule-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  overflow: hidden;
+  transition: transform 0.3s;
+}
+
+.rule-card:hover {
+  transform: translateY(-5px);
+}
+
+.rc-header {
+  background: #f1f5f9;
+  padding: 15px;
+  font-weight: 700;
+  color: #0284c7;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.rc-body {
+  padding: 20px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.rc-body p {
+  margin: 0 0 10px 0;
+}
+.rc-body p:last-child {
+  margin: 0;
+}
+
+.fee-notice {
+  text-align: center;
+  background: #dcfce7;
+  color: #166534;
+  padding: 15px;
+  border-radius: 8px;
+  font-weight: 500;
+  margin-bottom: 60px;
+}
+
+/* Giờ hoạt động chung */
+.hours-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 80px;
+}
+
+.hours-box {
+  background: white;
+  border-left: 4px solid #0284c7;
+  padding: 30px;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  max-width: 600px;
+  width: 100%;
+}
+
+.hours-box h3 {
+  margin: 0 0 15px 0;
+  color: #1e293b;
+  font-size: 1.25rem;
+}
+
+.hours-box p {
+  color: #475569;
+  margin: 0 0 10px 0;
+}
+
+.holiday-note {
+  color: #ef4444 !important;
+  font-weight: 600;
+  margin-top: 15px !important;
+}
+
+/* Zigzag Layout */
+.floors-section {
+  margin-top: 40px;
+}
+
+.floor-block {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+  margin-bottom: 80px;
+}
+
+.floor-block.reverse {
+  flex-direction: row-reverse;
+}
+
+.floor-info {
+  flex: 1;
+}
+
+.floor-image {
+  flex: 1;
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 350px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.bg-blue-light { background: linear-gradient(135deg, #7dd3fc, #38bdf8); }
+.bg-orange-light { background: linear-gradient(135deg, #fdba74, #fb923c); }
+.bg-green-light { background: linear-gradient(135deg, #86efac, #4ade80); }
+.bg-purple-light { background: linear-gradient(135deg, #d8b4fe, #a855f7); }
+
+/* Class dùng cho ảnh thực tế sau khi tải về */
+.floor-real-img {
+  width: 100%;
+  height: 350px;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+.floor-badge {
+  display: inline-block;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.badge-orange { background: #ffedd5; color: #c2410c; }
+.badge-green { background: #dcfce7; color: #15803d; }
+.badge-purple { background: #f3e8ff; color: #7e22ce; }
+
+.floor-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 20px 0;
+  line-height: 1.3;
+}
+
+.floor-meta {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.fm-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 500;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+.floor-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.floor-list li {
+  position: relative;
+  padding-left: 24px;
+  margin-bottom: 12px;
+  color: #334155;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.floor-list li::before {
+  content: '•';
+  color: #0284c7;
+  font-size: 1.5rem;
+  position: absolute;
+  left: 0;
+  top: -4px;
+}

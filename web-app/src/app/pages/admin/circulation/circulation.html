@@ -1,0 +1,116 @@
+<div class="circulation-page">
+  <div class="pos-header">
+    <div class="pos-tabs">
+      <button class="pos-tab" [class.active]="activeTab === 'borrow'" (click)="switchTab('borrow')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        MƯỢN SÁCH
+      </button>
+      <button class="pos-tab" [class.active]="activeTab === 'return'" (click)="switchTab('return')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>
+        TRẢ SÁCH
+      </button>
+    </div>
+    <div class="pos-status">
+      <span class="status-indicator"></span> Quầy đang hoạt động
+    </div>
+  </div>
+
+  <div class="pos-grid" [class.return-mode]="activeTab === 'return'">
+    <!-- Cột Trái: Sinh viên (Ẩn/Thu gọn nếu là Trả sách) -->
+    <div class="pos-panel student-panel" *ngIf="activeTab === 'borrow'">
+      <div class="panel-title">1. Thông tin Sinh viên</div>
+      
+      <div class="scanner-input-wrapper">
+        <svg class="scanner-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01M7 12h10M12 7v10"></path></svg>
+        <input type="text" class="scanner-input" placeholder="Quét thẻ hoặc nhập MSSV..." (keydown)="scanStudentId($event)">
+        <button class="btn-scan" (click)="scanStudentId({key:'Enter'})">Tìm</button>
+      </div>
+
+      <!-- Trạng thái chờ quét -->
+      <div class="empty-state" *ngIf="!scannedStudent">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <p>Vui lòng quét thẻ sinh viên để bắt đầu giao dịch mượn sách.</p>
+      </div>
+
+      <!-- Đã quét sinh viên -->
+      <div class="student-card" *ngIf="scannedStudent">
+        <div class="student-header">
+          <div class="student-ava">{{ scannedStudent.avatar }}</div>
+          <div class="student-info">
+            <h3>{{ scannedStudent.name }}</h3>
+            <p>{{ scannedStudent.id }} • Lớp: {{ scannedStudent.class }}</p>
+          </div>
+        </div>
+        
+        <div class="student-stats">
+          <div class="stat-item">
+            <span class="stat-label">Trạng thái thẻ</span>
+            <span class="badge" [ngClass]="{'badge-available': scannedStudent.status === 'active'}">
+              {{ scannedStudent.status === 'active' ? 'Đang hoạt động' : 'Bị khóa' }}
+            </span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Hạn mức mượn</span>
+            <span class="stat-val">{{ scannedStudent.borrowLimit }} cuốn</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Đang giữ</span>
+            <span class="stat-val text-warning">{{ scannedStudent.currentlyBorrowed }} cuốn</span>
+          </div>
+        </div>
+        
+        <div class="alert-box" *ngIf="scannedStudent.currentlyBorrowed > 0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          Sinh viên đang mượn {{ scannedStudent.currentlyBorrowed }} cuốn sách. Chỉ được mượn thêm {{ scannedStudent.borrowLimit - scannedStudent.currentlyBorrowed }} cuốn.
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột Phải: Giỏ sách -->
+    <div class="pos-panel cart-panel">
+      <div class="panel-title">{{ activeTab === 'borrow' ? '2. Quét mã vạch Sách' : '1. Quét mã vạch Sách (Trả sách)' }}</div>
+      
+      <div class="scanner-input-wrapper">
+        <svg class="scanner-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><line x1="22" y1="6" x2="2" y2="6"></line><line x1="12" y1="10" x2="12" y2="20"></line></svg>
+        <input type="text" class="scanner-input book-scanner" placeholder="Quét mã vạch ISBN hoặc Mã ĐKCB..." (keydown)="scanBookBarcode($event)">
+      </div>
+
+      <!-- Báo cáo giao dịch thành công -->
+      <div class="success-banner" *ngIf="transactionSuccess">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        Giao dịch thành công! Đang làm mới phiên làm việc...
+      </div>
+
+      <div class="cart-container">
+        <div class="empty-state" *ngIf="scannedBooks.length === 0 && !transactionSuccess">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          <p>Chưa có tài liệu nào trong danh sách quét.</p>
+        </div>
+
+        <div class="cart-items" *ngIf="scannedBooks.length > 0">
+          <div class="cart-item" *ngFor="let item of scannedBooks">
+            <div class="item-info">
+              <h4>{{ item.title }}</h4>
+              <p>Mã: {{ item.isbn }} • Tác giả: {{ item.author }}</p>
+            </div>
+            <button class="remove-btn" (click)="removeBook(item.uid)">Xóa</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer thanh toán / xác nhận -->
+      <div class="pos-footer">
+        <div class="pos-summary">
+          <span>Tổng số lượng tài liệu:</span>
+          <span class="summary-total">{{ scannedBooks.length }} cuốn</span>
+        </div>
+        <div class="pos-actions">
+          <button class="btn-cancel" (click)="resetForm()">Hủy bỏ (F3)</button>
+          <button class="btn-checkout" [disabled]="scannedBooks.length === 0 || (activeTab === 'borrow' && !scannedStudent)" (click)="completeTransaction()">
+            {{ activeTab === 'borrow' ? 'HOÀN TẤT MƯỢN SÁCH (F9)' : 'HOÀN TẤT TRẢ SÁCH (F9)' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

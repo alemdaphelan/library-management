@@ -1,0 +1,37 @@
+.guide-page {
+  padding: 50px 20px 100px 20px;
+  animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-header { margin-bottom: 50px; }
+.page-header h1 { font-size: 2.2rem; font-weight: 800; color: #0f172a; margin-bottom: 15px; }
+.page-header p { font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto; line-height: 1.5; }
+.text-center { text-align: center; }
+
+.guide-content {
+  max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px;
+}
+
+.rules-section {
+  background: white; border-radius: 16px; padding: 35px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  display: flex; gap: 25px; align-items: flex-start;
+}
+.rs-icon {
+  font-size: 2.5rem; background: #f8fafc; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; border-radius: 16px; flex-shrink: 0;
+}
+.rs-text { flex: 1; }
+.rules-section h2 { font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0 0 20px 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;}
+
+.rules-list { margin: 0; padding-left: 20px; color: #475569; font-size: 1.05rem; line-height: 1.7; }
+.rules-list li { margin-bottom: 12px; }
+.rules-list li strong { color: #0f172a; }
+
+.faq-list { display: flex; flex-direction: column; gap: 25px; }
+.faq-item { padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9; }
+.faq-q { font-size: 1.15rem; font-weight: 700; color: #0369a1; margin: 0 0 10px 0; display: flex; align-items: flex-start; gap: 10px; line-height: 1.4;}
+.faq-q svg { flex-shrink: 0; margin-top: 2px; }
+.faq-a { font-size: 1.05rem; color: #475569; margin: 0 0 0 30px; line-height: 1.6; }

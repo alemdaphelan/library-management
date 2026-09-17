@@ -1,0 +1,126 @@
+<div class="shelf-map-page">
+  <div class="map-grid">
+    
+    <!-- CỘT TRÁI: SƠ ĐỒ VỊ TRÍ KỆ SÁCH -->
+    <div class="card map-card">
+      <div class="card-header">
+        <div class="header-title-box">
+          <div class="icon-compass-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+          </div>
+          <div>
+            <h2 class="card-title">Sơ đồ Vị trí Kệ Sách Thực tế</h2>
+            <p class="card-subtitle">Định vị thông minh tự động chỉ đường tại thư viện trung tâm</p>
+          </div>
+        </div>
+        <div class="floor-badge">Tầng 3 – Tự nhiên & Kỹ thuật</div>
+      </div>
+
+      <div class="target-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="loc-icon"><path d="M15 3h6v6"></path><path d="M10 14L21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+        <span>Vị trí mục tiêu: <strong>Dãy Kệ IT-204</strong> • Hàng số <strong>02</strong> • Ngăn số <strong>03</strong> (Từ trên đếm xuống)</span>
+      </div>
+
+      <div class="map-container">
+        <!-- Vùng học / Nghiên cứu -->
+        <div class="area-box study-area">BÀN ĐỌC TỰ HỌC A</div>
+        <div class="area-box research-area">PHÒNG NGHIÊN CỨU</div>
+
+        <!-- Các dãy kệ -->
+        <div class="shelf shelf-other" style="left: 170px; top: 60px;">IT-201</div>
+        <div class="shelf shelf-other" style="left: 230px; top: 60px;">IT-202</div>
+        <div class="shelf shelf-other" style="left: 290px; top: 60px;">IT-203</div>
+        
+        <div class="shelf shelf-target" style="left: 170px; top: 180px;">
+          <div class="target-pin"></div>
+          IT-204<br><small style="font-size: 8px;">SÁCH TẠI ĐÂY</small>
+        </div>
+        <div class="shelf shelf-other" style="left: 230px; top: 180px;">IT-205</div>
+        <div class="shelf shelf-other" style="left: 290px; top: 180px;">IT-206</div>
+
+        <!-- Đường đi -->
+        <div class="path-line path-vertical"></div>
+        <div class="path-line path-horizontal"></div>
+        <div class="path-door">CỬA VÀO / THANG MÁY</div>
+      </div>
+
+      <div class="map-legend">
+        <div class="legend-item"><span class="dot dot-target"></span> Kệ sách chứa tài liệu này</div>
+        <div class="legend-item"><span class="dot dot-other"></span> Kệ tài liệu chuyên ngành khác</div>
+        <div class="legend-item ar-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg> 
+          Hướng dẫn dẫn đường AR
+        </div>
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI: HIỆN TRẠNG BẢN SAO -->
+    <div class="card status-card">
+      <div class="card-header border-bottom">
+        <div class="header-title-box">
+          <div class="icon-box-archive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 8h20"></path><path d="M9 13h6"></path></svg>
+          </div>
+          <h2 class="card-title">Hiện trạng Bản sao</h2>
+        </div>
+        <div class="total-copies">Tổng 15 bản</div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="status-progress-container">
+        <div class="status-labels">
+          <span style="color: #64748b; font-size: 0.85rem;">9 Sẵn sàng</span>
+          <span style="color: #64748b; font-size: 0.85rem;">5 Đang mượn</span>
+          <span style="color: #64748b; font-size: 0.85rem;">1 Đọc tại chỗ</span>
+        </div>
+        <div class="status-progress-bar">
+          <div class="prog-green" style="width: 60%"></div>
+          <div class="prog-yellow" style="width: 33.33%"></div>
+          <div class="prog-blue" style="width: 6.67%"></div>
+        </div>
+      </div>
+
+      <!-- Danh sách bản sao -->
+      <div class="copies-list">
+        <!-- Copy 1 -->
+        <div class="copy-item">
+          <div class="copy-info">
+            <div class="copy-code">Mã ĐKCB: 2024-IT-00812</div>
+            <div class="copy-loc">Khu vực: Phòng Mượn Tầng 3 • Kệ IT-204</div>
+          </div>
+          <div class="badge badge-green">Trên kệ</div>
+        </div>
+        <!-- Copy 2 -->
+        <div class="copy-item">
+          <div class="copy-info">
+            <div class="copy-code">Mã ĐKCB: 2024-IT-00813</div>
+            <div class="copy-loc">Khu vực: Phòng Mượn Tầng 3 • Kệ IT-204</div>
+          </div>
+          <div class="badge badge-green">Trên kệ</div>
+        </div>
+        <!-- Copy 3 -->
+        <div class="copy-item">
+          <div class="copy-info">
+            <div class="copy-code">Mã ĐKCB: 2024-IT-00819</div>
+            <div class="copy-loc">Đang mượn (SV: 20012108**)</div>
+          </div>
+          <div class="badge badge-yellow">Hẹn trả 15/04</div>
+        </div>
+        <!-- Copy 4 -->
+        <div class="copy-item">
+          <div class="copy-info">
+            <div class="copy-code">Mã ĐKCB: 2024-IT-00801</div>
+            <div class="copy-loc">Bản lưu Chiểu cố định • Tủ chuyên gia</div>
+          </div>
+          <div class="badge badge-blue">Chỉ đọc tại chỗ</div>
+        </div>
+      </div>
+
+      <button class="btn-subscribe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        Đăng ký nhận tin khi có sách trả về thêm
+      </button>
+
+    </div>
+  </div>
+</div>

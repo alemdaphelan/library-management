@@ -1,0 +1,40 @@
+.digital-page {
+  padding: 50px 20px 100px 20px;
+  animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-header { margin-bottom: 50px; }
+.page-header h1 { font-size: 2.2rem; font-weight: 800; color: #0f172a; margin-bottom: 15px; }
+.page-header p { font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto; line-height: 1.5; }
+.text-center { text-align: center; }
+
+.db-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;
+}
+.db-card {
+  background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex; flex-direction: column;
+}
+.db-card:hover {
+  transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-color: #cbd5e1;
+}
+
+.db-logo-wrapper {
+  background: #f8fafc; height: 160px; display: flex; align-items: center; justify-content: center; padding: 30px; border-bottom: 1px solid #f1f5f9;
+}
+.db-logo { max-width: 100%; max-height: 100%; object-fit: contain; filter: grayscale(20%); transition: filter 0.2s; }
+.db-card:hover .db-logo { filter: grayscale(0%); }
+
+.db-info { padding: 25px; flex: 1; display: flex; flex-direction: column; }
+.db-info h3 { font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0 0 10px 0; }
+.db-info p { font-size: 0.95rem; color: #64748b; margin: 0 0 25px 0; line-height: 1.6; flex: 1; }
+
+.btn-access {
+  display: inline-block; padding: 10px 20px; background: #e0f2fe; color: #0369a1; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; text-align: center; transition: background 0.2s;
+}
+.btn-access:hover { background: #bae6fd; }

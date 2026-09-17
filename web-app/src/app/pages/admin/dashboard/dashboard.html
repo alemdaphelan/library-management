@@ -1,0 +1,148 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-title">Dashboard Tổng quan</h1>
+      <p style="color: var(--text-muted); margin-top: 5px;">Thống kê thời gian thực hệ thống thư viện UniLib HUIT.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> 
+        Tháng 9, 2026
+      </button>
+      <button class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Xuất báo cáo
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #e0f2fe; color: #0284c7;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      </div>
+      <div class="stat-info">
+        <h3>Tổng số sách</h3>
+        <p class="stat-value">{{ stats.totalBooks }}</p>
+        <span class="stat-trend trend-up">&uarr; 120 cuốn (tháng này)</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #dcfce7; color: #16a34a;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      </div>
+      <div class="stat-info">
+        <h3>Đang được mượn</h3>
+        <p class="stat-value">{{ stats.borrowedCurrent }}</p>
+        <span class="stat-trend trend-up">&uarr; 12% (so với tuần trước)</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #fee2e2; color: #dc2626;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      </div>
+      <div class="stat-info">
+        <h3>Sách quá hạn</h3>
+        <p class="stat-value">{{ stats.overdueBooks }}</p>
+        <span class="stat-trend trend-down">&darr; 5 (đã thu hồi hôm nay)</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #fef9c3; color: #ca8a04;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+      </div>
+      <div class="stat-info">
+        <h3>Tiền phạt thu được</h3>
+        <p class="stat-value">{{ stats.fineCollected }}</p>
+        <span class="stat-trend trend-up">&uarr; 500k (so với hôm qua)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <!-- Chart Section (Left) -->
+    <div class="dashboard-col-left">
+      <div class="card chart-card">
+        <div class="card-header">
+          <h3 class="card-title">Lượt mượn sách trong tuần</h3>
+          <button class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+        </div>
+        <div class="chart-container">
+          <div class="css-bar-chart">
+            <div class="bar-group" *ngFor="let stat of weeklyStats">
+              <div class="bar-track">
+                <div class="bar-fill" [style.height.%]="stat.percentage">
+                  <div class="bar-tooltip">{{ stat.count }} lượt</div>
+                </div>
+              </div>
+              <div class="bar-label">{{ stat.day }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pie-card">
+        <h3 class="card-title">Phân bổ theo chuyên ngành</h3>
+        <div class="pie-container">
+          <div class="css-pie-chart"></div>
+          <div class="pie-legend">
+            <div class="legend-item"><span class="legend-color" style="background: #0284c7;"></span> CNTT (45%)</div>
+            <div class="legend-item"><span class="legend-color" style="background: #10b981;"></span> Kinh tế (30%)</div>
+            <div class="legend-item"><span class="legend-color" style="background: #f59e0b;"></span> Ngôn ngữ (15%)</div>
+            <div class="legend-item"><span class="legend-color" style="background: #e2e8f0;"></span> Khác (10%)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activities & Top Books Section (Right) -->
+    <div class="dashboard-col-right">
+      <div class="card top-books-card">
+        <h3 class="card-title">Sách thịnh hành</h3>
+        <ul class="top-book-list">
+          <li *ngFor="let book of trendingBooks; let i = index">
+            <div class="rank" [class.rank-top]="i < 3">{{ i + 1 }}</div>
+            <div class="book-info">
+              <div class="b-title">{{ book.title }}</div>
+              <div class="b-author">{{ book.author }}</div>
+            </div>
+            <div class="b-borrows">{{ book.borrows }} lượt</div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card activities-card">
+        <h3 class="card-title">Hoạt động mới nhất</h3>
+        <ul class="activity-list">
+          <li *ngFor="let log of recentActivities">
+            <div class="activity-icon" [ngClass]="{
+              'bg-blue': log.type === 'borrow',
+              'bg-green': log.type === 'return',
+              'bg-yellow': log.type === 'renew',
+              'bg-red': log.type === 'fine'
+            }">
+              <!-- Borrow -->
+              <svg *ngIf="log.type === 'borrow'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+              <!-- Return -->
+              <svg *ngIf="log.type === 'return'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              <!-- Renew -->
+              <svg *ngIf="log.type === 'renew'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <!-- Fine -->
+              <svg *ngIf="log.type === 'fine'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="activity-details">
+              <div class="act-text">
+                <span class="user">{{ log.user }}</span> {{ log.action }} <strong>{{ log.item }}</strong>
+              </div>
+              <div class="act-time">{{ log.time }}</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

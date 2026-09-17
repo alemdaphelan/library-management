@@ -1,0 +1,180 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <div>
+      <h1 class="page-title">Quản lý Danh mục Sách</h1>
+      <p style="color: var(--text-muted); margin-top: 5px;">Thêm mới, cập nhật thông tin và quản lý vị trí các bản sao tài liệu.</p>
+    </div>
+    <button class="btn-primary" (click)="openDrawer('add')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Thêm sách mới
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="table-toolbar">
+      <div class="search-box">
+        <span class="icon search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
+        <input type="text" placeholder="Tìm kiếm theo mã, tên sách, tác giả..." class="form-control" style="width: 320px; padding-left: 35px;">
+      </div>
+      <div class="filter-chips">
+        <button class="chip active">Tất cả</button>
+        <button class="chip">CNTT</button>
+        <button class="chip">Kinh tế</button>
+        <button class="chip">Ngôn ngữ</button>
+      </div>
+      <div class="filter-actions" style="margin-left: auto;">
+        <select class="form-control" style="width: 150px;">
+          <option>Trạng thái</option>
+          <option>Có sẵn</option>
+          <option>Hết sách</option>
+        </select>
+        <button class="btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Cột hiển thị
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Thông tin sách</th>
+            <th>ISBN</th>
+            <th>Thể loại</th>
+            <th>Vị trí (Tầng / Kệ)</th>
+            <th class="text-center">Số lượng</th>
+            <th>Trạng thái</th>
+            <th class="text-right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let book of books">
+            <td>
+              <div class="book-info-cell">
+                <img [src]="book.coverUrl" alt="Cover" class="book-cover-thumb">
+                <div class="book-details">
+                  <div class="book-title">{{ book.title }}</div>
+                  <div class="book-author">{{ book.author }}</div>
+                  <div class="book-id">Mã ĐKCB: {{ book.id }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ book.isbn }}</td>
+            <td><span class="badge badge-light">{{ book.category }}</span></td>
+            <td>
+              <div class="location-cell">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {{ book.location }}
+              </div>
+            </td>
+            <td class="text-center"><strong>{{ book.copies }}</strong></td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-available': book.status === 'available',
+                'badge-danger': book.status === 'out_of_stock',
+                'badge-warning': book.status === 'borrowed'
+              }">
+                {{ book.status === 'available' ? 'Sẵn sàng' : (book.status === 'out_of_stock' ? 'Hết sách' : 'Đang mượn') }}
+              </span>
+            </td>
+            <td class="text-right">
+              <button class="action-btn edit-btn" title="Chỉnh sửa" (click)="openDrawer('edit', book)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <button class="action-btn delete-btn" title="Xóa">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 0.85rem; color: #64748b;">Hiển thị 1-4 của 120 kết quả</span>
+      <div style="display: flex; gap: 5px;">
+        <button class="btn-outline btn-sm">Trước</button>
+        <button class="btn-primary btn-sm">1</button>
+        <button class="btn-outline btn-sm">2</button>
+        <button class="btn-outline btn-sm">3</button>
+        <button class="btn-outline btn-sm">Sau</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer Overlay (Backdrop) -->
+<div class="drawer-overlay" [class.active]="isDrawerOpen" (click)="closeDrawer()"></div>
+
+<!-- Offcanvas Drawer -->
+<div class="drawer-panel" [class.open]="isDrawerOpen">
+  <div class="drawer-header">
+    <h2 class="drawer-title">{{ drawerMode === 'add' ? 'Thêm Sách Mới' : 'Sửa Thông Tin Sách' }}</h2>
+    <button class="drawer-close" (click)="closeDrawer()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+  
+  <div class="drawer-body">
+    <form class="book-form">
+      <!-- Ảnh bìa -->
+      <div class="form-group cover-upload-group">
+        <label>Ảnh bìa tài liệu</label>
+        <div class="cover-uploader">
+          <img [src]="currentBook.coverUrl" alt="Cover Preview" class="cover-preview">
+          <div class="upload-actions">
+            <button type="button" class="btn-outline btn-sm">Tải ảnh lên</button>
+            <p class="upload-hint">Định dạng .jpg, .png. Tối đa 2MB.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Tên sách <span class="required">*</span></label>
+          <input type="text" class="form-control" name="title" [(ngModel)]="currentBook.title" placeholder="Nhập tên sách">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>Tác giả <span class="required">*</span></label>
+          <input type="text" class="form-control" name="author" [(ngModel)]="currentBook.author" placeholder="Nhập tên tác giả">
+        </div>
+        <div class="form-group flex-1">
+          <label>Số ISBN</label>
+          <input type="text" class="form-control" name="isbn" [(ngModel)]="currentBook.isbn" placeholder="Mã ISBN">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>Chuyên ngành / Thể loại</label>
+          <select class="form-control" name="category" [(ngModel)]="currentBook.category">
+            <option value="Công nghệ thông tin">Công nghệ thông tin</option>
+            <option value="Kinh tế, Kế toán">Kinh tế, Kế toán</option>
+            <option value="Khoa học kỹ thuật">Khoa học kỹ thuật</option>
+            <option value="Ngôn ngữ">Ngôn ngữ</option>
+          </select>
+        </div>
+        <div class="form-group flex-1">
+          <label>Số lượng bản sao</label>
+          <input type="number" class="form-control" name="copies" [(ngModel)]="currentBook.copies" placeholder="VD: 5">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Vị trí lưu trữ (Tầng & Kệ)</label>
+        <input type="text" class="form-control" name="location" [(ngModel)]="currentBook.location" placeholder="VD: Tầng 3 - Kệ IT-204">
+      </div>
+      
+      <div class="form-group">
+        <label>Tóm tắt nội dung</label>
+        <textarea class="form-control" rows="4" placeholder="Nhập mô tả hoặc tóm tắt nội dung tài liệu..."></textarea>
+      </div>
+    </form>
+  </div>
+  
+  <div class="drawer-footer">
+    <button class="btn-outline" (click)="closeDrawer()">Hủy bỏ</button>
+    <button class="btn-primary" (click)="saveBook()">Lưu thông tin</button>
+  </div>
+</div>

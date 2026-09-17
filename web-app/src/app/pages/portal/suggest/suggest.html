@@ -1,0 +1,60 @@
+<div class="suggest-page">
+  <div class="suggest-container">
+    
+    <!-- Left: Illustration -->
+    <div class="illus-pane">
+      <div class="illus-overlay">
+        <h2>Chung tay xây dựng<br>Thư viện tri thức!</h2>
+        <p>Bạn không tìm thấy cuốn sách mình cần? Hãy đề xuất thư viện mua thêm tài liệu nhé.</p>
+      </div>
+      <img src="/assets/images/suggest_illus.jpg" alt="Suggest Book" class="illus-img">
+    </div>
+
+    <!-- Right: Glassmorphism Form -->
+    <div class="form-pane">
+      <div class="form-header">
+        <h1>Phiếu Đề Xuất Mua Sách</h1>
+        <p>Vui lòng cung cấp thông tin càng chi tiết càng tốt để thư viện dễ dàng tìm mua.</p>
+      </div>
+
+      <div class="success-alert" *ngIf="isSubmitted">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        Đề xuất của bạn đã được gửi thành công! Ban thu thập sẽ phản hồi sớm nhất.
+      </div>
+
+      <form class="suggest-form" (ngSubmit)="onSubmit()" *ngIf="!isSubmitted">
+        <div class="form-group">
+          <label>Tên tài liệu / Sách <span class="required">*</span></label>
+          <input type="text" placeholder="VD: Clean Architecture" [(ngModel)]="suggestion.title" name="title" required class="glass-input">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tác giả</label>
+            <input type="text" placeholder="Tên tác giả" [(ngModel)]="suggestion.author" name="author" class="glass-input">
+          </div>
+          <div class="form-group">
+            <label>Nhà xuất bản</label>
+            <input type="text" placeholder="NXB (nếu biết)" [(ngModel)]="suggestion.publisher" name="publisher" class="glass-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Đường dẫn tham khảo (Link mua sách)</label>
+          <input type="url" placeholder="Link Tiki, Fahasa, Amazon..." [(ngModel)]="suggestion.link" name="link" class="glass-input">
+        </div>
+
+        <div class="form-group">
+          <label>Lý do đề xuất <span class="required">*</span></label>
+          <textarea rows="4" placeholder="Vì sao cuốn sách này cần thiết cho ngành học của bạn?" [(ngModel)]="suggestion.reason" name="reason" required class="glass-input"></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">
+          Gửi Đề Xuất
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>

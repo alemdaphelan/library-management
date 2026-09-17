@@ -1,0 +1,92 @@
+<div class="auth-page">
+  <div class="auth-container">
+    
+    <!-- Left Column: Illustration -->
+    <div class="auth-illus">
+      <img src="/assets/images/login_bg.jpg" alt="Library Portal" class="bg-image">
+      <div class="illus-content">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="white" width="40" height="40"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>
+        </div>
+        <h2>HUIT LIBRARY</h2>
+        <p>Trung tâm Thông tin - Thư viện<br>Đại học Công Thương TP.HCM</p>
+      </div>
+    </div>
+
+    <!-- Right Column: Forms -->
+    <div class="auth-form-area">
+      
+      <!-- Login Form -->
+      <div class="form-wrapper" *ngIf="mode === 'login'">
+        <div class="form-header">
+          <h1>Đăng nhập</h1>
+          <p>Truy cập vào Cổng tri thức số HUIT</p>
+        </div>
+
+        <button class="btn-sso" (click)="onLoginSSO()" [disabled]="isSubmitting">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="ms-icon">
+          Đăng nhập bằng HUIT SSO (Sinh viên/Giảng viên)
+        </button>
+
+        <div class="divider">
+          <span>hoặc đăng nhập bằng tài khoản nội bộ</span>
+        </div>
+
+        <form (ngSubmit)="onLogin()">
+          <div class="form-group">
+            <label>Tên đăng nhập / MSSV</label>
+            <input type="text" [(ngModel)]="loginData.username" name="username" placeholder="Nhập tên đăng nhập" required class="glass-input">
+          </div>
+          
+          <div class="form-group">
+            <label>Mật khẩu</label>
+            <input type="password" [(ngModel)]="loginData.password" name="password" placeholder="••••••••" required class="glass-input">
+          </div>
+
+          <div class="form-options">
+            <label class="checkbox-container">
+              <input type="checkbox">
+              <span class="checkmark"></span>
+              Ghi nhớ đăng nhập
+            </label>
+            <a href="#" class="link-forgot" (click)="toggleMode('forgot', $event)">Quên mật khẩu?</a>
+          </div>
+
+          <button type="submit" class="btn-submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Đang xử lý...' : 'Đăng Nhập' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Forgot Password Form -->
+      <div class="form-wrapper" *ngIf="mode === 'forgot'">
+        <div class="form-header">
+          <h1>Khôi phục mật khẩu</h1>
+          <p>Nhập email liên kết với tài khoản của bạn để nhận mã khôi phục.</p>
+        </div>
+
+        <div class="alert success" *ngIf="successMessage">
+          {{ successMessage }}
+        </div>
+
+        <form (ngSubmit)="onForgotPassword()">
+          <div class="form-group">
+            <label>Địa chỉ Email</label>
+            <input type="email" [(ngModel)]="forgotData.email" name="email" placeholder="Ví dụ: sinhvien@huit.edu.vn" required class="glass-input">
+          </div>
+
+          <button type="submit" class="btn-submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Đang gửi...' : 'Gửi Yêu Cầu' }}
+          </button>
+        </form>
+
+        <div class="back-link-wrapper">
+          <a href="#" class="link-back" (click)="toggleMode('login', $event)">
+            &larr; Quay lại trang Đăng nhập
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

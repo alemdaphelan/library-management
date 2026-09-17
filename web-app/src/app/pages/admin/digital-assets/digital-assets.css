@@ -1,0 +1,275 @@
+/* Hoàn toàn tự thân CSS không phụ thuộc global css */
+
+.digital-assets-page {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-header {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  color: #0f172a;
+  margin: 0;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  color: #64748b;
+  margin-top: 5px;
+  font-size: 1rem;
+}
+
+/* KHU VỰC UPLOAD (DRAG & DROP) */
+.upload-zone {
+  background-color: white;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+}
+
+.upload-zone:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.upload-zone.drag-active {
+  background-color: #e0f2fe;
+  border-color: #0284c7;
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  color: #0284c7;
+  margin-bottom: 15px;
+  background: #f0f9ff;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 8px 0;
+}
+
+.upload-hint {
+  color: #64748b;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* PROGRESS BAR */
+.upload-progress-container {
+  width: 60%;
+  max-width: 500px;
+}
+
+.progress-bar {
+  height: 12px;
+  background-color: #e2e8f0;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #0284c7;
+  border-radius: 20px;
+  transition: width 0.2s ease;
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  color: #0f172a;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* TOOLBAR SECTION */
+.toolbar-section {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 15px;
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.icon-search {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 15px 12px 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.filter-select {
+  padding: 12px 20px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  background-color: white;
+  cursor: pointer;
+}
+
+/* LƯỚI DANH SÁCH (CARD GRID) */
+.assets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding-bottom: 40px;
+}
+
+.asset-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.asset-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  border-color: #cbd5e1;
+}
+
+.asset-thumb {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.asset-thumb.type-pdf { background: linear-gradient(135deg, #fecaca 0%, #ef4444 100%); }
+.asset-thumb.type-epub { background: linear-gradient(135deg, #bbf7d0 0%, #16a34a 100%); }
+.asset-thumb.type-pptx { background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%); }
+.asset-thumb.type-audio { background: linear-gradient(135deg, #e0f2fe 0%, #0284c7 100%); }
+.asset-thumb.type-unknown { background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%); }
+
+.file-extension {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.asset-info {
+  padding: 15px;
+  flex: 1;
+}
+
+.asset-name {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-meta {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 12px;
+}
+
+.book-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  background: #f1f5f9;
+  color: #0284c7;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.book-link.unlinked {
+  color: #ca8a04;
+  background: #fef9c3;
+}
+
+.asset-actions {
+  display: flex;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.btn-action {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 12px 0;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.btn-action:not(:last-child) {
+  border-right: 1px solid #e2e8f0;
+}
+
+.btn-action:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-action.view:hover { color: #0284c7; }
+.btn-action.link:hover { color: #16a34a; }
+.btn-action.delete:hover { color: #ef4444; background: #fee2e2; }
