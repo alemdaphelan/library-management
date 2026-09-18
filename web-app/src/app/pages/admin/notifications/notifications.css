@@ -27,25 +27,25 @@
 }
 .stat-val { font-size: 1.5rem; font-weight: 700; color: #0f172a; }
 .stat-val.warning { color: #dc2626; }
-.stat-val.info { color: #0284c7; }
+.stat-val.info { color: #1e293b; }
 .stat-lbl { font-size: 0.8rem; color: #64748b; margin-top: 4px; font-weight: 500;}
 
 .compose-card {
   background: white; border-radius: 12px; padding: 24px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
 }
-.compose-title { margin: 0 0 20px 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; color: #0284c7;}
+.compose-title { margin: 0 0 20px 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; color: #1e293b;}
 
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-weight: 600; font-size: 0.9rem; color: #334155; margin-bottom: 8px; }
 
 .form-control { border: 1px solid #cbd5e1; padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.2s; font-family: inherit;}
-.form-control:focus { border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+.form-control:focus { border-color: #64748b; box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.1); }
 
 .radio-group { display: flex; gap: 15px; flex-wrap: wrap; }
 .radio-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.9rem; color: #475569;}
 .radio-label span { display: flex; align-items: center; gap: 6px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; }
-.dot.info { background: #0ea5e9; }
+.dot.info { background: #64748b; }
 .dot.reminder { background: #eab308; }
 .dot.overdue { background: #ef4444; }
 
@@ -75,7 +75,7 @@
 }
 .h-icon.overdue { background: #fee2e2; color: #dc2626; }
 .h-icon.reminder { background: #fef9c3; color: #ca8a04; }
-.h-icon.info { background: #e0f2fe; color: #0284c7; }
+.h-icon.info { background: #f1f5f9; color: #475569; }
 
 .h-content { flex: 1; }
 .h-title { font-weight: 600; color: #0f172a; margin-bottom: 4px; font-size: 1rem; }
@@ -83,8 +83,8 @@
 .h-date { font-size: 0.8rem; color: #94a3b8; }
 
 /* Base Buttons / Badges */
-.btn-primary { background: #0284c7; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s; }
-.btn-primary:hover { background: #0369a1; }
+.btn-primary { background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.btn-primary:hover { background: #0f172a; }
 .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }

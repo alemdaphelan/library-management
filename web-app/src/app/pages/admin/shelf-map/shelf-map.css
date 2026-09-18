@@ -193,7 +193,8 @@
 
 .map-legend {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 30px;
   align-items: center;
   font-size: 0.85rem;
   color: #64748b;

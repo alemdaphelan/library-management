@@ -55,7 +55,7 @@
   width: 35px;
   height: 35px;
   background-color: white;
-  color: #0ea5e9;
+  color: #0f172a;
   border-radius: 6px;
   display: flex;
   justify-content: center;
@@ -122,7 +122,7 @@
 }
 
 .nav-item.active {
-  background-color: #0284c7;
+  background-color: rgba(255, 255, 255, 0.1);
   color: white;
   border-radius: 0 20px 20px 0;
   margin-right: 20px;
@@ -177,13 +177,13 @@
 }
 
 .branch-selector {
-  color: #0284c7;
+  color: #334155;
   font-weight: 600;
   font-size: 0.95rem;
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #f0f9ff;
+  background-color: #f1f5f9;
   padding: 8px 12px;
   border-radius: 6px;
 }
@@ -326,7 +326,7 @@
 }
 .user-dropdown a:hover {
   background-color: #f1f5f9;
-  color: #0284c7;
+  color: #0f172a;
 }
 .user-dropdown a.logout {
   border-top: 1px solid #e2e8f0;

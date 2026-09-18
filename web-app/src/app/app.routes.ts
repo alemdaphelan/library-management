@@ -56,6 +56,7 @@ export const routes: Routes = [
     data: { roles: ['ADMIN', 'LIBRARIAN'] },
     children: [
       { path: '', component: Dashboard, title: 'Dashboard' },
+      { path: 'profile', component: Profile, title: 'Cài đặt tài khoản' },
       { path: 'accounts', component: Accounts, title: 'Quản lý tài khoản', data: { roles: ['ADMIN'] } },
       { path: 'books', component: Books, title: 'Quản lý sách' },
       { path: 'imports', component: Imports, title: 'Quản lý nhập kho', data: { roles: ['ADMIN'] } },

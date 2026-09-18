@@ -2,7 +2,7 @@
   <div class="admin-header">
     <div>
       <h1 class="page-title">Thông báo & Nhắc hạn</h1>
-      <p class="page-subtitle">Quản lý và gửi thông báo đẩy (Push Notifications) tới ứng dụng của Sinh viên.</p>
+      <p class="page-subtitle">Quản lý và gửi thông báo đẩy tới ứng dụng của Sinh viên.</p>
     </div>
   </div>
 
@@ -34,13 +34,15 @@
         
         <div class="form-group">
           <label>Đối tượng nhận</label>
-          <select class="form-control">
+          <select class="form-control" #audienceSelect (change)="0">
             <option>Tất cả Sinh viên</option>
+            <option>Một sinh viên cụ thể...</option>
             <option>Sinh viên đang mượn sách</option>
             <option>Sinh viên có sách quá hạn</option>
             <option>Sinh viên sắp đến hạn (còn <= 2 ngày)</option>
             <option>Khoa Công nghệ Thông tin</option>
           </select>
+          <input type="text" class="form-control" placeholder="Nhập mã số sinh viên..." *ngIf="audienceSelect.value === 'Một sinh viên cụ thể...'" style="margin-top: 10px;">
         </div>
 
         <div class="form-group">

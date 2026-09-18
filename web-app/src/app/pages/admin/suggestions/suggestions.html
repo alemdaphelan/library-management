@@ -36,10 +36,9 @@
         <tr>
           <th width="35%">Tên Sách / Tác Giả</th>
           <th width="20%">Sinh viên đề xuất</th>
-          <th width="12%">Ngày gửi</th>
-          <th width="10%" class="text-center">Số Vote</th>
-          <th width="13%" class="text-center">Trạng thái</th>
-          <th width="10%" class="text-center">Xử lý</th>
+          <th width="15%">Ngày gửi</th>
+          <th width="15%" class="text-center">Trạng thái</th>
+          <th width="15%" class="text-center">Xử lý</th>
         </tr>
       </thead>
       <tbody>
@@ -51,9 +50,6 @@
           <td>{{ s.student }}</td>
           <td>{{ s.date }}</td>
           <td class="text-center">
-            <span class="vote-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg> {{ s.votes }}</span>
-          </td>
-          <td class="text-center">
             <span class="badge badge-warning" *ngIf="s.status === 'pending'">Chờ duyệt</span>
             <span class="badge badge-available" *ngIf="s.status === 'approved'">Đã duyệt</span>
             <span class="badge badge-danger" *ngIf="s.status === 'rejected'">Từ chối</span>
@@ -64,7 +60,7 @@
           </td>
         </tr>
         <tr *ngIf="filteredSuggestions.length === 0">
-          <td colspan="6" class="text-center" style="padding: 40px; color: #64748b;">
+          <td colspan="5" class="text-center" style="padding: 40px; color: #64748b;">
             Không có dữ liệu đề xuất nào trong trạng thái này.
           </td>
         </tr>

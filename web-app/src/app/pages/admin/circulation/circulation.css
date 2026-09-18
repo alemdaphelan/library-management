@@ -117,6 +117,7 @@
 
 .scanner-input {
   flex: 1;
+  min-width: 0;
   background: #f8fafc;
   border: 2px solid #cbd5e1;
   padding: 16px 20px 16px 50px;
@@ -140,7 +141,7 @@
 }
 
 .btn-scan {
-  background: #0f172a; color: white; border: none; padding: 0 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
+  background: #0f172a; color: white; border: none; padding: 0 24px; border-radius: 8px; font-weight: 600; cursor: pointer; flex-shrink: 0; white-space: nowrap;
 }
 .btn-scan:hover { background: #1e293b; }
 

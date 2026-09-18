@@ -63,9 +63,9 @@
 }
 
 .chip.active {
-  background: #0ea5e9;
+  background: #334155;
   color: white;
-  border-color: #0ea5e9;
+  border-color: #334155;
 }
 
 /* Bảng dữ liệu */
@@ -318,9 +318,9 @@
 .delete-btn:hover { background: #fee2e2; color: #dc2626; }
 
 .btn-primary {
-  background: #0284c7; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s;
+  background: #1e293b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s;
 }
-.btn-primary:hover { background: #0369a1; }
+.btn-primary:hover { background: #0f172a; }
 
 .btn-outline {
   background: white; color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;
@@ -330,4 +330,4 @@
 .form-control {
   border: 1px solid #cbd5e1; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.2s;
 }
-.form-control:focus { border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+.form-control:focus { border-color: #64748b; box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.1); }

@@ -103,8 +103,8 @@
           <span class="icon arrow" (click)="toggleUserMenu()">&#9662;</span>
           
           <div class="user-dropdown" *ngIf="isUserMenuOpen">
-            <a routerLink="/profile" [queryParams]="{tab: 'settings'}">Cài đặt</a>
-            <a routerLink="/profile" [queryParams]="{tab: 'password'}">Đổi mật khẩu</a>
+            <a routerLink="/admin/profile" [queryParams]="{tab: 'info'}">Cài đặt</a>
+            <a routerLink="/admin/profile" [queryParams]="{tab: 'password'}">Đổi mật khẩu</a>
             <a (click)="logout()" class="logout" style="cursor: pointer;">Đăng xuất</a>
           </div>
         </div>
