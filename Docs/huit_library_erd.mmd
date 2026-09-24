@@ -4,9 +4,11 @@ erDiagram
     USERS ||--o| WALLET : "sở hữu"
     USERS ||--o{ LOAN_TICKETS : "tạo"
     LOAN_TICKETS ||--|{ LOAN_DETAILS : "chứa"
-    LOAN_DETAILS ||--o{ BOOK_COPIES : "mượn"
+    BOOK_COPIES ||--o{ LOAN_DETAILS : "được mượn trong"
     LOAN_DETAILS ||--o{ TRANSACTIONS : "phạt"
     USERS ||--o{ TRANSACTIONS : "trả tiền"
+    TRANSACTIONS ||--o{ TRANSACTIONS : "liên quan tới"
+    USERS ||--o{ BOOK_COPIES : "khóa sách"
 
     %% MODULE: CATALOGING SPINE
     BOOK_COPIES }o--|| BOOKS : "là bản sao của"
@@ -36,6 +38,7 @@ erDiagram
     USERS ||--o{ INVENTORY_AUDITS : "quản lý"
     INVENTORY_AUDITS ||--|{ INVENTORY_DETAILS : "quét"
     BOOK_COPIES ||--o{ INVENTORY_DETAILS : "được quét"
+    USERS ||--o{ AUDIT_LOGS : "thực hiện"
 
     %% FULL COLUMNS ENTITY DEFINITIONS (V41 UPDATES)
     USERS {
@@ -144,8 +147,8 @@ erDiagram
         string biography
     }
     BOOK_AUTHORS {
-        string book_id FK
-        string author_id FK
+        string book_id PK, FK
+        string author_id PK, FK
     }
     DIGITAL_DOCUMENTS {
         string doc_id PK
@@ -181,14 +184,15 @@ erDiagram
         string status
     }
     ROOM_BOOKING_MEMBERS {
-        string booking_id FK
-        string user_id FK
+        string booking_id PK, FK
+        string user_id PK, FK
         boolean is_leader
     }
     WAITLIST {
         string waitlist_id PK
         string book_id FK
         string user_id FK
+        int position_in_queue
         datetime requested_at
         datetime notified_at
         datetime expires_at
@@ -242,7 +246,7 @@ erDiagram
     %% INDEPENDENT TABLES
     AUDIT_LOGS {
         string log_id PK
-        string admin_id
+        string admin_id FK
         string action
         string table_name
         json changes

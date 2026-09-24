@@ -10,7 +10,7 @@ CREATE TYPE loan_status_enum AS ENUM ('PENDING_PICKUP', 'ACTIVE', 'OVERDUE', 'RE
 CREATE TYPE room_status_enum AS ENUM ('AVAILABLE', 'IN_USE', 'MAINTENANCE');
 
 -- ==============================================================================
--- 1. USERS & AUTHENTICATION (9 Tables)
+-- 1. USERS & AUTHENTICATION (6 Tables)
 -- ==============================================================================
 CREATE TABLE STAFF_ROLES (
     role_id VARCHAR(50) PRIMARY KEY,
@@ -59,16 +59,6 @@ CREATE TABLE ORIENTATION_ATTENDANCE (
     processed BOOLEAN DEFAULT FALSE
 );
 
-CREATE TABLE WAITLIST (
-    waitlist_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    book_id VARCHAR(50) NOT NULL,
-    user_id VARCHAR(50) REFERENCES USERS(user_id),
-    requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notified_at TIMESTAMP,
-    expires_at TIMESTAMP,
-    status VARCHAR(50) DEFAULT 'PENDING'
-);
-
 CREATE TABLE SHIFT_HANDOVER (
     shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     admin_id VARCHAR(50) REFERENCES USERS(user_id),
@@ -82,29 +72,9 @@ CREATE TABLE SHIFT_HANDOVER (
     status VARCHAR(50) DEFAULT 'ACTIVE'
 );
 
-CREATE TABLE INVENTORY_AUDITS (
-    audit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    admin_id VARCHAR(50) REFERENCES USERS(user_id),
-    pos_terminal_id VARCHAR(50),
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP,
-    status VARCHAR(50) DEFAULT 'IN_PROGRESS',
-    total_expected INT,
-    total_scanned INT,
-    total_missing INT
-);
-
-CREATE TABLE INVENTORY_DETAILS (
-    detail_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    audit_id UUID REFERENCES INVENTORY_AUDITS(audit_id),
-    barcode VARCHAR(100) REFERENCES BOOK_COPIES(barcode) NOT NULL,
-    scan_status VARCHAR(50) NOT NULL,
-    scanned_location VARCHAR(100)
-);
-
 
 -- ==============================================================================
--- 2. CATALOGING (7 Tables)
+-- 2. CATALOGING (9 Tables)
 -- ==============================================================================
 CREATE TABLE CATEGORIES (
     category_id VARCHAR(50) PRIMARY KEY,
@@ -174,12 +144,32 @@ CREATE TABLE BOOK_COPIES (
     locked_until TIMESTAMP,
     locked_by_user VARCHAR(50) REFERENCES USERS(user_id),
     weight_grams INT,
-    replaced_by_barcode VARCHAR(100),
+    replaced_by_barcode VARCHAR(100) REFERENCES BOOK_COPIES(barcode),
     lock_version INT DEFAULT 0
 );
 
+CREATE TABLE INVENTORY_AUDITS (
+    audit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id VARCHAR(50) REFERENCES USERS(user_id),
+    pos_terminal_id VARCHAR(50),
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'IN_PROGRESS',
+    total_expected INT,
+    total_scanned INT,
+    total_missing INT
+);
+
+CREATE TABLE INVENTORY_DETAILS (
+    detail_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    audit_id UUID REFERENCES INVENTORY_AUDITS(audit_id),
+    barcode VARCHAR(100) REFERENCES BOOK_COPIES(barcode) NOT NULL,
+    scan_status VARCHAR(50) NOT NULL,
+    scanned_location VARCHAR(100)
+);
+
 -- ==============================================================================
--- 3. CIRCULATION & ACCOUNTING (3 Tables)
+-- 3. CIRCULATION & ACCOUNTING (4 Tables)
 -- ==============================================================================
 CREATE TABLE LOAN_TICKETS (
     ticket_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -217,6 +207,17 @@ CREATE TABLE TRANSACTIONS (
     parent_transaction_id UUID REFERENCES TRANSACTIONS(transaction_id),
     expires_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE WAITLIST (
+    waitlist_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    book_id VARCHAR(50) REFERENCES BOOKS(book_id) NOT NULL,
+    user_id VARCHAR(50) REFERENCES USERS(user_id),
+    position_in_queue INT,
+    requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notified_at TIMESTAMP,
+    expires_at TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'PENDING'
 );
 
 -- ==============================================================================
@@ -264,7 +265,7 @@ CREATE TABLE SYSTEM_CONFIGS (
 
 CREATE TABLE AUDIT_LOGS (
     log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    admin_id VARCHAR(50),
+    admin_id VARCHAR(50) REFERENCES USERS(user_id),
     action VARCHAR(100) NOT NULL,
     table_name VARCHAR(50) NOT NULL,
     changes JSONB,
