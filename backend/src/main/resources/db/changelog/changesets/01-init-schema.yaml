@@ -1,0 +1,1122 @@
+databaseChangeLog:
+- changeSet:
+    id: create_audit_logs
+    author: system
+    changes:
+    - createTable:
+        tableName: audit_logs
+        columns:
+        - column:
+            name: log_id
+            type: uuid
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: admin_id
+            type: varchar(255)
+        - column:
+            name: action
+            type: varchar(255)
+        - column:
+            name: table_name
+            type: varchar(255)
+        - column:
+            name: changes
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_system_configs
+    author: system
+    changes:
+    - createTable:
+        tableName: system_configs
+        columns:
+        - column:
+            name: config_key
+            type: varchar(255)
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: config_value
+            type: varchar(255)
+        - column:
+            name: description
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_university_sync_logs
+    author: system
+    changes:
+    - createTable:
+        tableName: university_sync_logs
+        columns:
+        - column:
+            name: log_id
+            type: uuid
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: endpoint
+            type: varchar(255)
+        - column:
+            name: payload
+            type: varchar(255)
+        - column:
+            name: sync_status
+            type: varchar(255)
+        - column:
+            name: executed_at
+            type: timestamp
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_orientation_attendance
+    author: system
+    changes:
+    - createTable:
+        tableName: orientation_attendance
+        columns:
+        - column:
+            name: record_id
+            type: uuid
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: attended_date
+            type: timestamp
+        - column:
+            name: is_passed
+            type: boolean
+        - column:
+            name: processed
+            type: boolean
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_staff_roles
+    author: system
+    changes:
+    - createTable:
+        tableName: staff_roles
+        columns:
+        - column:
+            name: role_id
+            type: varchar(255)
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: role_name
+            type: varchar(255)
+        - column:
+            name: permissions
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_users
+    author: system
+    changes:
+    - createTable:
+        tableName: users
+        columns:
+        - column:
+            name: user_id
+            type: uuid
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: role_id
+            type: varchar(255)
+        - column:
+            name: password_hash
+            type: varchar(255)
+        - column:
+            name: is_first_login
+            type: boolean
+        - column:
+            name: full_name
+            type: varchar(255)
+        - column:
+            name: student_id
+            type: varchar(255)
+        - column:
+            name: department
+            type: varchar(255)
+        - column:
+            name: email
+            type: varchar(255)
+        - column:
+            name: phone
+            type: varchar(255)
+        - column:
+            name: user_type
+            type: varchar(255)
+        - column:
+            name: card_status
+            type: varchar(255)
+        - column:
+            name: card_expiry_date
+            type: timestamp
+        - column:
+            name: discipline_flag
+            type: boolean
+        - column:
+            name: room_violation_count
+            type: int
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_authors
+    author: system
+    changes:
+    - createTable:
+        tableName: authors
+        columns:
+        - column:
+            name: author_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: name
+            type: varchar(255)
+        - column:
+            name: bio
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_book_authors
+    author: system
+    changes:
+    - createTable:
+        tableName: book_authors
+        columns:
+        - column:
+            name: id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: book_id
+            type: varchar(255)
+        - column:
+            name: author_id
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_book_copies
+    author: system
+    changes:
+    - createTable:
+        tableName: book_copies
+        columns:
+        - column:
+            name: barcode
+            type: varchar(255)
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: book_id
+            type: bigint
+        - column:
+            name: condition_note
+            type: varchar(255)
+        - column:
+            name: locked_by_user
+            type: uuid
+        - column:
+            name: locked_until
+            type: timestamp
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_books
+    author: system
+    changes:
+    - createTable:
+        tableName: books
+        columns:
+        - column:
+            name: book_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: title
+            type: varchar(255)
+        - column:
+            name: isbn
+            type: varchar(255)
+        - column:
+            name: ddc_call_number
+            type: varchar(255)
+        - column:
+            name: publish_year
+            type: int
+        - column:
+            name: language
+            type: varchar(255)
+        - column:
+            name: label_color
+            type: varchar(255)
+        - column:
+            name: default_price
+            type: decimal(19, 2)
+        - column:
+            name: is_digital
+            type: boolean
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_categories
+    author: system
+    changes:
+    - createTable:
+        tableName: categories
+        columns:
+        - column:
+            name: category_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: name
+            type: varchar(255)
+        - column:
+            name: description
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_publishers
+    author: system
+    changes:
+    - createTable:
+        tableName: publishers
+        columns:
+        - column:
+            name: publisher_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: name
+            type: varchar(255)
+        - column:
+            name: address
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_holiday_calendar
+    author: system
+    changes:
+    - createTable:
+        tableName: holiday_calendar
+        columns:
+        - column:
+            name: date_id
+            type: varchar(255)
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: holiday_name
+            type: varchar(255)
+        - column:
+            name: is_closed
+            type: boolean
+        - column:
+            name: override_open_time
+            type: varchar(255)
+        - column:
+            name: override_close_time
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_loan_details
+    author: system
+    changes:
+    - createTable:
+        tableName: loan_details
+        columns:
+        - column:
+            name: detail_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: ticket_id
+            type: bigint
+        - column:
+            name: barcode
+            type: varchar(255)
+        - column:
+            name: checkout_condition_note
+            type: varchar(255)
+        - column:
+            name: return_condition_note
+            type: varchar(255)
+        - column:
+            name: return_status
+            type: varchar(255)
+        - column:
+            name: due_date
+            type: timestamp
+        - column:
+            name: return_date
+            type: timestamp
+        - column:
+            name: renewal_count
+            type: int
+        - column:
+            name: is_recalled
+            type: boolean
+        - column:
+            name: late_fine_accrued
+            type: decimal(19, 2)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_loan_tickets
+    author: system
+    changes:
+    - createTable:
+        tableName: loan_tickets
+        columns:
+        - column:
+            name: ticket_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: ticket_type
+            type: varchar(255)
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_waitlists
+    author: system
+    changes:
+    - createTable:
+        tableName: waitlists
+        columns:
+        - column:
+            name: waitlist_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: book_id
+            type: bigint
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_digital_documents
+    author: system
+    changes:
+    - createTable:
+        tableName: digital_documents
+        columns:
+        - column:
+            name: document_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: book_id
+            type: bigint
+        - column:
+            name: file_url
+            type: varchar(255)
+        - column:
+            name: format
+            type: varchar(255)
+        - column:
+            name: file_size
+            type: bigint
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_digital_usage_logs
+    author: system
+    changes:
+    - createTable:
+        tableName: digital_usage_logs
+        columns:
+        - column:
+            name: log_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: document_id
+            type: bigint
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: access_time
+            type: timestamp
+        - column:
+            name: pages_read
+            type: int
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_kiosks
+    author: system
+    changes:
+    - createTable:
+        tableName: kiosks
+        columns:
+        - column:
+            name: kiosk_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: location
+            type: varchar(255)
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_room_bookings
+    author: system
+    changes:
+    - createTable:
+        tableName: room_bookings
+        columns:
+        - column:
+            name: booking_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: room_id
+            type: bigint
+        - column:
+            name: leader_user_id
+            type: uuid
+        - column:
+            name: start_time
+            type: timestamp
+        - column:
+            name: end_time
+            type: timestamp
+        - column:
+            name: actual_start_time
+            type: timestamp
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_room_booking_members
+    author: system
+    changes:
+    - createTable:
+        tableName: room_booking_members
+        columns:
+        - column:
+            name: id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: booking_id
+            type: varchar(255)
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: is_leader
+            type: boolean
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_rooms
+    author: system
+    changes:
+    - createTable:
+        tableName: rooms
+        columns:
+        - column:
+            name: room_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: room_name
+            type: varchar(255)
+        - column:
+            name: capacity
+            type: int
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_transactions
+    author: system
+    changes:
+    - createTable:
+        tableName: transactions
+        columns:
+        - column:
+            name: transaction_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: parent_transaction_id
+            type: bigint
+        - column:
+            name: admin_ref
+            type: varchar(255)
+        - column:
+            name: proof_document_url
+            type: varchar(255)
+        - column:
+            name: amount
+            type: decimal(19, 2)
+        - column:
+            name: type
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_wallets
+    author: system
+    changes:
+    - createTable:
+        tableName: wallets
+        columns:
+        - column:
+            name: wallet_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: deposit_balance
+            type: decimal(19, 2)
+        - column:
+            name: total_debt
+            type: decimal(19, 2)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_book_proposals
+    author: system
+    changes:
+    - createTable:
+        tableName: book_proposals
+        columns:
+        - column:
+            name: proposal_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: title
+            type: varchar(255)
+        - column:
+            name: author_name
+            type: varchar(255)
+        - column:
+            name: reason
+            type: varchar(255)
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_complaints
+    author: system
+    changes:
+    - createTable:
+        tableName: complaints
+        columns:
+        - column:
+            name: complaint_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: title
+            type: varchar(255)
+        - column:
+            name: content
+            type: varchar(255)
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_reviews
+    author: system
+    changes:
+    - createTable:
+        tableName: reviews
+        columns:
+        - column:
+            name: review_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: book_id
+            type: bigint
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: rating
+            type: int
+        - column:
+            name: comment
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_wishlists
+    author: system
+    changes:
+    - createTable:
+        tableName: wishlists
+        columns:
+        - column:
+            name: wishlist_id
+            type: uuid
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: book_id
+            type: varchar(255)
+        - column:
+            name: added_at
+            type: timestamp
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_goods_receipts
+    author: system
+    changes:
+    - createTable:
+        tableName: goods_receipts
+        columns:
+        - column:
+            name: receipt_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: supplier_id
+            type: bigint
+        - column:
+            name: receipt_code
+            type: varchar(255)
+        - column:
+            name: total_amount
+            type: decimal(19, 2)
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_inventory_audits
+    author: system
+    changes:
+    - createTable:
+        tableName: inventory_audits
+        columns:
+        - column:
+            name: audit_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: conducted_by
+            type: uuid
+        - column:
+            name: total_system_books
+            type: int
+        - column:
+            name: total_actual_books
+            type: int
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_inventory_details
+    author: system
+    changes:
+    - createTable:
+        tableName: inventory_details
+        columns:
+        - column:
+            name: detail_id
+            type: varchar(255)
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: audit_id
+            type: varchar(255)
+        - column:
+            name: barcode
+            type: varchar(255)
+        - column:
+            name: scan_status
+            type: varchar(255)
+        - column:
+            name: scanned_location
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_receipt_details
+    author: system
+    changes:
+    - createTable:
+        tableName: receipt_details
+        columns:
+        - column:
+            name: detail_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: receipt_id
+            type: bigint
+        - column:
+            name: book_id
+            type: bigint
+        - column:
+            name: quantity
+            type: int
+        - column:
+            name: unit_price
+            type: decimal(19, 2)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_shift_handovers
+    author: system
+    changes:
+    - createTable:
+        tableName: shift_handovers
+        columns:
+        - column:
+            name: shift_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: pos_terminal_id
+            type: varchar(255)
+        - column:
+            name: starting_cash
+            type: decimal(19, 2)
+        - column:
+            name: system_revenue
+            type: decimal(19, 2)
+        - column:
+            name: actual_cash
+            type: decimal(19, 2)
+        - column:
+            name: discrepancy_amount
+            type: decimal(19, 2)
+        - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_suppliers
+    author: system
+    changes:
+    - createTable:
+        tableName: suppliers
+        columns:
+        - column:
+            name: supplier_id
+            type: bigint
+            constraints:
+              primaryKey: true
+              nullable: false
+            autoIncrement: true
+        - column:
+            name: name
+            type: varchar(255)
+        - column:
+            name: contact_info
+            type: varchar(255)
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp
+- changeSet:
+    id: create_notifications
+    author: system
+    changes:
+    - createTable:
+        tableName: notifications
+        columns:
+        - column:
+            name: notif_id
+            type: uuid
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: user_id
+            type: uuid
+        - column:
+            name: type
+            type: varchar(255)
+        - column:
+            name: content
+            type: varchar(255)
+        - column:
+            name: is_read
+            type: boolean
+        - column:
+            name: sent_at
+            type: timestamp
+        - column:
+            name: created_at
+            type: timestamp
+        - column:
+            name: updated_at
+            type: timestamp

@@ -1,0 +1,225 @@
+classDiagram
+    %% ==========================================
+    %% CONTROLLERS & WEBSOCKETS (API Layer)
+    %% ==========================================
+    class AuthController {
+        +login(LoginDTO req) TokenDTO
+    }
+    class UserController {
+        +registerUser(UserDTO req) Boolean
+        +activateCard(String userId) Boolean
+        +syncWithUniversity() Boolean
+    }
+    class LoanController {
+        +checkoutBooks(CheckoutRequestDTO req) Boolean
+        +returnBooks(ReturnRequestDTO req) Boolean
+    }
+    class PaymentController {
+        +processPenalty(PaymentRequestDTO req) Boolean
+        +depositRefund(String transactionId) Boolean
+    }
+    class ShiftController {
+        +handoverShift(ShiftHandoverDTO req) Boolean
+    }
+    class BookController {
+        +search(String keyword) List
+        +getRecommendations(String userId) List
+    }
+    class DigitalDocController {
+        +readDocument(String docId) Stream
+    }
+    class RoomController {
+        +bookRoom(RoomBookingRequestDTO req) Boolean
+        +checkIn(String bookingId) Boolean
+    }
+    class WaitlistController {
+        +joinWaitlist(WaitlistRequestDTO req) Boolean
+    }
+    class InventoryController {
+        +generateAuditReport() List
+    }
+    class FeedbackController {
+        +submitComplaint(ComplaintDTO req) Boolean
+        +submitProposal(ProposalDTO req) Boolean
+    }
+    class ImportController {
+        +createReceipt(ReceiptDTO req) Boolean
+    }
+    class ReviewController {
+        +addReview(ReviewDTO req) Boolean
+    }
+    class NotificationWebSocketHandler {
+        <<STOMP/WebSocket>>
+        +pushNotification(String userId, String message)
+    }
+
+    %% ==========================================
+    %% INTERFACES & SERVICES (Business Logic)
+    %% ==========================================
+    class AuthServiceImpl {
+        -UserRepository userRepo
+        -RedisTokenStore redisStore
+    }
+    class UserServiceImpl {
+        -UserRepository userRepo
+        -WalletRepository walletRepo
+        -UniversitySyncServiceImpl syncService
+    }
+    class LoanServiceImpl {
+        -LoanTicketRepository ticketRepo
+        -PenaltyStrategy penaltyStrategy
+        -KafkaEventPublisher kafkaPublisher
+    }
+    class PaymentServiceImpl {
+        -TransactionRepository transRepo
+        -WalletRepository walletRepo
+    }
+    class ShiftServiceImpl {
+        -ShiftHandoverRepository shiftRepo
+    }
+    class BookServiceImpl {
+        -BookElasticRepository elasticRepo
+        -AiRecommendationClient aiClient
+    }
+    class DigitalDocServiceImpl {
+        -DigitalDocRepository digitalRepo
+    }
+    class RoomServiceImpl {
+        -RoomBookingRepository roomRepo
+    }
+    class WaitlistServiceImpl {
+        -WaitlistRepository waitlistRepo
+    }
+    class NotificationServiceImpl {
+        -NotificationRepository notifRepo
+        -NotificationWebSocketHandler wsHandler
+    }
+    class UniversitySyncServiceImpl {
+        -RestTemplate restTemplate
+    }
+    class InventoryServiceImpl {
+        -InventoryAuditRepository auditRepo
+    }
+    class FeedbackServiceImpl {
+        -ComplaintRepository complaintRepo
+        -BookProposalRepository proposalRepo
+    }
+    class ImportServiceImpl {
+        -GoodsReceiptRepository receiptRepo
+        -SupplierRepository supplierRepo
+    }
+    class ReviewServiceImpl {
+        -ReviewRepository reviewRepo
+        -WishlistRepository wishlistRepo
+    }
+
+    %% --- Infrastructure / Polyglot & External Clients ---
+    class KafkaEventPublisher { <<Component>> }
+    class RedisTokenStore { <<Component>> }
+    class AiRecommendationClient { <<FeignClient>> }
+    class PenaltyStrategy { <<interface>> }
+
+    %% ==========================================
+    %% REPOSITORIES (Data Access)
+    %% ==========================================
+    class UserRepository { <<interface>> }
+    class LoanTicketRepository { <<interface>> }
+    class TransactionRepository { <<interface>> }
+    class WalletRepository { <<interface>> }
+    class ShiftHandoverRepository { <<interface>> }
+    class RoomBookingRepository { <<interface>> }
+    class InventoryAuditRepository { <<interface>> }
+    class WaitlistRepository { <<interface>> }
+    class NotificationRepository { <<interface>> }
+    class DigitalDocRepository { <<interface>> }
+    class BookElasticRepository { <<interface>> }
+    class EventLogMongoRepository { <<interface>> }
+    class ComplaintRepository { <<interface>> }
+    class BookProposalRepository { <<interface>> }
+    class GoodsReceiptRepository { <<interface>> }
+    class SupplierRepository { <<interface>> }
+    class ReviewRepository { <<interface>> }
+    class WishlistRepository { <<interface>> }
+
+    %% ==========================================
+    %% ENTITIES (Domain Model - Core 35 Tables Mapping)
+    %% ==========================================
+    class UserEntity {
+        -String userId
+        -String studentId
+        -String department
+        -Boolean disciplineFlag
+    }
+    class BookEntity {
+        -String bookId
+        -String isbn
+        -String ddcCallNumber
+    }
+    class LoanTicketEntity { -String ticketId }
+    class LoanDetailEntity {
+        -String detailId
+        -String checkoutConditionNote
+        -String returnConditionNote
+    }
+    class TransactionEntity {
+        -String transactionId
+        -String parentTransactionId
+    }
+    class ShiftHandoverEntity {
+        -String shiftId
+        -Double discrepancyAmount
+    }
+    class WalletEntity { -String walletId }
+    class RoomBookingEntity { -String bookingId }
+    class ComplaintEntity { -String complaintId }
+    class BookProposalEntity { -String proposalId }
+    class GoodsReceiptEntity { -String receiptId }
+    class SupplierEntity { -String supplierId }
+    class ReviewEntity { -String reviewId }
+    class WishlistEntity { -String wishlistId }
+    
+    class BookDocument { <<Elasticsearch>> }
+    class UserEventDocument { <<MongoDB>> }
+
+    %% ==========================================
+    %% RELATIONSHIPS (Controllers -> Services)
+    %% ==========================================
+    AuthController --> AuthServiceImpl
+    UserController --> UserServiceImpl
+    LoanController --> LoanServiceImpl
+    PaymentController --> PaymentServiceImpl
+    ShiftController --> ShiftServiceImpl
+    BookController --> BookServiceImpl
+    DigitalDocController --> DigitalDocServiceImpl
+    RoomController --> RoomServiceImpl
+    WaitlistController --> WaitlistServiceImpl
+    InventoryController --> InventoryServiceImpl
+    FeedbackController --> FeedbackServiceImpl
+    ImportController --> ImportServiceImpl
+    ReviewController --> ReviewServiceImpl
+
+    %% ==========================================
+    %% RELATIONSHIPS (Services -> Repos/Infra)
+    %% ==========================================
+    AuthServiceImpl --> UserRepository
+    AuthServiceImpl --> RedisTokenStore
+    UserServiceImpl --> UserRepository
+    UserServiceImpl --> WalletRepository
+    LoanServiceImpl --> LoanTicketRepository
+    LoanServiceImpl --> KafkaEventPublisher
+    LoanServiceImpl --> PenaltyStrategy
+    PaymentServiceImpl --> TransactionRepository
+    ShiftServiceImpl --> ShiftHandoverRepository
+    BookServiceImpl --> BookElasticRepository
+    BookServiceImpl --> AiRecommendationClient
+    DigitalDocServiceImpl --> DigitalDocRepository
+    RoomServiceImpl --> RoomBookingRepository
+    WaitlistServiceImpl --> WaitlistRepository
+    NotificationServiceImpl --> NotificationRepository
+    NotificationServiceImpl --> NotificationWebSocketHandler
+    FeedbackServiceImpl --> ComplaintRepository
+    FeedbackServiceImpl --> BookProposalRepository
+    ImportServiceImpl --> GoodsReceiptRepository
+    ImportServiceImpl --> SupplierRepository
+    ReviewServiceImpl --> ReviewRepository
+    ReviewServiceImpl --> WishlistRepository

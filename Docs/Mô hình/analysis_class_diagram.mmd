@@ -1,0 +1,341 @@
+classDiagram
+    %% USER SPINE
+    class User {
+        userId
+        roleId
+        passwordHash
+        isFirstLogin
+        fullName
+        studentId
+        department
+        email
+        phone
+        userType
+        cardStatus
+        cardExpiryDate
+        disciplineFlag
+        roomViolationCount
+        roomLockUntil
+    }
+    class StaffRole {
+        roleId
+        roleName
+        permissions
+    }
+    class Wallet {
+        walletId
+        userId
+        depositBalance
+        totalDebt
+        lockVersion
+    }
+    class LoanTicket {
+        ticketId
+        userId
+        ticketType
+        status
+        createdAt
+    }
+    class LoanDetail {
+        detailId
+        ticketId
+        barcode
+        checkoutConditionNote
+        returnConditionNote
+        returnStatus
+        dueDate
+        renewalCount
+        isRecalled
+        lateFineAccrued
+        returnDate
+    }
+    class Transaction {
+        transactionId
+        userId
+        loanDetailId
+        parentTransactionId
+        transType
+        paymentMethod
+        amount
+        status
+        adminRef
+        gatewayRef
+        proofDocumentUrl
+        expiresAt
+        createdAt
+    }
+
+    %% CATALOGING SPINE
+    class BookCopy {
+        barcode
+        bookId
+        status
+        coverPrice
+        appraisedValue
+        bindingType
+        conditionNote
+        location
+        source
+        importDate
+        lockedUntil
+        lockedByUser
+        weightGrams
+        replacedByBarcode
+        lockVersion
+    }
+    class Book {
+        bookId
+        publisherId
+        categoryId
+        title
+        isbn
+        ddcCallNumber
+        publishYear
+        language
+        labelColor
+        defaultPrice
+        isDigital
+    }
+    class Category {
+        categoryId
+        name
+        parentId
+    }
+    class Publisher {
+        publisherId
+        name
+        contactInfo
+    }
+    class Author {
+        authorId
+        name
+        biography
+    }
+    class BookAuthor {
+        bookId
+        authorId
+    }
+
+    
+    class BookProposal {
+        proposalId
+        bookTitle
+        reason
+        status
+    }
+    class Complaint {
+        complaintId
+        title
+        isbn
+        ddcCallNumber
+        content
+        status
+    }
+    class Review {
+        reviewId
+        ratingStars
+        comment
+    }
+    class Wishlist {
+        wishlistId
+        addedAt
+    }
+    class Supplier {
+        supplierId
+        name
+        contactPerson
+    }
+    class GoodsReceipt {
+        receiptId
+        totalCost
+        importDate
+    }
+    class ReceiptDetail {
+        detailId
+        quantity
+        unitPrice
+    }
+
+    %% DIGITAL SPINE
+    class DigitalDocument {
+        docId
+        bookId
+        fileUrl
+        isOpenSource
+        drmEncryptionKey
+        downloadCount
+        viewCount
+    }
+    class DigitalUsageLog {
+        logId
+        docId
+        userId
+        ipAddress
+        accessedAt
+    }
+
+    %% ROOMS SPINE
+    class Room {
+        roomId
+        roomName
+        capacity
+        facilities
+        status
+    }
+    class RoomBooking {
+        bookingId
+        userId
+        roomId
+        startTime
+        endTime
+        actualStartTime
+        actualEndTime
+        status
+    }
+    class RoomBookingMember {
+        bookingId
+        userId
+        isLeader
+    }
+
+    %% NOTIFS & QUEUE
+    class Waitlist {
+        waitlistId
+        bookId
+        userId
+        requestedAt
+        notifiedAt
+        expiresAt
+        status
+    }
+    class Notification {
+        notifId
+        userId
+        type
+        content
+        isRead
+        sentAt
+    }
+    class OrientationAttendance {
+        recordId
+        userId
+        attendedDate
+        isPassed
+        processed
+    }
+
+    %% INVENTORY
+    class ShiftHandover {
+        shiftId
+        adminId
+        posTerminalId
+        startTime
+        endTime
+        startingCash
+        systemRevenue
+        actualCash
+        discrepancyAmount
+        status
+    }
+    class InventoryAudit {
+        auditId
+        adminId
+        startTime
+        endTime
+        status
+        totalExpected
+        totalScanned
+        totalMissing
+    }
+    class InventoryDetail {
+        detailId
+        auditId
+        barcode
+        scanStatus
+        scannedLocation
+    }
+
+    %% INDEPENDENT TABLES
+    class AuditLog {
+        logId
+        adminId
+        action
+        tableName
+        changes
+        createdAt
+    }
+    class Kiosk {
+        kioskId
+        locationFloor
+        ipAddress
+        status
+        lastPing
+    }
+    class SystemConfig {
+        configKey
+        configValue
+        description
+    }
+    class HolidayCalendar {
+        dateId
+        holidayName
+        isClosed
+        overrideOpenTime
+        overrideCloseTime
+    }
+    class UniversitySyncLog {
+        logId
+        endpoint
+        payload
+        syncStatus
+        executedAt
+    }
+
+    %% RELATIONSHIPS
+    User "1" -- "1" Wallet : owns
+    User "n" -- "1" StaffRole : has
+    User "1" -- "0..n" Notification : receives
+    User "1" -- "0..1" OrientationAttendance : attends
+    
+    Category "1" -- "1..n" Book : classifies
+    Publisher "1" -- "1..n" Book : publishes
+    Book "1" -- "1..n" BookAuthor : has
+    Author "1" -- "1..n" BookAuthor : writes
+    
+    Book "1" -- "1..n" BookCopy : has copies
+    Book "1" -- "0..1" DigitalDocument : has digital
+    DigitalDocument "1" -- "0..n" DigitalUsageLog : accessed via
+    User "1" -- "0..n" DigitalUsageLog : accesses
+    
+    User "1" -- "0..n" LoanTicket : requests
+    LoanTicket "1" -- "1..n" LoanDetail : contains
+    LoanDetail "0..n" -- "1" BookCopy : borrows
+    LoanDetail "1" -- "0..n" Transaction : incurs
+    User "1" -- "0..n" Transaction : pays
+    Transaction "1" -- "0..n" Transaction : refunds (parent)
+    
+    User "1" -- "0..n" RoomBooking : books
+    Room "1" -- "0..n" RoomBooking : reserved via
+    RoomBooking "1" -- "1..n" RoomBookingMember : includes
+    User "1" -- "0..n" RoomBookingMember : joins
+    
+    User "1" -- "0..n" Waitlist : joins
+    Book "1" -- "0..n" Waitlist : queued
+    
+    User "1" -- "0..n" ShiftHandover : manages
+    User "1" -- "0..n" InventoryAudit : conducts
+    User "1" -- "0..n" AuditLog : performs
+    InventoryAudit "1" -- "1..n" InventoryDetail : scans
+    BookCopy "1" -- "0..n" InventoryDetail : verified in
+
+
+    User "1" -- "0..n" BookProposal : proposes
+    User "1" -- "0..n" Complaint : submits
+    User "1" -- "0..n" Review : writes
+    Book "1" -- "0..n" Review : receives
+    User "1" -- "0..n" Wishlist : saves
+    Book "1" -- "0..n" Wishlist : bookmarked
+    Supplier "1" -- "0..n" GoodsReceipt : supplies
+    User "1" -- "0..n" GoodsReceipt : imports
+    GoodsReceipt "1" -- "1..n" ReceiptDetail : contains
+    Book "1" -- "0..n" ReceiptDetail : imported via

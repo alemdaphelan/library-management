@@ -1,0 +1,156 @@
+databaseChangeLog:
+- changeSet:
+    id: seed_staff_roles
+    author: system
+    changes:
+    - insert:
+        tableName: staff_roles
+        columns:
+        - column:
+            name: role_id
+            value: ADMIN
+        - column:
+            name: role_name
+            value: Quản trị viên
+        - column:
+            name: permissions
+            value: '["ALL"]'
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: staff_roles
+        columns:
+        - column:
+            name: role_id
+            value: LIBRARIAN
+        - column:
+            name: role_name
+            value: Thủ thư
+        - column:
+            name: permissions
+            value: '["CATALOG_MANAGE", "LOAN_MANAGE", "USER_VIEW"]'
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: staff_roles
+        columns:
+        - column:
+            name: role_id
+            value: STUDENT
+        - column:
+            name: role_name
+            value: Sinh viên
+        - column:
+            name: permissions
+            value: '["BOOK_VIEW", "LOAN_VIEW"]'
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+- changeSet:
+    id: seed_users
+    author: system
+    changes:
+    - insert:
+        tableName: users
+        columns:
+        - column:
+            name: user_id
+            value: 00000000-0000-0000-0000-000000000001
+        - column:
+            name: role_id
+            value: ADMIN
+        - column:
+            name: email
+            value: admin@huit.edu.vn
+        - column:
+            name: password_hash
+            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+        - column:
+            name: full_name
+            value: Quản trị viên hệ thống
+        - column:
+            name: user_type
+            value: STAFF
+        - column:
+            name: is_first_login
+            valueBoolean: false
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: users
+        columns:
+        - column:
+            name: user_id
+            value: 00000000-0000-0000-0000-000000000002
+        - column:
+            name: role_id
+            value: LIBRARIAN
+        - column:
+            name: email
+            value: librarian@huit.edu.vn
+        - column:
+            name: password_hash
+            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+        - column:
+            name: full_name
+            value: Trần Thị Thủ Thư
+        - column:
+            name: user_type
+            value: STAFF
+        - column:
+            name: is_first_login
+            valueBoolean: false
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: users
+        columns:
+        - column:
+            name: user_id
+            value: 00000000-0000-0000-0000-000000000003
+        - column:
+            name: role_id
+            value: STUDENT
+        - column:
+            name: email
+            value: student@student.huit.edu.vn
+        - column:
+            name: password_hash
+            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+        - column:
+            name: full_name
+            value: Nguyễn Văn Sinh Viên
+        - column:
+            name: student_id
+            value: '20012001'
+        - column:
+            name: user_type
+            value: STUDENT
+        - column:
+            name: is_first_login
+            valueBoolean: true
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
