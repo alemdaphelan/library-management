@@ -1,0 +1,92 @@
+Tables:
+STT	Nội dung	CLO	Điểm
+	Khảo sát nghiệp vụ, mô hình hóa nghiệp vụ
+- Xác định lý do, mục tiêu đề tài
+- Khảo sát hiện trạng: Cơ cấu tổ chức, quy trình, biểu mẫu	CLO1.1	0.25
+0.50
+	Lập kế hoạch và phân công thực hiện công việc	CLO6	0.25
+	Phân tích hệ thống
+- Lập sơ đồ Use-Case nghiệp vụ và đặc tả
+- Lập sơ đồ Use-Case hệ thống và đặc tả
+- Sơ đồ lớp phân tích	CLO1.2	0.25
+0.25
+0.25
+	Thiết kế hệ thống
+- Sơ đồ lớp thiết kế
+- Mô hình dữ liệu	CLO2.1	0.25
+0.25
+	Thiết kế giao diện (Web đầy đủ chức năng & Mobile App chức năng cơ bản)	CLO2.2	0.50
+	Xây dựng API hệ thống
+Phân tích chức năng trên các nền tảng	CLO1.1	0.25
+0.25
+	Xây dựng các chức năng của ứng dụng:
+- PHẦN WEB:
+  + Đăng nhập, đăng xuất, đổi mật khẩu, quản lý tài khoản và phân quyền người dùng 
+  + Quản lý sinh viên, danh mục sách, nhập sách/nguồn sách - nhà cung cấp, vị trí sách và tài liệu số.
+  + Quản lý mượn - trả - gia hạn; xử lý quá hạn, sách mất/hỏng và tiền phạt.
+  + Quản lý đề xuất bổ sung/mua sách, kiểm kê sách và phát hiện sách mất/hỏng.
+  + Thông báo/nhắc hạn, tra cứu, báo cáo và thống kê hoạt động thư viện.
+- CHỨC NĂNG GỢI Ý SÁCH: Nghiên cứu, lựa chọn và tích hợp thuật toán gợi ý sách phù hợp dựa trên lịch sử mượn, chuyên ngành, thể loại quan tâm và nhu cầu học tập; hiển thị kết quả gợi ý cho sinh viên và sử dụng ít nhất một tiêu chí phù hợp để đánh giá hiệu quả gợi ý.
+- PHẦN MOBILE APP:
+  + Đăng nhập, đăng xuất, đổi mật khẩu và xem/cập nhật thông tin cá nhân cơ bản.
+  + Tra cứu sách, xem chi tiết/vị trí sách, xem sách đang mượn và hạn trả, nhận thông báo/nhắc hạn, xem sách được gợi ý và gửi đề xuất bổ sung sách.	CLO3	4.00
+
+
+0.5
+
+
+0.5
+
+0.5
+
+0.5
+0.5
+
+
+0.5
+
+
+
+
+0.5
+
+
+0.5
+	Kiểm thử và triển khai hệ thống	CLO4	0.75
+	Nội dung kiến thức trình bày trong quyển báo cáo	CLO5.1	0.50
+	Hình thức, định dạng quyển báo cáo	CLO5.1	0.50
+	Thái độ, tác phong làm việc	CLO6	0.50
+	Phong cách báo cáo, Slide	CLO5.2	0.50
+	Cộng điểm khuyến khích cho nhóm sinh viên tham gia thực hiện NCKH liên quan nội dung đề tài (tổng điểm chung không vượt quá 10 điểm)
+Thi SV NCKH đạt giải cấp Khoa hoặc có bài báo đăng hội thảo cấp Khoa.
+Thi SV NCKH đạt giải cấp Trường hoặc có bài báo đăng tạp chí khoa học cấp Trường trở lên	CLO3	1.0
+
+
+0.5
+
+1.0
+Tổng cộng	Tổng cộng		10.0
+
+Tuần	Nội dung công việc
+1	Khảo sát hiện trạng thực tế hoạt động thư viện, xác định mục tiêu, phạm vi đề tài. Lập kế hoạch chi tiết và phân công công việc.
+2	Phân tích nghiệp vụ: quản lý sách, nhập sách/nhà cung cấp, vị trí sách, sinh viên, mượn - trả - gia hạn, quá hạn, tiền phạt, tài liệu số, đề xuất bổ sung và kiểm kê. Xây dựng sơ đồ Use-Case nghiệp vụ và đặc tả.
+3	Phân tích hệ thống: xây dựng sơ đồ Use-Case hệ thống, đặc tả chi tiết các Use-Case chính. Vẽ sơ đồ lớp phân tích (Analysis Class Diagram).
+4	Thiết kế hệ thống: thiết kế sơ đồ lớp thiết kế, mô hình dữ liệu quan hệ (ERD/Relational Schema) cho các phân hệ Web và App.
+5	Thiết kế giao diện: Web triển khai đầy đủ chức năng cho Quản trị viên, Thủ thư và Sinh viên; Mobile App thiết kế các chức năng: đăng nhập, tra cứu, xem thông tin sách và theo dõi sách đang mượn. 
+6	Cài đặt chức năng nền tảng: đăng nhập, đăng xuất, đổi mật khẩu, phân quyền. Lập trình API quản lý sinh viên, danh mục sách, nhập sách/nhà cung cấp và vị trí sách.
+7	Phát triển Web đầy đủ chức năng: quản lý tài khoản, sinh viên, sách, nhập sách, vị trí, mượn - trả - gia hạn, tiền phạt, tài liệu số, đề xuất bổ sung, kiểm kê và thống kê.
+8	Phát triển Mobile App với các chức năng: đăng nhập/đổi mật khẩu, tra cứu và xem chi tiết/vị trí sách, xem sách đang mượn và hạn trả, nhận thông báo nhắc hạn/quá hạn, xem kết quả gợi ý từ hệ thống và gửi đề xuất bổ sung sách.
+9	Xây dựng nghiệp vụ: hoàn thiện mượn - trả - gia hạn, xử lý quá hạn, tính/ghi nhận tiền phạt, đồng bộ tình trạng sách và gửi thông báo nhắc hạn.
+10	Xây dựng nghiệp vụ: nghiên cứu, lựa chọn và triển khai thuật toán gợi ý sách dựa trên lịch sử mượn, chuyên ngành, thể loại quan tâm và nhu cầu học tập; đánh giá kết quả gợi ý.
+11	Kiểm thử hệ thống, kiểm thử đầy đủ các chức năng trên Web và các chức năng cơ bản đã chọn trên Mobile App; sửa lỗi, tối ưu hiệu năng và triển khai thử nghiệm.
+12	Hoàn chỉnh quyển báo cáo khóa luận; thiết kế bài báo cáo trên PowerPoint; chuẩn bị demo và nộp báo cáo.
+
+
+Trưởng bộ môn
+(ký và ghi rõ họ tên)	Giảng viên hướng dẫn
+(ký và ghi rõ họ tên)
+
+
+
+Nguyễn Thị Thùy Trang
+

@@ -1,0 +1,71 @@
+ĐỀ CƯƠNG CHI TIẾT
+KHÓA LUẬN CỬ NHÂN NGÀNH CNTT NĂM HỌC 2026 – 2027
+ĐỊNH HƯỚNG ỨNG DỤNG
+
+Mã đề tài: CNTT-KLCN119
+Tên đề tài: Xây dựng hệ thống quản lý thư viện tích hợp chức năng gợi ý sách phù hợp cho sinh viên
+Thông tin GVHD
+Họ tên giảng viên: Nguyễn Thị Thùy Trang
+Điện thoại:  0936522047	
+Email: trangntthuy@huit.edu.vn	
+Nhóm sinh viên thực hiện đề tài
+	Nguyễn Bảo Hân	 MSSV:2001230219	Lớp: 14DHTH04	
+	Tô Khiết Lâm	 MSSV:2001230430	Lớp: 14DHTH04	
+	Nguyễn Tất Thắng	 MSSV:2001230914	Lớp: 14DHTH04	
+Mục tiêu
+Mục tiêu nội dung & kỹ thuật:
+Khảo sát hiện trạng thực tế công tác quản lý thư viện, hoạt động mượn - trả và nhu cầu tra cứu tài liệu của sinh viên.
+Mô hình hóa và phân tích các nghiệp vụ quản lý tài khoản, sinh viên, danh mục sách, nhập sách, nhà cung cấp, vị trí sách, mượn - trả - gia hạn, xử lý quá hạn, tiền phạt, tài liệu số và kiểm kê sách.
+Thiết kế cơ sở dữ liệu dùng chung, bảo đảm khả năng lưu trữ, quản lý và đồng bộ dữ liệu giữa Web Admin và Mobile App.
+Xây dựng hệ thống trên 02 nền tảng: Web triển khai đầy đủ toàn bộ các chức năng quản lý thư viện cho Quản trị viên, Thủ thư và Sinh viên; Mobile App triển khai các chức năng phục vụ nhu cầu tra cứu và theo dõi thông tin của Sinh viên.
+Phát triển chức năng tra cứu sách nhanh theo tên sách, tác giả, thể loại và chuyên ngành; hỗ trợ quản lý vị trí sách, sách điện tử/tài liệu số, thông báo nhắc hạn, tiền phạt và đề xuất bổ sung sách.
+Nghiên cứu và tích hợp mô-đun gợi ý sách phù hợp dựa trên lịch sử mượn, chuyên ngành, thể loại quan tâm và nhu cầu học tập; sinh viên tự lựa chọn thuật toán gợi ý phù hợp để triển khai và đánh giá.
+Mục tiêu về tinh thần, thái độ và kỹ năng:
+Rèn luyện tinh thần làm việc nghiêm túc, chủ động và có trách nhiệm cao trong công việc.
+Nâng cao kỹ năng làm việc nhóm, phân công công việc hợp lý và tuân thủ tiến độ được giao.
+Phát triển khả năng tự học, tự nghiên cứu công nghệ mới và giải quyết các vấn đề thực tế.
+Yêu cầu
+Phân hệ Web - Đầy đủ chức năng (Quản trị viên, Thủ thư & Sinh viên):
+Quản lý tài khoản người dùng theo vai trò Quản trị viên, Thủ thư và Sinh viên; quản lý trạng thái tài khoản và phân quyền truy cập.
+Quản lý thông tin sinh viên: mã sinh viên, họ tên, lớp, khoa, số điện thoại, email và trạng thái tài khoản.
+Quản lý danh mục sách: mã sách, tên sách, tác giả, thể loại, chuyên ngành, nhà xuất bản, năm xuất bản, số lượng và tình trạng sách.
+Quản lý nhập sách, phiếu nhập, nguồn sách/nhà cung cấp; theo dõi số lượng nhập và cập nhật tồn kho.
+Quản lý vị trí sách theo khu vực, tầng, kệ và ngăn; hỗ trợ tra cứu vị trí lưu trữ của từng đầu sách.
+Quản lý hoạt động mượn sách, trả sách, gia hạn sách và xử lý sách quá hạn; cập nhật tự động số lượng và tình trạng sách.
+Quản lý tiền phạt do trả trễ, làm mất hoặc làm hỏng sách; theo dõi số tiền phải thu, đã thu và lý do xử lý.
+Quản lý thông báo và nhắc hạn trả sách; gửi cảnh báo khi sắp đến hạn hoặc đã quá hạn qua Web và push notification.
+Quản lý sách điện tử/tài liệu số: thông tin tài liệu, tệp/đường dẫn truy cập, quyền xem/tải và trạng thái phát hành.
+Quản lý đề xuất bổ sung/mua sách mới từ sinh viên; tiếp nhận, xét duyệt, phản hồi và theo dõi trạng thái đề xuất.
+Cung cấp chức năng tra cứu sách theo tên sách, tác giả, thể loại và chuyên ngành; xem chi tiết, số lượng còn lại, tình trạng và vị trí sách.
+Theo dõi lịch sử mượn sách, thể loại thường mượn và nhu cầu đọc của sinh viên; làm dữ liệu đầu vào cho chức năng gợi ý.
+Xây dựng chức năng gợi ý sách cá nhân hóa dựa trên lịch sử mượn, chuyên ngành, thể loại quan tâm và nhu cầu học tập; sinh viên tự nghiên cứu, lựa chọn thuật toán phù hợp.
+Báo cáo và thống kê: số lượng sách, nhập sách, lượt mượn - trả, sách quá hạn, tiền phạt, sách được mượn nhiều và tình trạng kiểm kê.
+Phân hệ Mobile App - Sinh viên:
+Đăng nhập, đăng xuất, đổi mật khẩu; xem và cập nhật một số thông tin cá nhân cơ bản của sinh viên.
+Tra cứu sách theo tên sách, tác giả, thể loại và chuyên ngành; xem thông tin chi tiết, tình trạng còn sách và vị trí sách.
+Xem danh sách sách đang mượn, lịch sử mượn và hạn trả.
+Nhận thông báo nhắc hạn trả sách, thông báo quá hạn; xem danh sách sách gợi ý.
+Gửi đề xuất thư viện bổ sung/mua sách mới và theo dõi trạng thái xử lý đề xuất.
+Môi trường thực hiện
+Yêu cầu về Ngôn ngữ: C#, Dart (Flutter), Angular / ASP .NET,….
+Yêu cầu về hệ quản trị: SQL Server,…..
+Thời gian thực hiện: 12 tuần (từ ngày 17/08/2026 tới ngày 08/11/2026)
+Thang điểm
+Thời gian và các công việc trong tuần:
+Tài liệu tham khảo
+[1]. F. Ricci, L. Rokach, and B. Shapira (Eds.), Recommender Systems Handbook, 3rd ed., Springer, 2022.
+[2]. G. Adomavicius and A. Tuzhilin, “Toward the Next Generation of Recommender Systems: A Survey of the State-of-the-Art and Possible Extensions,” IEEE Transactions on Knowledge and Data Engineering, vol. 17, no. 6, pp. 734–749, 2005.
+[3]. Y. Koren, R. Bell, and C. Volinsky, “Matrix Factorization Techniques for Recommender Systems,” Computer, vol. 42, no. 8, pp. 30–37, 2009.
+[4]. R. Burke, “Hybrid Recommender Systems: Survey and Experiments,” User Modeling and User-Adapted Interaction, vol. 12, pp. 331–370, 2002.
+[5]. G. Linden, B. Smith, and J. York, “Amazon.com Recommendations: Item-to-Item Collaborative Filtering,” IEEE Internet Computing, vol. 7, no. 1, pp. 76–80, 2003.
+[6]. B. Sarwar, G. Karypis, J. Konstan, and J. Riedl, “Item-Based Collaborative Filtering Recommendation Algorithms,” Proceedings of the 10th International Conference on World Wide Web, pp. 285–295, 2001.
+[7]. C. C. Aggarwal, Recommender Systems: The Textbook, Springer, 2016.
+[8]. OWASP Foundation, OWASP Top 10: The Ten Most Critical Web Application Security Risks, phiên bản trực tuyến hiện hành.
+[9]. Koha Community, Koha Library Software Documentation/Manual, tài liệu trực tuyến hiện hành.
+Một số yêu cầu khác
+- Số lượng SV tối đa thực hiện đề tài: 3 sinh viên.
+- Sinh viên có khả năng và tư duy lập trình, đọc hiểu tài liệu tiếng Anh kỹ thuật; có tinh thần tự học công nghệ mới và phối hợp làm việc nhóm.
+- Gặp giảng viên hướng dẫn ít nhất 1 lần/tuần, thực hiện đề tài theo sự phân công của giảng viên hướng dẫn. Trước mỗi buổi báo cáo, sinh viên phải tích hợp những nội dung được phân công vào chung trong một tài liệu/phần mềm hoàn chỉnh.
+- Sản phẩm cuối kỳ phải có Web và Mobile App hoạt động trên cùng hệ thống dữ liệu/API; Web phải triển khai đầy đủ toàn bộ các chức năng quản lý thư viện, còn Mobile App triển khai các chức năng cho Sinh viên: đăng nhập, tra cứu sách, xem tình trạng/vị trí sách, theo dõi sách đang mượn và hạn trả, nhận thông báo, xem kết quả gợi ý và gửi đề xuất bổ sung sách. Sản phẩm kèm mã nguồn, cơ sở dữ liệu, tài liệu cài đặt, hướng dẫn sử dụng và dữ liệu kiểm thử.
+- Hai nghiệp vụ phức tạp bắt buộc thể hiện rõ trong sản phẩm và báo cáo: (1) quản lý mượn - trả - gia hạn, xử lý quá hạn, tiền phạt và thông báo nhắc hạn; (2) gợi ý sách phù hợp cho sinh viên dựa trên dữ liệu và thuật toán do nhóm nghiên cứu, lựa chọn.
+Tp.HCM, ngày 25 tháng 08  năm 2026
