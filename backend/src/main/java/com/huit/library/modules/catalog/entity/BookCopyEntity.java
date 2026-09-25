@@ -21,4 +21,6 @@ public class BookCopyEntity extends BaseEntity {
     
     private UUID lockedByUser;
     private LocalDateTime lockedUntil;
+    private String location;
+    private String status;
 }
