@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile_app/screens/main_layout.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:mobile_app/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,24 +17,45 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     setState(() => _isLoading = true);
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() => _isLoading = false);
-      final username = _usernameController.text;
-      final validStudents = ['2001230219', '2001230430', '2001230914', 'admin'];
-      
-      if (validStudents.contains(username)) {
+    
+    try {
+      final response = await http.post(
+        // Note: 10.0.2.2 is for Android Emulator. Use real IP for physical device.
+        Uri.parse('http://10.0.2.2:8080/api/v1/auth/login'), 
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _usernameController.text,
+          'password': _passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['accessToken'] != null) {
+          await AuthService.saveToken(data['accessToken']);
+        }
+        
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainLayout()),
         );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sai MSSV hoặc mật khẩu! Hãy thử 2001230219')),
+          const SnackBar(content: Text('Sai tên đăng nhập hoặc mật khẩu!')),
         );
       }
-    });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi kết nối máy chủ!')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -94,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: _usernameController,
                         decoration: InputDecoration(
-                          labelText: 'Mã số sinh viên',
+                          labelText: 'Mã sinh viên / Email',
                           prefixIcon: const Icon(Icons.person_outline),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),

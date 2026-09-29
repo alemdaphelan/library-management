@@ -57,6 +57,42 @@ databaseChangeLog:
         - column:
             name: updated_at
             valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: staff_roles
+        columns:
+        - column:
+            name: role_id
+            value: ACCOUNTANT
+        - column:
+            name: role_name
+            value: Kế toán
+        - column:
+            name: permissions
+            value: '["FINANCE_MANAGE", "USER_VIEW"]'
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: staff_roles
+        columns:
+        - column:
+            name: role_id
+            value: TREASURER
+        - column:
+            name: role_name
+            value: Thủ quỹ
+        - column:
+            name: permissions
+            value: '["FINANCE_APPROVE", "USER_VIEW"]'
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
 - changeSet:
     id: seed_users
     author: system
@@ -148,6 +184,66 @@ databaseChangeLog:
         - column:
             name: is_first_login
             valueBoolean: true
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: users
+        columns:
+        - column:
+            name: user_id
+            value: 00000000-0000-0000-0000-000000000004
+        - column:
+            name: role_id
+            value: ACCOUNTANT
+        - column:
+            name: email
+            value: accountant@huit.edu.vn
+        - column:
+            name: password_hash
+            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+        - column:
+            name: full_name
+            value: Nguyễn Thị Kế Toán
+        - column:
+            name: user_type
+            value: STAFF
+        - column:
+            name: is_first_login
+            valueBoolean: false
+        - column:
+            name: created_at
+            valueDate: '2026-09-24T00:00:00'
+        - column:
+            name: updated_at
+            valueDate: '2026-09-24T00:00:00'
+    - insert:
+        tableName: users
+        columns:
+        - column:
+            name: user_id
+            value: 00000000-0000-0000-0000-000000000005
+        - column:
+            name: role_id
+            value: TREASURER
+        - column:
+            name: email
+            value: treasurer@huit.edu.vn
+        - column:
+            name: password_hash
+            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+        - column:
+            name: full_name
+            value: Lê Văn Thủ Quỹ
+        - column:
+            name: user_type
+            value: STAFF
+        - column:
+            name: is_first_login
+            valueBoolean: false
         - column:
             name: created_at
             valueDate: '2026-09-24T00:00:00'

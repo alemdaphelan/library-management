@@ -19,10 +19,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenService tokenService;
 
-    public JwtAuthFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService) {
+    public JwtAuthFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService, TokenService tokenService) {
         this.jwtUtils = jwtUtils;
         this.userDetailsService = userDetailsService;
+        this.tokenService = tokenService;
     }
 
     @Override
@@ -31,6 +33,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+                if (tokenService.isTokenBlacklisted(jwt)) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token is blacklisted");
+                    return;
+                }
+                
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);

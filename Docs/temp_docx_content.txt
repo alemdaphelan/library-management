@@ -1,0 +1,1054 @@
+--- business_usecase_v41.docx ---
+ĐẶC TẢ NGHIỆP VỤ THỰC TẾ (BUSINESS USE CASES)
+Bảng 1: Bảng đặc tả yêu cầu chức năng Đăng ký làm thẻ và sử dụng thư viện
+Mã yêu cầu
+BUC01
+Tên yêu cầu
+Đăng ký làm thẻ và sử dụng thư viện
+Mức độ ưu tiên
+Cao
+Mô tả
+Cấp quyền cho người sử dụng vào thư viện và mượn tài liệu.
+Tác nhân
+Người sử dụng, Tổ công tác
+Điều kiện trước
+Người sử dụng chưa có thẻ thư viện.
+Các thao tác xử lý
+1. Người sử dụng xuất trình thông tin cá nhân và đăng ký phân loại nhóm.
+2. Đóng lệ phí làm thẻ và thu tiền thế chân tối thiểu 100.000 VNĐ đối với Sinh viên, Học viên, Người ngoài trường; miễn thu thế chân đối với Giảng viên và Viên chức.
+3. Tổ công tác in thẻ với thời hạn sử dụng 1 năm. Khi gia hạn thẻ ở các năm sau, chỉ đóng lại lệ phí, giữ nguyên tiền thế chân.
+4. Đối với Sinh viên và Học viên: Phải tham gia lớp hướng dẫn sử dụng thư viện để được hệ thống tự động kích hoạt thẻ.
+5. Đối với Giảng viên, Viên chức, Người ngoài trường: Không bắt buộc học lớp hướng dẫn, hệ thống tự động kích hoạt thẻ ngay sau khi hoàn tất thủ tục.
+Kết quả
+Người sử dụng được cấp thẻ có thời hạn 1 năm và kích hoạt quyền mượn.
+Bảng 2: Bảng đặc tả yêu cầu chức năng Phục vụ mượn tài liệu về nhà hoặc Đọc tại chỗ
+Mã yêu cầu
+BUC02
+Tên yêu cầu
+Phục vụ mượn tài liệu về nhà hoặc Đọc tại chỗ
+Mức độ ưu tiên
+Cao
+Mô tả
+Lập phiếu mượn mang tài liệu ra khỏi thư viện hoặc đọc tại phòng.
+Tác nhân
+Người sử dụng, Cán bộ thư viện
+Điều kiện trước
+Người sử dụng có thẻ thư viện hợp lệ đã được kích hoạt.
+Các thao tác xử lý
+1. Mượn mang về: Chỉ được mượn tài liệu có nhãn màu trắng, tổng số tài liệu nhãn trắng đang mượn tại một thời điểm không quá ba cuốn với thời hạn mượn mặc định là mười ngày. Mỗi đầu sách chỉ được mượn một bản duy nhất để tránh độc quyền tài liệu. Đối với nhóm Sinh viên, Học viên và Người ngoài trường, tổng giá trị tài liệu đang mượn và chọn mới tính theo giá bìa không được vượt quá tổng của số dư tiền thế chân cộng thêm 50.000 VNĐ. Giảng viên và Viên chức không bị giới hạn về giá trị.
+2. Mượn đọc tại chỗ: Tài liệu nhãn cam, xanh, NCKH, luận án, luận văn, báo cáo TN chỉ được đọc tại chỗ, không quá hai tài liệu trong một lần.
+3. Lập phiếu mượn được thực hiện tại quầy thủ thư hoặc Kiosk tự động. Người sử dụng cũng có thể tự lập phiếu giữ chỗ trực tuyến. Khi lập phiếu mượn, hệ thống kiểm tra số lượng tồn kho theo thời gian thực và khóa tạm sách tối đa mười lăm phút trong lúc độc giả thao tác để tránh tranh chấp.
+4. Tài liệu mượn về có thể được gia hạn trực tuyến tối đa hai lần, mỗi lần kéo dài thêm mười ngày, với điều kiện sách không bị quá hạn và không có lệnh thu hồi đột xuất.
+5. Quy định về ngày đến hạn: Nếu ngày hết hạn trả sách rơi vào ngày nghỉ lễ, Tết hoặc ngày thư viện không hoạt động theo lịch, hệ thống tự động dời ngày hết hạn sang ngày làm việc chính thức đầu tiên ngay sau kỳ nghỉ.
+6. Hệ thống sẽ chặn luồng lập phiếu mượn nếu người dùng đang có sách quá hạn chưa trả hoặc có khoản phạt chưa thanh toán.
+7. Mượn tại Kiosk: Tích hợp cân điện tử đối chiếu trọng lượng sách để chống tráo mã vạch (Weight-based validation).
+Kết quả
+Phiếu mượn được lập thành công, đảm bảo số lượng, loại nhãn và hạn mức giá trị.
+Bảng 3: Bảng đặc tả yêu cầu chức năng Phục vụ trả tài liệu và xử lý vi phạm
+Mã yêu cầu
+BUC03
+Tên yêu cầu
+Phục vụ trả tài liệu và xử lý vi phạm
+Mức độ ưu tiên
+Cao
+Mô tả
+Thu hồi tài liệu và xử lý các trường hợp quá hạn, hư hỏng, mất mát.
+Tác nhân
+Người sử dụng, Tổ công tác
+Điều kiện trước
+Người sử dụng đang mượn tài liệu.
+Các thao tác xử lý
+1. Người sử dụng mang trả tài liệu theo thời hạn hoặc trong vòng bảy ngày nếu nhận yêu cầu thu hồi đột xuất. Nếu trả sách trễ hạn dưới ba mươi ngày, độc giả phải đóng khoản tiền phạt trễ hạn tính theo từng ngày với mức một nghìn đồng mỗi ngày cho một tài liệu (tự động loại trừ các ngày nghỉ lễ, Tết theo lịch của trường).
+2. Hư hỏng nhẹ từ một đến mười trang: Đóng khoản tiền sửa chữa. Khi phát hiện tài liệu có vi phạm, hệ thống tạm khóa giao dịch tài chính để ngăn rút tiền cọc cho đến khi hoàn tất phiếu phạt. Nếu sau hai mươi bốn giờ mà cán bộ chưa hoàn tất phiếu phạt, hệ thống tự động gửi cảnh báo đến Quản trị viên.
+3. Hư hỏng nặng hoặc Mất: Người sử dụng phải tự mua đền sách y hệt, hoặc đền tiền với mức phạt gấp năm lần giá bìa sách tiếng Việt hoặc gấp ba lần sách tiếng nước ngoài, kèm phí xử lý.
+4. Thời hạn mua đền hoặc nộp tiền đền bù không quá ba mươi ngày kể từ lúc báo mất. Trường hợp độc giả có minh chứng đang chờ mua sách hiện vật, thủ thư có thể gia hạn thêm tối đa mười lăm ngày, ghi nhận lý do và tạm ngưng tiến trình quét nợ xấu. Nếu quá thời hạn mà chưa đền bù, hệ thống tự động chuyển hồ sơ sang trạng thái nợ xấu để xử lý vi phạm.
+5. Nếu trễ hạn quá ba mươi ngày mà chưa trả sách, hệ thống tự động coi như sách đã mất và áp dụng mức phạt mất sách. Đối với nhóm Sinh viên, Học viên và Người ngoài trường, tự động trừ tiền nợ vào tiền thế chân; nếu không đủ thì chuyển hồ sơ kỷ luật cho Phòng Công tác sinh viên đối với Sinh viên, Phòng Đào tạo Sau Đại học đối với Học viên, hoặc khóa thẻ vĩnh viễn và đưa vào danh sách đen đối với Người ngoài trường. Giảng viên và Viên chức sẽ bị khóa thẻ và báo cáo về Phòng Tổ chức.
+6. Đối với trường hợp mất hoặc hư hỏng tài liệu do thiên tai, hỏa hoạn ngoài ý muốn, độc giả nộp giấy tờ chứng minh. Căn cứ quyết định miễn giảm của Giám đốc thư viện hoặc Ban giám hiệu, Quản trị viên cấp cao sẽ thực hiện xóa nợ tiền phạt trên hệ thống.
+7. Ân hạn bảo trì: Trong trường hợp hệ thống gặp sự cố (downtime), tự động lùi thời hạn trả sách thêm 24h.
+35. Hệ thống bắt buộc lưu vết tình trạng vật lý của sách ngay tại thời điểm xuất kho (checkout_condition_note) và lúc nhập kho (return_condition_note) để làm bằng chứng pháp lý giải quyết tranh chấp với sinh viên.
+36. Trường hợp sinh viên nộp giấy xác nhận thiên tai, hệ thống bắt buộc lưu trữ đường dẫn tệp (proof_document_url) gắn liền với giao dịch để Ban Giám Hiệu có căn cứ xét duyệt miễn giảm.
+Kết quả
+Tài liệu được thu hồi, vi phạm được xử lý đúng quy định.
+Bảng 4: Bảng đặc tả yêu cầu chức năng Đăng ký và sử dụng không gian tiện ích
+Mã yêu cầu
+BUC04
+Tên yêu cầu
+Đăng ký và sử dụng không gian tiện ích
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý việc sử dụng phòng học nhóm.
+Tác nhân
+Độc giả
+Điều kiện trước
+Độc giả có tài khoản hợp lệ.
+Các thao tác xử lý
+1. Độc giả đăng ký trực tuyến trên trang thông tin (yêu cầu không có sách quá hạn hoặc nợ phạt chưa thanh toán), nhận kết quả đặt phòng sau mười lăm phút.
+2. Thời gian sử dụng quy định là một trăm hai mươi phút mỗi lượt. Được phép gia hạn nếu không có người khác chờ.
+3. Nếu người đặt đến trễ mười lăm phút so với thời gian đăng ký mà không xác nhận nhận phòng bằng cách quét mã tại cửa phòng hoặc Kiosk, kết quả sẽ bị hủy. Độc giả có thể tự hủy trên giao diện hoặc thông báo cho cán bộ qua email thuvienhufi@gmail.com. Nếu độc giả vi phạm quá ba lần trong một học kỳ, hệ thống sẽ tạm khóa quyền đặt phòng nhóm trong bảy ngày.
+4. Độc giả có trách nhiệm thực hiện thao tác trả phòng sớm trên ứng dụng và tắt máy lạnh, đèn trước khi rời khỏi. Nếu không thao tác, hệ thống tự động giải phóng phòng khi hết thời gian đặt.
+5. Đóng băng phòng: Giữa 2 ca đặt phòng bắt buộc có 15 phút cooldown để dọn vệ sinh. Một nhóm không được đặt 2 ca liên tiếp.
+Kết quả
+Không gian tiện ích được sử dụng tối ưu.
+Bảng 5: Bảng đặc tả yêu cầu chức năng Thu và hoàn tiền thế chân
+Mã yêu cầu
+BUC05
+Tên yêu cầu
+Thu và hoàn tiền thế chân
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý dòng tiền đặt cọc tối thiểu 100.000 VNĐ của người sử dụng.
+Tác nhân
+Người sử dụng, Kế toán, Thủ quỹ
+Điều kiện trước
+Người sử dụng có yêu cầu hoàn tiền hoặc đóng tiền thế chân.
+Các thao tác xử lý
+1. Kế toán thu tiền thế chân theo mức tối thiểu hoặc theo nhu cầu mượn sách của độc giả và xuất biên lai. Độc giả có thể nộp thêm tiền thế chân để tăng hạn mức mượn sách, tuy nhiên tổng số dư tiền thế chân không được vượt quá mức trần do thư viện quy định.
+2. Nếu hoàn tiền thế chân, Người sử dụng xuất trình biên lai gốc.
+3. Hệ thống kiểm tra điều kiện rút tiền: không còn nợ sách. Nếu nợ tiền phạt lớn hơn số dư tiền thế chân, độc giả phải thanh toán phần chênh lệch trước khi được hoàn cọc.
+4. Kế toán lập phiếu xuất quỹ cấn trừ tiền phạt nếu có. Thủ quỹ kiểm tra, duyệt phiếu và chi trả tiền mặt. Độc giả có thể rút bớt tiền cọc để duy trì tài khoản (miễn là còn đủ mức tối thiểu), hoặc rút toàn bộ và Hủy thẻ.
+5. Đối soát thanh toán: Hệ thống tích hợp luồng quét đối soát (Reconciliation) định kỳ cho các giao dịch nạp cọc trực tuyến để xử lý lỗi rớt mạng.
+37. Hệ thống tự động liên kết giao dịch hoàn tiền (Refund) bằng khóa ngoại tự chiếu về đúng giao dịch nộp tiền (Deposit) gốc để ngăn chặn vĩnh viễn hành vi dùng một biên lai gốc rút tiền nhiều lần.
+Kết quả
+Tiền thế chân được thu và hoàn với sự kiểm soát kép.
+Bảng 6: Bảng đặc tả yêu cầu chức năng Quản lý nhập sách và Phiếu nhập kho
+Mã yêu cầu
+BUC06
+Tên yêu cầu
+Quản lý nhập sách và Phiếu nhập kho
+Mức độ ưu tiên
+Cao
+Mô tả
+Lập phiếu nhập, quản lý nhà cung cấp và thông tin sách mới.
+Tác nhân
+Cán bộ thư viện
+Điều kiện trước
+Có sách mới từ nhà cung cấp cần nhập kho.
+Các thao tác xử lý
+1. Cán bộ thư viện chọn hoặc thêm Nhà cung cấp và tạo Phiếu nhập kho trên hệ thống.
+2. Nhập thông tin sách, phân bổ vị trí lưu trữ chi tiết đến Khu vực, Tầng, Kệ, Ngăn.
+3. Hệ thống sinh mã vạch. Cán bộ dán nhãn phân loại tùy loại tài liệu.
+4. Cập nhật số lượng tồn kho tự động dựa trên Phiếu nhập.
+Kết quả
+Sách được nhập kho có truy xuất nguồn gốc và vị trí chính xác.
+Bảng 7: Bảng đặc tả yêu cầu chức năng Quản lý đối soát và báo cáo tài chính
+Mã yêu cầu
+BUC07
+Tên yêu cầu
+Quản lý đối soát và báo cáo tài chính
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý các khoản thu, khoản đã thu và khoản xử phạt trong thư viện.
+Tác nhân
+Kế toán, Thủ quỹ
+Điều kiện trước
+Cán bộ quản lý tài chính đăng nhập hệ thống.
+Các thao tác xử lý
+1. Kế toán trích xuất dữ liệu giao dịch từ hệ thống.
+2. Hệ thống hiển thị chi tiết các khoản thu lệ phí, thế chân, phạt, chi hoàn cọc.
+3. Kế toán đối chiếu thực tế và lập báo cáo tài chính.
+4. Thủ quỹ kiểm tra chéo và xác nhận chốt sổ.
+Kết quả
+Dòng tiền được kiểm soát chặt chẽ.
+Bảng 8: Bảng đặc tả yêu cầu chức năng Nhắc hạn và cảnh báo quá hạn trả sách
+Mã yêu cầu
+BUC08
+Tên yêu cầu
+Nhắc hạn và cảnh báo quá hạn trả sách
+Mức độ ưu tiên
+Cao
+Mô tả
+Gửi thông báo nhắc nhở hạn trả sách và cảnh báo qua ứng dụng.
+Tác nhân
+Hệ thống nền, Người sử dụng
+Điều kiện trước
+Người sử dụng đang mượn sách sắp đến hạn hoặc quá hạn.
+Các thao tác xử lý
+1. Hệ thống kiểm tra danh sách mượn hàng ngày.
+2. Gửi nhắc nhở trước hạn và thông báo thu hồi đột xuất qua thông báo đẩy trên Ứng dụng di động.
+3. Quá hạn ba mươi ngày, hệ thống lập danh sách cấn trừ tiền thế chân. Nếu tiền thế chân không đủ, hệ thống tự động chuyển hồ sơ cho Phòng Công tác sinh viên, Phòng Đào tạo Sau Đại học, Phòng Tổ chức, hoặc đưa vào danh sách đen tùy theo đối tượng người sử dụng.
+4. Gửi biên lai điện tử thông báo trừ tiền.
+Kết quả
+Độc giả nhận thông báo kịp thời trên mọi nền tảng.
+Bảng 9: Bảng đặc tả yêu cầu chức năng Quản lý sách điện tử và tài liệu số
+Mã yêu cầu
+BUC09
+Tên yêu cầu
+Quản lý sách điện tử và tài liệu số
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý xuất bản, lưu trữ và phân quyền truy cập tài liệu số hóa.
+Tác nhân
+Cán bộ thư viện, Người sử dụng
+Điều kiện trước
+Thư viện có tài liệu số hoặc sách điện tử cần phát hành.
+Các thao tác xử lý
+1. Cán bộ khai báo thông tin nền tài liệu số, tải tệp đính kèm hoặc gắn đường dẫn truy cập ngoài.
+2. Thiết lập trạng thái phát hành là Công khai hoặc Nội bộ và cấu hình phân quyền xem tải.
+3. Hệ thống áp dụng mã hóa bảo vệ bản quyền, khóa quyền tải xuống đối với tài liệu lưu hành nội bộ, chỉ cho phép tải đối với tài liệu nguồn mở để tuân thủ Luật sở hữu trí tuệ.
+4. Người sử dụng có quyền hợp lệ tìm kiếm và đọc tài liệu ngay trên thiết bị tin học.
+Kết quả
+Tài liệu số được xuất bản, quản lý bản quyền tuyệt đối.
+Bảng 10: Bảng đặc tả yêu cầu chức năng Đề xuất thêm sách bổ sung
+Mã yêu cầu
+BUC10
+Tên yêu cầu
+Đề xuất thêm sách bổ sung
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Gửi yêu cầu mua đầu sách chưa có thông qua trang thông tin.
+Tác nhân
+Người sử dụng, Cán bộ thư viện
+Điều kiện trước
+Người sử dụng có nhu cầu đọc sách ngoài danh mục.
+Các thao tác xử lý
+1. Người sử dụng điền biểu mẫu đề xuất trên trang thông tin.
+2. Hệ thống ghi nhận, chuyển cán bộ xem xét và tổng hợp.
+3. Phản hồi kết quả xét duyệt qua thông báo đẩy.
+Kết quả
+Yêu cầu đề xuất sách được theo dõi và xử lý.
+Bảng 11: Bảng đặc tả yêu cầu chức năng Phản hồi
+Mã yêu cầu
+BUC11
+Tên yêu cầu
+Phản hồi
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Ghi nhận góp ý và khiếu nại.
+Tác nhân
+Người sử dụng, Cán bộ thư viện
+Điều kiện trước
+Người sử dụng có ý kiến.
+Các thao tác xử lý
+1. Gửi phản hồi qua biểu mẫu.
+2. Hệ thống phân loại, chuyển cán bộ phụ trách.
+3. Cán bộ xem xét và trả lời trực tiếp trên hệ thống trong vòng ba ngày làm việc.
+Kết quả
+Khiếu nại được giải quyết.
+Bảng 12: Bảng đặc tả yêu cầu chức năng Bảng điều khiển kiểm kê tài liệu
+Mã yêu cầu
+BUC12
+Tên yêu cầu
+Bảng điều khiển kiểm kê tài liệu
+Mức độ ưu tiên
+Cao
+Mô tả
+Hiển thị báo cáo thống kê hoạt động.
+Tác nhân
+Cán bộ thư viện, Quản trị viên
+Điều kiện trước
+Đăng nhập trang quản trị nội bộ.
+Các thao tác xử lý
+1. Truy cập Bảng điều khiển.
+2. Tổng hợp dữ liệu vị trí sách từ Khu vực đến Ngăn kệ, phiếu mượn trả, quá hạn, tiền phạt.
+3. Hiển thị báo cáo trực quan, hỗ trợ xuất tệp tin văn bản.
+Kết quả
+Nắm bắt toàn cảnh hoạt động thư viện.
+Bảng 13: Bảng đặc tả yêu cầu chức năng Đề xuất tài liệu thông minh và Đánh giá xếp hạng
+Mã yêu cầu
+BUC13
+Tên yêu cầu
+Đề xuất tài liệu thông minh và Đánh giá xếp hạng
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Gợi ý sách cá nhân hóa bằng trí tuệ nhân tạo, quản lý đánh giá và danh sách quan tâm của người dùng.
+Tác nhân
+Hệ thống nền, Độc giả
+Điều kiện trước
+Độc giả đăng nhập vào hệ thống.
+Các thao tác xử lý
+1. Hệ thống tự động phân tích lịch sử mượn và chuyên ngành để đề xuất sách cá nhân hóa cho từng độc giả trên giao diện.
+2. Độc giả có quyền đánh giá điểm xếp hạng cho tài liệu sau khi sử dụng. Hệ thống lưu trữ và tự động tính toán lại điểm trung bình của đầu sách.
+3. Độc giả có thể lưu hoặc bỏ lưu tài liệu vào danh sách quan tâm cá nhân để tra cứu nhanh sau này.
+Kết quả
+Tăng cường trải nghiệm tương tác thông minh với hệ thống.
+--- system_usecase_v41.docx ---
+ĐẶC TẢ CHI TIẾT NHÓM NGHIỆP VỤ (SYSTEM USE CASES)
+Bảng 1: Bảng đặc tả yêu cầu chức năng Thêm mới thông tin hồ sơ độc giả
+Mã yêu cầu
+UC01
+Tên yêu cầu
+Thêm mới thông tin hồ sơ độc giả
+Mức độ ưu tiên
+Cao
+Mô tả
+Lưu trữ thông tin cá nhân và tài khoản.
+Tác nhân
+Quản trị viên
+Điều kiện trước
+Cung cấp giấy tờ tùy thân.
+Các thao tác xử lý
+1. Điền dữ liệu cá nhân bao gồm Mã số, Họ tên, Lớp, Khoa, Số điện thoại và chọn Loại người dùng.
+2. Kiểm tra trùng lặp mã định danh.
+3. Tạo tài khoản với thời hạn sử dụng một năm. Hệ thống tạo mật khẩu mặc định và yêu cầu bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên. Nếu là Sinh viên, Học viên: hệ thống lập tức đối chiếu bảng dữ liệu điểm danh lớp hướng dẫn; nếu đã có dữ liệu, kích hoạt ngay sang trạng thái Đang hoạt động, nếu chưa có, để trạng thái Chưa kích hoạt. Nếu là Giảng viên, Viên chức, Người ngoài trường: tự động kích hoạt ngay sang trạng thái Đang hoạt động.
+4. Hệ thống tạo tài khoản với mật khẩu mặc định (password_hash) và gán cờ is_first_login = true để ép đổi mật khẩu ở lần đăng nhập đầu tiên.
+Kết quả
+Hồ sơ tài khoản được tạo.
+Bảng 2: Bảng đặc tả yêu cầu chức năng Ghi nhận lệ phí làm thẻ và thu tiền thế chân
+Mã yêu cầu
+UC02
+Tên yêu cầu
+Ghi nhận lệ phí làm thẻ và thu tiền thế chân
+Mức độ ưu tiên
+Cao
+Mô tả
+Lưu giao dịch đóng tiền thế chân và lệ phí.
+Tác nhân
+Kế toán
+Điều kiện trước
+Hồ sơ chưa kích hoạt hoặc thẻ đã hết hạn.
+Các thao tác xử lý
+1. Tra cứu mã hồ sơ.
+2. Nhập số tiền thu. Tách riêng hai trường dữ liệu: Lệ phí và Tiền thế chân.
+3. Đối với hồ sơ đăng ký mới, mức tiền thế chân tối thiểu của nhóm Sinh viên, Học viên và Người ngoài trường là 100.000 VNĐ, nhóm Giảng viên và Viên chức là 0 đồng. Độc giả có thể đóng nhiều hơn mức tối thiểu. Đối với thẻ gia hạn, hệ thống tự động đối chiếu số dư tiền thế chân hiện tại với mức tối thiểu tương ứng của nhóm độc giả đó; Kế toán chỉ thu lệ phí gia hạn và khoản tiền cọc nộp bù nếu số dư hiện tại đang thấp hơn mức tối thiểu của nhóm.
+4. Tạo giao dịch và sinh biên lai. Nếu thẻ đã hết hạn, hệ thống tự động cộng thêm một năm thời gian sử dụng.
+5. Cronjob Reconciliation: Định kỳ 30 phút, hệ thống query các transactions có trạng thái Pending, gọi API sang Gateway (MoMo/VNPAY) để đồng bộ trạng thái thật.
+Kết quả
+Thu thế chân và lệ phí được phân tách rõ ràng.
+Bảng 3: Bảng đặc tả yêu cầu chức năng Nạp danh sách điểm danh lớp hướng dẫn
+Mã yêu cầu
+UC03
+Tên yêu cầu
+Nạp danh sách điểm danh lớp hướng dẫn
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Đẩy dữ liệu sinh viên đã học cách sử dụng thư viện.
+Tác nhân
+Quản trị viên, Hệ thống nền
+Điều kiện trước
+Có tệp tin danh sách.
+Các thao tác xử lý
+1. Tải tệp tin lên hệ thống.
+2. Hệ thống phân tích và đẩy vào bảng dữ liệu chờ.
+Kết quả
+Lưu dữ liệu điểm danh.
+Bảng 4: Bảng đặc tả yêu cầu chức năng Kích hoạt thẻ thư viện tự động
+Mã yêu cầu
+UC04
+Tên yêu cầu
+Kích hoạt thẻ thư viện tự động
+Mức độ ưu tiên
+Cao
+Mô tả
+Cấp quyền hoạt động dựa trên vai trò và điểm danh.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Đã đóng lệ phí ở phần ghi nhận thu tiền.
+Các thao tác xử lý
+1. Nhóm Giảng viên, Viên chức và Người ngoài trường: Chuyển sang Đang hoạt động ngay sau khi có giao dịch đóng phí.
+2. Nhóm Sinh viên và Học viên: Tiến trình nền quét bảng dữ liệu chờ.
+3. Đối chiếu dữ liệu điểm danh, chuyển trạng thái từ Chưa kích hoạt sang Đang hoạt động. Nếu chưa có dữ liệu điểm danh, hệ thống giữ nguyên trạng thái Chưa kích hoạt và chỉ gửi thông báo nhắc nhở đến tài khoản của chính độc giả đó để yêu cầu hoàn tất lớp hướng dẫn.
+4. Gửi thư điện tử thông báo kích hoạt thành công.
+5. Hệ thống tự động quét và chỉ kích hoạt thẻ nếu sinh viên có cờ is_passed = true (đã hoàn thành bài kiểm tra), tránh trường hợp chỉ điểm danh suông.
+Kết quả
+Thẻ được kích hoạt tự động.
+Bảng 5: Bảng đặc tả yêu cầu chức năng Tra cứu và lọc tài liệu đa chiều
+Mã yêu cầu
+UC05
+Tên yêu cầu
+Tra cứu và lọc tài liệu đa chiều
+Mức độ ưu tiên
+Cao
+Mô tả
+Tìm kiếm sách qua công cụ truy vấn thông minh.
+Tác nhân
+Độc giả
+Điều kiện trước
+Truy cập trang thông tin.
+Các thao tác xử lý
+1. Nhập từ khóa liên quan đến Tên sách, tác giả hoặc chuyên ngành.
+2. Hệ thống phân tích từ khóa và truy vấn dữ liệu.
+3. Trả kết quả kèm chi tiết vị trí lưu trữ (Tầng, Khu vực, Kệ, Ngăn), số lượng quyển hiện có, số ký hiệu phân loại và loại màu nhãn sách.
+Kết quả
+Hiển thị kết quả tra cứu chi tiết.
+Bảng 6: Bảng đặc tả yêu cầu chức năng Lập Phiếu Mượn Trực Tuyến
+Mã yêu cầu
+UC06
+Tên yêu cầu
+Lập Phiếu Mượn Trực Tuyến
+Mức độ ưu tiên
+Cao
+Mô tả
+Độc giả tự tạo Phiếu Mượn trên ứng dụng để giữ chỗ tài liệu.
+Tác nhân
+Độc giả
+Điều kiện trước
+Tài khoản đang hoạt động và không có khoản nợ xấu.
+Các thao tác xử lý
+1. Thêm sách vào giỏ trên ứng dụng và bấm Tạo phiếu mượn.
+2. Hệ thống truy vấn kiểm tra số lượng tồn kho theo thời gian thực. Nếu sách đã hết hoặc đang bị người khác khóa tạm, hệ thống từ chối thêm vào giỏ. Sách đưa vào giỏ sẽ được khóa tạm trong tối đa mười lăm phút; nếu người dùng không hoàn tất tạo phiếu mượn trong thời gian này, hệ thống tự động giải phóng khóa tạm để người khác có thể mượn. Đồng thời kiểm tra để đảm bảo độc giả không được giữ chỗ nhiều bản sao của cùng một đầu sách. Kiểm tra giới hạn: Tổng số sách Nhãn Trắng đang mượn và đang chọn không quá ba cuốn; Nhãn Cam, Xanh, NCKH, luận án, luận văn, báo cáo TN tối đa hai cuốn. Đối với nhóm Sinh viên, Học viên và Người ngoài trường, tổng giá trị sách đang mượn và đang chọn không vượt quá tổng số dư tiền thế chân cộng thêm 50.000 VNĐ (đối với tài liệu không có giá bìa, hệ thống tự động áp dụng đơn giá quy định mặc định theo từng loại hình tài liệu). Nếu vượt định mức, từ chối tạo phiếu.
+3. Chặn tạo phiếu nếu thẻ độc giả không nằm trong trạng thái Đang hoạt động, hoặc độc giả có sách quá hạn chưa trả hoặc chưa nộp phạt.
+4. Nếu độc giả có phiếu giữ chỗ bị hệ thống tự động hủy do quá thời gian chờ, độc giả sẽ bị chặn chức năng đặt giữ chỗ lại đối với chính đầu sách đó trong vòng hai mươi bốn giờ tiếp theo.
+5. Hệ thống tách giỏ hàng thành các Phiếu con theo loại nhãn: Phiếu mượn mang về có thời gian chờ là hai giờ và Phiếu đọc tại chỗ có thời gian chờ đến cuối ngày, tất cả được gắn chung một mã vạch vuông. Thời gian chờ chỉ đếm ngược trong khung giờ hoạt động của thư viện; các phiếu được lập ngoài giờ hành chính sẽ bắt đầu tính thời gian chờ từ lúc thư viện mở cửa vào ngày làm việc tiếp theo.
+6. Hệ thống lưu trữ locked_by_user trong giỏ hàng ảo để định danh chính xác người đang giữ chỗ cuốn sách, tránh lỗi sập Kiosk.
+Kết quả
+Phiếu Mượn Trực Tuyến được lập thành công.
+Bảng 7: Bảng đặc tả yêu cầu chức năng Hủy phiếu mượn tự động do quá thời hạn
+Mã yêu cầu
+UC07
+Tên yêu cầu
+Hủy phiếu mượn tự động do quá thời hạn
+Mức độ ưu tiên
+Cao
+Mô tả
+Hủy Phiếu mượn trực tuyến nếu độc giả không đến lấy sách.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Có phiếu đang trong thời gian giữ chỗ.
+Các thao tác xử lý
+1. Tiến trình tự động quét bảng dữ liệu Phiếu mượn trực tuyến.
+2. Phát hiện Phiếu mượn vượt quá thời gian chờ tương ứng, thời gian chờ được tính theo khung giờ hoạt động của thư viện.
+3. Đưa trạng thái của sách trở về dạng Sẵn sàng phục vụ.
+4. Hệ thống tự động gửi thông báo đẩy cho độc giả về việc hủy phiếu.
+Kết quả
+Phiếu mượn bị hủy, sách được trả lại kho lưu trữ.
+Bảng 8: Bảng đặc tả yêu cầu chức năng Quản lý trạng thái bản vật lý, Thu hồi và Hủy phiếu mượn lỗi
+Mã yêu cầu
+UC08
+Tên yêu cầu
+Quản lý trạng thái bản vật lý, Thu hồi và Hủy phiếu mượn lỗi
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý trạng thái vật lý của sách, phát lệnh thu hồi, hoặc hủy giao dịch khi sách bị rách/mất.
+Tác nhân
+Thủ thư
+Điều kiện trước
+Cần can thiệp nghiệp vụ lên bản vật lý cụ thể.
+Các thao tác xử lý
+1. Thủ thư có thể chủ động chuyển trạng thái sách từ Sẵn sàng phục vụ sang Đang bảo trì hoặc Thất lạc, hoặc khôi phục từ Đang bảo trì hoặc Thất lạc về lại Sẵn sàng phục vụ. Thủ thư cũng có thể gắn cờ Lệnh thu hồi đột xuất cho một cuốn sách đang được mượn.
+2. Nếu sách đang nằm trong một Phiếu mượn giữ chỗ trực tuyến mà bị hỏng hoặc mất, chọn lệnh Hủy phiếu mượn do lỗi kho.
+3. Chuyển trạng thái bản vật lý thành Đang bảo trì hoặc Thất lạc tương ứng.
+4. Hệ thống tự động gửi thông báo đẩy báo lỗi xin lỗi độc giả (nếu hủy phiếu) hoặc thông báo yêu cầu trả sách khẩn cấp trong vòng bảy ngày (nếu phát lệnh thu hồi).
+Kết quả
+Trạng thái sách được cập nhật, giao dịch lỗi được hủy, lệnh thu hồi được phát ban.
+Bảng 9: Bảng đặc tả yêu cầu chức năng Lập Phiếu Mượn Tại Quầy
+Mã yêu cầu
+UC09
+Tên yêu cầu
+Lập Phiếu Mượn Tại Quầy
+Mức độ ưu tiên
+Cao
+Mô tả
+Thủ thư thao tác trên trang quản trị để tạo Phiếu mượn chính thức.
+Tác nhân
+Thủ thư
+Điều kiện trước
+Độc giả xuất trình thẻ và sách tại quầy.
+Các thao tác xử lý
+1. Thủ thư vào giao diện Lập phiếu mượn, quét thẻ sinh viên.
+2. Hệ thống kiểm tra tài khoản độc giả: nếu thẻ không ở trạng thái Đang hoạt động, hoặc độc giả đang có sách quá hạn chưa trả hoặc có khoản phạt chưa thanh toán, hệ thống từ chối lập phiếu và thông báo lỗi.
+3. Quét mã vạch trên sách. Hệ thống kiểm tra trạng thái bản vật lý, sách bắt buộc phải ở trạng thái Sẵn sàng phục vụ (hoặc Đang giữ chỗ bởi chính tài khoản này). Nếu sách đang ở trạng thái Đang bảo trì, Đang được mượn, hoặc Đang giữ chỗ bởi độc giả khác thì từ chối. Hệ thống đối chiếu để đảm bảo mỗi đầu sách chỉ được mượn tối đa một bản. Đồng thời đối chiếu tổng số lượng sách không vượt định mức và tổng giá trị sách tính theo giá bìa không vượt quá tổng số dư tiền thế chân cộng thêm 50.000 VNĐ (đối với sách không giá, dùng giá mặc định theo loại hình) - chỉ áp dụng Sinh viên, Học viên, Người ngoài trường. Nếu vi phạm, từ chối thêm sách.
+4. Nếu độc giả đã Lập Phiếu Mượn Trực Tuyến trước đó, hệ thống kiểm tra mã vạch quét thực tế với mã vạch trong Phiếu giữ chỗ trực tuyến. Nếu khớp, chuyển sách sang Đang mượn. Nếu không khớp (độc giả quét sách khác), hệ thống đối chiếu tổng số lượng (Sách quét thực tế + Sách đang giữ chỗ + Sách đang mượn) và tổng giá trị tính theo giá bìa của chúng. Nếu vượt quá định mức số lượng hoặc định mức giá trị cho phép, hệ thống từ chối và yêu cầu độc giả phải tự hủy phiếu giữ chỗ trực tuyến trước khi mượn cuốn mới.
+5. Thủ thư bấm Xác nhận. Hệ thống tự động phân loại thành Phiếu mượn mang về đối với sách nhãn Trắng, hoặc Phiếu đọc tại chỗ đối với sách nhãn Cam, Xanh, NCKH, luận án, luận văn, báo cáo TN. Cuối cùng, hệ thống lưu chính thức vào cơ sở dữ liệu và chuyển trạng thái sách thành Đang được mượn.
+6. Đối với sách Đọc tại chỗ, hệ thống tính toán due_date bằng chính giờ đóng cửa của ngày hôm đó (lấy từ HOLIDAY_CALENDAR) để chống bỏ trốn.
+Kết quả
+Phiếu mượn chính thức được lập và ghi nhận vào hệ thống.
+Bảng 10: Bảng đặc tả yêu cầu chức năng Lập Phiếu Mượn Tự Động Tại Kiosk
+Mã yêu cầu
+UC10
+Tên yêu cầu
+Lập Phiếu Mượn Tự Động Tại Kiosk
+Mức độ ưu tiên
+Cao
+Mô tả
+Độc giả tự quét mã để hệ thống Kiosk tự sinh Phiếu mượn.
+Tác nhân
+Độc giả, Hệ thống Kiosk
+Điều kiện trước
+Tại máy Kiosk tự động.
+Các thao tác xử lý
+1. Quét mã vạch vuông trên ứng dụng di động để xác thực tài khoản.
+2. Hệ thống kiểm tra tài khoản độc giả: nếu thẻ không ở trạng thái Đang hoạt động, hoặc độc giả đang có sách quá hạn chưa trả hoặc có khoản phạt chưa thanh toán, Kiosk từ chối phục vụ và thông báo lỗi trên màn hình.
+3. Quét mã vạch sách. Kiosk từ chối xuất sách nhãn Cam, Xanh, NCKH, luận án, luận văn, báo cáo TN. Hệ thống kiểm tra trạng thái bản vật lý, sách bắt buộc phải ở trạng thái Sẵn sàng phục vụ (hoặc Đang giữ chỗ bởi chính tài khoản này). Nếu sách đang ở trạng thái Đang bảo trì, Đang được mượn, hoặc Đang giữ chỗ bởi một độc giả khác thì từ chối. Đồng thời kiểm tra mỗi đầu sách chỉ được mượn tối đa một bản để tránh độc quyền tài liệu. Kiểm tra tổng số lượng sách Nhãn Trắng đang mượn và đang quét không được vượt quá ba cuốn. Kiosk cũng từ chối nếu tổng giá trị sách (đối với sách không giá bìa, dùng giá mặc định) vượt quá hạn mức cho phép (bỏ qua bước kiểm tra giá trị đối với Giảng viên và Viên chức).
+4. Nếu độc giả đã Lập Phiếu Mượn Trực Tuyến trước đó, Kiosk kiểm tra mã vạch quét thực tế với mã vạch trong Phiếu giữ chỗ trực tuyến. Nếu khớp, chuyển sách sang Đang mượn. Nếu không khớp (độc giả quét sách khác), hệ thống đối chiếu tổng số lượng (Sách quét thực tế + Sách đang giữ chỗ + Sách đang mượn) và tổng giá trị tính theo giá bìa của chúng. Nếu vượt quá định mức số lượng hoặc định mức giá trị cho phép, hệ thống từ chối và yêu cầu độc giả phải tự hủy phiếu giữ chỗ trực tuyến trên ứng dụng trước khi mượn cuốn mới.
+6. Hệ thống Kiosk tự động sinh Phiếu Mượn chính thức, cập nhật cơ sở dữ liệu và đẩy thông báo mượn thành công.
+7. Để đảm bảo an toàn, hệ thống Kiosk tự động đăng xuất và hủy phiên giao dịch nếu không có thao tác nào trong vòng sáu mươi giây.
+7. Máy Kiosk truy vấn giỏ hàng ảo dựa trên trường locked_by_user để nhả chính xác sách cho đúng sinh viên.
+8. Kiosk đọc chỉ số từ Cân điện tử, đối chiếu trường weight_grams trong DB. Nếu lệch quá sai số cho phép, từ chối nhả sách.
+Kết quả
+Phiếu mượn tự động lập qua thiết bị an toàn.
+Bảng 11: Bảng đặc tả yêu cầu chức năng Gia hạn tài liệu trực tuyến
+Mã yêu cầu
+UC11
+Tên yêu cầu
+Gia hạn tài liệu trực tuyến
+Mức độ ưu tiên
+Cao
+Mô tả
+Kéo dài thời gian mượn.
+Tác nhân
+Độc giả
+Điều kiện trước
+Sách đang nằm trong danh sách mượn.
+Các thao tác xử lý
+1. Vào mục Danh sách Phiếu mượn trên hệ thống thông tin, bấm nút Gia hạn.
+2. Kiểm tra số lần gia hạn, đảm bảo giới hạn tối đa hai lần.
+3. Kiểm tra trạng thái thẻ phải Đang hoạt động, đồng thời sách không nằm trong trạng thái quá hạn hoặc bị Lệnh thu hồi đột xuất.
+4. Cộng thêm mười ngày vào hạn trả hiện tại của phiếu mượn, hệ thống từ chối nếu đã gia hạn đủ hai lần.
+Kết quả
+Gia hạn phiếu mượn thành công.
+Bảng 12: Bảng đặc tả yêu cầu chức năng Lập Phiếu Trả Tài Liệu
+Mã yêu cầu
+UC12
+Tên yêu cầu
+Lập Phiếu Trả Tài Liệu
+Mức độ ưu tiên
+Cao
+Mô tả
+Ghi nhận tài liệu về kho và kết thúc Phiếu mượn.
+Tác nhân
+Thủ thư
+Điều kiện trước
+Đem sách đến quầy để trả.
+Các thao tác xử lý
+1. Thủ thư vào giao diện Lập phiếu trả, kiểm tra tình trạng sách và quét mã vạch. Nếu mã vạch thuộc về một cuốn sách đã bị hệ thống tự động chuyển sang Thất lạc và phạt tiền đền bù (do quá hạn ba mươi ngày), hệ thống tự động hủy lệnh phạt mất sách và chuyển sang tính tiền phạt trễ hạn thông thường.
+2. Thủ thư có tùy chọn đánh dấu tài liệu bị vi phạm (hư hỏng) ngay trên màn hình. Nếu chọn, hệ thống chuyển sách sang trạng thái Đang bảo trì để ngăn người khác mượn, đồng thời tạm khóa giao dịch tài chính để ngăn rút tiền cọc cho đến khi thủ thư hoàn tất lập phiếu phạt ở luồng nghiệp vụ báo hư hỏng. Nếu sau hai mươi bốn giờ mà thủ thư chưa hoàn tất phiếu phạt, hệ thống tự động gửi thông báo nhắc nhở đến tài khoản Quản trị viên và hiển thị cảnh báo trên Bảng điều khiển. Nếu không vi phạm, hệ thống đóng Phiếu mượn và trả sách về trạng thái Sẵn sàng phục vụ.
+3. Đối chiếu ngày trả thực tế với ngày trả trong Phiếu mượn. Hệ thống tự động loại trừ các ngày nghỉ lễ, Tết theo lịch đào tạo của trường ra khỏi tổng số ngày trễ hạn. Sinh tự động khoản phạt trễ theo mức quy định của thư viện nếu có sự chênh lệch thời gian sau khi đã trừ ngày nghỉ.
+Kết quả
+Lập phiếu trả thành công.
+Bảng 13: Bảng đặc tả yêu cầu chức năng Ghi nhận hư hỏng và tính phí bồi thường
+Mã yêu cầu
+UC13
+Tên yêu cầu
+Ghi nhận hư hỏng và tính phí bồi thường
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Phạt hư hỏng, đền sách.
+Tác nhân
+Thủ thư
+Điều kiện trước
+Sách bị rách hoặc mất.
+Các thao tác xử lý
+1. Chọn chức năng Báo hư hỏng hoặc Báo mất. Nếu báo mất, hệ thống tự động tính toán và chốt khoản phạt trễ hạn (nếu có) tính đến thời điểm khai báo, sau đó lập tức chuyển trạng thái bản vật lý sang Thất lạc, đóng Phiếu mượn để chặn tiến trình tính phí trễ hạn tiếp diễn và chặn thông báo nhắc trả sách.
+2. Mức độ nhẹ (rách, làm mất từ một đến mười trang, vấy bẩn nhẹ): thu phí sửa chữa và hệ thống chuyển trạng thái sách sang Đang bảo trì. Mức độ nặng (rách bìa, vấy bẩn hoặc mất trên mười trang, rộp do ướt, mối mọt) hoặc làm mất: đền tiền với mức phạt gấp năm lần giá bìa đối với sách tiếng Việt hoặc gấp ba lần đối với sách tiếng nước ngoài, cộng thêm phí xử lý nghiệp vụ.
+3. Cài đặt thời hạn nộp phạt trong phạm vi ba mươi ngày. Nếu quá ba mươi ngày kể từ ngày báo mất hoặc hư hỏng mà độc giả chưa đền bù, hệ thống tự động chuyển hồ sơ sang trạng thái nợ xấu và áp dụng quy trình xử lý vi phạm.
+4. Trường hợp đền hiện vật: Yêu cầu sách đền phải cùng nhan đề, tác giả, năm xuất bản lớn hơn hoặc bằng. Nếu sách mất là bìa cứng thì sách đền bắt buộc phải là bìa cứng. Khi nhận sách hợp lệ, hệ thống tự động hủy khoản nợ tiền đền bù mất sách (giữ nguyên nợ phạt trễ hạn nếu có) và gọi chức năng sinh mã vạch nhập kho bản mới. Nếu độc giả có minh chứng đang chờ mua sách hiện vật, thủ thư có quyền gia hạn thêm thời gian chờ tối đa mười lăm ngày, ghi nhận lý do vào hệ thống và đánh dấu trạng thái đang chờ mua sách để tạm ngưng tiến trình quét tự động chuyển nợ xấu.
+5. Thủ thư kiểm tra condition_note để làm bằng chứng chống tranh chấp hư hỏng. Đối với sách cổ, hệ thống sử dụng appraised_value để tính tiền đền bù thay vì giá bìa.
+35. Hệ thống truy xuất checkout_condition_note và so sánh với return_condition_note. Nếu có sai lệch, tự động kích hoạt UC14 (Phạt).
+Kết quả
+Xử lý vi phạm hư hỏng chuẩn xác.
+Bảng 14: Bảng đặc tả yêu cầu chức năng Xử lý thanh toán khoản phạt trực tuyến hoặc tiền mặt
+Mã yêu cầu
+UC14
+Tên yêu cầu
+Xử lý thanh toán khoản phạt trực tuyến hoặc tiền mặt
+Mức độ ưu tiên
+Cao
+Mô tả
+Đóng khoản nợ tự động qua cổng thanh toán hoặc thủ thư thu tiền.
+Tác nhân
+Độc giả, Cổng thanh toán, Thủ thư
+Điều kiện trước
+Có khoản phạt trễ hạn hoặc đền bù.
+Các thao tác xử lý
+1. Trường hợp thanh toán trực tuyến: Tạo giao dịch đang chờ, cổng thanh toán trả về kết quả Thành công để hệ thống tự động xóa nợ.
+2. Trường hợp thanh toán tiền mặt: Thủ thư nhận tiền tại quầy và bấm Xác nhận thu tiền mặt để xóa nợ thủ công ngay lập tức.
+3. Đối với các trường hợp được duyệt miễn giảm do thiên tai, hỏa hoạn hoặc theo quyết định đặc biệt của Ban giám hiệu, Quản trị viên cấp cao sử dụng chức năng Xóa nợ để điều chỉnh số tiền nợ về không, bắt buộc nhập số quyết định phê duyệt để lưu vết kiểm toán.
+4. Gửi biên lai điện tử chứng nhận hoàn tất nợ. Nếu sau khi thu tiền (hoặc xóa nợ) mà hồ sơ không còn bất kỳ khoản nợ nào và không bị dính cờ Kỷ luật vi phạm nặng, hệ thống tự động khôi phục thẻ về trạng thái Đang hoạt động.
+Kết quả
+Khoản phạt được thanh toán và hệ thống xóa nợ.
+Bảng 15: Bảng đặc tả yêu cầu chức năng Đối soát giao dịch thanh toán
+Mã yêu cầu
+UC15
+Tên yêu cầu
+Đối soát giao dịch thanh toán
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý giao dịch bị treo trạng thái.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Giao dịch bị treo Đang chờ quá hai mươi bốn giờ.
+Các thao tác xử lý
+1. Tiến trình chạy vào ban đêm để gọi kết nối kiểm tra dữ liệu với Cổng thanh toán.
+2. Cập nhật lại kết quả Thành công hoặc Thất bại tương ứng.
+Kết quả
+Dữ liệu giao dịch được đảm bảo chính xác tuyệt đối.
+Bảng 16: Bảng đặc tả yêu cầu chức năng Khôi phục trạng thái hoạt động thẻ
+Mã yêu cầu
+UC16
+Tên yêu cầu
+Khôi phục trạng thái hoạt động thẻ
+Mức độ ưu tiên
+Cao
+Mô tả
+Mở khóa tài khoản khi giải quyết xong các vi phạm.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Các khoản nợ đã thanh toán xong.
+Các thao tác xử lý
+1. Nhận tín hiệu xóa nợ thành công.
+2. Kiểm tra cờ trạng thái kỷ luật. Nếu tài khoản bị khóa do vi phạm đặc biệt nghiêm trọng (chuyển hồ sơ kỷ luật ở luồng quá hạn ba mươi ngày), hệ thống giữ nguyên trạng thái Khóa vô thời hạn, yêu cầu Quản trị viên mở khóa thủ công sau khi có quyết định từ phòng ban chức năng.
+3. Nếu là lỗi nợ thông thường: Đối với nhóm Giảng viên và Viên chức, hệ thống tự động gỡ bỏ Trạng thái Tạm khóa ngay khi không còn nợ. Đối với nhóm Sinh viên, Học viên và Người ngoài trường, hệ thống kiểm tra thêm điều kiện tiền thế chân phải đạt mức tối thiểu tương ứng; nếu thỏa mãn thì tự động gỡ Khóa.
+4. Nếu tiền thế chân không đủ mức tối thiểu, hệ thống chuyển thẻ sang trạng thái Yêu cầu nộp cọc bổ sung.
+5. Đẩy thông báo báo cáo thay đổi trạng thái quyền mượn.
+Kết quả
+Trạng thái hoạt động của thẻ được cập nhật.
+Bảng 17: Bảng đặc tả yêu cầu chức năng Tra cứu, đặt, nhận, gia hạn và trả phòng học nhóm
+Mã yêu cầu
+UC17
+Tên yêu cầu
+Tra cứu, đặt, nhận, gia hạn và trả phòng học nhóm
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý thời gian đặt lịch chia theo khung giờ và làm thủ tục nhận phòng.
+Tác nhân
+Độc giả
+Điều kiện trước
+Tài khoản Đang hoạt động.
+Các thao tác xử lý
+1. Đặt lịch mới: Chọn Ngày và số Phòng. Hệ thống kiểm tra tài khoản, nếu thẻ không Đang hoạt động, hoặc độc giả đang có sách quá hạn hoặc nợ tiền phạt thì từ chối. Nếu hợp lệ, hệ thống kiểm tra tiếp để đảm bảo tại cùng một thời điểm, mỗi độc giả chỉ được phép có tối đa một lịch đặt phòng nhóm đang chờ nhận hoặc đang sử dụng. Báo kết quả chấp thuận sau thời gian ngắn.
+2. Nhận phòng: Độc giả quét mã xác thực tại cửa phòng học nhóm hoặc tại máy Kiosk trong khung giờ hợp lệ để chuyển trạng thái sang Đang sử dụng.
+3. Trả phòng sớm: Độc giả tự thao tác trên ứng dụng hoặc quét mã tại phòng khi rời đi để hệ thống nhả trạng thái phòng về dạng trống ngay lập tức.
+4. Tự động giải phóng: Nếu độc giả không thao tác trả phòng sớm, hệ thống tự động nhả trạng thái phòng về dạng trống khi hết thời gian đặt lịch.
+5. Gia hạn: Kiểm tra lịch đặt liền kề, nếu không có ai đăng ký thì hệ thống chấp thuận yêu cầu và tự động nới rộng thời gian kết thúc thêm một khoảng quy định.
+6. Khi nhóm sinh viên trả phòng sớm, hệ thống ghi nhận actual_end_time để lập tức giải phóng phòng (Free up room) cho người khác.
+Kết quả
+Quản lý phòng học nhóm hiệu quả, có xác nhận trực tiếp.
+Bảng 18: Bảng đặc tả yêu cầu chức năng Xử lý vi phạm không sử dụng phòng nhóm
+Mã yêu cầu
+UC18
+Tên yêu cầu
+Xử lý vi phạm không sử dụng phòng nhóm
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Hủy kết quả đặt lịch nếu đến trễ thời gian quy định.
+Tác nhân
+Hệ thống nền, Độc giả
+Điều kiện trước
+Quá giờ đăng ký sử dụng mười lăm phút mà không xác nhận có mặt.
+Các thao tác xử lý
+1. Tiến trình quét danh sách đặt lịch quá giờ nhận phòng mười lăm phút.
+2. Chuyển trạng thái sang Hủy do không đến.
+3. Cộng dồn số lần vi phạm, nếu vượt quá ba lần trong một học kỳ thì hệ thống tự động Tạm khóa quyền đặt phòng nhóm trong vòng bảy ngày, sau bảy ngày hệ thống tự động mở khóa quyền sử dụng.
+Kết quả
+Hủy lịch vi phạm và áp dụng chế tài tự động.
+Bảng 19: Bảng đặc tả yêu cầu chức năng Tạo và duyệt yêu cầu hoàn tiền thế chân hoặc Hủy thẻ
+Mã yêu cầu
+UC19
+Tên yêu cầu
+Tạo và duyệt yêu cầu hoàn tiền thế chân hoặc Hủy thẻ
+Mức độ ưu tiên
+Cao
+Mô tả
+Rút tiền cọc, áp dụng Trạng thái Chờ hoàn tiền (thẻ tạm khóa quyền mượn mới, vẫn cho phép trả sách đang mượn) và thực hiện thao tác kiểm soát chéo.
+Tác nhân
+Độc giả, Kế toán, Thủ quỹ, Quản trị viên
+Điều kiện trước
+Độc giả có yêu cầu rút tiền cọc hoặc yêu cầu đóng tài khoản.
+Các thao tác xử lý
+1. Hệ thống kiểm tra xác nhận độc giả đã trả toàn bộ tài liệu đang mượn (không còn giữ sách nào). Độc giả xuất trình biên lai đóng tiền thế chân khi làm thủ tục. Nếu tổng nợ tiền phạt hiện tại lớn hơn số dư tiền thế chân, hệ thống từ chối yêu cầu và bắt buộc độc giả thanh toán phần chênh lệch qua luồng xử lý trực tuyến trước khi được phép rút tiền.
+2. Hệ thống tạo một Yêu cầu chờ xử lý. Trong thời gian chờ xử lý, thẻ chuyển sang Trạng thái Chờ hoàn tiền, hệ thống tự động hủy các lịch đặt phòng nhóm chưa diễn ra và chặn độc giả không được phép mượn tài liệu mới hoặc đặt phòng nhóm mới.
+3. Với nhóm Sinh viên, Học viên và Người ngoài trường: Kế toán tạo phiếu đề xuất chi tiền. Hệ thống tự động khấu trừ toàn bộ nợ tiền phạt vào tổng số dư tiền thế chân hiện tại và ghi nhận xóa nợ. Sau khi trừ nợ, nếu số dư khả dụng lớn hơn hoặc bằng số tiền độc giả yêu cầu rút, thủ quỹ xuất quỹ đúng số tiền yêu cầu; nếu nhỏ hơn, chỉ xuất quỹ bằng số dư khả dụng tối đa còn lại. Sau khi chi tiền, nếu số dư cuối cùng trong tài khoản vẫn đạt mức tối thiểu, hệ thống khôi phục thẻ về Đang hoạt động. Nếu số dư về 0 hoặc dưới mức tối thiểu, thẻ bị vô hiệu hóa hoặc Hủy thẻ hoàn toàn theo yêu cầu.
+4. Với nhóm Giảng viên và Viên chức: Do không đóng tiền cọc, luồng này chỉ áp dụng khi có yêu cầu Hủy thẻ. Quản trị viên trực tiếp xác nhận Hủy thẻ và đóng tài khoản vĩnh viễn mà không qua bước xuất quỹ.
+Kết quả
+Tiền thế chân được hoàn trả an toàn, tài khoản đóng hợp lệ.
+Bảng 20: Bảng đặc tả yêu cầu chức năng Lấy thông tự động hoặc Nhập thủ công
+Mã yêu cầu
+UC20
+Tên yêu cầu
+Lấy thông tự động hoặc Nhập thủ công
+Mức độ ưu tiên
+Cao
+Mô tả
+Cập nhật dữ liệu nền của sách.
+Tác nhân
+Cán bộ thư viện, Hệ thống nền
+Điều kiện trước
+Nhập thông tin sách mới.
+Các thao tác xử lý
+1. Quét mã chuẩn quốc tế của ấn phẩm.
+2. Gọi kết nối dữ liệu từ thư viện toàn cầu để điền tự động.
+3. Những sách không có mã chuẩn như Luận án thì Cán bộ chọn Nhập thủ công, điền Tên sách, Tác giả, Năm xuất bản và Thể loại.
+4. Chọn vị trí lưu trữ vật lý bao gồm Khu vực, Tầng, Kệ và Ngăn. Bấm Lưu dữ liệu.
+38. Hệ thống tự động ghi nhận pos_terminal_id để phân tách doanh thu của từng quầy thu ngân hoạt động song song.
+Kết quả
+Thông tin dữ liệu nền của sách lưu thành công.
+Bảng 21: Bảng đặc tả yêu cầu chức năng Sinh mã vạch và cập nhật số lượng tồn kho
+Mã yêu cầu
+UC21
+Tên yêu cầu
+Sinh mã vạch và cập nhật số lượng tồn kho
+Mức độ ưu tiên
+Cao
+Mô tả
+Cấp mã vạch định danh và quản lý tem nhãn.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Đã có thông tin nền của sách.
+Các thao tác xử lý
+1. Kế thừa dữ liệu đầu sách từ luồng nghiệp vụ trước đó hoặc Cán bộ chọn một đầu sách có sẵn, sau đó nhập số lượng bản vật cần thêm.
+2. Sinh một dải Mã vạch duy nhất cho từng cuốn. Gán loại nhãn phân loại màu sắc Trắng, Cam hoặc Xanh.
+3. Cập nhật cộng dồn số lượng tồn kho tự động.
+Kết quả
+Dữ liệu sẵn sàng để tiến hành in tem nhãn dán.
+Bảng 22: Bảng đặc tả yêu cầu chức năng Gửi thư điện tử nhắc hạn hoặc Thu hồi tài liệu đột xuất
+Mã yêu cầu
+UC22
+Tên yêu cầu
+Gửi thư điện tử nhắc hạn hoặc Thu hồi tài liệu đột xuất
+Mức độ ưu tiên
+Cao
+Mô tả
+Cảnh báo thời gian trả sách.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Tài liệu đang trong trạng thái được mượn.
+Các thao tác xử lý
+1. Tiến trình chạy vào mỗi buổi sáng. Hệ thống tự động kiểm tra lịch nghỉ lễ, Tết của trường; nếu trùng vào ngày nghỉ, tiến trình sẽ tạm ngưng. Nếu là ngày làm việc bình thường, tự động gửi Thư điện tử và thông báo đẩy báo trước ngày hết hạn trả, đồng thời báo vào chính ngày hết hạn và các ngày trễ hạn.
+2. Nếu kích hoạt Lệnh thu hồi đột xuất: Giới hạn trả sách tự động rút ngắn về bảy ngày, gửi ngay Thông báo đẩy yêu cầu hoàn trả.
+37. Hệ thống validate parent_transaction_id. Nếu transaction nạp tiền gốc đã có status = REFUNDED, lập tức từ chối giao dịch.
+Kết quả
+Độc giả nhận thông báo kịp thời trên đa nền tảng.
+Bảng 23: Bảng đặc tả yêu cầu chức năng Xử lý vi phạm quá hạn để Khấu trừ tiền hoặc Kỷ luật
+Mã yêu cầu
+UC23
+Tên yêu cầu
+Xử lý vi phạm quá hạn để Khấu trừ tiền hoặc Kỷ luật
+Mức độ ưu tiên
+Cao
+Mô tả
+Khấu trừ nợ xấu đối với các khoản quá hạn cực điểm.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Quá hạn trả trên mức ba mươi ngày.
+Các thao tác xử lý
+1. Quét danh sách phiếu nợ vượt quá ba mươi ngày và danh sách các Phiếu mượn chưa trả quá hạn ba mươi ngày. Đối với Phiếu mượn chưa trả, hệ thống tự động chốt khoản phạt trễ hạn của ba mươi ngày đó, sau đó chuyển trạng thái sách thành Thất lạc và áp thêm mức phạt mất sách. Hệ thống loại trừ các hồ sơ đang có giao dịch thanh toán trực tuyến chờ xử lý hoặc đang chờ mua sách trong hạn gia hạn.
+2. Nhóm Sinh viên, Học viên và Người ngoài trường: Tự động trừ tiền nợ vào tiền thế chân (hoặc học bổng nếu có đối với sinh viên). Nếu tiền thế chân không đủ, đối với Sinh viên, chuyển hồ sơ cho Phòng Công tác sinh viên; đối với Học viên, chuyển hồ sơ cho Phòng Đào tạo Sau Đại học; đối với Người ngoài trường, khóa thẻ vĩnh viễn và đưa vào danh sách đen.
+3. Nhóm Giảng viên và Viên chức: Khóa thẻ vô thời hạn và gửi báo cáo về Phòng Tổ chức để xử lý kỷ luật.
+4. Gửi kèm thông báo thông tin xử lý vào tài khoản cá nhân.
+5. Các giao dịch trực tuyến (MoMo/VNPAY) được gán expires_at. Nếu quá hạn (ví dụ 15 phút), tiến trình dọn rác sẽ hủy giao dịch để chống tràn bộ nhớ (DB Bloat).
+Kết quả
+Xử lý dứt điểm và răn đe đối với nợ xấu quá hạn.
+Bảng 24: Bảng đặc tả yêu cầu chức năng Quản lý tài liệu số và Sách điện tử
+Mã yêu cầu
+UC24
+Tên yêu cầu
+Quản lý tài liệu số và Sách điện tử
+Mức độ ưu tiên
+Cao
+Mô tả
+Đăng tải thông tin, đường dẫn truy cập, quyền xem tải và trạng thái phát hành.
+Tác nhân
+Cán bộ thư viện
+Điều kiện trước
+Có tập tin mềm hoặc liên kết sách điện tử.
+Các thao tác xử lý
+1. Cán bộ thư viện nhập dữ liệu nền tài liệu số hoặc lấy tự động thông tin.
+2. Tải lên tệp đính kèm hoặc gắn đường dẫn truy cập dữ liệu bên ngoài.
+3. Thiết lập Trạng thái phát hành là Công khai hoặc Nội bộ và cấu hình phân quyền người dùng xem tải.
+4. Hệ thống mặc định chặn tính năng Tải xuống đối với tài liệu nội bộ, chỉ cho phép tải đối với tài liệu nguồn mở, áp dụng mã hóa bảo vệ bản quyền để tuân thủ Luật sở hữu trí tuệ.
+5. Hệ thống ghi nhận lịch sử vào DIGITAL_USAGE_LOGS (bao gồm IP và User ID) mỗi khi sinh viên xem/tải tài liệu mật để phục vụ truy vết bản quyền.
+Kết quả
+Sách điện tử được số hóa, quản lý bản quyền tuyệt đối.
+Bảng 25: Bảng đặc tả yêu cầu chức năng Đọc tài liệu số trực tuyến
+Mã yêu cầu
+UC25
+Tên yêu cầu
+Đọc tài liệu số trực tuyến
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Truyền tải nội dung sách điện tử lên trình duyệt hiển thị.
+Tác nhân
+Độc giả
+Điều kiện trước
+Có quyền truy cập tài liệu.
+Các thao tác xử lý
+1. Kích hoạt tính năng Đọc trực tuyến.
+2. Hệ thống truyền tải giao diện hiển thị hình ảnh chống sao chép và in ấn.
+3. Ghi vết dữ liệu vào báo cáo lịch sử đọc sách.
+Kết quả
+Đọc sách bảo mật và tiện lợi.
+Bảng 26: Bảng đặc tả yêu cầu chức năng Đề xuất sách cá nhân hóa bằng Trí tuệ nhân tạo
+Mã yêu cầu
+UC26
+Tên yêu cầu
+Đề xuất sách cá nhân hóa bằng Trí tuệ nhân tạo
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Hệ thống gợi ý sách thông minh.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Độc giả đã đăng nhập vào hệ thống.
+Các thao tác xử lý
+1. Hệ thống trích xuất dữ liệu đặc trưng bao gồm: Lịch sử mượn, Chuyên ngành của sinh viên, và Thể loại quan tâm.
+2. Đưa vào mô hình Trí tuệ nhân tạo để tính toán số liệu và trích xuất độ tương đồng.
+3. Trả về danh sách sách gợi ý cao nhất và hiển thị lên màn hình chính của ứng dụng.
+Kết quả
+Đưa ra các gợi ý cá nhân hóa chính xác theo chuyên ngành từng người.
+Bảng 27: Bảng đặc tả yêu cầu chức năng Đánh giá xếp hạng và Lưu danh sách quan tâm
+Mã yêu cầu
+UC27
+Tên yêu cầu
+Đánh giá xếp hạng và Lưu danh sách quan tâm
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Thống kê điểm đánh giá tương tác với tài liệu và quản lý danh sách yêu thích.
+Tác nhân
+Độc giả
+Điều kiện trước
+Đã hoàn tất quá trình đọc sách hoặc đang xem chi tiết tài liệu.
+Các thao tác xử lý
+1. Cung cấp mức độ đánh giá từ một đến năm sao.
+2. Lưu trữ dữ liệu vào hệ thống và tiến hành cập nhật lại Điểm Trung Bình cho đầu sách đó.
+3. Độc giả có thể lưu hoặc bỏ lưu tài liệu vào danh sách quan tâm cá nhân để tra cứu nhanh sau này.
+Kết quả
+Cập nhật xếp hạng và quản lý danh sách quan tâm thành công.
+Bảng 28: Bảng đặc tả yêu cầu chức năng Truy xuất Bảng điều khiển báo cáo thống kê vận hành
+Mã yêu cầu
+UC28
+Tên yêu cầu
+Truy xuất Bảng điều khiển báo cáo thống kê vận hành
+Mức độ ưu tiên
+Cao
+Mô tả
+Thống kê tổng quan mọi thông số hoạt động.
+Tác nhân
+Quản trị viên, Cán bộ thư viện
+Điều kiện trước
+Đăng nhập vào Trang quản trị nội bộ.
+Các thao tác xử lý
+1. Chạy tiến trình truy vấn dữ liệu tính tổng và nhóm số liệu.
+2. Trình diễn đồ thị thể hiện số lượng Phiếu mượn trả, hàng tồn kho, tiền phạt, thông tin chi tiết đến Vị trí sách theo Khu vực, Tầng, Kệ, Ngăn.
+3. Xuất dữ liệu báo cáo dạng tệp tin văn bản lưu trữ ngoài.
+Kết quả
+Bảng điều khiển cung cấp số liệu thống kê chuyên sâu.
+Bảng 29: Bảng đặc tả yêu cầu chức năng Quản lý đề xuất sách bổ sung
+Mã yêu cầu
+UC29
+Tên yêu cầu
+Quản lý đề xuất sách bổ sung
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Luồng xét duyệt yêu cầu mua sách mới từ người dùng.
+Tác nhân
+Độc giả, Cán bộ thư viện
+Điều kiện trước
+Đăng nhập hệ thống.
+Các thao tác xử lý
+1. Độc giả điền thông tin đề xuất trên hệ thống thông tin.
+2. Cán bộ xem xét và bấm nút Đồng ý hoặc Từ chối.
+3. Gửi thông báo kết quả ngược lại cho Độc giả.
+Kết quả
+Quy trình đề xuất mua sách xử lý hoàn tất.
+Bảng 30: Bảng đặc tả yêu cầu chức năng Tiếp nhận và quản lý khiếu nại
+Mã yêu cầu
+UC30
+Tên yêu cầu
+Tiếp nhận và quản lý khiếu nại
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Xử lý các phiếu khiếu nại và đóng góp ý kiến.
+Tác nhân
+Độc giả, Cán bộ thư viện
+Điều kiện trước
+Đăng nhập hệ thống.
+Các thao tác xử lý
+1. Điền nội dung gửi khiếu nại.
+2. Cán bộ ghi nhận, xác minh và biên soạn nội dung trả lời trong thời hạn tối đa ba ngày làm việc.
+3. Xác nhận xử lý xong và gửi thông báo hoàn tất.
+Kết quả
+Khiếu nại được giải quyết triệt để.
+Bảng 31: Bảng đặc tả yêu cầu chức năng Nộp bổ sung tiền thế chân
+Mã yêu cầu
+UC31
+Tên yêu cầu
+Nộp bổ sung tiền thế chân
+Mức độ ưu tiên
+Cao
+Mô tả
+Nạp lại khoản tiền thiếu hụt để khôi phục thẻ hoặc nạp thêm để tăng hạn mức mượn sách.
+Tác nhân
+Kế toán, Độc giả
+Điều kiện trước
+Thẻ đang ở trạng thái Yêu cầu nộp cọc hoặc độc giả có nhu cầu nộp thêm tiền.
+Các thao tác xử lý
+1. Độc giả thông báo yêu cầu nộp bù tiền cọc hoặc nộp thêm tiền để tăng hạn mức.
+2. Kế toán tra cứu hồ sơ, nhập số tiền thực thu. Hệ thống kiểm tra tổng số dư sau khi nạp không được vượt quá mức trần do thư viện quy định, nếu vượt quá thì từ chối giao dịch.
+3. Tạo giao dịch thu tiền vào hệ thống.
+4. Cập nhật số dư. Nếu tài khoản đang bị vô hiệu hóa do số dư dưới mức tối thiểu, hệ thống kiểm tra: nếu tổng tiền cọc đã đạt mức tối thiểu, không còn nợ phạt, VÀ tài khoản không bị dính cờ kỷ luật vi phạm nặng (chuyển hồ sơ phòng ban chức năng), thì tự động chuyển thẻ sang Đang hoạt động. Nếu đang có cờ kỷ luật, giữ nguyên trạng thái Khóa vô thời hạn và chờ Quản trị viên xử lý.
+Kết quả
+Hoàn tất đóng cọc và thẻ được mở lại.
+Bảng 32: Bảng đặc tả yêu cầu chức năng Đối chiếu và lập báo cáo thu chi định kỳ
+Mã yêu cầu
+UC32
+Tên yêu cầu
+Đối chiếu và lập báo cáo thu chi định kỳ
+Mức độ ưu tiên
+Cao
+Mô tả
+Chốt sổ tài chính thông qua kiểm soát kép.
+Tác nhân
+Kế toán, Thủ quỹ
+Điều kiện trước
+Tiến hành vào cuối chu kỳ kế toán.
+Các thao tác xử lý
+1. Kế toán tổng hợp tất cả mọi giao dịch trong chu kỳ.
+2. Đối soát chứng từ thực tế, tạo một bản báo cáo nháp.
+3. Thủ quỹ tiến hành kiểm tra chéo, xác nhận hoàn tất để chốt sổ báo cáo.
+4. Xuất bảng tính lưu trữ bảo mật.
+Kết quả
+Báo cáo chốt sổ thực hiện an toàn.
+Bảng 33: Bảng đặc tả yêu cầu chức năng Quản lý Nhà cung cấp và Phiếu nhập kho
+Mã yêu cầu
+UC33
+Tên yêu cầu
+Quản lý Nhà cung cấp và Phiếu nhập kho
+Mức độ ưu tiên
+Cao
+Mô tả
+Quản lý nguồn gốc và tiến trình nhập lô hàng sách.
+Tác nhân
+Cán bộ thư viện
+Điều kiện trước
+Nhập kho lô sách mới.
+Các thao tác xử lý
+1. Cán bộ thêm mới hoặc chọn thông tin Nhà cung cấp sách có sẵn.
+2. Tạo Phiếu nhập kho đính kèm Danh sách đầu sách và Số lượng tương ứng.
+3. Đối chiếu số lượng thực tế nhận được so với nội dung trong Phiếu nhập.
+4. Xác nhận hoàn tất thao tác để hệ thống tự động chuyển luồng sang chức năng cập nhật tồn kho.
+Kết quả
+Lô hàng sách có đầy đủ thông tin nguồn gốc rõ ràng.
+Bảng 34: Bảng đặc tả yêu cầu chức năng Quản lý gia hạn và khóa thẻ hết hạn định kỳ
+Mã yêu cầu
+UC34
+Tên yêu cầu
+Quản lý gia hạn và khóa thẻ hết hạn định kỳ
+Mức độ ưu tiên
+Cao
+Mô tả
+Tiến trình quét thời hạn sử dụng của thẻ và xử lý hết hạn tự động.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Thẻ đang hoạt động và có thời hạn sử dụng quy định là một năm.
+Các thao tác xử lý
+1. Tiến trình tự động chạy quét dữ liệu hàng ngày.
+2. Gửi thư điện tử và thông báo nhắc nhở trước mười lăm ngày tính đến thời điểm thẻ bị hết hạn.
+3. Thẻ đúng ngày hết hạn sẽ bị chuyển sang trạng thái Hết hạn, ngừng cấp đặc quyền sử dụng.
+4. Hệ thống kiểm tra nợ sách, nợ tiền phạt và số dư tiền thế chân tối thiểu. Nếu còn nợ, hệ thống yêu cầu thực hiện luồng Xử lý thanh toán khoản phạt trực tuyến hoặc tiền mặt trước khi cho phép gia hạn. Nếu đủ điều kiện, hệ thống điều hướng Kế toán thực hiện luồng Ghi nhận lệ phí làm thẻ và thu tiền thế chân để xử lý gia hạn, đảm bảo tái sử dụng duy nhất một luồng thu tiền thống nhất.
+Kết quả
+Quản lý chặt chẽ vòng đời một năm của thẻ thư viện một cách tự động.
+Bảng 35: Bảng đặc tả yêu cầu chức năng Khởi tạo lại bộ đếm vi phạm phòng nhóm theo học kỳ
+Mã yêu cầu
+UC35
+Tên yêu cầu
+Khởi tạo lại bộ đếm vi phạm phòng nhóm theo học kỳ
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Tiến trình tự động hoặc thủ công đưa bộ đếm vi phạm không đến nhận phòng về không khi bắt đầu học kỳ mới.
+Tác nhân
+Hệ thống nền, Quản trị viên
+Điều kiện trước
+Đến thời điểm chuyển giao học kỳ theo lịch đào tạo.
+Các thao tác xử lý
+1. Tiến trình tự động chạy vào ngày đầu học kỳ mới theo lịch đào tạo đã cấu hình sẵn trên hệ thống, hoặc Quản trị viên bấm nút Khởi tạo lại học kỳ trên trang quản trị.
+2. Hệ thống đặt lại bộ đếm số lần vi phạm không đến nhận phòng về không cho toàn bộ độc giả.
+3. Ghi nhận nhật ký thao tác để phục vụ truy vết kiểm toán.
+Kết quả
+Bộ đếm vi phạm được khởi tạo lại đúng chu kỳ học kỳ.
+Bảng 36: Bảng đặc tả yêu cầu chức năng Quản lý Hàng đợi (Waitlist)
+Mã yêu cầu
+UC36
+Tên yêu cầu
+Quản lý Hàng đợi (Waitlist)
+Mức độ ưu tiên
+Cao
+Mô tả
+Cho phép sinh viên đăng ký nhận thông báo khi sách hết trong kho và tự động xếp hàng giữ chỗ.
+Tác nhân
+Độc giả, Hệ thống nền
+Điều kiện trước
+Sách đã hết bản vật lý sẵn sàng.
+Các thao tác xử lý
+1. Sinh viên bấm "Đăng ký nhận thông báo" trên sách đã hết.
+2. Hệ thống thêm sinh viên vào WAITLIST theo thứ tự thời gian.
+3. Khi có người trả sách, hệ thống khóa tạm cuốn sách đó cho người đứng đầu WAITLIST và bắt đầu đếm ngược expires_at (24h).
+4. Nếu hết hạn không lấy, chuyển quyền cho người tiếp theo.
+Kết quả
+Sách tự động xoay vòng cho người đăng ký trước, tránh tình trạng canh me giành giật.
+Bảng 37: Bảng đặc tả yêu cầu chức năng Kiểm kê Kho Định kỳ
+Mã yêu cầu
+UC37
+Tên yêu cầu
+Kiểm kê Kho Định kỳ
+Mức độ ưu tiên
+Trung bình
+Mô tả
+Đóng cửa thư viện để quét mã vạch đối soát tài sản.
+Tác nhân
+Thủ thư
+Điều kiện trước
+Đến kỳ kiểm kê hàng năm.
+Các thao tác xử lý
+1. Cán bộ dùng súng quét mã vạch quét toàn bộ kệ sách. Dữ liệu đẩy vào INVENTORY_DETAILS.
+2. Hệ thống đối soát tự động: Sách có trong DB nhưng không quét được thì báo Thất lạc.
+3. Sách quét được ở Kệ A nhưng DB báo Kệ B thì cảnh báo Lệch kệ.
+4. Chốt sổ kiểm kê và ra biên bản hao hụt tài sản.
+Kết quả
+Kho sách được đồng bộ lại với thực tế kệ sách.
+Bảng 38: Bảng đặc tả yêu cầu chức năng Bàn giao Ca trực và Chốt két
+Mã yêu cầu
+UC38
+Tên yêu cầu
+Bàn giao Ca trực và Chốt két
+Mức độ ưu tiên
+Cao
+Mô tả
+Bàn giao tiền mặt thu được từ phạt trễ hạn giữa các ca trực.
+Tác nhân
+Thủ thư
+Điều kiện trước
+Thủ thư hết ca làm việc.
+Các thao tác xử lý
+1. Thủ thư mở chức năng chốt ca. Hệ thống hiển thị system_revenue tính toán được.
+2. Thủ thư đếm tiền mặt thực tế trong két nhập vào actual_cash.
+3. Hệ thống tính ra discrepancy_amount. Nếu âm, bắt buộc lập biên bản đền bù.
+4. Bàn giao ca và tiền lẻ đầu ca (starting_cash) cho người sau.
+Kết quả
+Không bị thất thoát quỹ tiền mặt của thư viện.
+Bảng 39: Bảng đặc tả yêu cầu chức năng Đồng bộ Real-time với Phòng Đào Tạo
+Mã yêu cầu
+UC39
+Tên yêu cầu
+Đồng bộ Real-time với Phòng Đào Tạo
+Mức độ ưu tiên
+Nghiêm trọng
+Mô tả
+Khóa thẻ ngay lập tức khi sinh viên bị đuổi học hoặc bảo lưu.
+Tác nhân
+Hệ thống nền
+Điều kiện trước
+Sinh viên có biến động trạng thái từ hệ thống Đào tạo.
+Các thao tác xử lý
+1. Hệ thống Đào tạo bắn Webhook (JSON Payload) sang Thư viện.
+2. Thư viện ghi log vào UNIVERSITY_SYNC_LOGS.
+3. Cập nhật card_status = Hủy/Khóa ngay lập tức bất kể thời hạn thẻ.
+4. Gửi email thông báo thu hồi sách (nếu đang mượn).
+Kết quả
+Chống thất thoát tài sản cho sinh viên đã nghỉ học.

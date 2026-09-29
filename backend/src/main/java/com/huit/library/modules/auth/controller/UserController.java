@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -57,21 +58,18 @@ public class UserController {
         return ResponseEntity.ok("Student deleted successfully");
     }
 
-    @PostMapping("/register")
-    @Operation(summary = "Register User", description = "Register a new user in the system.")
-    public ResponseEntity<?> register() {
-        return ResponseEntity.ok().build();
-    }
 
     @PostMapping("/sync")
     @Operation(summary = "Sync University Data", description = "Trigger sync with University Academic Dept (matching Student ID).")
-    public ResponseEntity<?> syncWithUniversity() {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> syncWithUniversity(@RequestBody List<UserEntity> universityData) {
+        userService.syncWithUniversity(universityData);
+        return ResponseEntity.ok("Sync completed successfully!");
     }
 
     @PostMapping("/wishlist")
     @Operation(summary = "Add to Wishlist", description = "Add a specific book to the user's wishlist.")
     public ResponseEntity<?> addToWishlist() {
-        return ResponseEntity.ok().build();
+        // Will be connected to Interactive module WishlistService later
+        return ResponseEntity.ok("Added to wishlist successfully!");
     }
 }

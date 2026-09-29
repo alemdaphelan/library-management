@@ -13,18 +13,18 @@ import { AuthService } from '../../services/auth.service';
 })
 export class Auth implements OnInit {
   mode: 'login' | 'forgot' = 'login';
-  
+
   loginData = { username: '', password: '' };
-  forgotData = { email: '' };
+  forgotStep: 'email' | 'otp' | 'reset' = 'email';
+  forgotData = { email: '', otp: '', newPassword: '' };
 
   isSubmitting = false;
   successMessage = '';
   errorMessage = '';
 
-  constructor(private router: Router, private authService: AuthService) {}
+  constructor(private router: Router, private authService: AuthService) { }
 
   ngOnInit() {
-    // Check if url contains 'forgot-password'
     if (window.location.pathname.includes('forgot-password')) {
       this.mode = 'forgot';
     }
@@ -35,8 +35,9 @@ export class Auth implements OnInit {
     this.mode = newMode;
     this.successMessage = '';
     this.errorMessage = '';
-    
-    // Update URL without reloading
+    this.forgotStep = 'email';
+    this.forgotData = { email: '', otp: '', newPassword: '' };
+
     const newUrl = newMode === 'login' ? '/login' : '/forgot-password';
     window.history.pushState({}, '', newUrl);
   }
@@ -44,33 +45,80 @@ export class Auth implements OnInit {
   onLogin() {
     this.isSubmitting = true;
     this.errorMessage = '';
-    
-    setTimeout(() => {
-      this.isSubmitting = false;
-      const validStudents = ['2001230219', '2001230430', '2001230914'];
-      
-      if (this.loginData.username === 'admin' || this.loginData.username === 'thuthu' || validStudents.includes(this.loginData.username)) {
-        const role = this.authService.login(this.loginData.username);
-        if (role === 'ADMIN' || role === 'LIBRARIAN') {
+
+    this.authService.login(this.loginData.username, this.loginData.password).subscribe({
+      next: (response) => {
+        this.isSubmitting = false;
+        if (response.role === 'ADMIN' || response.role === 'LIBRARIAN' || response.role === 'ACCOUNTANT' || response.role === 'TREASURER') {
           this.router.navigate(['/admin']);
         } else {
-          this.router.navigate(['/']); // Go to portal
+          this.router.navigate(['/']); 
         }
-      } else {
+      },
+      error: (err) => {
+        console.log(err);
+        this.isSubmitting = false;
         this.errorMessage = 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!';
         alert(this.errorMessage);
       }
-    }, 1000);
+    });
   }
 
   onForgotPassword() {
     this.isSubmitting = true;
     this.errorMessage = '';
-    
-    setTimeout(() => {
-      this.isSubmitting = false;
-      this.successMessage = 'Một liên kết đặt lại mật khẩu đã được gửi đến email của bạn.';
-      this.forgotData.email = '';
-    }, 1500);
+    this.successMessage = '';
+
+    this.authService.forgotPassword(this.forgotData.email).subscribe({
+      next: (res: any) => {
+        this.isSubmitting = false;
+        this.successMessage = 'Mã OTP đã được gửi đến email của bạn.';
+        this.forgotStep = 'otp';
+        setTimeout(() => this.successMessage = '', 3000);
+      },
+      error: (err: any) => {
+        this.isSubmitting = false;
+        this.errorMessage = err.error || 'Đã có lỗi xảy ra.';
+      }
+    });
+  }
+
+  onVerifyOtp() {
+    this.isSubmitting = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.authService.verifyOtp(this.forgotData.email, this.forgotData.otp).subscribe({
+      next: (res: any) => {
+        this.isSubmitting = false;
+        this.successMessage = 'Xác thực thành công. Vui lòng nhập mật khẩu mới.';
+        this.forgotStep = 'reset';
+        setTimeout(() => this.successMessage = '', 3000);
+      },
+      error: (err: any) => {
+        this.isSubmitting = false;
+        this.errorMessage = err.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.';
+      }
+    });
+  }
+
+  onResetPassword() {
+    this.isSubmitting = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.authService.resetPassword(this.forgotData.email, this.forgotData.otp, this.forgotData.newPassword).subscribe({
+      next: (res: any) => {
+        this.isSubmitting = false;
+        this.successMessage = 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.';
+        setTimeout(() => {
+          this.toggleMode('login', new Event('click'));
+        }, 3000);
+      },
+      error: (err: any) => {
+        this.isSubmitting = false;
+        this.errorMessage = err.error || 'Đặt lại mật khẩu thất bại.';
+      }
+    });
   }
 }

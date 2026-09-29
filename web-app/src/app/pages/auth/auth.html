@@ -25,8 +25,8 @@
 
         <form (ngSubmit)="onLogin()">
           <div class="form-group">
-            <label>Mã sinh viên</label>
-            <input type="text" [(ngModel)]="loginData.username" name="username" placeholder="Nhập mã sinh viên" required class="glass-input">
+            <label>Mã sinh viên / Email</label>
+            <input type="text" [(ngModel)]="loginData.username" name="username" placeholder="Nhập mã sinh viên hoặc email" required class="glass-input">
           </div>
           
           <div class="form-group">
@@ -53,21 +53,46 @@
       <div class="form-wrapper" *ngIf="mode === 'forgot'">
         <div class="form-header">
           <h1>Khôi phục mật khẩu</h1>
-          <p>Nhập email liên kết với tài khoản của bạn để nhận mã khôi phục.</p>
+          <p *ngIf="forgotStep === 'email'">Nhập email liên kết với tài khoản của bạn để nhận mã khôi phục.</p>
+          <p *ngIf="forgotStep === 'otp'">Nhập mã xác nhận OTP vừa được gửi đến email của bạn.</p>
+          <p *ngIf="forgotStep === 'reset'">Nhập mật khẩu mới của bạn.</p>
         </div>
 
         <div class="alert success" *ngIf="successMessage">
           {{ successMessage }}
         </div>
+        
+        <div class="alert error" *ngIf="errorMessage" style="color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;">
+          {{ errorMessage }}
+        </div>
 
-        <form (ngSubmit)="onForgotPassword()">
+        <form *ngIf="forgotStep === 'email'" (ngSubmit)="onForgotPassword()">
           <div class="form-group">
             <label>Địa chỉ Email</label>
             <input type="email" [(ngModel)]="forgotData.email" name="email" placeholder="Ví dụ: sinhvien@huit.edu.vn" required class="glass-input">
           </div>
-
           <button type="submit" class="btn-submit" [disabled]="isSubmitting">
             {{ isSubmitting ? 'Đang gửi...' : 'Gửi Yêu Cầu' }}
+          </button>
+        </form>
+
+        <form *ngIf="forgotStep === 'otp'" (ngSubmit)="onVerifyOtp()">
+          <div class="form-group">
+            <label>Mã xác nhận (OTP)</label>
+            <input type="text" [(ngModel)]="forgotData.otp" name="otp" placeholder="Nhập mã 6 số" required class="glass-input">
+          </div>
+          <button type="submit" class="btn-submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Đang xác thực...' : 'Xác thực OTP' }}
+          </button>
+        </form>
+
+        <form *ngIf="forgotStep === 'reset'" (ngSubmit)="onResetPassword()">
+          <div class="form-group">
+            <label>Mật khẩu mới</label>
+            <input type="password" [(ngModel)]="forgotData.newPassword" name="newPassword" placeholder="Nhập mật khẩu mới" required class="glass-input">
+          </div>
+          <button type="submit" class="btn-submit" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Đang xử lý...' : 'Lưu mật khẩu mới' }}
           </button>
         </form>
 

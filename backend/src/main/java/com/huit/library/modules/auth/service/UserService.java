@@ -50,4 +50,29 @@ public class UserService {
     public void deleteStudent(UUID id) {
         userRepository.deleteById(id);
     }
+
+
+    public void syncWithUniversity(List<UserEntity> universityData) {
+        for (UserEntity uniUser : universityData) {
+            if (uniUser.getStudentId() == null || uniUser.getStudentId().isEmpty()) continue;
+            
+            java.util.Optional<UserEntity> existingOpt = userRepository.findByStudentId(uniUser.getStudentId());
+            if (existingOpt.isPresent()) {
+                // Update existing
+                UserEntity existing = existingOpt.get();
+                existing.setFullName(uniUser.getFullName());
+                existing.setDepartment(uniUser.getDepartment());
+                existing.setEmail(uniUser.getEmail());
+                existing.setPhone(uniUser.getPhone());
+                userRepository.save(existing);
+            } else {
+                // Create new
+                uniUser.setUserType("STUDENT");
+                uniUser.setRoleId("STUDENT");
+                uniUser.setPasswordHash(passwordEncoder.encode(uniUser.getStudentId()));
+                uniUser.setIsFirstLogin(true);
+                userRepository.save(uniUser);
+            }
+        }
+    }
 }

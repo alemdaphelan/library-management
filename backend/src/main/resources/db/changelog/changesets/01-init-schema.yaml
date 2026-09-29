@@ -278,6 +278,12 @@ databaseChangeLog:
             name: locked_until
             type: timestamp
         - column:
+            name: status
+            type: varchar(255)
+        - column:
+            name: location
+            type: varchar(255)
+        - column:
             name: created_at
             type: timestamp
         - column:

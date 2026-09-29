@@ -1,7 +1,45 @@
 import 'package:flutter/material.dart';
 
-class BorrowedScreen extends StatelessWidget {
+import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/screens/login_screen.dart';
+
+class BorrowedScreen extends StatefulWidget {
   const BorrowedScreen({super.key});
+
+  @override
+  State<BorrowedScreen> createState() => _BorrowedScreenState();
+}
+
+class _BorrowedScreenState extends State<BorrowedScreen> {
+  Map<String, dynamic>? _userProfile;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    final profile = await AuthService.getCurrentUser();
+    if (mounted) {
+      setState(() {
+        _userProfile = profile;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    await AuthService.logout();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,46 +51,52 @@ class BorrowedScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Color(0xFF0f172a)),
-            onPressed: () {},
+            icon: const Icon(Icons.logout, color: Colors.red),
+            onPressed: _handleLogout,
           )
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Sách đang mượn (2)',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0f172a),
-                    ),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator()) 
+        : SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProfileHeader(),
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Sách đang mượn (2)',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0f172a),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text('Lịch sử mượn >'),
+                      )
+                    ],
                   ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('Lịch sử mượn >'),
-                  )
-                ],
-              ),
+                ),
+                const SizedBox(height: 10),
+                _buildBorrowedBookList(),
+              ],
             ),
-            const SizedBox(height: 10),
-            _buildBorrowedBookList(),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   Widget _buildProfileHeader() {
+    final fullName = _userProfile?['fullName'] ?? 'Chưa cập nhật';
+    final studentId = _userProfile?['studentId'] ?? 'Chưa cập nhật';
+    final faculty = _userProfile?['faculty'] ?? 'Chưa cập nhật';
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
@@ -84,26 +128,26 @@ class BorrowedScreen extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      'Nguyễn Văn A',
-                      style: TextStyle(
+                      fullName,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 5),
+                    const SizedBox(height: 5),
                     Text(
-                      'MSSV: 2001201010',
-                      style: TextStyle(
+                      'MSSV: $studentId',
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
                       ),
                     ),
                     Text(
-                      'Khoa Công Nghệ Thông Tin',
-                      style: TextStyle(
+                      faculty,
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
                       ),
