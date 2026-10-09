@@ -66,8 +66,8 @@ public class AuthController {
     @Operation(summary = "Forgot Password", description = "Send OTP to user email")
     public ResponseEntity<?> forgotPassword(@RequestParam String email) {
         try {
-            authService.forgotPassword(email);
-            return ResponseEntity.ok().body("Mã OTP đã được gửi đến email của bạn.");
+            String otp = authService.forgotPassword(email);
+            return ResponseEntity.ok().body("Mã OTP đã được gửi đến email của bạn (Dev OTP: " + otp + ")");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -51,4 +51,26 @@ export class History {
       status: 'late_returned' // Trả trễ
     }
   ];
+
+  renewBook(item: any) {
+    // Parse the current due date (format DD/MM/YYYY)
+    const parts = item.dueDate.split('/');
+    if (parts.length === 3) {
+      let date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      // Add 7 days for renewal
+      date.setDate(date.getDate() + 7);
+      
+      const newDay = String(date.getDate()).padStart(2, '0');
+      const newMonth = String(date.getMonth() + 1).padStart(2, '0');
+      const newYear = date.getFullYear();
+      
+      item.dueDate = `${newDay}/${newMonth}/${newYear}`;
+      item.daysLeft += 7;
+      item.status = 'normal';
+      
+      alert(`Đã gia hạn thành công tài liệu: ${item.title}\nHạn trả mới: ${item.dueDate}`);
+    } else {
+      alert('Không thể gia hạn tài liệu này vào lúc này!');
+    }
+  }
 }

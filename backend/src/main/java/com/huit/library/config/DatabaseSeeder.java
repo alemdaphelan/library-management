@@ -46,7 +46,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             admin.setPasswordHash(passwordEncoder.encode("admin123"));
             admin.setRoleId("ADMIN");
             admin.setUserType("STAFF");
-            admin.setStudentId("STAFF001");
+            admin.setMssv("STAFF001");
             userRepository.save(admin);
 
             UserEntity student = new UserEntity();
@@ -56,7 +56,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             student.setPasswordHash(passwordEncoder.encode("student123"));
             student.setRoleId("STUDENT");
             student.setUserType("STUDENT");
-            student.setStudentId("2001210001");
+            student.setMssv("2001210001");
             student.setDepartment("CNTT");
             userRepository.save(student);
             
@@ -97,7 +97,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                 copy.setBarcode("JAVA-00" + i);
                 copy.setBookId(book1.getBookId());
                 copy.setStatus("AVAILABLE");
-                copy.setLocation("Khu A - Kệ 1 - Ngăn 2");
                 entityManager.persist(copy);
             }
 
@@ -119,7 +118,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                 copy.setBarcode("SPRING-00" + i);
                 copy.setBookId(book2.getBookId());
                 copy.setStatus("AVAILABLE");
-                copy.setLocation("Khu A - Kệ 2 - Ngăn 1");
                 entityManager.persist(copy);
             }
 

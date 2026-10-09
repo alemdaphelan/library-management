@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: drop-redundant-tables
+      author: antigravity
+      changes:
+        - dropTable:
+            tableName: book_authors
+            cascadeConstraints: true
+        - dropTable:
+            tableName: authors
+            cascadeConstraints: true
+        - dropTable:
+            tableName: publishers
+            cascadeConstraints: true

@@ -29,11 +29,11 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllStudents());
     }
 
-    @GetMapping("/students/{id}")
+    @GetMapping("/students/{mssv}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Get student by ID")
-    public ResponseEntity<?> getStudentById(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getStudentById(id));
+    @Operation(summary = "Get student by MSSV")
+    public ResponseEntity<?> getStudentByMssv(@PathVariable String mssv) {
+        return ResponseEntity.ok(userService.getStudentByMssv(mssv));
     }
 
     @PostMapping("/students")
@@ -43,18 +43,18 @@ public class UserController {
         return ResponseEntity.ok(userService.createStudent(student));
     }
 
-    @PutMapping("/students/{id}")
+    @PutMapping("/students/{mssv}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Update an existing student")
-    public ResponseEntity<?> updateStudent(@PathVariable UUID id, @RequestBody UserEntity student) {
-        return ResponseEntity.ok(userService.updateStudent(id, student));
+    public ResponseEntity<?> updateStudent(@PathVariable String mssv, @RequestBody UserEntity student) {
+        return ResponseEntity.ok(userService.updateStudent(mssv, student));
     }
 
-    @DeleteMapping("/students/{id}")
+    @DeleteMapping("/students/{mssv}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete a student")
-    public ResponseEntity<?> deleteStudent(@PathVariable UUID id) {
-        userService.deleteStudent(id);
+    public ResponseEntity<?> deleteStudent(@PathVariable String mssv) {
+        userService.deleteStudent(mssv);
         return ResponseEntity.ok("Student deleted successfully");
     }
 

@@ -26,20 +26,20 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-    public UserEntity getStudentById(UUID id) {
-        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("Student not found"));
+    public UserEntity getStudentByMssv(String mssv) {
+        return userRepository.findByMssv(mssv).orElseThrow(() -> new RuntimeException("Student not found"));
     }
 
     public UserEntity createStudent(UserEntity student) {
         student.setUserType("STUDENT");
         student.setRoleId("STUDENT");
-        student.setPasswordHash(passwordEncoder.encode(student.getStudentId())); // default password is student ID
+        student.setPasswordHash(passwordEncoder.encode(student.getMssv())); // default password is mssv
         student.setIsFirstLogin(true);
         return userRepository.save(student);
     }
 
-    public UserEntity updateStudent(UUID id, UserEntity updatedStudent) {
-        UserEntity existing = getStudentById(id);
+    public UserEntity updateStudent(String mssv, UserEntity updatedStudent) {
+        UserEntity existing = getStudentByMssv(mssv);
         existing.setFullName(updatedStudent.getFullName());
         existing.setDepartment(updatedStudent.getDepartment());
         existing.setEmail(updatedStudent.getEmail());
@@ -47,16 +47,17 @@ public class UserService {
         return userRepository.save(existing);
     }
 
-    public void deleteStudent(UUID id) {
-        userRepository.deleteById(id);
+    public void deleteStudent(String mssv) {
+        UserEntity existing = getStudentByMssv(mssv);
+        userRepository.deleteById(existing.getUserId());
     }
 
 
     public void syncWithUniversity(List<UserEntity> universityData) {
         for (UserEntity uniUser : universityData) {
-            if (uniUser.getStudentId() == null || uniUser.getStudentId().isEmpty()) continue;
+            if (uniUser.getMssv() == null || uniUser.getMssv().isEmpty()) continue;
             
-            java.util.Optional<UserEntity> existingOpt = userRepository.findByStudentId(uniUser.getStudentId());
+            java.util.Optional<UserEntity> existingOpt = userRepository.findByMssv(uniUser.getMssv());
             if (existingOpt.isPresent()) {
                 // Update existing
                 UserEntity existing = existingOpt.get();
@@ -69,7 +70,7 @@ public class UserService {
                 // Create new
                 uniUser.setUserType("STUDENT");
                 uniUser.setRoleId("STUDENT");
-                uniUser.setPasswordHash(passwordEncoder.encode(uniUser.getStudentId()));
+                uniUser.setPasswordHash(passwordEncoder.encode(uniUser.getMssv()));
                 uniUser.setIsFirstLogin(true);
                 userRepository.save(uniUser);
             }

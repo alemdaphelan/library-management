@@ -2,8 +2,8 @@
   <!-- Search Header -->
   <div class="search-header">
     <div class="search-box-large">
-      <input type="text" placeholder="Tìm kiếm sách, tác giả, chủ đề..." class="search-input-large">
-      <button class="btn-primary">Tìm kiếm</button>
+      <input type="text" placeholder="Tìm kiếm sách, tác giả, chủ đề..." class="search-input-large" [(ngModel)]="searchQuery" (keyup.enter)="applyFilters()">
+      <button class="btn-primary" (click)="applyFilters()">Tìm kiếm</button>
     </div>
   </div>
 
@@ -14,19 +14,19 @@
       
       <div class="filter-group">
         <h4>Trạng thái</h4>
-        <label class="checkbox-label"><input type="checkbox" checked> Có sẵn</label>
-        <label class="checkbox-label"><input type="checkbox"> Đang mượn</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="all" [(ngModel)]="filterStatus" (change)="applyFilters()"> Tất cả</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="available" [(ngModel)]="filterStatus" (change)="applyFilters()"> Có sẵn</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="borrowed" [(ngModel)]="filterStatus" (change)="applyFilters()"> Đang mượn</label>
       </div>
 
       <div class="filter-group">
         <h4>Thể loại</h4>
-        <label class="checkbox-label"><input type="checkbox"> Khoa học máy tính</label>
-        <label class="checkbox-label"><input type="checkbox"> Hệ thống thông tin</label>
-        <label class="checkbox-label"><input type="checkbox"> Đồ họa</label>
-        <label class="checkbox-label"><input type="checkbox"> Lập trình Web</label>
+        <label class="checkbox-label" *ngFor="let cat of availableCategories; let i = index">
+          <input type="checkbox" name="category_{{i}}" [(ngModel)]="selectedCategories[cat]" (change)="applyFilters()"> {{ cat }}
+        </label>
       </div>
 
-      <button class="btn-outline w-100">Xóa bộ lọc</button>
+      <button class="btn-outline w-100" (click)="clearFilters()">Xóa bộ lọc</button>
     </aside>
 
     <!-- Search Results -->
@@ -45,15 +45,16 @@
             </button>
           </div>
           
-          <select class="sort-select">
-            <option>Mới nhất</option>
-            <option>Tên A-Z</option>
+          <select class="sort-select" [(ngModel)]="sortOption" (change)="applyFilters()">
+            <option value="newest">Mới nhất</option>
+            <option value="az">Tên A-Z</option>
+            <option value="za">Tên Z-A</option>
           </select>
         </div>
       </div>
 
       <!-- Book Grid/List -->
-      <div class="book-container" [ngClass]="viewMode === 'grid' ? 'book-grid' : 'book-list'">
+      <div class="book-container" [class.book-grid]="viewMode === 'grid'" [class.book-list]="viewMode === 'list'">
         
         <div class="card book-card" *ngFor="let book of books">
           <div class="book-cover-wrapper" routerLink="/book/1" style="cursor: pointer;">

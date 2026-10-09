@@ -24,4 +24,16 @@ public class BookEntity extends BaseEntity {
     private String labelColor;
     private BigDecimal defaultPrice;
     private Boolean isDigital;
+
+    private String author;
+    private String publisher;
+    
+    @Column(name = "image_url_s")
+    private String imageUrlS;
+    
+    @Column(name = "image_url_m")
+    private String imageUrlM;
+    
+    @Column(name = "image_url_l")
+    private String imageUrlL;
 }

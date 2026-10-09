@@ -65,7 +65,7 @@ public class AuthService {
             throw new IllegalArgumentException("Mật khẩu cũ không chính xác");
         }
                 
-        UserEntity user = userRepository.findFirstByEmailOrStudentId(email, email).orElseThrow();
+        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email).orElseThrow();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
     }
@@ -76,7 +76,7 @@ public class AuthService {
             throw new RuntimeException("Invalid refresh token");
         }
         
-        UserEntity user = userRepository.findFirstByEmailOrStudentId(email, email).orElseThrow(() -> new RuntimeException("User not found"));
+        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email).orElseThrow(() -> new RuntimeException("User not found"));
         
         org.springframework.security.core.userdetails.UserDetails userDetails = 
                 new com.huit.library.core.security.CustomUserDetails(user);
@@ -91,9 +91,9 @@ public class AuthService {
         return new JwtResponseDTO(newJwt, newRefreshToken, user.getRoleId());
     }
 
-    public void forgotPassword(String email) {
-        UserEntity user = userRepository.findFirstByEmailOrStudentId(email, email)
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống"));
+    public String forgotPassword(String email) {
+        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
+                .orElseThrow(() -> new RuntimeException("Email/MSSV không tồn tại trong hệ thống"));
         
         // Generate 6-digit OTP
         String otp = String.format("%06d", new Random().nextInt(999999));
@@ -110,13 +110,16 @@ public class AuthService {
                 "Mã này có hiệu lực trong 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n" +
                 "Trân trọng,\nThư viện HUIT.");
         
-        try {
-            mailSender.send(message);
-        } catch (Exception e) {
-            System.err.println("Lỗi gửi email: " + e.getMessage());
-            // Still log to console for testing without real SMTP
-            System.out.println("OTP cho " + email + " là: " + otp);
-        }
+        new Thread(() -> {
+            try {
+                mailSender.send(message);
+            } catch (Exception e) {
+                System.err.println("Lỗi gửi email: " + e.getMessage());
+                System.out.println("OTP cho " + email + " là: " + otp);
+            }
+        }).start();
+        
+        return otp;
     }
 
     public boolean verifyOtp(String email, String otp) {
@@ -129,7 +132,7 @@ public class AuthService {
 
     public void resetPassword(String email, String otp, String newPassword) {
         if (verifyOtp(email, otp)) {
-            UserEntity user = userRepository.findFirstByEmailOrStudentId(email, email)
+            UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
             user.setPasswordHash(passwordEncoder.encode(newPassword));
             userRepository.save(user);

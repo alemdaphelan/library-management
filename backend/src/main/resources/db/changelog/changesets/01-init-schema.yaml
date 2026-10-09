@@ -168,7 +168,7 @@ databaseChangeLog:
             name: full_name
             type: varchar(255)
         - column:
-            name: student_id
+            name: mssv
             type: varchar(255)
         - column:
             name: department

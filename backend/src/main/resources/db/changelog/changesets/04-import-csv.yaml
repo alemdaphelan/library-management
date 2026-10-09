@@ -1,0 +1,120 @@
+databaseChangeLog:
+  - changeSet:
+      id: modify_books_title_length
+      author: system
+      changes:
+        - modifyDataType:
+            tableName: books
+            columnName: title
+            newDataType: varchar(1000)
+  - changeSet:
+      id: add_columns_to_books
+      author: system
+      changes:
+        - addColumn:
+            tableName: books
+            columns:
+              - column:
+                  name: author
+                  type: varchar(1000)
+              - column:
+                  name: publisher
+                  type: varchar(1000)
+              - column:
+                  name: image_url_s
+                  type: varchar(1000)
+              - column:
+                  name: image_url_m
+                  type: varchar(1000)
+              - column:
+                  name: image_url_l
+                  type: varchar(1000)
+  - changeSet:
+      id: clear_old_data
+      author: system
+      changes:
+        - sql:
+            sql: |
+              TRUNCATE TABLE receipt_details CASCADE;
+              TRUNCATE TABLE inventory_details CASCADE;
+              TRUNCATE TABLE wishlists CASCADE;
+              TRUNCATE TABLE reviews CASCADE;
+              TRUNCATE TABLE book_proposals CASCADE;
+              TRUNCATE TABLE loan_tickets CASCADE;
+              TRUNCATE TABLE loan_details CASCADE;
+              TRUNCATE TABLE waitlists CASCADE;
+              TRUNCATE TABLE book_copies CASCADE;
+              TRUNCATE TABLE book_authors CASCADE;
+              TRUNCATE TABLE books CASCADE;
+              TRUNCATE TABLE authors CASCADE;
+              TRUNCATE TABLE publishers CASCADE;
+  - changeSet:
+      id: modify_columns_to_text
+      author: system
+      changes:
+        - modifyDataType:
+            tableName: books
+            columnName: title
+            newDataType: TEXT
+        - modifyDataType:
+            tableName: books
+            columnName: author
+            newDataType: TEXT
+        - modifyDataType:
+            tableName: books
+            columnName: publisher
+            newDataType: TEXT
+        - modifyDataType:
+            tableName: books
+            columnName: image_url_s
+            newDataType: TEXT
+        - modifyDataType:
+            tableName: books
+            columnName: image_url_m
+            newDataType: TEXT
+        - modifyDataType:
+            tableName: books
+            columnName: image_url_l
+            newDataType: TEXT
+  - changeSet:
+      id: load_books_csv_cleaned
+      author: system
+      changes:
+        - loadData:
+            tableName: books
+            file: data/Books_Cleaned.csv
+            separator: ","
+            quotchar: '"'
+            columns:
+              - column:
+                  name: isbn
+                  header: ISBN
+                  type: STRING
+              - column:
+                  name: title
+                  header: Book-Title
+                  type: STRING
+              - column:
+                  name: author
+                  header: Book-Author
+                  type: STRING
+              - column:
+                  name: publish_year
+                  header: Year-Of-Publication
+                  type: NUMERIC
+              - column:
+                  name: publisher
+                  header: Publisher
+                  type: STRING
+              - column:
+                  name: image_url_s
+                  header: Image-URL-S
+                  type: STRING
+              - column:
+                  name: image_url_m
+                  header: Image-URL-M
+                  type: STRING
+              - column:
+                  name: image_url_l
+                  header: Image-URL-L
+                  type: STRING

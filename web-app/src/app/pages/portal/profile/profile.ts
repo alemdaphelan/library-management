@@ -44,9 +44,9 @@ export class Profile {
   };
 
   passwordData = {
-    current: '',
-    new: '',
-    confirm: ''
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   };
 
   settings = {
@@ -60,19 +60,22 @@ export class Profile {
 
   saveChanges() {
     if (this.activeTab === 'password') {
-      if (this.passwordData.new !== this.passwordData.confirm) {
-        this.errMsg = 'Mật khẩu xác nhận không khớp!';
-        setTimeout(() => this.errMsg = '', 3000);
+      const np = this.passwordData.newPassword || '';
+      const cp = this.passwordData.confirmPassword || '';
+      
+      if (np !== cp) {
+        this.errMsg = `Không khớp! Mới: "${np}", Nhập lại: "${cp}"`;
+        setTimeout(() => this.errMsg = '', 10000);
         return;
       }
       this.isSaving = true;
       this.successMsg = '';
       this.errMsg = '';
-      this.authService.changePassword(this.passwordData.current, this.passwordData.new).subscribe({
+      this.authService.changePassword(this.passwordData.currentPassword, this.passwordData.newPassword).subscribe({
         next: (res: any) => {
           this.isSaving = false;
           this.successMsg = 'Đổi mật khẩu thành công! Bạn sẽ được đăng xuất.';
-          this.passwordData = { current: '', new: '', confirm: '' };
+          this.passwordData = { currentPassword: '', newPassword: '', confirmPassword: '' };
           setTimeout(() => {
             this.authService.logout();
           }, 2000);

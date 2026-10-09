@@ -50,6 +50,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> 
                         auth.requestMatchers("/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
+                                .requestMatchers(org.springframework.http.HttpMethod.GET, "/books", "/books/**").permitAll()
                                 .anyRequest().authenticated()
                 );
 
@@ -58,3 +59,4 @@ public class SecurityConfig {
         return http.build();
     }
 }
+// force rebuild  

@@ -47,7 +47,28 @@ export class Books implements OnInit {
   }
 
   saveBook() {
-    // Demo save
-    this.closeDrawer();
+    if (this.drawerMode === 'add') {
+      this.bookService.createBook(this.currentBook).subscribe({
+        next: () => {
+          this.loadBooks();
+          this.closeDrawer();
+        },
+        error: (err) => {
+          console.error('Failed to create book', err);
+          alert('Thêm sách thất bại');
+        }
+      });
+    } else if (this.drawerMode === 'edit') {
+      this.bookService.updateBook(this.currentBook.id || this.currentBook.isbn, this.currentBook).subscribe({
+        next: () => {
+          this.loadBooks();
+          this.closeDrawer();
+        },
+        error: (err) => {
+          console.error('Failed to update book', err);
+          alert('Cập nhật sách thất bại');
+        }
+      });
+    }
   }
 }

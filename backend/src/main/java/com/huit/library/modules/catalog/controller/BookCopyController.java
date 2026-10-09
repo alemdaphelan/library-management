@@ -28,8 +28,8 @@ public class BookCopyController {
     @PutMapping("/{barcode}/location")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Update copy location", description = "Update the physical shelf/room location of a book copy.")
-    public ResponseEntity<?> updateLocation(@PathVariable String barcode, @RequestParam String location) {
-        return ResponseEntity.ok(bookCopyService.updateLocation(barcode, location));
+    public ResponseEntity<?> updateLocation(@PathVariable String barcode, @RequestParam Long shelfId) {
+        return ResponseEntity.ok(bookCopyService.updateLocation(barcode, shelfId));
     }
 
     @PutMapping("/{barcode}/status")

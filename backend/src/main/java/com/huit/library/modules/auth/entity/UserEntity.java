@@ -21,7 +21,7 @@ public class UserEntity extends BaseEntity {
     private String passwordHash;
     private Boolean isFirstLogin;
     private String fullName;
-    private String studentId;
+    private String mssv;
     private String department;
     private String email;
     private String phone;

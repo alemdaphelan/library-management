@@ -21,6 +21,9 @@ public class BookCopyEntity extends BaseEntity {
     
     private UUID lockedByUser;
     private LocalDateTime lockedUntil;
-    private String location;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shelf_id")
+    private ShelfEntity shelf;
+    
     private String status;
 }

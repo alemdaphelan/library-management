@@ -1,0 +1,87 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-operational-data
+      author: antigravity
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              DO $$ 
+              DECLARE 
+                  student_uid uuid;
+                  student2_uid uuid;
+                  book1_id bigint;
+                  book2_id bigint;
+                  barcode1 varchar;
+                  barcode2 varchar;
+                  ticket1 bigint;
+                  ticket2 bigint;
+                  supplier1 bigint;
+              BEGIN
+                  -- Get some student UUIDs
+                  SELECT user_id INTO student_uid FROM users WHERE role_id = 'STUDENT' LIMIT 1;
+                  SELECT user_id INTO student2_uid FROM users WHERE role_id = 'STUDENT' OFFSET 1 LIMIT 1;
+                  
+                  -- Get some books
+                  SELECT book_id INTO book1_id FROM books LIMIT 1;
+                  SELECT book_id INTO book2_id FROM books OFFSET 1 LIMIT 1;
+                  
+                  -- Get barcodes
+                  SELECT barcode INTO barcode1 FROM book_copies WHERE book_id = book1_id LIMIT 1;
+                  SELECT barcode INTO barcode2 FROM book_copies WHERE book_id = book2_id LIMIT 1;
+                  
+                  -- Insert system configs
+                  INSERT INTO system_configs (config_key, config_value, description, created_at, updated_at) VALUES 
+                  ('MAX_LOAN_DAYS', '14', 'Số ngày mượn sách tối đa', NOW(), NOW()),
+                  ('MAX_LOAN_BOOKS', '5', 'Số sách mượn tối đa', NOW(), NOW()),
+                  ('LATE_FEE_PER_DAY', '5000', 'Phí trễ hạn mỗi ngày (VNĐ)', NOW(), NOW())
+                  ON CONFLICT DO NOTHING;
+                  
+                  -- Insert reviews
+                  INSERT INTO reviews (book_id, user_id, rating, comment, created_at, updated_at) VALUES 
+                  (book1_id, student_uid, 5, 'Sách rất hay, kiến thức bổ ích', NOW(), NOW()),
+                  (book2_id, student2_uid, 4, 'Nội dung khá chi tiết, nhưng hơi khó đọc', NOW(), NOW());
+                  
+                  -- Insert wishlists (wishlist_id: uuid, book_id: string)
+                  INSERT INTO wishlists (wishlist_id, book_id, user_id, added_at, created_at, updated_at) VALUES 
+                  (gen_random_uuid(), book2_id::text, student_uid, NOW(), NOW(), NOW()),
+                  (gen_random_uuid(), book1_id::text, student2_uid, NOW(), NOW(), NOW());
+                  
+                  -- Insert complaints
+                  INSERT INTO complaints (user_id, title, content, status, created_at, updated_at) VALUES 
+                  (student_uid, 'Không tìm thấy sách', 'Sách hiển thị còn trên hệ thống nhưng tôi ra kệ lại không thấy', 'OPEN', NOW(), NOW()),
+                  (student2_uid, 'Thái độ nhân viên', 'Cần hỗ trợ hướng dẫn sinh viên tìm sách nhiệt tình hơn', 'RESOLVED', NOW(), NOW());
+                  
+                  -- Insert notifications
+                  INSERT INTO notifications (notif_id, user_id, type, content, is_read, sent_at, created_at, updated_at) VALUES 
+                  (gen_random_uuid(), student_uid, 'SYSTEM', 'Bạn vừa mượn thành công sách.', false, NOW(), NOW(), NOW()),
+                  (gen_random_uuid(), student2_uid, 'REMINDER', 'Vui lòng trả sách đúng hạn tránh bị phạt', false, NOW(), NOW(), NOW());
+                  
+                  -- Insert loan tickets
+                  INSERT INTO loan_tickets (user_id, ticket_type, status, created_at, updated_at) VALUES 
+                  (student_uid, 'NORMAL', 'BORROWING', NOW(), NOW()) RETURNING ticket_id INTO ticket1;
+                  
+                  INSERT INTO loan_tickets (user_id, ticket_type, status, created_at, updated_at) VALUES 
+                  (student2_uid, 'NORMAL', 'COMPLETED', NOW(), NOW()) RETURNING ticket_id INTO ticket2;
+                  
+                  -- Insert loan details
+                  INSERT INTO loan_details (ticket_id, barcode, checkout_condition_note, return_status, due_date, renewal_count, is_recalled, late_fine_accrued, created_at, updated_at) VALUES 
+                  (ticket1, barcode1, 'Tốt, còn mới', 'BORROWING', NOW() + INTERVAL '14 days', 0, false, 0, NOW(), NOW()),
+                  (ticket2, barcode2, 'Bìa sách hơi sờn', 'RETURNED', NOW() - INTERVAL '2 days', 0, false, 0, NOW() - INTERVAL '10 days', NOW() - INTERVAL '3 days');
+              
+                  -- Insert Goods Receipt
+                  SELECT supplier_id INTO supplier1 FROM suppliers LIMIT 1;
+                  IF supplier1 IS NOT NULL THEN
+                      INSERT INTO goods_receipts (supplier_id, receipt_code, total_amount, status, created_at, updated_at) VALUES 
+                      (supplier1, 'GR-2026-001', 5000000, 'COMPLETED', NOW(), NOW());
+                  END IF;
+              
+                  -- book proposals (title, author_name, reason, status)
+                  INSERT INTO book_proposals (user_id, title, author_name, reason, status, created_at, updated_at) VALUES 
+                  (student_uid, 'Clean Code', 'Robert C. Martin', 'Sách rất cần thiết cho sinh viên IT', 'PENDING', NOW(), NOW());
+                  
+                  -- waitlists (book_id is bigint)
+                  INSERT INTO waitlists (user_id, book_id, status, created_at, updated_at) VALUES 
+                  (student_uid, book2_id, 'ACTIVE', NOW(), NOW());
+              END $$;

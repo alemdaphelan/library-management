@@ -111,7 +111,7 @@ databaseChangeLog:
             value: admin@huit.edu.vn
         - column:
             name: password_hash
-            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+            value: $2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696
         - column:
             name: full_name
             value: Quản trị viên hệ thống
@@ -141,7 +141,7 @@ databaseChangeLog:
             value: librarian@huit.edu.vn
         - column:
             name: password_hash
-            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+            value: $2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696
         - column:
             name: full_name
             value: Trần Thị Thủ Thư
@@ -171,12 +171,12 @@ databaseChangeLog:
             value: student@student.huit.edu.vn
         - column:
             name: password_hash
-            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+            value: $2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696
         - column:
             name: full_name
             value: Nguyễn Văn Sinh Viên
         - column:
-            name: student_id
+            name: mssv
             value: '20012001'
         - column:
             name: user_type
@@ -204,7 +204,7 @@ databaseChangeLog:
             value: accountant@huit.edu.vn
         - column:
             name: password_hash
-            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+            value: $2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696
         - column:
             name: full_name
             value: Nguyễn Thị Kế Toán
@@ -234,7 +234,7 @@ databaseChangeLog:
             value: treasurer@huit.edu.vn
         - column:
             name: password_hash
-            value: $2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGFGLn14HcoG7bE6/Wl6
+            value: $2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696
         - column:
             name: full_name
             value: Lê Văn Thủ Quỹ

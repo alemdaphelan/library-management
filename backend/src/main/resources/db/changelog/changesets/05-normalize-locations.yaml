@@ -1,0 +1,115 @@
+databaseChangeLog:
+  - changeSet:
+      id: create_location_tables
+      author: system
+      changes:
+        - createTable:
+            tableName: floors
+            columns:
+              - column:
+                  name: floor_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+        - createTable:
+            tableName: bookshelves
+            columns:
+              - column:
+                  name: bookshelf_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: floor_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_bookshelf_floor
+                    references: floors(floor_id)
+              - column:
+                  name: name
+                  type: varchar(255)
+        - createTable:
+            tableName: shelves
+            columns:
+              - column:
+                  name: shelf_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: bookshelf_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_shelf_bookshelf
+                    references: bookshelves(bookshelf_id)
+              - column:
+                  name: name
+                  type: varchar(255)
+
+  - changeSet:
+      id: seed_location_data
+      author: system
+      changes:
+        - sql:
+            sql: |
+              -- Insert 4 floors
+              INSERT INTO floors (name) VALUES ('Tầng 1'), ('Tầng 2'), ('Tầng 3'), ('Tầng 4');
+              
+              -- Insert 8 bookshelves per floor
+              INSERT INTO bookshelves (floor_id, name)
+              SELECT f.floor_id, 'Kệ ' || s.num
+              FROM floors f
+              CROSS JOIN generate_series(1, 8) AS s(num);
+
+              -- Insert 5 shelves per bookshelf
+              INSERT INTO shelves (bookshelf_id, name)
+              SELECT b.bookshelf_id, 'Ngăn ' || s.num
+              FROM bookshelves b
+              CROSS JOIN generate_series(1, 5) AS s(num);
+
+  - changeSet:
+      id: update_book_copies_location
+      author: system
+      changes:
+        - dropColumn:
+            tableName: book_copies
+            columnName: location
+        - addColumn:
+            tableName: book_copies
+            columns:
+              - column:
+                  name: shelf_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_bookcopy_shelf
+                    references: shelves(shelf_id)
+
+  - changeSet:
+      id: seed_book_copies_with_normalization
+      author: system
+      changes:
+        - sql:
+            sql: |
+              -- Truncate just in case
+              TRUNCATE TABLE book_copies CASCADE;
+              
+              -- Seed 1 copy for each book using hash of publisher
+              -- (abs(hashtext(COALESCE(publisher, 'Unknown'))) % 160) + 1 yields a shelf_id between 1 and 160
+              INSERT INTO book_copies (barcode, book_id, status, shelf_id, created_at, updated_at)
+              SELECT 
+                  'BC-' || book_id || '-1',
+                  book_id,
+                  'AVAILABLE',
+                  (abs(hashtext(COALESCE(publisher, 'Unknown'))) % 160) + 1,
+                  NOW(),
+                  NOW()
+              FROM books;

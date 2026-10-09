@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-remaining-functional-data
+      author: antigravity
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              DO $$ 
+              DECLARE 
+                  student_uid uuid;
+                  admin_uid character varying(255);
+                  rec_id bigint;
+                  book1_id bigint;
+                  aud_id bigint;
+              BEGIN
+                  SELECT user_id INTO student_uid FROM users WHERE role_id = 'STUDENT' LIMIT 1;
+                  SELECT user_id::text INTO admin_uid FROM users WHERE role_id = 'ADMIN' LIMIT 1;
+                  SELECT book_id INTO book1_id FROM books LIMIT 1;
+                  SELECT receipt_id INTO rec_id FROM goods_receipts LIMIT 1;
+                  
+                  -- receipt_details
+                  IF rec_id IS NOT NULL THEN
+                      INSERT INTO receipt_details (receipt_id, book_id, quantity, unit_price, created_at, updated_at) VALUES
+                      (rec_id, book1_id, 10, 150000, NOW(), NOW());
+                  END IF;
+
+                  -- shift_handovers
+                  INSERT INTO shift_handovers (pos_terminal_id, starting_cash, system_revenue, actual_cash, discrepancy_amount, status, created_at, updated_at) VALUES 
+                  ('POS-01', 500000, 150000, 650000, 0, 'COMPLETED', NOW(), NOW());
+
+                  -- inventory_audits
+                  INSERT INTO inventory_audits (conducted_by, total_system_books, total_actual_books, status, created_at, updated_at) VALUES 
+                  (student_uid, 2000, 1998, 'COMPLETED', NOW(), NOW()) RETURNING audit_id INTO aud_id;
+
+                  -- inventory_details
+                  INSERT INTO inventory_details (detail_id, audit_id, barcode, scan_status, scanned_location, created_at, updated_at) VALUES 
+                  ('DET-001', aud_id::text, '1234567890', 'FOUND', 'Floor 1, Shelf 2', NOW(), NOW());
+
+                  -- audit_logs
+                  INSERT INTO audit_logs (log_id, admin_id, action, table_name, changes, created_at, updated_at) VALUES 
+                  (gen_random_uuid(), admin_uid, 'UPDATE', 'books', 'Changed title to "Updated Title"', NOW(), NOW());
+
+                  -- university_sync_logs
+                  INSERT INTO university_sync_logs (log_id, endpoint, payload, sync_status, executed_at, created_at, updated_at) VALUES 
+                  (gen_random_uuid(), '/api/v1/sync/students', '{"count": 50}', 'SUCCESS', NOW(), NOW(), NOW());
+
+                  -- orientation_attendance
+                  INSERT INTO orientation_attendance (record_id, user_id, attended_date, is_passed, processed, created_at, updated_at) VALUES 
+                  (gen_random_uuid(), student_uid, NOW(), true, true, NOW(), NOW());
+
+              END $$;

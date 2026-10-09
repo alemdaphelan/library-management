@@ -1,5 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { UserService } from '../../../services/user.service';
+import { CirculationService } from '../../../services/circulation.service';
 
 @Component({
   selector: 'app-circulation',
@@ -11,30 +13,15 @@ import { CommonModule } from '@angular/common';
 export class Circulation {
   activeTab: 'borrow' | 'return' = 'borrow';
   
-  // Fake state
+  // Real state
   scannedStudent: any = null;
   scannedBooks: any[] = [];
   transactionSuccess = false;
 
-  // Mock Data
-  mockStudent = {
-    id: '20012111',
-    name: 'Nguyễn Văn Anh',
-    class: '10DHPM1',
-    major: 'Công nghệ phần mềm',
-    status: 'active', // active, locked, warning
-    borrowLimit: 5,
-    currentlyBorrowed: 2,
-    avatar: 'N'
-  };
-
-  mockBook = {
-    isbn: '978-604-2-27764-1',
-    title: 'Cấu trúc Dữ liệu & Giải thuật',
-    author: 'Nguyễn Đức Nghĩa',
-    location: 'Tầng 3 - Kệ IT-204',
-    condition: 'Tốt'
-  };
+  constructor(
+    private userService: UserService,
+    private circulationService: CirculationService
+  ) {}
 
   switchTab(tab: 'borrow' | 'return') {
     this.activeTab = tab;
@@ -42,33 +29,87 @@ export class Circulation {
   }
 
   scanStudentId(event: any) {
-    // Giả lập quét hoặc gõ Enter
     if (event.key === 'Enter' || event.type === 'click') {
-      this.scannedStudent = this.mockStudent;
-      this.transactionSuccess = false;
+      const input = event.target.value?.trim();
+      if (input) {
+        this.userService.getStudentById(input).subscribe({
+          next: (student: any) => {
+            this.scannedStudent = student;
+            this.transactionSuccess = false;
+          },
+          error: (err: any) => {
+            console.error('Student not found', err);
+            alert('Không tìm thấy sinh viên!');
+          }
+        });
+      }
     }
   }
 
   scanBookBarcode(event: any) {
     if (event.key === 'Enter' || event.type === 'click') {
-      // Add fake book to cart
-      this.scannedBooks.push({...this.mockBook, uid: Math.random().toString(36).substring(7)});
-      event.target.value = ''; // clear input
-      this.transactionSuccess = false;
+      const barcode = event.target.value?.trim();
+      if (barcode) {
+        // Since backend might not have getBookCopyByBarcode implemented properly yet, we'll try to fetch it
+        // and if it fails, we push a basic object to allow the transaction to proceed.
+        this.circulationService.getBookCopyByBarcode(barcode).subscribe({
+          next: (book: any) => {
+            if (!this.scannedBooks.find(b => b.barcode === barcode)) {
+              this.scannedBooks.push({...book, barcode});
+            }
+            event.target.value = '';
+            this.transactionSuccess = false;
+          },
+          error: (err: any) => {
+            console.warn('Book copy fetch failed, using fallback for barcode:', barcode);
+            if (!this.scannedBooks.find(b => b.barcode === barcode)) {
+              this.scannedBooks.push({
+                barcode: barcode,
+                title: 'Unknown Title (Barcode: ' + barcode + ')',
+                uid: Math.random().toString(36).substring(7)
+              });
+            }
+            event.target.value = '';
+            this.transactionSuccess = false;
+          }
+        });
+      }
     }
   }
 
   removeBook(uid: string) {
-    this.scannedBooks = this.scannedBooks.filter(b => b.uid !== uid);
+    this.scannedBooks = this.scannedBooks.filter(b => b.uid !== uid && b.barcode !== uid);
   }
 
   completeTransaction() {
     if (this.scannedBooks.length > 0 && (this.activeTab === 'return' || this.scannedStudent)) {
-      this.transactionSuccess = true;
-      this.scannedBooks = [];
-      setTimeout(() => {
-        this.resetForm();
-      }, 3000); // Tự động reset sau 3s
+      const barcodes = this.scannedBooks.map(b => b.barcode);
+      
+      if (this.activeTab === 'borrow') {
+        this.circulationService.checkout(this.scannedStudent.mssv, barcodes).subscribe({
+          next: () => {
+            this.transactionSuccess = true;
+            this.scannedBooks = [];
+            setTimeout(() => this.resetForm(), 3000);
+          },
+          error: (err: any) => {
+            console.error('Checkout failed', err);
+            alert('Lỗi khi mượn sách!');
+          }
+        });
+      } else {
+        this.circulationService.returnBooks(barcodes).subscribe({
+          next: () => {
+            this.transactionSuccess = true;
+            this.scannedBooks = [];
+            setTimeout(() => this.resetForm(), 3000);
+          },
+          error: (err: any) => {
+            console.error('Return failed', err);
+            alert('Lỗi khi trả sách!');
+          }
+        });
+      }
     }
   }
 

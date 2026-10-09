@@ -16,7 +16,7 @@ export class Auth implements OnInit {
 
   loginData = { username: '', password: '' };
   forgotStep: 'email' | 'otp' | 'reset' = 'email';
-  forgotData = { email: '', otp: '', newPassword: '' };
+  forgotData = { email: '', otp: '', newPassword: '', confirmPassword: '' };
 
   isSubmitting = false;
   successMessage = '';
@@ -36,7 +36,7 @@ export class Auth implements OnInit {
     this.successMessage = '';
     this.errorMessage = '';
     this.forgotStep = 'email';
-    this.forgotData = { email: '', otp: '', newPassword: '' };
+    this.forgotData = { email: '', otp: '', newPassword: '', confirmPassword: '' };
 
     const newUrl = newMode === 'login' ? '/login' : '/forgot-password';
     window.history.pushState({}, '', newUrl);
@@ -106,6 +106,12 @@ export class Auth implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
     this.successMessage = '';
+
+    if (this.forgotData.newPassword !== this.forgotData.confirmPassword) {
+      this.errorMessage = 'Mật khẩu xác nhận không khớp!';
+      this.isSubmitting = false;
+      return;
+    }
 
     this.authService.resetPassword(this.forgotData.email, this.forgotData.otp, this.forgotData.newPassword).subscribe({
       next: (res: any) => {
