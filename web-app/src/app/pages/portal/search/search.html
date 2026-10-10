@@ -1,9 +1,32 @@
 <div class="search-page container">
   <!-- Search Header -->
   <div class="search-header">
-    <div class="search-box-large">
-      <input type="text" placeholder="Tìm kiếm sách, tác giả, chủ đề..." class="search-input-large" [(ngModel)]="searchQuery" (keyup.enter)="applyFilters()">
-      <button class="btn-primary" (click)="applyFilters()">Tìm kiếm</button>
+    <div class="search-box-large" style="position: relative;">
+      <input type="text" placeholder="Tìm kiếm sách, tác giả, chủ đề..." class="search-input-large" 
+             [(ngModel)]="searchQuery" 
+             (ngModelChange)="onSearchInput($event)"
+             (keyup.enter)="onSearch()"
+             (blur)="onBlur()"
+             (focus)="onFocus()">
+      <button class="btn-primary" (click)="onSearch()">Tìm kiếm</button>
+
+      <!-- Quick Search Dropdown -->
+      <div class="quick-search-dropdown" *ngIf="showDropdown && quickSearchResults.length > 0">
+        <ul class="quick-search-list">
+          <li *ngFor="let book of quickSearchResults" (mousedown)="goToBook(book.id)">
+            <div class="quick-search-item">
+              <img *ngIf="!book.imgError" [src]="book.cover" alt="{{book.title}}" (error)="book.imgError = true">
+              <div class="quick-search-fallback" *ngIf="book.imgError || !book.cover">
+                <span>{{ book.title | slice:0:1 }}</span>
+              </div>
+              <div class="quick-search-info">
+                <h4 [innerHTML]="highlightMatch(book.title)"></h4>
+                <p [innerHTML]="highlightMatch(book.author)"></p>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -58,7 +81,10 @@
         
         <div class="card book-card" *ngFor="let book of books">
           <div class="book-cover-wrapper" routerLink="/book/1" style="cursor: pointer;">
-            <img [src]="book.cover" alt="{{ book.title }}" class="book-cover-img">
+            <img *ngIf="!book.imgError" [src]="book.cover" alt="{{ book.title }}" class="book-cover-img" (error)="book.imgError = true">
+            <div class="book-cover-fallback" *ngIf="book.imgError || !book.cover">
+              <span>{{ book.title }}</span>
+            </div>
             <div class="book-overlay">
               <button class="btn-primary btn-sm" routerLink="/book/1">Xem chi tiết</button>
             </div>
@@ -75,10 +101,18 @@
       </div>
       
       <!-- Pagination -->
-      <div class="pagination">
-        <button class="page-btn active">1</button>
-        <button class="page-btn">2</button>
-        <button class="page-btn">Tiếp &rsaquo;</button>
+      <div class="pagination" *ngIf="totalPages > 0">
+        <button class="page-btn" (click)="prevPage()" [disabled]="currentPage === 0">&lsaquo; Trước</button>
+        <ng-container *ngFor="let p of visiblePages">
+          <button class="page-btn" 
+                  *ngIf="p !== '...'" 
+                  [class.active]="p === (currentPage + 1)" 
+                  (click)="onPageClick(p)">
+            {{ p }}
+          </button>
+          <button class="page-btn" *ngIf="p === '...'" disabled>...</button>
+        </ng-container>
+        <button class="page-btn" (click)="nextPage()" [disabled]="currentPage >= totalPages - 1">Tiếp &rsaquo;</button>
       </div>
     </main>
   </div>

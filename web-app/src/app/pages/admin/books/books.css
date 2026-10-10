@@ -84,6 +84,20 @@
   border: 1px solid #e2e8f0;
 }
 
+.book-cover-thumb-fallback {
+  width: 48px;
+  height: 64px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8fafc;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
 .book-details {
   display: flex;
   flex-direction: column;
@@ -249,6 +263,20 @@
   object-fit: cover;
   border: 1px solid #e2e8f0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.cover-preview-fallback {
+  width: 75px;
+  height: 100px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8fafc;
+  font-weight: bold;
+  font-size: 1.5rem;
 }
 
 .upload-actions {

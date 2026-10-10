@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/services/api_service.dart';
 import 'package:mobile_app/screens/login_screen.dart';
 
 class BorrowedScreen extends StatefulWidget {
@@ -12,21 +13,34 @@ class BorrowedScreen extends StatefulWidget {
 
 class _BorrowedScreenState extends State<BorrowedScreen> {
   Map<String, dynamic>? _userProfile;
+  List<dynamic> _borrowedBooks = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchProfile();
+    _fetchData();
   }
 
-  Future<void> _fetchProfile() async {
-    final profile = await AuthService.getCurrentUser();
-    if (mounted) {
-      setState(() {
-        _userProfile = profile;
-        _isLoading = false;
-      });
+  Future<void> _fetchData() async {
+    try {
+      final profile = await AuthService.getCurrentUser();
+      // Fetch loans from ApiService
+      final loans = await ApiService.get('/loans/current');
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+          _borrowedBooks = loans ?? [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -69,9 +83,9 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Sách đang mượn (2)',
-                        style: TextStyle(
+                      Text(
+                        'Sách đang mượn (${_borrowedBooks.length})',
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0f172a),
@@ -194,28 +208,34 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
   }
 
   Widget _buildBorrowedBookList() {
+    if (_borrowedBooks.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Center(
+          child: Text('Bạn không có sách nào đang mượn.', style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
-        children: [
-          _buildBookCard(
-            title: 'Flutter for Beginners',
-            author: 'Alessandro Biessek',
-            borrowDate: '10/09/2026',
-            dueDate: '20/09/2026',
-            daysLeft: 4,
-            isWarning: false,
-          ),
-          const SizedBox(height: 15),
-          _buildBookCard(
-            title: 'Clean Architecture',
-            author: 'Robert C. Martin',
-            borrowDate: '01/09/2026',
-            dueDate: '11/09/2026',
-            daysLeft: -5,
-            isWarning: true,
-          ),
-        ],
+        children: _borrowedBooks.map((book) {
+          int remainingDays = book['remainingDays'] ?? 0;
+          return Column(
+            children: [
+              _buildBookCard(
+                title: book['title'] ?? 'Unknown',
+                author: book['author'] ?? 'Unknown',
+                borrowDate: book['borrowDate'] ?? '---',
+                dueDate: book['dueDate'] ?? '---',
+                daysLeft: remainingDays,
+                isWarning: remainingDays <= 3,
+              ),
+              const SizedBox(height: 15),
+            ],
+          );
+        }).toList(),
       ),
     );
   }

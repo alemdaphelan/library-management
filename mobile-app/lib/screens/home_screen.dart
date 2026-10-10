@@ -1,10 +1,49 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  Map<String, dynamic> userInfo = {};
+  List<dynamic> borrowedBooks = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchHomeData();
+  }
+
+  Future<void> fetchHomeData() async {
+    try {
+      final user = await ApiService.get('/user/profile');
+      final loans = await ApiService.get('/loans/current');
+      setState(() {
+        userInfo = user ?? {};
+        borrowedBooks = loans ?? [];
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching home data: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Thư viện HUIT', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -20,7 +59,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thẻ sinh viên ảo
+            // Thẻ sinh viên
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -49,112 +88,82 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  const Text('Nguyễn Văn A', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                  const Text('MSSV: 2001190001', style: TextStyle(color: Colors.white, fontSize: 16)),
+                  Text(userInfo['name'] ?? 'Đang cập nhật', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('MSSV: ${userInfo['studentId'] ?? '---'}', style: const TextStyle(color: Colors.white, fontSize: 16)),
                   const SizedBox(height: 5),
-                  const Text('Khoa Công nghệ thông tin', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text(userInfo['department'] ?? 'Khoa Công nghệ thông tin', style: const TextStyle(color: Colors.white70, fontSize: 14)),
                 ],
               ),
             ),
             const SizedBox(height: 30),
 
-            // Tiến độ đọc sách
+            // Sách đang mượn
             const Text('SÁCH ĐANG MƯỢN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 15),
 
-            // Card Sách đang mượn 1 (Sắp hết hạn)
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 60, height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.book, color: Colors.grey),
-                        ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Clean Architecture', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const Text('Robert C. Martin', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.red),
-                                  const SizedBox(width: 5),
-                                  const Text('Còn 2 ngày', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                                ],
-                              )
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    LinearProgressIndicator(value: 0.8, backgroundColor: Colors.grey.shade200, color: Colors.red, minHeight: 6, borderRadius: BorderRadius.circular(3)),
-                  ],
-                ),
-              ),
-            ),
+            if (borrowedBooks.isEmpty)
+              const Center(child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Text('Bạn không có sách nào đang mượn.', style: TextStyle(color: Colors.grey)),
+              ))
+            else
+              ...borrowedBooks.map((book) => buildBorrowedBookCard(book)),
+          ],
+        ),
+      ),
+    );
+  }
 
-            const SizedBox(height: 10),
+  Widget buildBorrowedBookCard(dynamic book) {
+    // Assuming backend returns: title, author, remainingDays, progress
+    double progress = book['progress']?.toDouble() ?? 0.5;
+    int remainingDays = book['remainingDays'] ?? 0;
+    Color statusColor = remainingDays <= 3 ? Colors.red : Colors.green;
+    IconData statusIcon = remainingDays <= 3 ? Icons.warning_amber_rounded : Icons.access_time;
 
-            // Card Sách đang mượn 2 (Bình thường)
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 60, height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.book, color: Colors.grey),
-                        ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Flutter in Action', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const Text('Eric Windmill', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  const Icon(Icons.access_time, size: 16, color: Colors.green),
-                                  const SizedBox(width: 5),
-                                  const Text('Còn 12 ngày', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                                ],
-                              )
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    LinearProgressIndicator(value: 0.2, backgroundColor: Colors.grey.shade200, color: Colors.green, minHeight: 6, borderRadius: BorderRadius.circular(3)),
-                  ],
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 60, height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                    image: (book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl']) != null ? DecorationImage(image: NetworkImage(book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl']), fit: BoxFit.cover) : null,
+                  ),
+                  child: (book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl']) == null ? const Icon(Icons.book, color: Colors.grey) : null,
                 ),
-              ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(book['title'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(book['author'] ?? 'Unknown', style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(statusIcon, size: 16, color: statusColor),
+                          const SizedBox(width: 5),
+                          Text(remainingDays < 0 ? 'Quá hạn ${-remainingDays} ngày' : 'Còn $remainingDays ngày', 
+                            style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
+                        ],
+                      )
+                    ],
+                  ),
+                )
+              ],
             ),
+            const SizedBox(height: 15),
+            LinearProgressIndicator(value: progress, backgroundColor: Colors.grey.shade200, color: statusColor, minHeight: 6, borderRadius: BorderRadius.circular(3)),
           ],
         ),
       ),

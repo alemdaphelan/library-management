@@ -1,24 +1,30 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { HomeService } from '../../../services/home.service';
 
 @Component({
   selector: 'app-home',
+  standalone: true,
   imports: [RouterLink, CommonModule],
   templateUrl: './home.html',
-  styleUrl: './home.css',
+  styleUrls: ['./home.css'],
 })
-export class Home {
-  featuredBooks = [
-    { title: 'Sách mới', count: 120, icon: '✨' },
-    { title: 'Tài liệu số', count: 500, icon: '📱' },
-    { title: 'Giáo trình', count: 350, icon: '📚' }
-  ];
+export class Home implements OnInit {
+  featuredBooks: any[] = [];
+  recommendedBooks: any[] = [];
 
-  recommendedBooks = [
-    { id: 1, title: 'Clean Architecture', author: 'Robert C. Martin', cover: '/assets/images/cover_1.jpg' },
-    { id: 2, title: 'Flutter for Beginners', author: 'Alessandro Biessek', cover: '/assets/images/cover_2.jpg' },
-    { id: 3, title: 'Pro ASP.NET Core 6', author: 'Adam Freeman', cover: '/assets/images/cover_3.jpg' },
-    { id: 1, title: 'Clean Architecture (Bản tiếng Việt)', author: 'Robert C. Martin', cover: '/assets/images/cover_1.jpg' }
-  ];
+  constructor(private homeService: HomeService) {}
+
+  ngOnInit() {
+    this.homeService.getFeaturedBooks().subscribe({
+      next: (data) => this.featuredBooks = data,
+      error: (err) => console.error('Error fetching featured books', err)
+    });
+
+    this.homeService.getRecommendedBooks().subscribe({
+      next: (data) => this.recommendedBooks = data,
+      error: (err) => console.error('Error fetching recommended books', err)
+    });
+  }
 }

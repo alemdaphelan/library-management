@@ -28,6 +28,10 @@ public class BookEntity extends BaseEntity {
     private String author;
     private String publisher;
     
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "category_id")
+    private CategoryEntity category;
+
     @Column(name = "image_url_s")
     private String imageUrlS;
     

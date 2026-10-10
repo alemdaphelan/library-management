@@ -2,12 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+import { environment } from '../../environments/environment';
+
 @Injectable({
   providedIn: 'root'
 })
 export class CirculationService {
-  private apiUrl = 'http://127.0.0.1:8080/loans';
-  private bookCopyApiUrl = 'http://127.0.0.1:8080/book-copies';
+  private apiUrl = `${environment.apiUrl}/loans`;
+  private bookCopyApiUrl = `${environment.apiUrl}/book-copies`;
 
   constructor(private http: HttpClient) { }
 
