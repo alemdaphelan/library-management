@@ -54,7 +54,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       final queryParam = searchQuery.isNotEmpty ? '?query=$searchQuery&page=$currentPage&size=$pageSize' : '?page=$currentPage&size=$pageSize';
-      final data = await ApiService.get('/catalog/books$queryParam');
+      final data = await ApiService.get('/books$queryParam');
       
       setState(() {
         if (data != null && data['content'] != null) {

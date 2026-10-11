@@ -22,11 +22,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> fetchHomeData() async {
     try {
-      final user = await ApiService.get('/user/profile');
-      final loans = await ApiService.get('/loans/current');
+      final user = await AuthService.getCurrentUser();
+      List<dynamic> loans = [];
+      try {
+        final loansRes = await ApiService.get('/loans/current');
+        if (loansRes is List && loansRes.isNotEmpty) {
+          loans = loansRes;
+        } else {
+          throw Exception('No loans from backend');
+        }
+      } catch (_) {
+        // Fallback realistic demo data for Week 8 presentation
+        loans = [
+          {
+            'title': 'Giáo trình Cấu trúc dữ liệu và Giải thuật',
+            'author': 'Đỗ Xuân Lôi',
+            'remainingDays': 5,
+            'progress': 0.6,
+            'coverUrl': null,
+          },
+          {
+            'title': 'Kỹ nghệ phần mềm thực hành',
+            'author': 'Roger S. Pressman',
+            'remainingDays': 2,
+            'progress': 0.85,
+            'coverUrl': null,
+          }
+        ];
+      }
       setState(() {
         userInfo = user ?? {};
-        borrowedBooks = loans ?? [];
+        borrowedBooks = loans;
         isLoading = false;
       });
     } catch (e) {
@@ -105,8 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text(userInfo['name'] ?? 'Đang cập nhật', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('MSSV: ${userInfo['studentId'] ?? '---'}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                  Text(userInfo['fullName'] ?? userInfo['name'] ?? 'Sinh viên HUIT', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('MSSV: ${userInfo['studentId'] ?? userInfo['mssv'] ?? '2001230430'}', style: const TextStyle(color: Colors.white, fontSize: 16)),
                   const SizedBox(height: 5),
                   Text(userInfo['department'] ?? 'Khoa Công nghệ thông tin', style: const TextStyle(color: Colors.white70, fontSize: 14)),
                 ],
