@@ -2,6 +2,7 @@ package com.huit.library.modules.auth.controller;
 
 import com.huit.library.modules.auth.dto.JwtResponseDTO;
 import com.huit.library.modules.auth.dto.LoginRequestDTO;
+import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -103,7 +104,49 @@ public class AuthController {
         }
         if (authentication.getPrincipal() instanceof com.huit.library.core.security.CustomUserDetails) {
             com.huit.library.core.security.CustomUserDetails userDetails = (com.huit.library.core.security.CustomUserDetails) authentication.getPrincipal();
-            return ResponseEntity.ok(userDetails.getUser());
+            return ResponseEntity.ok(authService.getFreshUser(userDetails.getUser().getUserId()));
+        }
+        return ResponseEntity.status(401).body("Unauthorized");
+    }
+
+    @PutMapping("/me")
+    @Operation(summary = "Update current user profile", description = "Update full name, phone, or avatar")
+    public ResponseEntity<?> updateProfile(org.springframework.security.core.Authentication authentication,
+                                           @RequestBody com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        if (authentication.getPrincipal() instanceof com.huit.library.core.security.CustomUserDetails) {
+            com.huit.library.core.security.CustomUserDetails userDetails = (com.huit.library.core.security.CustomUserDetails) authentication.getPrincipal();
+            return ResponseEntity.ok(authService.updateProfile(userDetails.getUser().getUserId(), request));
+        }
+        return ResponseEntity.status(401).body("Unauthorized");
+    }
+
+    @PostMapping(value = "/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload user avatar", description = "Upload image file as avatar")
+    public ResponseEntity<?> uploadAvatar(org.springframework.security.core.Authentication authentication,
+                                          @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
+        if (authentication.getPrincipal() instanceof com.huit.library.core.security.CustomUserDetails) {
+            com.huit.library.core.security.CustomUserDetails userDetails = (com.huit.library.core.security.CustomUserDetails) authentication.getPrincipal();
+            try {
+                if (file.isEmpty()) {
+                    return ResponseEntity.badRequest().body("Vui lòng chọn tệp ảnh hợp lệ");
+                }
+                String contentType = file.getContentType() != null ? file.getContentType() : "image/jpeg";
+                String base64 = java.util.Base64.getEncoder().encodeToString(file.getBytes());
+                String dataUrl = "data:" + contentType + ";base64," + base64;
+                
+                com.huit.library.modules.auth.dto.UpdateProfileRequestDTO req = new com.huit.library.modules.auth.dto.UpdateProfileRequestDTO();
+                req.setAvatarUrl(dataUrl);
+                UserEntity updated = authService.updateProfile(userDetails.getUser().getUserId(), req);
+                return ResponseEntity.ok(updated);
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body("Lỗi tải ảnh lên: " + e.getMessage());
+            }
         }
         return ResponseEntity.status(401).body("Unauthorized");
     }

@@ -1,124 +1,452 @@
 <div class="detail-page container">
-  <!-- Breadcrumbs -->
-  <nav class="breadcrumb">
-    <a routerLink="/" class="bc-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg> Trang chủ</a>
-    <span class="bc-sep">&rsaquo;</span>
-    <a routerLink="/search" class="bc-link">Tra cứu OPAC</a>
-    <span class="bc-sep">&rsaquo;</span>
-    <a class="bc-link">Công nghệ Thông tin</a>
-    <span class="bc-sep">&rsaquo;</span>
-    <span class="bc-current">{{ book.category }}</span>
-  </nav>
+  <!-- Toast Notification -->
+  <div class="toast-popup" *ngIf="toastMessage">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+    <span>{{ toastMessage }}</span>
+  </div>
 
-  <div class="main-layout">
-    <!-- Left Column: Cover & Tools -->
-    <div class="left-col">
-      <div class="cover-box">
-        <div class="cover-badges">
-          <div class="badge-status"><span class="dot"></span> Sách in sẵn sàng</div>
-          <div class="badge-ebook">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> Bản E-Book PDF
+  <!-- Loading State -->
+  <div class="state-container loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <h3>Đang tải dữ liệu sách...</h3>
+    <p>Hệ thống đang kết nối đến kho cơ sở dữ liệu OPAC Thư viện HUIT.</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="state-container error-state" *ngIf="!isLoading && (hasError || !book)">
+    <div class="error-icon">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+    </div>
+    <h2>Không tìm thấy thông tin sách</h2>
+    <p>{{ errorMessage || 'Mã tài liệu không hợp lệ hoặc tài liệu này không còn lưu trữ trong hệ thống.' }}</p>
+    <a routerLink="/search" class="btn btn-primary btn-back">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Quay lại Danh mục Tra cứu
+    </a>
+  </div>
+
+  <!-- Main Content When Book is Loaded -->
+  <ng-container *ngIf="!isLoading && !hasError && book">
+    <!-- Breadcrumbs -->
+    <nav class="breadcrumb">
+      <a routerLink="/" class="bc-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        </svg> Trang chủ
+      </a>
+      <span class="bc-sep">&rsaquo;</span>
+      <a routerLink="/search" class="bc-link">Tra cứu OPAC</a>
+      <span class="bc-sep">&rsaquo;</span>
+      <a routerLink="/search" class="bc-link">{{ book.category }}</a>
+      <span class="bc-sep">&rsaquo;</span>
+      <span class="bc-current" [title]="book.title">{{ book.title }}</span>
+    </nav>
+
+    <div class="main-layout">
+      <!-- Left Column: Cover & Tools -->
+      <div class="left-col">
+        <div class="cover-box">
+          <div class="cover-badges">
+            <div class="badge-status">
+              <span class="dot" [class.dot-busy]="book.availableCopies === 0"></span>
+              {{ book.availableCopies > 0 ? 'Sách sẵn sàng phục vụ' : 'Đang được mượn' }}
+            </div>
+            <div class="badge-ebook" *ngIf="book.isDigital">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg> Bản E-Book PDF
+            </div>
+            <div class="badge-print" *ngIf="!book.isDigital">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+              </svg> Sách in thư viện
+            </div>
+          </div>
+
+          <div class="cover-image-container">
+            <img *ngIf="!book.imgError" [src]="book.cover" [alt]="book.title" class="book-cover" (error)="onImageError()">
+            <div class="book-cover-fallback" *ngIf="book.imgError">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+              <span>{{ book.title }}</span>
+            </div>
+          </div>
+
+          <div class="location-badge">
+            <div class="loc-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </div>
+            <div class="loc-text">
+              <span class="loc-lbl">Mã xếp giá (Call No.)</span>
+              <strong>{{ book.callNo }}</strong>
+            </div>
+            <div class="loc-shelf">{{ book.shelf }}</div>
           </div>
         </div>
 
-        <img [src]="book.cover" alt="{{ book.title }}" class="book-cover">
-
-        <div class="location-badge">
-          <div class="loc-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          </div>
-          <div class="loc-text">
-            <span class="loc-lbl">Mã xếp giá (Call No.)</span>
-            <strong>{{ book.callNo }}</strong>
-          </div>
-          <div class="loc-shelf">{{ book.shelf }}</div>
+        <div class="tool-actions">
+          <button class="tool-btn" (click)="bookmarkBook()" title="Lưu vào tủ sách cá nhân">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg> Lưu tủ sách
+          </button>
+          <button class="tool-btn" (click)="copyLink()" title="Sao chép liên kết chia sẻ">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg> Chia sẻ
+          </button>
+          <button class="tool-btn icon-only" (click)="citeBook()" title="Trích dẫn tài liệu">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </button>
         </div>
       </div>
 
-      <div class="tool-actions">
-        <button class="tool-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> Lưu tủ sách
-        </button>
-        <button class="tool-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg> Chia sẻ
-        </button>
-        <button class="tool-btn icon-only">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M8 8h8v8H8z"></path></svg>
+      <!-- Right Column: Info & Actions -->
+      <div class="right-col">
+        <div class="tags-row">
+          <span class="tag tag-primary">{{ book.category }}</span>
+          <span class="tag">{{ book.callNo }}</span>
+          <span class="tag" *ngIf="book.publishYear">Xuất bản {{ book.publishYear }}</span>
+          <span class="tag">{{ book.language }}</span>
+        </div>
+
+        <h1 class="main-title">{{ book.title }}</h1>
+        <h2 class="sub-title">{{ book.subtitle }}</h2>
+
+        <div class="info-boxes">
+          <!-- Author Box -->
+          <div class="info-box">
+            <div class="box-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="box-content">
+              <span class="box-lbl">Tác giả & Chủ biên</span>
+              <strong class="box-val">{{ book.author }}</strong>
+              <span class="box-sub">Đồng chủ biên: {{ book.coAuthor }}</span>
+            </div>
+          </div>
+
+          <!-- Publisher Box -->
+          <div class="info-box">
+            <div class="box-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                <line x1="4" y1="22" x2="4" y2="15"></line>
+              </svg>
+            </div>
+            <div class="box-content">
+              <span class="box-lbl">Nhà xuất bản & Định danh</span>
+              <strong class="box-val">{{ book.publisher }}</strong>
+              <span class="box-sub">ISBN: {{ book.isbn }} ({{ book.pages }} trang)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stars">★★★★★</span>
+            <strong class="stat-val">{{ book.rating }}</strong>
+            <span class="stat-lbl">({{ book.reviewsCount }} lượt đánh giá)</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+            <strong class="stat-val">{{ book.borrowCount }}</strong>
+            <span class="stat-lbl">lượt mượn trong năm</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <strong class="stat-val">{{ book.viewCount }}</strong>
+            <span class="stat-lbl">lượt xem trích dẫn số</span>
+          </div>
+        </div>
+
+        <div class="synopsis-section">
+          <h3>TÓM TẮT NỘI DUNG TÀI LIỆU</h3>
+          <p>{{ book.description }}</p>
+        </div>
+
+        <div class="main-actions">
+          <button class="btn btn-primary" (click)="openBorrowModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+            Mượn / Đặt giữ trước ({{ book.availableCopies }} cuốn sẵn)
+          </button>
+          <button class="btn btn-secondary" (click)="previewEbook()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Đọc thử E-book (PDF)
+          </button>
+          <button class="btn btn-secondary" (click)="citeBook()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Trích dẫn (APA/IEEE)
+          </button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- MODAL: YÊU CẦU ĐĂNG NHẬP (NẾU CHƯA ĐĂNG NHẬP) -->
+  <div class="modal-backdrop" *ngIf="showLoginPromptModal" (click)="closeBorrowModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-icon-badge warning">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <button class="modal-close" (click)="closeBorrowModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <h3 class="modal-title">Yêu cầu đăng nhập tài khoản</h3>
+        <p class="modal-desc">
+          Để mượn sách hoặc đặt giữ chỗ trước, bạn cần đăng nhập bằng tài khoản sinh viên / bạn đọc của Thư viện Đại học Công Thương TP.HCM (HUIT).
+        </p>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeBorrowModal()">Để sau</button>
+        <button class="btn btn-primary" (click)="redirectToLogin()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+            <polyline points="10 17 15 12 10 7"></polyline>
+            <line x1="15" y1="12" x2="3" y2="12"></line>
+          </svg>
+          Đăng nhập ngay
         </button>
       </div>
     </div>
+  </div>
 
-    <!-- Right Column: Info & Actions -->
-    <div class="right-col">
-      <div class="tags-row">
-        <span class="tag tag-primary">Giáo trình Trọng điểm</span>
-        <span class="tag">DDC 006.31</span>
-        <span class="tag">Xuất bản 2024</span>
+  <!-- MODAL: ĐẶT GIỮ & MƯỢN SÁCH -->
+  <div class="modal-backdrop" *ngIf="showBorrowModal" (click)="closeBorrowModal()">
+    <div class="modal-card modal-borrow" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3 class="modal-title">Phiếu Đặt Giữ / Mượn Tài Liệu</h3>
+          <span class="modal-subtitle">Thư viện Đại học Công Thương TP.HCM (HUIT)</span>
+        </div>
+        <button class="modal-close" (click)="closeBorrowModal()">&times;</button>
       </div>
 
-      <h1 class="main-title">{{ book.title }}</h1>
-      <h2 class="sub-title">{{ book.subtitle }}</h2>
-
-      <div class="info-boxes">
-        <!-- Author Box -->
-        <div class="info-box">
-          <div class="box-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
-          <div class="box-content">
-            <span class="box-lbl">Tác giả & Chủ biên</span>
-            <strong class="box-val">{{ book.author }}</strong>
-            <span class="box-sub">Đồng chủ biên: {{ book.coAuthor }}</span>
+      <!-- FORM VIEW (Khi chưa submit thành công) -->
+      <div class="modal-body" *ngIf="!borrowSuccessData">
+        <!-- Book Summary Mini Card -->
+        <div class="modal-book-snippet">
+          <img [src]="book.cover" [alt]="book.title" class="snippet-cover">
+          <div class="snippet-details">
+            <h4 class="snippet-title">{{ book.title }}</h4>
+            <p class="snippet-author">Tác giả: <strong>{{ book.author }}</strong></p>
+            <div class="snippet-meta">
+              <span class="snippet-badge loc">{{ book.shelf }}</span>
+              <span class="snippet-badge call">{{ book.callNo }}</span>
+              <span class="snippet-badge stock" [class.out-of-stock]="book.availableCopies === 0">
+                {{ book.availableCopies > 0 ? (book.availableCopies + ' cuốn sẵn sàng') : 'Hết bản in (Vào hàng đợi)' }}
+              </span>
+            </div>
           </div>
         </div>
 
-        <!-- Publisher Box -->
-        <div class="info-box">
-          <div class="box-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg></div>
-          <div class="box-content">
-            <span class="box-lbl">Nhà xuất bản & Định danh</span>
-            <strong class="box-val">{{ book.publisher }}</strong>
-            <span class="box-sub">ISBN: {{ book.isbn }} ({{ book.pages }} trang)</span>
+        <!-- Form Options -->
+        <div class="form-section">
+          <label class="form-label">Hình thức mượn</label>
+          <div class="borrow-type-grid">
+            <label class="type-card" [class.active]="borrowType === 'BORROW'">
+              <input type="radio" name="borrowType" value="BORROW" [(ngModel)]="borrowType">
+              <div class="type-content">
+                <div class="type-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  </svg>
+                  Mượn về nhà
+                </div>
+                <span class="type-sub">Thời hạn mượn 14 ngày kể từ ngày nhận</span>
+              </div>
+            </label>
+
+            <label class="type-card" [class.active]="borrowType === 'ONSITE'">
+              <input type="radio" name="borrowType" value="ONSITE" [(ngModel)]="borrowType">
+              <div class="type-content">
+                <div class="type-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                  </svg>
+                  Đọc tại chỗ trong ngày
+                </div>
+                <span class="type-sub">Hoàn trả trước 21:00 cùng ngày tại quầy</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <label class="form-label" for="pickupDate">Ngày hẹn đến nhận sách</label>
+          <input type="date" id="pickupDate" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" class="form-input">
+          <span class="form-help">Thư viện sẽ giữ chỗ tài liệu tối đa 48 giờ kể từ ngày hẹn.</span>
+        </div>
+
+        <div class="form-section">
+          <label class="form-label" for="borrowNote">Ghi chú gửi thủ thư (tùy chọn)</label>
+          <input type="text" id="borrowNote" [(ngModel)]="borrowNote" placeholder="Ví dụ: Nhận sách tại Quầy Tầng 2, cần đĩa CD đính kèm..." class="form-input">
+        </div>
+
+        <!-- Policy Alert -->
+        <div class="policy-notice">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <div>
+            <strong>Quy định lưu thông:</strong> Vui lòng xuất trình Thẻ sinh viên hoặc CCCD tại quầy lưu thông để nhận sách.
+          </div>
+        </div>
+
+        <!-- Error Message If Any -->
+        <div class="error-banner" *ngIf="borrowErrorMessage">
+          {{ borrowErrorMessage }}
+        </div>
+      </div>
+
+      <!-- SUCCESS VIEW (Sau khi gửi yêu cầu thành công) -->
+      <div class="modal-body success-view" *ngIf="borrowSuccessData">
+        <div class="success-icon-wrap">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+
+        <h4 class="success-title">
+          {{ borrowSuccessData.status === 'WAITLIST' ? 'Đã thêm vào hàng đợi đặt trước!' : 'Đặt giữ sách thành công!' }}
+        </h4>
+        <p class="success-desc">{{ borrowSuccessData.message }}</p>
+
+        <!-- KHUNG MÃ QR PHIẾU MƯỢN (CHO QUÉT DUYỆT TỰ ĐỘNG HOẶC THỦ THƯ) -->
+        <div class="qr-ticket-container" *ngIf="borrowSuccessData.ticketId">
+          <div class="qr-code-wrapper">
+            <div class="qr-scan-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+              </svg>
+              Mã QR Nhận Sách Tự Động
+            </div>
+
+            <div class="qr-image-box" *ngIf="qrCodeDataUrl">
+              <img [src]="qrCodeDataUrl" alt="Mã QR phiếu mượn" class="ticket-qr-img">
+            </div>
+
+            <div class="qr-loading-box" *ngIf="!qrCodeDataUrl">
+              <span class="spinner-sm"></span>
+              <span>Đang tạo mã QR phiếu mượn...</span>
+            </div>
+
+            <div class="qr-code-text">
+              <span class="qr-code-label">MÃ PHIẾU MƯỢN:</span>
+              <strong class="qr-code-val">#{{ borrowSuccessData.ticketId }}</strong>
+            </div>
+
+            <p class="qr-instruction">
+              Quét mã QR này tại <strong>máy Kiosk tự phục vụ</strong> hoặc xuất trình cho <strong>thủ thư tại quầy</strong> để duyệt mượn và nhận sách nhanh chóng.
+            </p>
+
+            <button type="button" class="btn-download-qr" (click)="downloadQrCode()" *ngIf="qrCodeDataUrl">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Lưu mã QR về máy
+            </button>
+          </div>
+        </div>
+
+        <div class="ticket-card" *ngIf="borrowSuccessData.ticketId">
+          <div class="ticket-row">
+            <span class="t-lbl">Mã phiếu mượn:</span>
+            <strong class="t-val">#{{ borrowSuccessData.ticketId }}</strong>
+          </div>
+          <div class="ticket-row" *ngIf="borrowSuccessData.barcode">
+            <span class="t-lbl">Mã vạch bản sao:</span>
+            <strong class="t-val code">{{ borrowSuccessData.barcode }}</strong>
+          </div>
+          <div class="ticket-row">
+            <span class="t-lbl">Hình thức:</span>
+            <span class="t-val">{{ borrowSuccessData.ticketType === 'BORROW' ? 'Mượn mang về (14 ngày)' : 'Đọc tại chỗ' }}</span>
+          </div>
+          <div class="ticket-row" *ngIf="borrowSuccessData.pickupDate">
+            <span class="t-lbl">Hạn đến nhận sách:</span>
+            <span class="t-val highlight">{{ borrowSuccessData.pickupDate | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="ticket-row" *ngIf="borrowSuccessData.dueDate">
+            <span class="t-lbl">Hạn trả dự kiến:</span>
+            <span class="t-val">{{ borrowSuccessData.dueDate | date:'dd/MM/yyyy' }}</span>
           </div>
         </div>
       </div>
 
-      <div class="stats-row">
-        <div class="stat-item">
-          <span class="stars">★★★★★</span>
-          <strong class="stat-val">4.9</strong>
-          <span class="stat-lbl">(128 lượt đánh giá)</span>
-        </div>
-        <div class="stat-sep"></div>
-        <div class="stat-item">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-          <strong class="stat-val">1.450</strong>
-          <span class="stat-lbl">lượt mượn trong năm</span>
-        </div>
-        <div class="stat-sep"></div>
-        <div class="stat-item">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-          <strong class="stat-val">3.890</strong>
-          <span class="stat-lbl">lượt xem trích dẫn số</span>
-        </div>
-      </div>
+      <!-- MODAL FOOTER -->
+      <div class="modal-footer">
+        <ng-container *ngIf="!borrowSuccessData">
+          <button class="btn btn-outline" (click)="closeBorrowModal()" [disabled]="isSubmittingBorrow">Hủy bỏ</button>
+          <button class="btn btn-primary" (click)="submitBorrowRequest()" [disabled]="isSubmittingBorrow">
+            <span class="spinner-sm" *ngIf="isSubmittingBorrow"></span>
+            {{ book.availableCopies > 0 ? 'Xác nhận Đặt Giữ Sách' : 'Gia nhập Hàng đợi Đặt Trước' }}
+          </button>
+        </ng-container>
 
-      <div class="synopsis-section">
-        <h3>TÓM TẮT NỘI DUNG TÀI LIỆU</h3>
-        <p>{{ book.description }}</p>
-      </div>
-
-      <div class="main-actions">
-        <button class="btn btn-primary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-          Mượn / Đặt giữ trước ({{ book.availableCopies }} cuốn sẵn)
-        </button>
-        <button class="btn btn-secondary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Đọc thử E-book (PDF)
-        </button>
-        <button class="btn btn-secondary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-          Trích dẫn (APA/IEEE)
-        </button>
+        <ng-container *ngIf="borrowSuccessData">
+          <button class="btn btn-primary w-100" (click)="closeBorrowModal()">Hoàn tất</button>
+        </ng-container>
       </div>
     </div>
   </div>

@@ -40,11 +40,13 @@
           
           <div class="user-menu-container">
             <div class="user-avatar-circle" (click)="toggleUserMenu()">
-              <span class="icon">&#128100;</span>
+              <img *ngIf="userAvatar" [src]="userAvatar" alt="Avatar" class="header-avatar-img">
+              <span class="icon" *ngIf="!userAvatar">&#128100;</span>
             </div>
             
             <div class="user-dropdown" *ngIf="isUserMenuOpen">
               <a routerLink="/profile" [queryParams]="{tab: 'settings'}">Cài đặt</a>
+              <a routerLink="/history">Lịch sử mượn & Phiếu QR</a>
               <a routerLink="/profile" [queryParams]="{tab: 'password'}">Đổi mật khẩu</a>
               <a (click)="logout()" class="logout" style="cursor: pointer;">Đăng xuất</a>
             </div>

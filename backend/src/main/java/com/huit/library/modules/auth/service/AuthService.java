@@ -139,4 +139,23 @@ public class AuthService {
             redisTemplate.delete("OTP_" + email);
         }
     }
+
+    public UserEntity getFreshUser(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public UserEntity updateProfile(UUID userId, com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
+        UserEntity user = getFreshUser(userId);
+        if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
+            user.setFullName(request.getFullName().trim());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone().trim());
+        }
+        if (request.getAvatarUrl() != null && !request.getAvatarUrl().trim().isEmpty()) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+        return userRepository.save(user);
+    }
 }

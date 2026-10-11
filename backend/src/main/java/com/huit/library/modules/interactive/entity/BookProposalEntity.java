@@ -18,6 +18,9 @@ public class BookProposalEntity extends BaseEntity {
     private UUID userId;
     private String title;
     private String authorName;
+    private String publisher;
     private String reason;
+    private String note;
+    private String adminNote;
     private String status; // PENDING, APPROVED, REJECTED
 }

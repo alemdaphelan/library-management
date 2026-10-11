@@ -30,4 +30,5 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime cardExpiryDate;
     private Boolean disciplineFlag;
     private Integer roomViolationCount = 0;
+    private String avatarUrl;
 }

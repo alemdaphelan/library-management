@@ -85,7 +85,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private void seedCategories() {
         // Xóa các category rác không thuộc danh sách chuẩn (nếu có)
         entityManager.createNativeQuery(
-            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học', 'Khác')"
+            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học')"
         ).executeUpdate();
 
         // Thêm các category chuẩn nếu chưa tồn tại
@@ -99,8 +99,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             "  ('Kinh tế', 'Sách kinh tế, tài chính, quản trị'), " +
             "  ('Lịch sử', 'Sách lịch sử, văn hóa xã hội'), " +
             "  ('Kỹ năng sống', 'Sách kỹ năng sống, phát triển bản thân'), " +
-            "  ('Văn học', 'Sách văn học, tiểu thuyết, truyện ngắn'), " +
-            "  ('Khác', 'Các thể loại khác') " +
+            "  ('Văn học', 'Sách văn học, tiểu thuyết, truyện ngắn') " +
             ") AS v(name, description) " +
             "WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = v.name)";
         entityManager.createNativeQuery(insertQuery).executeUpdate();
@@ -116,8 +115,20 @@ public class DatabaseSeeder implements CommandLineRunner {
             "    MAX(CASE WHEN name = 'Tình cảm' THEN category_id END) as id_love, " +
             "    MAX(CASE WHEN name = 'Hành động' THEN category_id END) as id_action, " +
             "    MAX(CASE WHEN name = 'Kỹ năng sống' THEN category_id END) as id_life, " +
-            "    MAX(CASE WHEN name = 'Văn học' THEN category_id END) as id_lit, " +
-            "    MAX(CASE WHEN name = 'Khác' THEN category_id END) as id_other " +
+            "    MAX(CASE WHEN name = 'Văn học' THEN category_id END) as id_lit " +
+            "  FROM categories " +
+            "), " +
+            "cat_arr AS ( " +
+            "  SELECT ARRAY[ " +
+            "    MAX(CASE WHEN name = 'Khoa học' THEN category_id END), " +
+            "    MAX(CASE WHEN name = 'Tình cảm' THEN category_id END), " +
+            "    MAX(CASE WHEN name = 'Hành động' THEN category_id END), " +
+            "    MAX(CASE WHEN name = 'Công nghệ thông tin' THEN category_id END), " +
+            "    MAX(CASE WHEN name = 'Kinh tế' THEN category_id END), " +
+            "    MAX(CASE WHEN name = 'Lịch sử' THEN category_id END), " +
+            "    MAX(CASE WHEN name = 'Kỹ năng sống' THEN category_id END), " +
+            "    MAX(CASE WHEN name = 'Văn học' THEN category_id END) " +
+            "  ] AS arr " +
             "  FROM categories " +
             ") " +
             "UPDATE books b " +
@@ -130,16 +141,20 @@ public class DatabaseSeeder implements CommandLineRunner {
             "  WHEN b.title ~* '(action|adventure|thriller|spy|danger|crime|kill|murder|mystery|detective|secret|shadow|deadly|assassin|gun|fight|chase|escape|rescue|hunt|revenge|bullet|fury|terror)' THEN cats.id_action " +
             "  WHEN b.title ~* '(life|success|habit|mind|skill|guide|heal|happy|peace|power|wisdom|think|art of|grow|change|friend|courage|inspire|daily|meditation|spirit|purpose|discipline)' THEN cats.id_life " +
             "  WHEN b.title ~* '(novel|story|poem|poetry|tale|classic|fiction|literature|legend|prose|drama|tales|fable|fantasy|myth|tragedy|magic|chronicles|essay|anthology)' THEN cats.id_lit " +
-            "  ELSE cats.id_other " +
+            "  ELSE cat_arr.arr[(ABS(b.book_id) % 8) + 1] " +
             "END " +
-            "FROM cats " +
+            "FROM cats, cat_arr " +
             "WHERE b.category_id IS NULL";
         int updated = entityManager.createNativeQuery(updateQuery).executeUpdate();
         System.out.println("Đã phân loại thành công " + updated + " cuốn sách theo thể loại.");
     }
 
-    private String resolveCategoryFromTitle(String title) {
-        if (title == null) return "Khác";
+    private static final String[] DEFAULT_CATEGORIES = {
+        "Khoa học", "Tình cảm", "Hành động", "Công nghệ thông tin", "Kinh tế", "Lịch sử", "Kỹ năng sống", "Văn học"
+    };
+
+    private String resolveCategoryFromTitle(String title, long index) {
+        if (title == null) return DEFAULT_CATEGORIES[(int)(Math.abs(index) % 8)];
         String t = title.toLowerCase();
         if (t.matches(".*(computer|program|software|data|ai|web|java|python|c\\+\\+|code|tech|internet|network|linux|windows|database|algorithm|digital|developer|cyber|html|sql|system|pc|online|server).*")) {
             return "Công nghệ thông tin";
@@ -165,7 +180,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         if (t.matches(".*(novel|story|poem|poetry|tale|classic|fiction|literature|legend|prose|drama|tales|fable|fantasy|myth|tragedy|magic|chronicles|essay|anthology).*")) {
             return "Văn học";
         }
-        return "Khác";
+        return DEFAULT_CATEGORIES[(int)(Math.abs(index) % 8)];
     }
 
     private void parseAndSeedFromCSV() {
@@ -201,10 +216,10 @@ public class DatabaseSeeder implements CommandLineRunner {
                 String imgM = values[6].replaceAll("^\"|\"$", "").trim();
                 String imgL = values[7].replaceAll("^\"|\"$", "").trim();
                 
-                String categoryName = resolveCategoryFromTitle(title);
+                String categoryName = resolveCategoryFromTitle(title, count);
                 CategoryEntity category = categoryMap.get(categoryName);
                 if (category == null) {
-                    category = categoryMap.get("Khác");
+                    category = categoryMap.get("Văn học");
                 }
                 
                 // Create book

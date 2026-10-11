@@ -1,12 +1,40 @@
 <div class="profile-page container">
   
   <div class="profile-header">
-    <div class="avatar-large">
-      <span class="icon">&#128100;</span>
+    <div class="avatar-large-wrapper">
+      <div class="avatar-large" (click)="fileInput.click()" title="Nhấp để thay đổi ảnh đại diện">
+        <img *ngIf="userInfo.avatarUrl" [src]="userInfo.avatarUrl" alt="Avatar" class="avatar-img">
+        <span class="icon" *ngIf="!userInfo.avatarUrl">&#128100;</span>
+        <div class="avatar-overlay">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <span>Đổi ảnh</span>
+        </div>
+      </div>
+      <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/png, image/jpeg, image/webp" style="display: none;">
+      
+      <button type="button" class="btn-change-avatar" (click)="fileInput.click()" [disabled]="isUploadingAvatar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        {{ isUploadingAvatar ? 'Đang tải...' : 'Tải ảnh mới' }}
+      </button>
     </div>
+
     <div class="header-info">
-      <h1>{{ userInfo.fullName }}</h1>
-      <p>MSSV: {{ userInfo.studentId }} | Khoa {{ userInfo.faculty }}</p>
+      <div class="header-name-row">
+        <h1>{{ userInfo.fullName }}</h1>
+        <span class="badge-role">Sinh viên</span>
+      </div>
+      <p class="header-meta">
+        <span>MSSV: <strong>{{ userInfo.studentId }}</strong></span>
+        <span class="dot-sep">•</span>
+        <span>{{ userInfo.faculty }}</span>
+      </p>
     </div>
   </div>
 
@@ -36,85 +64,138 @@
         {{ successMsg }}
       </div>
       
-      <div class="alert error" *ngIf="errMsg" style="background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+      <div class="alert error" *ngIf="errMsg">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
         {{ errMsg }}
       </div>
 
       <!-- Tab 1: Info -->
       <div class="tab-pane" *ngIf="activeTab === 'info'">
-        <h2>Thông tin cá nhân</h2>
+        <div class="pane-header">
+          <h2>Thông tin tài khoản</h2>
+          <span class="pane-subtitle">Cập nhật họ tên, số điện thoại và ảnh đại diện của bạn.</span>
+        </div>
+
         <form (ngSubmit)="saveChanges()">
           <div class="form-row">
             <div class="form-group">
-              <label>Họ và tên</label>
-              <input type="text" [(ngModel)]="userInfo.fullName" name="fullName" class="pro-input">
+              <label>Họ và tên <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="userInfo.fullName" name="fullName" class="pro-input" placeholder="Nhập họ và tên đầy đủ" required>
             </div>
             <div class="form-group">
-              <label>Mã Sinh Viên</label>
-              <input type="text" [(ngModel)]="userInfo.studentId" name="studentId" disabled class="pro-input disabled">
+              <label>Mã Sinh Viên (MSSV)</label>
+              <div class="input-with-badge">
+                <input type="text" [(ngModel)]="userInfo.studentId" name="studentId" disabled class="pro-input disabled">
+                <span class="field-badge">Cố định</span>
+              </div>
             </div>
           </div>
+
           <div class="form-row">
             <div class="form-group">
-              <label>Khoa / Ngành</label>
-              <input type="text" [(ngModel)]="userInfo.faculty" name="faculty" disabled class="pro-input disabled">
+              <label>Khoa / Viện đào tạo</label>
+              <div class="input-with-badge">
+                <input type="text" [(ngModel)]="userInfo.faculty" name="faculty" disabled class="pro-input disabled">
+                <span class="field-badge">Xác thực</span>
+              </div>
             </div>
             <div class="form-group">
-              <label>Số điện thoại</label>
-              <input type="tel" [(ngModel)]="userInfo.phone" name="phone" class="pro-input">
+              <label>Số điện thoại liên hệ</label>
+              <input type="tel" [(ngModel)]="userInfo.phone" name="phone" class="pro-input" placeholder="Ví dụ: 0901234567">
             </div>
           </div>
+
           <div class="form-group">
-            <label>Email HUIT</label>
-            <input type="email" [(ngModel)]="userInfo.email" name="email" disabled class="pro-input disabled">
+            <label>Email HUIT (Tài khoản đăng nhập)</label>
+            <div class="input-with-badge">
+              <input type="email" [(ngModel)]="userInfo.email" name="email" disabled class="pro-input disabled">
+              <span class="field-badge">Hệ thống</span>
+            </div>
           </div>
-          <button type="submit" class="btn-save" [disabled]="isSaving">Lưu thay đổi</button>
+
+          <div class="form-tip">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>Mã sinh viên và Khoa được đồng bộ trực tiếp từ Phòng Đào tạo HUIT. Để thay đổi các thông tin này, vui lòng liên hệ Ban Quản lý Thư viện.</span>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-save" [disabled]="isSaving">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" *ngIf="!isSaving">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>{{ isSaving ? 'Đang lưu thay đổi...' : 'Lưu thông tin' }}</span>
+            </button>
+          </div>
         </form>
       </div>
 
       <!-- Tab 2: Password -->
       <div class="tab-pane" *ngIf="activeTab === 'password'">
-        <h2>Đổi mật khẩu</h2>
+        <div class="pane-header">
+          <h2>Đổi mật khẩu tài khoản</h2>
+          <span class="pane-subtitle">Nên đặt mật khẩu mạnh kết hợp chữ cái, số và ký tự đặc biệt.</span>
+        </div>
+
         <form (ngSubmit)="saveChanges()">
           <div class="form-group">
-            <label>Mật khẩu hiện tại</label>
-            <input type="password" [(ngModel)]="passwordData.currentPassword" name="currentPassword" class="pro-input" required>
+            <label>Mật khẩu hiện tại <span class="req">*</span></label>
+            <input type="password" [(ngModel)]="passwordData.currentPassword" name="currentPassword" class="pro-input" placeholder="Nhập mật khẩu hiện tại" required>
           </div>
           <div class="form-group">
-            <label>Mật khẩu mới</label>
-            <input type="password" [(ngModel)]="passwordData.newPassword" name="newPassword" class="pro-input" required>
+            <label>Mật khẩu mới <span class="req">*</span></label>
+            <input type="password" [(ngModel)]="passwordData.newPassword" name="newPassword" class="pro-input" placeholder="Tối thiểu 6 ký tự" required>
           </div>
           <div class="form-group">
-            <label>Nhập lại mật khẩu mới</label>
-            <input type="password" [(ngModel)]="passwordData.confirmPassword" name="confirmPassword" class="pro-input" required>
+            <label>Nhập lại mật khẩu mới <span class="req">*</span></label>
+            <input type="password" [(ngModel)]="passwordData.confirmPassword" name="confirmPassword" class="pro-input" placeholder="Xác nhận lại mật khẩu mới" required>
           </div>
-          <button type="submit" class="btn-save" [disabled]="isSaving">Cập nhật mật khẩu</button>
+          <div class="form-actions">
+            <button type="submit" class="btn-save" [disabled]="isSaving">
+              <span>{{ isSaving ? 'Đang cập nhật...' : 'Cập nhật mật khẩu' }}</span>
+            </button>
+          </div>
         </form>
       </div>
 
       <!-- Tab 3: Settings -->
       <div class="tab-pane" *ngIf="activeTab === 'settings'">
-        <h2>Cài đặt thông báo</h2>
+        <div class="pane-header">
+          <h2>Cài đặt thông báo</h2>
+          <span class="pane-subtitle">Tùy chỉnh các phương thức nhận tin tức và thông báo hạn mượn sách.</span>
+        </div>
+
         <div class="setting-item">
           <div class="si-info">
-            <strong>Thông báo qua Email</strong>
-            <p>Nhận email nhắc nhở trước khi sách hết hạn 3 ngày.</p>
+            <strong>Thông báo qua Email sinh viên</strong>
+            <p>Nhận email nhắc nhở tự động trước khi tài liệu hết hạn 3 ngày.</p>
           </div>
           <label class="switch">
             <input type="checkbox" [(ngModel)]="settings.emailAlerts">
             <span class="slider round"></span>
           </label>
         </div>
+
         <div class="setting-item">
           <div class="si-info">
-            <strong>Thông báo qua SMS</strong>
-            <p>Nhận tin nhắn SMS khi sách bị quá hạn (Có phí dịch vụ).</p>
+            <strong>Thông báo tin nhắn SMS</strong>
+            <p>Nhận tin nhắn SMS khẩn cấp khi sách bị quá hạn trả (Có thể phát sinh cước viễn thông).</p>
           </div>
           <label class="switch">
             <input type="checkbox" [(ngModel)]="settings.smsAlerts">
             <span class="slider round"></span>
           </label>
+        </div>
+
+        <div class="form-actions" style="margin-top: 25px;">
+          <button type="button" class="btn-save" (click)="saveChanges()" [disabled]="isSaving">
+            <span>{{ isSaving ? 'Đang lưu...' : 'Lưu cài đặt thông báo' }}</span>
+          </button>
         </div>
       </div>
 

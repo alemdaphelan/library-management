@@ -1,58 +1,168 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ProposalService, BookProposal } from '../../../services/proposal.service';
 
 @Component({
   selector: 'app-admin-suggestions',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './suggestions.html',
   styleUrls: ['./suggestions.css']
 })
-export class AdminSuggestions {
-  activeTab = 'pending'; // 'all', 'pending', 'approved', 'rejected'
-  selectedSuggestion: any = null;
+export class AdminSuggestions implements OnInit {
+  activeTab: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL' = 'PENDING';
+  selectedSuggestion: BookProposal | null = null;
   isDrawerOpen = false;
+  isLoading = false;
+  isUpdating = false;
+  searchTerm = '';
+  adminNoteInput = '';
+  alertMessage: { type: 'success' | 'error'; text: string } | null = null;
 
-  suggestions = [
-    { id: 'REQ-001', title: 'Clean Architecture: A Craftsman\'s Guide', author: 'Robert C. Martin', student: 'Nguyễn Văn A (20012341)', date: '15/09/2026', votes: 45, status: 'pending', reason: 'Sách rất cần thiết cho môn Phân tích thiết kế phần mềm.' },
-    { id: 'REQ-002', title: 'Design Patterns: Elements of Reusable Object-Oriented Software', author: 'Erich Gamma', student: 'Trần Thị B (20012342)', date: '14/09/2026', votes: 32, status: 'approved', reason: 'Tài liệu tham khảo bắt buộc.' },
-    { id: 'REQ-003', title: 'Cracking the Coding Interview', author: 'Gayle Laakmann McDowell', student: 'Lê Văn C (20012343)', date: '12/09/2026', votes: 89, status: 'pending', reason: 'Giúp sinh viên ôn thi phỏng vấn thực tập tốt hơn.' },
-    { id: 'REQ-004', title: 'Truyện tranh Doraemon Tập 1', author: 'Fujiko F. Fujio', student: 'Phạm Thị D (20012344)', date: '10/09/2026', votes: 5, status: 'rejected', reason: 'Thư viện trường đại học không ưu tiên nhập truyện tranh thiếu nhi.' },
-    { id: 'REQ-005', title: 'Grokking Algorithms', author: 'Aditya Bhargava', student: 'Hoàng Văn E (20012345)', date: '08/09/2026', votes: 20, status: 'pending', reason: 'Sách dễ hiểu, phù hợp người mới học thuật toán.' }
-  ];
+  proposals: BookProposal[] = [];
 
-  get filteredSuggestions() {
-    if (this.activeTab === 'all') return this.suggestions;
-    return this.suggestions.filter(s => s.status === this.activeTab);
+  constructor(private proposalService: ProposalService) {}
+
+  ngOnInit(): void {
+    this.loadProposals();
   }
 
-  setTab(tab: string) {
+  loadProposals(): void {
+    this.isLoading = true;
+    this.proposalService.getAllProposalsForAdmin().subscribe({
+      next: (data) => {
+        this.proposals = data || [];
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Lỗi khi tải danh sách đề xuất:', err);
+        this.isLoading = false;
+        this.showAlert('error', 'Không thể tải danh sách đề xuất. Vui lòng thử lại!');
+      }
+    });
+  }
+
+  get pendingCount(): number {
+    return this.proposals.filter(s => s.status === 'PENDING').length;
+  }
+
+  get approvedCount(): number {
+    return this.proposals.filter(s => s.status === 'APPROVED').length;
+  }
+
+  get rejectedCount(): number {
+    return this.proposals.filter(s => s.status === 'REJECTED').length;
+  }
+
+  get filteredSuggestions(): BookProposal[] {
+    let result = this.proposals;
+
+    if (this.activeTab !== 'ALL') {
+      result = result.filter(s => s.status === this.activeTab);
+    }
+
+    if (this.searchTerm.trim()) {
+      const q = this.searchTerm.trim().toLowerCase();
+      result = result.filter(s =>
+        (s.title && s.title.toLowerCase().includes(q)) ||
+        (s.authorName && s.authorName.toLowerCase().includes(q)) ||
+        (s.userName && s.userName.toLowerCase().includes(q)) ||
+        (s.userMssv && s.userMssv.toLowerCase().includes(q)) ||
+        (s.userEmail && s.userEmail.toLowerCase().includes(q)) ||
+        (s.publisher && s.publisher.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }
+
+  setTab(tab: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'): void {
     this.activeTab = tab;
   }
 
-  openDrawer(suggestion: any) {
+  openDrawer(suggestion: BookProposal): void {
     this.selectedSuggestion = suggestion;
+    this.adminNoteInput = suggestion.adminNote || '';
     this.isDrawerOpen = true;
     document.body.style.overflow = 'hidden';
   }
 
-  closeDrawer() {
+  closeDrawer(): void {
     this.isDrawerOpen = false;
     document.body.style.overflow = '';
-    setTimeout(() => this.selectedSuggestion = null, 300);
+    setTimeout(() => {
+      this.selectedSuggestion = null;
+      this.adminNoteInput = '';
+    }, 300);
   }
 
-  approveSuggestion() {
-    if (this.selectedSuggestion) {
-      this.selectedSuggestion.status = 'approved';
-      this.closeDrawer();
-    }
+  approveSuggestion(): void {
+    if (!this.selectedSuggestion || !this.selectedSuggestion.proposalId) return;
+
+    this.isUpdating = true;
+    this.proposalService.updateProposalStatus(
+      this.selectedSuggestion.proposalId,
+      'APPROVED',
+      this.adminNoteInput.trim() || undefined
+    ).subscribe({
+      next: (updated) => {
+        this.isUpdating = false;
+        if (this.selectedSuggestion) {
+          this.selectedSuggestion.status = 'APPROVED';
+          this.selectedSuggestion.adminNote = updated.adminNote || this.adminNoteInput.trim();
+        }
+        // Update in list
+        const index = this.proposals.findIndex(p => p.proposalId === updated.proposalId);
+        if (index !== -1) {
+          this.proposals[index] = { ...this.proposals[index], ...updated };
+        }
+        this.showAlert('success', 'Đã duyệt đề xuất sách thành công!');
+        this.closeDrawer();
+      },
+      error: (err) => {
+        this.isUpdating = false;
+        console.error('Lỗi khi duyệt đề xuất:', err);
+        this.showAlert('error', 'Có lỗi xảy ra khi duyệt đề xuất!');
+      }
+    });
   }
 
-  rejectSuggestion() {
-    if (this.selectedSuggestion) {
-      this.selectedSuggestion.status = 'rejected';
-      this.closeDrawer();
-    }
+  rejectSuggestion(): void {
+    if (!this.selectedSuggestion || !this.selectedSuggestion.proposalId) return;
+
+    this.isUpdating = true;
+    this.proposalService.updateProposalStatus(
+      this.selectedSuggestion.proposalId,
+      'REJECTED',
+      this.adminNoteInput.trim() || undefined
+    ).subscribe({
+      next: (updated) => {
+        this.isUpdating = false;
+        if (this.selectedSuggestion) {
+          this.selectedSuggestion.status = 'REJECTED';
+          this.selectedSuggestion.adminNote = updated.adminNote || this.adminNoteInput.trim();
+        }
+        // Update in list
+        const index = this.proposals.findIndex(p => p.proposalId === updated.proposalId);
+        if (index !== -1) {
+          this.proposals[index] = { ...this.proposals[index], ...updated };
+        }
+        this.showAlert('success', 'Đã từ chối đề xuất sách.');
+        this.closeDrawer();
+      },
+      error: (err) => {
+        this.isUpdating = false;
+        console.error('Lỗi khi từ chối đề xuất:', err);
+        this.showAlert('error', 'Có lỗi xảy ra khi từ chối đề xuất!');
+      }
+    });
+  }
+
+  private showAlert(type: 'success' | 'error', text: string): void {
+    this.alertMessage = { type, text };
+    setTimeout(() => {
+      this.alertMessage = null;
+    }, 4000);
   }
 }

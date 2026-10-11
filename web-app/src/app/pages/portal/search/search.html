@@ -80,20 +80,20 @@
       <div class="book-container" [class.book-grid]="viewMode === 'grid'" [class.book-list]="viewMode === 'list'">
         
         <div class="card book-card" *ngFor="let book of books">
-          <div class="book-cover-wrapper" routerLink="/book/1" style="cursor: pointer;">
+          <div class="book-cover-wrapper" [routerLink]="['/book', book.id]" style="cursor: pointer;">
             <img *ngIf="!book.imgError" [src]="book.cover" alt="{{ book.title }}" class="book-cover-img" (error)="book.imgError = true">
             <div class="book-cover-fallback" *ngIf="book.imgError || !book.cover">
               <span>{{ book.title }}</span>
             </div>
             <div class="book-overlay">
-              <button class="btn-primary btn-sm" routerLink="/book/1">Xem chi tiết</button>
+              <button class="btn-primary btn-sm" [routerLink]="['/book', book.id]">Xem chi tiết</button>
             </div>
           </div>
           <div class="book-info">
             <span class="badge-available" *ngIf="book.status === 'available'">Có sẵn</span>
             <span class="badge-pending" *ngIf="book.status === 'borrowed'">Đã mượn hết</span>
             <div class="book-cat">{{ book.category }}</div>
-            <h3 class="book-name" routerLink="/book/1" style="cursor: pointer;">{{ book.title }}</h3>
+            <h3 class="book-name" [routerLink]="['/book', book.id]" style="cursor: pointer;">{{ book.title }}</h3>
             <p class="book-author">{{ book.author }}</p>
           </div>
         </div>

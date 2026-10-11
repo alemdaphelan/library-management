@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 12-add-columns-to-book-proposals
+      author: antigravity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: book_proposals
+                columnName: publisher
+      changes:
+        - addColumn:
+            tableName: book_proposals
+            columns:
+              - column:
+                  name: publisher
+                  type: varchar(255)
+              - column:
+                  name: note
+                  type: text
+              - column:
+                  name: admin_note
+                  type: text

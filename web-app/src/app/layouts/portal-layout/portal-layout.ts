@@ -12,8 +12,22 @@ import { AuthService } from '../../services/auth.service';
 })
 export class PortalLayout {
   isUserMenuOpen = false;
+  userAvatar: string | null = null;
 
   constructor(public authService: AuthService, private router: Router) {}
+
+  ngOnInit() {
+    if (this.authService.isLoggedIn()) {
+      this.authService.fetchMyProfile().subscribe({
+        next: (user: any) => {
+          if (user && user.avatarUrl) {
+            this.userAvatar = user.avatarUrl;
+          }
+        },
+        error: () => {}
+      });
+    }
+  }
 
   toggleUserMenu() {
     this.isUserMenuOpen = !this.isUserMenuOpen;
@@ -25,3 +39,4 @@ export class PortalLayout {
     this.router.navigate(['/login']);
   }
 }
+
