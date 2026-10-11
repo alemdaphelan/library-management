@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
 
 class DetailScreen extends StatelessWidget {
-  const DetailScreen({super.key});
+  final Map<String, dynamic>? book;
+
+  const DetailScreen({super.key, this.book});
 
   @override
   Widget build(BuildContext context) {
+    final title = book?['title'] ?? 'Giáo trình Lập trình Flutter Cơ bản';
+    final author = book?['author'] ?? 'PGS. TS. Nguyễn Văn B';
+    final publisher = book?['publisher'] ?? 'NXB Đại học Quốc gia TP.HCM';
+    final year = book?['publishYear']?.toString() ?? '2023';
+    final category = book?['category'] ?? 'Công nghệ thông tin';
+    final isAvailable = (book?['status'] ?? 'available') == 'available';
+    final imageUrl = book?['imageUrlL'] ?? book?['imageUrlM'] ?? book?['imageUrlS'] ?? book?['coverUrl'];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chi tiết sách', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.bookmark_outline),
-            onPressed: () {},
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã lưu vào danh sách quan tâm!')),
+              );
+            },
           ),
         ],
       ),
@@ -23,10 +37,15 @@ class DetailScreen extends StatelessWidget {
             Container(
               width: double.infinity,
               height: 250,
-              color: Colors.grey.shade200,
-              child: const Center(
-                child: Icon(Icons.menu_book, size: 100, color: Colors.grey),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                image: imageUrl != null
+                    ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.contain)
+                    : null,
               ),
+              child: imageUrl == null
+                  ? const Center(child: Icon(Icons.menu_book, size: 100, color: Colors.grey))
+                  : null,
             ),
             
             // Book Info
@@ -39,28 +58,35 @@ class DetailScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Giáo trình Lập trình Flutter Cơ bản',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, height: 1.2),
+                          title,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, height: 1.2),
                         ),
                       ),
+                      const SizedBox(width: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
+                          color: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text('Có sẵn', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          isAvailable ? 'Có sẵn' : 'Đã mượn hết',
+                          style: TextStyle(
+                            color: isAvailable ? Colors.green.shade700 : Colors.red.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       )
                     ],
                   ),
                   const SizedBox(height: 10),
-                  const Text('Tác giả: PGS. TS. Nguyễn Văn B', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  Text('Tác giả: $author', style: const TextStyle(fontSize: 16, color: Colors.grey)),
                   const SizedBox(height: 5),
-                  const Text('Năm xuất bản: 2023 | NXB Đại học Quốc gia', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                  Text('Năm xuất bản: $year | $publisher', style: const TextStyle(fontSize: 14, color: Colors.grey)),
                   
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 25),
                   
                   // Location Card
                   Container(
@@ -70,21 +96,21 @@ class DetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade200),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5)),
+                        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 5)),
                       ],
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.location_on, color: Color(0xFF0284c7), size: 30),
-                        SizedBox(width: 15),
+                        const Icon(Icons.location_on, color: Color(0xFF0284c7), size: 32),
+                        const SizedBox(width: 15),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('VỊ TRÍ LƯU TRỮ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                              SizedBox(height: 5),
-                              Text('Tầng 3 - Kệ sách CNTT-02', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              Text('Mã phân loại: 005.133', style: TextStyle(fontSize: 14)),
+                              const Text('VỊ TRÍ LƯU TRỮ TRONG THƯ VIỆN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                              const SizedBox(height: 5),
+                              Text('Tầng 3 - Kệ sách $category', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('Mã định danh: ISBN ${book?['isbn'] ?? '978-604-0-1234'}', style: const TextStyle(fontSize: 14)),
                             ],
                           ),
                         )

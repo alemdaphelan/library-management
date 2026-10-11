@@ -151,7 +151,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           // In a real app, pass book ID to detail screen
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const DetailScreen()),
+                            MaterialPageRoute(builder: (context) => DetailScreen(book: book)),
                           );
                         },
                         child: Row(
