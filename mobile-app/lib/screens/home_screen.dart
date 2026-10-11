@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_app/screens/notifications_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -9,9 +10,25 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Thư viện HUIT', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen()));
+                },
+              ),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                  constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
+                ),
+              )
+            ],
           ),
         ],
       ),
@@ -155,9 +172,69 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
+            
+            const SizedBox(height: 30),
+            
+            // Gợi ý cá nhân hóa
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('GỢI Ý CHO BẠN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                TextButton(
+                  onPressed: () {},
+                  child: const Text('Xem tất cả >', style: TextStyle(color: Color(0xFF0284c7))),
+                )
+              ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 200,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _buildRecommendCard('Domain-Driven Design', 'Eric Evans', 'CNTT'),
+                  _buildRecommendCard('Head First Design Patterns', 'Eric Freeman', 'CNTT'),
+                  _buildRecommendCard('Clean Code', 'Robert C. Martin', 'CNTT'),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildRecommendCard(String title, String author, String tag) {
+    return Container(
+      width: 140,
+      margin: const EdgeInsets.only(right: 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 140,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(child: Icon(Icons.book, size: 50, color: Colors.grey)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Text(
+            author,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

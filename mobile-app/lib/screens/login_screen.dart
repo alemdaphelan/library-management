@@ -4,6 +4,7 @@ import 'package:mobile_app/screens/main_layout.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/screens/change_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,13 +36,27 @@ class _LoginScreenState extends State<LoginScreen> {
         final data = jsonDecode(response.body);
         if (data['accessToken'] != null) {
           await AuthService.saveToken(data['accessToken']);
+          
+          // Get user info to check isFirstLogin
+          final user = await AuthService.getCurrentUser();
+          
+          if (!mounted) return;
+          
+          if (user != null && user['isFirstLogin'] == true) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => ChangePasswordScreen(
+                isFirstLogin: true, 
+                email: _usernameController.text
+              )),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainLayout()),
+            );
+          }
         }
-        
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainLayout()),
-        );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
