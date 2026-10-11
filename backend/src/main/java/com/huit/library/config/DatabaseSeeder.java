@@ -32,8 +32,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Transactional
     public void run(String... args) throws Exception {
         seedUsers();
-        seedCategories();
-        seedBooksAndCopies();
+        seedData();
         seedSuppliers();
     }
 
@@ -64,64 +63,193 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
     }
 
-    private void seedCategories() {
-        if (entityManager.createQuery("SELECT count(c) FROM CategoryEntity c", Long.class).getSingleResult() == 0) {
-            String[] categoryNames = {"Công nghệ thông tin", "Kinh tế", "Ngoại ngữ", "Khoa học cơ bản"};
-            for (String name : categoryNames) {
-                CategoryEntity cat = new CategoryEntity();
-                cat.setName(name);
-                cat.setDescription("Sách thuộc lĩnh vực " + name);
-                entityManager.persist(cat);
+    private void seedData() {
+        boolean hasBooks = entityManager.createQuery("SELECT count(b) FROM BookEntity b", Long.class).getSingleResult() > 0;
+        
+        // 1. Luôn đảm bảo các danh mục chuẩn tồn tại và dọn dẹp danh mục rác/thừa nếu có
+        seedCategories();
+
+        // 2. Nếu có sách nhưng có sách chưa được gán category (category_id IS NULL)
+        if (hasBooks) {
+            long unclassifiedCount = entityManager.createQuery("SELECT count(b) FROM BookEntity b WHERE b.category IS NULL", Long.class).getSingleResult();
+            if (unclassifiedCount > 0) {
+                System.out.println("Phát hiện " + unclassifiedCount + " cuốn sách chưa có thể loại. Đang tự động phân loại theo tiêu đề...");
+                classifyBooksByTitleKeywords();
             }
-            System.out.println("Seeded categories.");
+        } else {
+            System.out.println("Chưa có sách. Đọc từ file Books_Cleaned.csv...");
+            parseAndSeedFromCSV();
         }
     }
 
-    private void seedBooksAndCopies() {
-        if (entityManager.createQuery("SELECT count(b) FROM BookEntity b", Long.class).getSingleResult() == 0) {
-            // Book 1
-            BookEntity book1 = new BookEntity();
-            book1.setTitle("Lập trình Java cơ bản");
-            book1.setIsbn("978-604-1-12345-6");
-            book1.setDdcCallNumber("005.133");
-            book1.setPublishYear(2023);
-            book1.setLanguage("vi");
-            book1.setLabelColor("Xanh lá");
-            book1.setDefaultPrice(new BigDecimal("150000"));
-            book1.setIsDigital(false);
-            entityManager.persist(book1);
-            
-            // Copies for Book 1
-            for(int i = 1; i <= 3; i++) {
-                BookCopyEntity copy = new BookCopyEntity();
-                copy.setBarcode("JAVA-00" + i);
-                copy.setBookId(book1.getBookId());
-                copy.setStatus("AVAILABLE");
-                entityManager.persist(copy);
-            }
+    private void seedCategories() {
+        // Xóa các category rác không thuộc danh sách chuẩn (nếu có)
+        entityManager.createNativeQuery(
+            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học', 'Khác')"
+        ).executeUpdate();
 
-            // Book 2
-            BookEntity book2 = new BookEntity();
-            book2.setTitle("Spring Boot in Action");
-            book2.setIsbn("978-1-61729-254-5");
-            book2.setDdcCallNumber("005.133");
-            book2.setPublishYear(2021);
-            book2.setLanguage("en");
-            book2.setLabelColor("Đỏ");
-            book2.setDefaultPrice(new BigDecimal("350000"));
-            book2.setIsDigital(false);
-            entityManager.persist(book2);
-            
-            // Copies for Book 2
-            for(int i = 1; i <= 2; i++) {
-                BookCopyEntity copy = new BookCopyEntity();
-                copy.setBarcode("SPRING-00" + i);
-                copy.setBookId(book2.getBookId());
-                copy.setStatus("AVAILABLE");
-                entityManager.persist(copy);
-            }
+        // Thêm các category chuẩn nếu chưa tồn tại
+        String insertQuery = "INSERT INTO categories (name, description, created_at, updated_at) " +
+            "SELECT v.name, v.description, NOW(), NOW() " +
+            "FROM (VALUES " +
+            "  ('Khoa học', 'Sách khoa học tự nhiên và khám phá'), " +
+            "  ('Tình cảm', 'Sách tình cảm, lãng mạn, tâm lý'), " +
+            "  ('Hành động', 'Sách hành động, phiêu lưu, trinh thám'), " +
+            "  ('Công nghệ thông tin', 'Sách công nghệ thông tin và lập trình'), " +
+            "  ('Kinh tế', 'Sách kinh tế, tài chính, quản trị'), " +
+            "  ('Lịch sử', 'Sách lịch sử, văn hóa xã hội'), " +
+            "  ('Kỹ năng sống', 'Sách kỹ năng sống, phát triển bản thân'), " +
+            "  ('Văn học', 'Sách văn học, tiểu thuyết, truyện ngắn'), " +
+            "  ('Khác', 'Các thể loại khác') " +
+            ") AS v(name, description) " +
+            "WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = v.name)";
+        entityManager.createNativeQuery(insertQuery).executeUpdate();
+    }
 
-            System.out.println("Seeded books & copies (with locations).");
+    private void classifyBooksByTitleKeywords() {
+        String updateQuery = "WITH cats AS ( " +
+            "  SELECT " +
+            "    MAX(CASE WHEN name = 'Công nghệ thông tin' THEN category_id END) as id_it, " +
+            "    MAX(CASE WHEN name = 'Khoa học' THEN category_id END) as id_science, " +
+            "    MAX(CASE WHEN name = 'Kinh tế' THEN category_id END) as id_econ, " +
+            "    MAX(CASE WHEN name = 'Lịch sử' THEN category_id END) as id_hist, " +
+            "    MAX(CASE WHEN name = 'Tình cảm' THEN category_id END) as id_love, " +
+            "    MAX(CASE WHEN name = 'Hành động' THEN category_id END) as id_action, " +
+            "    MAX(CASE WHEN name = 'Kỹ năng sống' THEN category_id END) as id_life, " +
+            "    MAX(CASE WHEN name = 'Văn học' THEN category_id END) as id_lit, " +
+            "    MAX(CASE WHEN name = 'Khác' THEN category_id END) as id_other " +
+            "  FROM categories " +
+            ") " +
+            "UPDATE books b " +
+            "SET category_id = CASE " +
+            "  WHEN b.title ~* '(computer|program|software|data|ai|web|java|python|c\\+\\+|code|tech|internet|network|linux|windows|database|algorithm|digital|developer|cyber|html|sql|system|pc|online|server)' THEN cats.id_it " +
+            "  WHEN b.title ~* '(science|physics|chemistry|biology|nature|earth|space|universe|math|astronomy|medical|health|genetics|environment|planet|solar|galaxy|evolution|dinosaur|animal|wildlife|body|medicine|doctor|disease)' THEN cats.id_science " +
+            "  WHEN b.title ~* '(business|econom|finance|market|money|invest|trade|management|accounting|banking|startup|corporat|wealth|dollar|stock|sales|brand|commerce|company|rich)' THEN cats.id_econ " +
+            "  WHEN b.title ~* '(history|war|empire|ancient|century|revolution|chronicle|medieval|civilization|president|king|queen|dynasty|world war|rebellion|monarch|rome|greek|egypt)' THEN cats.id_hist " +
+            "  WHEN b.title ~* '(love|romance|heart|passion|marry|marriage|relationship|kiss|darling|bride|groom|sweet|boyfriend|girlfriend|lover|wedding|dating|beloved|forever|hug)' THEN cats.id_love " +
+            "  WHEN b.title ~* '(action|adventure|thriller|spy|danger|crime|kill|murder|mystery|detective|secret|shadow|deadly|assassin|gun|fight|chase|escape|rescue|hunt|revenge|bullet|fury|terror)' THEN cats.id_action " +
+            "  WHEN b.title ~* '(life|success|habit|mind|skill|guide|heal|happy|peace|power|wisdom|think|art of|grow|change|friend|courage|inspire|daily|meditation|spirit|purpose|discipline)' THEN cats.id_life " +
+            "  WHEN b.title ~* '(novel|story|poem|poetry|tale|classic|fiction|literature|legend|prose|drama|tales|fable|fantasy|myth|tragedy|magic|chronicles|essay|anthology)' THEN cats.id_lit " +
+            "  ELSE cats.id_other " +
+            "END " +
+            "FROM cats " +
+            "WHERE b.category_id IS NULL";
+        int updated = entityManager.createNativeQuery(updateQuery).executeUpdate();
+        System.out.println("Đã phân loại thành công " + updated + " cuốn sách theo thể loại.");
+    }
+
+    private String resolveCategoryFromTitle(String title) {
+        if (title == null) return "Khác";
+        String t = title.toLowerCase();
+        if (t.matches(".*(computer|program|software|data|ai|web|java|python|c\\+\\+|code|tech|internet|network|linux|windows|database|algorithm|digital|developer|cyber|html|sql|system|pc|online|server).*")) {
+            return "Công nghệ thông tin";
+        }
+        if (t.matches(".*(science|physics|chemistry|biology|nature|earth|space|universe|math|astronomy|medical|health|genetics|environment|planet|solar|galaxy|evolution|dinosaur|animal|wildlife|body|medicine|doctor|disease).*")) {
+            return "Khoa học";
+        }
+        if (t.matches(".*(business|econom|finance|market|money|invest|trade|management|accounting|banking|startup|corporat|wealth|dollar|stock|sales|brand|commerce|company|rich).*")) {
+            return "Kinh tế";
+        }
+        if (t.matches(".*(history|war|empire|ancient|century|revolution|chronicle|medieval|civilization|president|king|queen|dynasty|world war|rebellion|monarch|rome|greek|egypt).*")) {
+            return "Lịch sử";
+        }
+        if (t.matches(".*(love|romance|heart|passion|marry|marriage|relationship|kiss|darling|bride|groom|sweet|boyfriend|girlfriend|lover|wedding|dating|beloved|forever|hug).*")) {
+            return "Tình cảm";
+        }
+        if (t.matches(".*(action|adventure|thriller|spy|danger|crime|kill|murder|mystery|detective|secret|shadow|deadly|assassin|gun|fight|chase|escape|rescue|hunt|revenge|bullet|fury|terror).*")) {
+            return "Hành động";
+        }
+        if (t.matches(".*(life|success|habit|mind|skill|guide|heal|happy|peace|power|wisdom|think|art of|grow|change|friend|courage|inspire|daily|meditation|spirit|purpose|discipline).*")) {
+            return "Kỹ năng sống";
+        }
+        if (t.matches(".*(novel|story|poem|poetry|tale|classic|fiction|literature|legend|prose|drama|tales|fable|fantasy|myth|tragedy|magic|chronicles|essay|anthology).*")) {
+            return "Văn học";
+        }
+        return "Khác";
+    }
+
+    private void parseAndSeedFromCSV() {
+        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(
+                new org.springframework.core.io.ClassPathResource("data/Books_Cleaned.csv").getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+            
+            String line;
+            boolean isFirstLine = true;
+            
+            java.util.Map<String, CategoryEntity> categoryMap = new java.util.HashMap<>();
+            java.util.List<CategoryEntity> existingCats = entityManager.createQuery("SELECT c FROM CategoryEntity c", CategoryEntity.class).getResultList();
+            for (CategoryEntity c : existingCats) {
+                categoryMap.put(c.getName(), c);
+            }
+            
+            int count = 0;
+            while ((line = br.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+                
+                // Parse CSV by comma avoiding quotes
+                String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                if (values.length < 8) continue;
+                
+                String isbn = values[0].replaceAll("^\"|\"$", "").trim();
+                String title = values[1].replaceAll("^\"|\"$", "").trim();
+                String author = values[2].replaceAll("^\"|\"$", "").trim();
+                String yearStr = values[3].replaceAll("^\"|\"$", "").trim();
+                String publisher = values[4].replaceAll("^\"|\"$", "").trim();
+                String imgS = values[5].replaceAll("^\"|\"$", "").trim();
+                String imgM = values[6].replaceAll("^\"|\"$", "").trim();
+                String imgL = values[7].replaceAll("^\"|\"$", "").trim();
+                
+                String categoryName = resolveCategoryFromTitle(title);
+                CategoryEntity category = categoryMap.get(categoryName);
+                if (category == null) {
+                    category = categoryMap.get("Khác");
+                }
+                
+                // Create book
+                BookEntity book = new BookEntity();
+                book.setTitle(title.length() > 255 ? title.substring(0, 255) : title);
+                book.setIsbn(isbn.length() > 255 ? isbn.substring(0, 255) : isbn);
+                book.setAuthor(author.length() > 255 ? author.substring(0, 255) : author);
+                book.setPublisher(publisher.length() > 255 ? publisher.substring(0, 255) : publisher);
+                
+                try {
+                    book.setPublishYear(Integer.parseInt(yearStr));
+                } catch (NumberFormatException e) {
+                    book.setPublishYear(0);
+                }
+                
+                book.setImageUrlS(imgS);
+                book.setImageUrlM(imgM);
+                book.setImageUrlL(imgL);
+                book.setCategory(category);
+                book.setIsDigital(false);
+                
+                entityManager.persist(book);
+                
+                count++;
+                if (count % 1000 == 0) {
+                    entityManager.flush();
+                    entityManager.clear();
+                    // Reload categories back to persistence context
+                    categoryMap.clear();
+                    java.util.List<CategoryEntity> reloadedCats = entityManager.createQuery("SELECT c FROM CategoryEntity c", CategoryEntity.class).getResultList();
+                    for (CategoryEntity c : reloadedCats) {
+                        categoryMap.put(c.getName(), c);
+                    }
+                }
+                
+                // For demo purposes, avoid reading 270k rows which takes too long during startup
+                if (count >= 10000) {
+                    break;
+                }
+            }
+            
+            entityManager.flush();
+            System.out.println("Seeded " + count + " books and categories from CSV.");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
