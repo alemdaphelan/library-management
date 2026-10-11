@@ -11,6 +11,8 @@ export interface LoginResponse {
   role: string;
 }
 
+import { environment } from '../../environments/environment';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -18,7 +20,7 @@ export class AuthService {
   private roleKey = 'huit_lib_role';
   private userKey = 'huit_lib_user';
   private tokenKey = 'huit_lib_token';
-  private apiUrl = 'http://127.0.0.1:8080/api/v1/auth';
+  private apiUrl = `${environment.apiUrl}/api/v1/auth`;
 
   constructor(private http: HttpClient, private router: Router) { }
 

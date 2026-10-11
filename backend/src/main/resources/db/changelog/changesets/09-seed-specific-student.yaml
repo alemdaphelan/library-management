@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: seed-specific-student-lamto
+      author: antigravity
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: gen_random_uuid()
+              - column:
+                  name: role_id
+                  value: 'STUDENT'
+              - column:
+                  name: password_hash
+                  value: '$2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696'
+              - column:
+                  name: is_first_login
+                  valueBoolean: false
+              - column:
+                  name: full_name
+                  value: 'Tô Khiết Lâm'
+              - column:
+                  name: mssv
+                  value: '2001230430'
+              - column:
+                  name: department
+                  value: 'Khoa Công nghệ thông tin'
+              - column:
+                  name: email
+                  value: 'lamto20050505@gmail.com'
+              - column:
+                  name: phone
+                  value: '0901234567'
+              - column:
+                  name: user_type
+                  value: 'STUDENT'
+              - column:
+                  name: card_status
+                  value: 'ACTIVE'
+              - column:
+                  name: card_expiry_date
+                  valueDate: '2027-10-10T00:00:00'
+              - column:
+                  name: created_at
+                  valueDate: current_timestamp
+              - column:
+                  name: updated_at
+                  valueDate: current_timestamp

@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/books")
@@ -19,11 +21,23 @@ public class BookController {
     public BookController(BookService bookService) {
         this.bookService = bookService;
     }
-
     @GetMapping
     @Operation(summary = "Search Books", description = "Full-text fuzzy search (Hits Elasticsearch).")
-    public ResponseEntity<?> searchBooks(@RequestParam(required = false) String query) {
-        return ResponseEntity.ok(bookService.searchBooks(query));
+    public ResponseEntity<?> searchBooks(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        org.springframework.data.domain.Page<BookEntity> bookPage = bookService.searchBooks(query, pageable);
+        
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("content", bookPage.getContent());
+        response.put("totalPages", bookPage.getTotalPages());
+        response.put("totalElements", bookPage.getTotalElements());
+        response.put("size", bookPage.getSize());
+        response.put("number", bookPage.getNumber());
+        
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

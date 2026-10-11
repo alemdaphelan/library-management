@@ -1,8 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { BookService } from '../../../services/book.service';
+import { CategoryService, Category } from '../../../services/category.service';
+import { Subject, Subscription, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-search',
@@ -11,7 +15,7 @@ import { BookService } from '../../../services/book.service';
   templateUrl: './search.html',
   styleUrls: ['./search.css']
 })
-export class Search implements OnInit {
+export class Search implements OnInit, OnDestroy {
   viewMode: 'grid' | 'list' = 'grid';
   allBooks: any[] = [];
   books: any[] = [];
@@ -19,92 +23,165 @@ export class Search implements OnInit {
   // Filtering & Sorting State
   searchQuery: string = '';
   filterStatus: string = 'all'; // 'all', 'available', 'borrowed'
-  availableCategories = ['Khoa học máy tính', 'Hệ thống thông tin', 'Đồ họa', 'Lập trình Web', 'Chưa phân loại'];
+  availableCategories: string[] = [];
   selectedCategories: { [key: string]: boolean } = {};
   sortOption: string = 'newest';
 
-  private mockBooks = [
-    {
-      id: 1,
-      title: 'Học Máy & Trí Tuệ Nhân Tạo Hiện Đại: Lý Thuyết và Thực Hành Ứng Dụng',
-      author: 'Nguyễn Văn A',
-      cover: '/assets/images/cover_1.jpg',
-      category: 'Khoa học máy tính',
-      status: 'available'
-    },
-    {
-      id: 2,
-      title: 'Flutter for Beginners',
-      author: 'John Doe',
-      cover: '/assets/images/cover_2.jpg',
-      category: 'Lập trình Web',
-      status: 'borrowed'
-    },
-    {
-      id: 3,
-      title: 'Pro ASP.NET Core 6',
-      author: 'Adam Freeman',
-      cover: '/assets/images/cover_3.jpg',
-      category: 'Hệ thống thông tin',
-      status: 'available'
-    },
-    {
-      id: 4,
-      title: 'Head First Design Patterns',
-      author: 'Eric Freeman',
-      cover: '/assets/images/cover_1.jpg',
-      category: 'Khoa học máy tính',
-      status: 'available'
-    }
-  ];
+  // Pagination State
+  currentPage: number = 0;
+  pageSize: number = 10;
+  totalPages: number = 0;
+  totalElements: number = 0;
 
-  constructor(private bookService: BookService, private cdr: ChangeDetectorRef) {
-    this.availableCategories.forEach(cat => this.selectedCategories[cat] = false);
-  }
+  // Quick Search State
+  searchSubject = new Subject<string>();
+  quickSearchResults: any[] = [];
+  showDropdown = false;
+  searchSubscription!: Subscription;
+
+  constructor(
+    private bookService: BookService, 
+    private categoryService: CategoryService,
+    private cdr: ChangeDetectorRef,
+    private router: Router
+  ) {}
 
   ngOnInit() {
+    this.fetchCategories();
     this.fetchBooks();
+
+    this.searchSubscription = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(query => {
+        if (!query.trim()) {
+          return of({ content: [] });
+        }
+        return this.bookService.getBooks(query, 0, 5).pipe(
+          catchError(() => of({ content: [] }))
+        );
+      })
+    ).subscribe(data => {
+      if (data && data.content && data.content.length > 0) {
+        this.quickSearchResults = data.content.map((b: any) => ({
+          id: b.bookId || b.id,
+          title: b.title,
+          author: b.author || 'Đang cập nhật',
+          cover: b.imageUrlS || b.imageUrlM || b.imageUrlL || b.cover || '/assets/images/cover_1.jpg'
+        }));
+        this.showDropdown = true;
+      } else {
+        this.quickSearchResults = [];
+      }
+      this.cdr.detectChanges();
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.searchSubscription) {
+      this.searchSubscription.unsubscribe();
+    }
+  }
+
+  onSearchInput(value: string) {
+    if (value.trim().length > 0) {
+      this.showDropdown = true;
+      this.searchSubject.next(value);
+    } else {
+      this.quickSearchResults = [];
+      this.showDropdown = false;
+    }
+  }
+
+  onFocus() {
+    if (this.searchQuery.trim().length > 0 && this.quickSearchResults.length > 0) {
+      this.showDropdown = true;
+    }
+  }
+
+  onBlur() {
+    setTimeout(() => {
+      this.showDropdown = false;
+      this.cdr.detectChanges();
+    }, 150);
+  }
+
+  goToBook(id: string | number) {
+    this.router.navigate(['/book', id]);
+  }
+
+  highlightMatch(text: string): string {
+    if (!this.searchQuery || !text) return text;
+    const query = this.searchQuery.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.replace(regex, '<strong>$1</strong>');
+  }
+
+  fetchCategories() {
+    this.categoryService.getCategories().subscribe({
+      next: (cats: Category[]) => {
+        this.availableCategories = cats.map(c => c.name);
+        this.availableCategories.forEach(cat => this.selectedCategories[cat] = false);
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Error fetching categories', err)
+    });
   }
 
   fetchBooks() {
-    this.bookService.getBooks().subscribe({
+    this.bookService.getBooks(this.searchQuery, this.currentPage, this.pageSize).subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          this.allBooks = data.map(b => ({
+        if (data && data.content && data.content.length > 0) {
+          this.allBooks = data.content.map((b: any) => ({
             id: b.bookId || b.id,
             title: b.title,
             author: b.author || 'Đang cập nhật',
-            cover: b.coverUrl || b.cover || '/assets/images/cover_1.jpg',
-            category: b.category || 'Chưa phân loại',
+            cover: b.imageUrlL || b.imageUrlM || b.imageUrlS || b.cover || '/assets/images/cover_1.jpg',
+            category: b.category ? b.category.name : 'Khác',
             status: b.status || 'available'
           }));
+          this.totalPages = data.totalPages;
+          this.totalElements = data.totalElements;
         } else {
-          this.allBooks = [...this.mockBooks];
+          this.allBooks = [];
+          this.totalPages = 0;
+          this.totalElements = 0;
         }
         this.applyFilters();
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error fetching books', err);
-        this.allBooks = [...this.mockBooks];
+        this.allBooks = [];
         this.applyFilters();
         this.cdr.detectChanges();
       }
     });
   }
 
+  goToPage(page: number) {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+      this.fetchBooks();
+    }
+  }
+
+  nextPage() {
+    this.goToPage(this.currentPage + 1);
+  }
+
+  prevPage() {
+    this.goToPage(this.currentPage - 1);
+  }
+
+  onSearch() {
+    this.showDropdown = false;
+    this.currentPage = 0;
+    this.fetchBooks();
+  }
+
   applyFilters() {
     let filtered = [...this.allBooks];
-
-    // Search query
-    if (this.searchQuery.trim()) {
-      const q = this.searchQuery.toLowerCase();
-      filtered = filtered.filter(b => 
-        b.title?.toLowerCase().includes(q) || 
-        b.author?.toLowerCase().includes(q) || 
-        b.category?.toLowerCase().includes(q)
-      );
-    }
 
     // Status filter
     if (this.filterStatus === 'available') {
@@ -147,5 +224,48 @@ export class Search implements OnInit {
 
   setViewMode(mode: 'grid' | 'list') {
     this.viewMode = mode;
+  }
+
+  get visiblePages(): (number | string)[] {
+    const total = this.totalPages;
+    if (total === 0) return [];
+    
+    const current = this.currentPage + 1;
+    const delta = 2;
+
+    let pages: (number | string)[] = [];
+
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      
+      let left = Math.max(2, current - delta);
+      let right = Math.min(total - 1, current + delta);
+      
+      if (left > 2) {
+        pages.push('...');
+      }
+      
+      for (let i = left; i <= right; i++) {
+        pages.push(i);
+      }
+      
+      if (right < total - 1) {
+        pages.push('...');
+      }
+      
+      pages.push(total);
+    }
+    
+    return pages;
+  }
+  
+  onPageClick(p: number | string) {
+    if (typeof p === 'number') {
+      this.goToPage(p - 1);
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -22,11 +22,17 @@ export class Auth implements OnInit {
   successMessage = '';
   errorMessage = '';
 
-  constructor(private router: Router, private authService: AuthService) { }
+  constructor(private router: Router, private authService: AuthService, private cdr: ChangeDetectorRef) { }
 
   ngOnInit() {
     if (window.location.pathname.includes('forgot-password')) {
       this.mode = 'forgot';
+      const savedStep = sessionStorage.getItem('forgotStep');
+      const savedEmail = sessionStorage.getItem('forgotEmail');
+      if (savedStep && savedEmail) {
+        this.forgotStep = savedStep as 'email' | 'otp' | 'reset';
+        this.forgotData.email = savedEmail;
+      }
     }
   }
 
@@ -37,6 +43,8 @@ export class Auth implements OnInit {
     this.errorMessage = '';
     this.forgotStep = 'email';
     this.forgotData = { email: '', otp: '', newPassword: '', confirmPassword: '' };
+    sessionStorage.removeItem('forgotStep');
+    sessionStorage.removeItem('forgotEmail');
 
     const newUrl = newMode === 'login' ? '/login' : '/forgot-password';
     window.history.pushState({}, '', newUrl);
@@ -68,17 +76,30 @@ export class Auth implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
     this.successMessage = '';
+    this.cdr.detectChanges();
 
     this.authService.forgotPassword(this.forgotData.email).subscribe({
       next: (res: any) => {
-        this.isSubmitting = false;
-        this.successMessage = 'Mã OTP đã được gửi đến email của bạn.';
-        this.forgotStep = 'otp';
-        setTimeout(() => this.successMessage = '', 3000);
+        try {
+          this.isSubmitting = false;
+          this.successMessage = 'Mã OTP đã được gửi đến email của bạn.';
+          this.forgotStep = 'otp';
+          sessionStorage.setItem('forgotStep', 'otp');
+          sessionStorage.setItem('forgotEmail', this.forgotData.email);
+          this.cdr.detectChanges();
+          
+          setTimeout(() => {
+            this.successMessage = '';
+            this.cdr.detectChanges();
+          }, 3000);
+        } catch(e) {
+          console.error(e);
+        }
       },
       error: (err: any) => {
         this.isSubmitting = false;
         this.errorMessage = err.error || 'Đã có lỗi xảy ra.';
+        this.cdr.detectChanges();
       }
     });
   }
@@ -87,17 +108,25 @@ export class Auth implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
     this.successMessage = '';
+    this.cdr.detectChanges();
 
     this.authService.verifyOtp(this.forgotData.email, this.forgotData.otp).subscribe({
       next: (res: any) => {
         this.isSubmitting = false;
         this.successMessage = 'Xác thực thành công. Vui lòng nhập mật khẩu mới.';
         this.forgotStep = 'reset';
-        setTimeout(() => this.successMessage = '', 3000);
+        sessionStorage.setItem('forgotStep', 'reset');
+        this.cdr.detectChanges();
+
+        setTimeout(() => {
+          this.successMessage = '';
+          this.cdr.detectChanges();
+        }, 3000);
       },
       error: (err: any) => {
         this.isSubmitting = false;
         this.errorMessage = err.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.';
+        this.cdr.detectChanges();
       }
     });
   }
@@ -106,10 +135,12 @@ export class Auth implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
     this.successMessage = '';
+    this.cdr.detectChanges();
 
     if (this.forgotData.newPassword !== this.forgotData.confirmPassword) {
       this.errorMessage = 'Mật khẩu xác nhận không khớp!';
       this.isSubmitting = false;
+      this.cdr.detectChanges();
       return;
     }
 
@@ -117,6 +148,7 @@ export class Auth implements OnInit {
       next: (res: any) => {
         this.isSubmitting = false;
         this.successMessage = 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.';
+        this.cdr.detectChanges();
         setTimeout(() => {
           this.toggleMode('login', new Event('click'));
         }, 3000);
@@ -124,6 +156,7 @@ export class Auth implements OnInit {
       error: (err: any) => {
         this.isSubmitting = false;
         this.errorMessage = err.error || 'Đặt lại mật khẩu thất bại.';
+        this.cdr.detectChanges();
       }
     });
   }

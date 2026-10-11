@@ -4,8 +4,9 @@ import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.repository.BookRepository;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class BookService {
@@ -16,19 +17,15 @@ public class BookService {
         this.bookRepository = bookRepository;
     }
 
-    public List<BookEntity> getAllBooks() {
-        return bookRepository.findAll();
+    public Page<BookEntity> getAllBooks(Pageable pageable) {
+        return bookRepository.findAll(pageable);
     }
 
-    public List<BookEntity> searchBooks(String query) {
+    public Page<BookEntity> searchBooks(String query, Pageable pageable) {
         if (query == null || query.isBlank()) {
-            return getAllBooks();
+            return getAllBooks(pageable);
         }
-        // Basic filter on title or isbn for now (in-memory or JPA derived queries could be used)
-        return bookRepository.findAll().stream()
-                .filter(b -> (b.getTitle() != null && b.getTitle().toLowerCase().contains(query.toLowerCase())) ||
-                             (b.getIsbn() != null && b.getIsbn().contains(query)))
-                .collect(Collectors.toList());
+        return bookRepository.findByTitleContainingIgnoreCaseOrIsbnContainingIgnoreCaseOrAuthorContainingIgnoreCase(query, query, query, pageable);
     }
 
     public BookEntity getBookById(Long id) {

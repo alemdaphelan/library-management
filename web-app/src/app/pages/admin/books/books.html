@@ -50,7 +50,10 @@
           <tr *ngFor="let book of books">
             <td>
               <div class="book-info-cell">
-                <img [src]="book.coverUrl" alt="Cover" class="book-cover-thumb">
+                <img *ngIf="!book.imgError" [src]="book.imageUrlS || book.imageUrlM || book.imageUrlL || book.coverUrl" alt="Cover" class="book-cover-thumb" (error)="book.imgError = true">
+                <div class="book-cover-thumb-fallback" *ngIf="book.imgError || !(book.imageUrlS || book.imageUrlM || book.imageUrlL || book.coverUrl)">
+                  <span>{{ (book.title || 'B') | slice:0:1 }}</span>
+                </div>
                 <div class="book-details">
                   <div class="book-title">{{ book.title }}</div>
                   <div class="book-author">{{ book.author }}</div>
@@ -89,13 +92,19 @@
     </div>
     
     <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.85rem; color: #64748b;">Hiển thị 1-4 của 120 kết quả</span>
-      <div style="display: flex; gap: 5px;">
-        <button class="btn-outline btn-sm">Trước</button>
-        <button class="btn-primary btn-sm">1</button>
-        <button class="btn-outline btn-sm">2</button>
-        <button class="btn-outline btn-sm">3</button>
-        <button class="btn-outline btn-sm">Sau</button>
+      <span style="font-size: 0.85rem; color: #64748b;">Hiển thị {{ currentPage * pageSize + 1 }}-{{ (currentPage * pageSize) + books.length }} của {{ totalElements }} kết quả</span>
+      <div style="display: flex; gap: 5px;" *ngIf="totalPages > 0">
+        <button class="btn-outline btn-sm" (click)="prevPage()" [disabled]="currentPage === 0">Trước</button>
+        <ng-container *ngFor="let p of visiblePages">
+          <button class="btn-sm" 
+                  *ngIf="p !== '...'" 
+                  [ngClass]="p === (currentPage + 1) ? 'btn-primary' : 'btn-outline'"
+                  (click)="onPageClick(p)">
+            {{ p }}
+          </button>
+          <button class="btn-outline btn-sm" *ngIf="p === '...'" disabled>...</button>
+        </ng-container>
+        <button class="btn-outline btn-sm" (click)="nextPage()" [disabled]="currentPage >= totalPages - 1">Sau</button>
       </div>
     </div>
   </div>
@@ -119,7 +128,10 @@
       <div class="form-group cover-upload-group">
         <label>Ảnh bìa tài liệu</label>
         <div class="cover-uploader">
-          <img [src]="currentBook.coverUrl" alt="Cover Preview" class="cover-preview">
+          <img *ngIf="!currentBook.imgError" [src]="currentBook.imageUrlL || currentBook.imageUrlM || currentBook.imageUrlS || currentBook.coverUrl" alt="Cover Preview" class="cover-preview" (error)="currentBook.imgError = true">
+          <div class="cover-preview-fallback" *ngIf="currentBook.imgError || !(currentBook.imageUrlL || currentBook.imageUrlM || currentBook.imageUrlS || currentBook.coverUrl)">
+            <span>{{ (currentBook.title || 'B') | slice:0:1 }}</span>
+          </div>
           <div class="upload-actions">
             <button type="button" class="btn-outline btn-sm">Tải ảnh lên</button>
             <p class="upload-hint">Định dạng .jpg, .png. Tối đa 2MB.</p>

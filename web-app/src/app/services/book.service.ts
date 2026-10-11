@@ -2,17 +2,21 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+import { environment } from '../../environments/environment';
+
 @Injectable({
   providedIn: 'root'
 })
 export class BookService {
-  private apiUrl = 'http://127.0.0.1:8080/books';
+  private apiUrl = `${environment.apiUrl}/books`;
 
   constructor(private http: HttpClient) { }
 
-  getBooks(query?: string): Observable<any[]> {
-    const url = query ? `${this.apiUrl}?query=${query}` : this.apiUrl;
-    return this.http.get<any[]>(url);
+  getBooks(query?: string, page: number = 0, size: number = 10): Observable<any> {
+    const url = query 
+      ? `${this.apiUrl}?query=${query}&page=${page}&size=${size}` 
+      : `${this.apiUrl}?page=${page}&size=${size}`;
+    return this.http.get<any>(url);
   }
 
   getBookById(id: string): Observable<any> {
