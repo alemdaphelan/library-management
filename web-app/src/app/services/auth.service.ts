@@ -74,6 +74,22 @@ export class AuthService {
     });
   }
 
+  updateProfile(data: { fullName?: string; phone?: string; avatarUrl?: string }): Observable<any> {
+    const token = this.getToken();
+    return this.http.put(`${this.apiUrl}/me`, data, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  }
+
+  uploadAvatar(file: File): Observable<any> {
+    const token = this.getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post(`${this.apiUrl}/avatar`, formData, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+  }
+
   changePassword(oldPassword: string, newPassword: string): Observable<any> {
     const email = this.getCurrentUser();
     return this.http.post(`${this.apiUrl}/change-password`, null, {

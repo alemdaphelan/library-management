@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 11-add-avatar-and-update-students
+      author: antigravity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: users
+                columnName: avatar_url
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: avatar_url
+                  type: text
+        - update:
+            tableName: users
+            columns:
+              - column:
+                  name: department
+                  value: 'Khoa Công nghệ thông tin'
+            where: "user_type = 'STUDENT' OR role_id = 'STUDENT'"

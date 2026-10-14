@@ -23,16 +23,15 @@ spring:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   mail:
     host: smtp.gmail.com
-    port: 587
+    port: 465
     username: ${EMAIL_ADDRESS}
     password: ${PASSWORD}
     properties:
       mail:
         smtp:
           auth: true
-          starttls:
-            enable: true
           ssl:
+            enable: true
             trust: "smtp.gmail.com"
           connectiontimeout: 5000
           timeout: 5000
