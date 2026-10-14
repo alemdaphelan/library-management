@@ -39,3 +39,8 @@ target/
 *.zip
 *.tar.gz
 *.rar
+~$*.docx
+backend/schema.sql
+Test.txt
+/CNTT-KLCN119.docx
+/Quy định thư viện.docx

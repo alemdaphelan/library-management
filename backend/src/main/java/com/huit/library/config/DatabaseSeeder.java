@@ -83,12 +83,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private void seedCategories() {
-        // Xóa các category rác không thuộc danh sách chuẩn (nếu có)
-        entityManager.createNativeQuery(
-            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học')"
-        ).executeUpdate();
-
-        // Thêm các category chuẩn nếu chưa tồn tại
+        // 1. Thêm các category chuẩn nếu chưa tồn tại
         String insertQuery = "INSERT INTO categories (name, description, created_at, updated_at) " +
             "SELECT v.name, v.description, NOW(), NOW() " +
             "FROM (VALUES " +
@@ -103,6 +98,17 @@ public class DatabaseSeeder implements CommandLineRunner {
             ") AS v(name, description) " +
             "WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = v.name)";
         entityManager.createNativeQuery(insertQuery).executeUpdate();
+
+        // 2. Chuyển hướng các sách đang trỏ vào category cũ/rác sang category 'Khoa học' để tránh lỗi Foreign Key
+        entityManager.createNativeQuery(
+            "UPDATE books SET category_id = (SELECT category_id FROM categories WHERE name = 'Khoa học' LIMIT 1) " +
+            "WHERE category_id IN (SELECT category_id FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học'))"
+        ).executeUpdate();
+
+        // 3. Xóa các category rác không thuộc danh sách chuẩn
+        entityManager.createNativeQuery(
+            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học')"
+        ).executeUpdate();
     }
 
     private void classifyBooksByTitleKeywords() {

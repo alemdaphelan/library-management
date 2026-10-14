@@ -22,13 +22,14 @@ public class BookController {
         this.bookService = bookService;
     }
     @GetMapping
-    @Operation(summary = "Search Books", description = "Full-text fuzzy search (Hits Elasticsearch).")
+    @Operation(summary = "Search Books", description = "Full-text fuzzy search with optional category filter.")
     public ResponseEntity<?> searchBooks(
             @RequestParam(required = false) String query,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        org.springframework.data.domain.Page<BookEntity> bookPage = bookService.searchBooks(query, pageable);
+        org.springframework.data.domain.Page<BookEntity> bookPage = bookService.searchBooks(query, categoryId, pageable);
         
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("content", bookPage.getContent());

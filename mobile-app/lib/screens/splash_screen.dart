@@ -16,8 +16,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _navigateToLogin() async {
-    // Chờ 2 giây
-    await Future.delayed(const Duration(seconds: 2));
+    // Chờ 3 giây
+    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
     
     // Chuyển sang màn hình Đăng nhập (thay thế hoàn toàn Splash)

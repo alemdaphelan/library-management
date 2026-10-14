@@ -83,7 +83,9 @@
           <div class="book-cover-wrapper" [routerLink]="['/book', book.id]" style="cursor: pointer;">
             <img *ngIf="!book.imgError" [src]="book.cover" alt="{{ book.title }}" class="book-cover-img" (error)="book.imgError = true">
             <div class="book-cover-fallback" *ngIf="book.imgError || !book.cover">
-              <span>{{ book.title }}</span>
+              <span class="fallback-icon">📖</span>
+              <span class="fallback-title">{{ book.title }}</span>
+              <span class="fallback-author">{{ book.author }}</span>
             </div>
             <div class="book-overlay">
               <button class="btn-primary btn-sm" [routerLink]="['/book', book.id]">Xem chi tiết</button>

@@ -21,11 +21,19 @@ public class BookService {
         return bookRepository.findAll(pageable);
     }
 
-    public Page<BookEntity> searchBooks(String query, Pageable pageable) {
-        if (query == null || query.isBlank()) {
-            return getAllBooks(pageable);
+    public Page<BookEntity> searchBooks(String query, Long categoryId, Pageable pageable) {
+        boolean hasQuery = query != null && !query.isBlank();
+        boolean hasCategory = categoryId != null;
+        
+        if (hasQuery && hasCategory) {
+            return bookRepository.findByCategory_CategoryIdAndTitleContainingIgnoreCaseOrCategory_CategoryIdAndAuthorContainingIgnoreCase(
+                    categoryId, query, categoryId, query, pageable);
+        } else if (hasCategory) {
+            return bookRepository.findByCategory_CategoryId(categoryId, pageable);
+        } else if (hasQuery) {
+            return bookRepository.findByTitleContainingIgnoreCaseOrIsbnContainingIgnoreCaseOrAuthorContainingIgnoreCase(query, query, query, pageable);
         }
-        return bookRepository.findByTitleContainingIgnoreCaseOrIsbnContainingIgnoreCaseOrAuthorContainingIgnoreCase(query, query, query, pageable);
+        return getAllBooks(pageable);
     }
 
     public BookEntity getBookById(Long id) {
@@ -46,6 +54,12 @@ public class BookService {
         existing.setLabelColor(updatedBook.getLabelColor());
         existing.setDefaultPrice(updatedBook.getDefaultPrice());
         existing.setIsDigital(updatedBook.getIsDigital());
+        existing.setAuthor(updatedBook.getAuthor());
+        existing.setPublisher(updatedBook.getPublisher());
+        existing.setCategory(updatedBook.getCategory());
+        existing.setImageUrlS(updatedBook.getImageUrlS());
+        existing.setImageUrlM(updatedBook.getImageUrlM());
+        existing.setImageUrlL(updatedBook.getImageUrlL());
         return bookRepository.save(existing);
     }
 

@@ -70,7 +70,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> 
                         auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                                .requestMatchers("/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
+                                .requestMatchers("/api/v1/auth/**", "/feedback/**", "/api/v1/feedback/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/books", "/books/**", "/categories", "/categories/**").permitAll()
                                 .anyRequest().authenticated()
                 );

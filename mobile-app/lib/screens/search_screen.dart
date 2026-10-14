@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/screens/detail_screen.dart';
 import '../services/api_service.dart';
+import '../widgets/book_cover.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -157,14 +158,13 @@ class _SearchScreenState extends State<SearchScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 70, height: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(8),
-                                image: (book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl']) != null ? DecorationImage(image: NetworkImage(book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl']), fit: BoxFit.cover) : null,
-                              ),
-                              child: (book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl']) == null ? const Icon(Icons.image, color: Colors.grey) : null,
+                            BookCover(
+                              imageUrl: book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl'],
+                              title: book['title'] ?? 'Unknown',
+                              author: book['author'] ?? 'Unknown',
+                              width: 70,
+                              height: 100,
+                              borderRadius: 8,
                             ),
                             const SizedBox(width: 16),
                             Expanded(

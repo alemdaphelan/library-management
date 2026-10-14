@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:mobile_app/services/auth_service.dart';
-import 'package:mobile_app/services/api_service.dart';
+import 'package:mobile_app/services/loan_service.dart';
+import 'package:mobile_app/widgets/book_cover.dart';
 import 'package:mobile_app/screens/login_screen.dart';
 
 class BorrowedScreen extends StatefulWidget {
@@ -25,36 +26,7 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
   Future<void> _fetchData() async {
     try {
       final profile = await AuthService.getCurrentUser();
-      List<dynamic> loans = [];
-      try {
-        final loansRes = await ApiService.get('/loans/current');
-        if (loansRes is List && loansRes.isNotEmpty) {
-          loans = loansRes;
-        } else {
-          throw Exception('No loans');
-        }
-      } catch (_) {
-        loans = [
-          {
-            'title': 'Giáo trình Cấu trúc dữ liệu và Giải thuật',
-            'author': 'Đỗ Xuân Lôi',
-            'borrowDate': '01/10/2026',
-            'dueDate': '16/10/2026',
-            'remainingDays': 5,
-            'progress': 0.6,
-            'coverUrl': null,
-          },
-          {
-            'title': 'Kỹ nghệ phần mềm thực hành',
-            'author': 'Roger S. Pressman',
-            'borrowDate': '25/09/2026',
-            'dueDate': '13/10/2026',
-            'remainingDays': 2,
-            'progress': 0.85,
-            'coverUrl': null,
-          }
-        ];
-      }
+      final loans = await LoanService.getLoans();
       if (mounted) {
         setState(() {
           _userProfile = profile;
@@ -134,23 +106,29 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
   }
 
   Widget _buildProfileHeader() {
-    final fullName = _userProfile?['fullName'] ?? _userProfile?['name'] ?? 'Tô Khiết Lâm';
-    final studentId = _userProfile?['studentId'] ?? _userProfile?['mssv'] ?? '2001230430';
-    final faculty = _userProfile?['faculty'] ?? _userProfile?['department'] ?? 'Khoa Công nghệ thông tin';
+    final role = (_userProfile?['roleId'] ?? _userProfile?['role'] ?? _userProfile?['userType'] ?? '').toString().toUpperCase();
+    final email = (_userProfile?['email'] ?? '').toString().toLowerCase();
+    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF' || email.contains('admin');
+
+    final fullName = _userProfile?['fullName'] ?? _userProfile?['name'] ?? (isAdmin ? 'Quản trị viên hệ thống' : 'Sinh viên HUIT');
+    final studentId = _userProfile?['studentId'] ?? _userProfile?['mssv'];
+    final faculty = _userProfile?['faculty'] ?? _userProfile?['department'] ?? (isAdmin ? 'Phòng Quản lý & Vận hành Thư viện' : 'Khoa Công nghệ thông tin');
 
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0284c7), Color(0xFF0369a1)],
+        gradient: LinearGradient(
+          colors: isAdmin
+              ? const [Color(0xFF0f172a), Color(0xFF1e293b), Color(0xFF334155)]
+              : const [Color(0xFF0284c7), Color(0xFF0369a1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0284c7).withOpacity(0.3),
+            color: (isAdmin ? Colors.black : const Color(0xFF0284c7)).withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           )
@@ -160,10 +138,14 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
         children: [
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 35,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, size: 40, color: Color(0xFF0284c7)),
+                backgroundColor: isAdmin ? Colors.amber.shade400.withOpacity(0.2) : Colors.white,
+                child: Icon(
+                  isAdmin ? Icons.admin_panel_settings_rounded : Icons.person,
+                  size: 40,
+                  color: isAdmin ? Colors.amber.shade300 : const Color(0xFF0284c7),
+                ),
               ),
               const SizedBox(width: 15),
               Expanded(
@@ -180,7 +162,9 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      'MSSV: $studentId',
+                      isAdmin
+                          ? 'Mã cán bộ: CB-2026-001  •  Email: ${_userProfile?['email'] ?? 'admin@huit.edu.vn'}'
+                          : 'MSSV: ${studentId ?? '2001230430'}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -210,21 +194,27 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text('Tiền phạt', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                    Text('0 VNĐ', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  children: [
+                    Text(
+                      isAdmin ? 'Quyền hạn' : 'Tiền phạt',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                    Text(
+                      isAdmin ? 'Quản trị viên' : '0 VNĐ',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
                 ElevatedButton(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0284c7),
+                    foregroundColor: isAdmin ? const Color(0xFF0f172a) : const Color(0xFF0284c7),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text('Thẻ Thư Viện QR'),
+                  child: Text(isAdmin ? 'Mã QR Cán Bộ' : 'Thẻ Thư Viện QR'),
                 )
               ],
             ),
@@ -235,11 +225,20 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
   }
 
   Widget _buildBorrowedBookList() {
+    final role = (_userProfile?['roleId'] ?? _userProfile?['role'] ?? _userProfile?['userType'] ?? '').toString().toUpperCase();
+    final email = (_userProfile?['email'] ?? '').toString().toLowerCase();
+    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF' || email.contains('admin');
+
     if (_borrowedBooks.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20.0),
+      return Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Center(
-          child: Text('Bạn không có sách nào đang mượn.', style: TextStyle(color: Colors.grey)),
+          child: Text(
+            isAdmin
+                ? 'Tài khoản Quản trị viên chưa có sách cá nhân đang mượn.'
+                : 'Bạn không có sách nào đang mượn.',
+            style: const TextStyle(color: Colors.grey),
+          ),
         ),
       );
     }
@@ -299,14 +298,12 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 50,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFe2e8f0),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Icon(Icons.book, color: Colors.grey),
+                BookCover(
+                  title: title,
+                  author: author,
+                  width: 65,
+                  height: 90,
+                  borderRadius: 6,
                 ),
                 const SizedBox(width: 15),
                 Expanded(

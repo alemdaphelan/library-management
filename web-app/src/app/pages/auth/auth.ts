@@ -21,6 +21,11 @@ export class Auth implements OnInit {
   isSubmitting = false;
   successMessage = '';
   errorMessage = '';
+  showPassword = false;
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
+  }
 
   constructor(private router: Router, private authService: AuthService, private cdr: ChangeDetectorRef) { }
 
@@ -50,6 +55,28 @@ export class Auth implements OnInit {
     window.history.pushState({}, '', newUrl);
   }
 
+  private extractErrorMessage(err: any, fallback: string): string {
+    if (!err) return fallback;
+    if (err.status === 0) {
+      return 'Không thể kết nối đến máy chủ Backend (Port 8080). Vui lòng khởi động máy chủ!';
+    }
+    if (typeof err.error === 'string' && err.error.trim()) {
+      return err.error;
+    }
+    if (err.error && typeof err.error === 'object') {
+      if (err.error.message && typeof err.error.message === 'string') {
+        return err.error.message;
+      }
+      if (err.error.error && typeof err.error.error === 'string') {
+        return err.error.error;
+      }
+    }
+    if (err.message && typeof err.message === 'string' && !err.message.includes('Http failure response')) {
+      return err.message;
+    }
+    return fallback;
+  }
+
   onLogin() {
     this.isSubmitting = true;
     this.errorMessage = '';
@@ -64,10 +91,14 @@ export class Auth implements OnInit {
         }
       },
       error: (err) => {
-        console.log(err);
+        console.error('Login error:', err);
         this.isSubmitting = false;
-        this.errorMessage = 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!';
-        alert(this.errorMessage);
+        if (err.status === 0) {
+          this.errorMessage = 'Không thể kết nối đến máy chủ Backend (Port 8080). Vui lòng kiểm tra lại dịch vụ Backend!';
+        } else {
+          this.errorMessage = this.extractErrorMessage(err, 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!');
+        }
+        this.cdr.detectChanges();
       }
     });
   }
@@ -97,8 +128,9 @@ export class Auth implements OnInit {
         }
       },
       error: (err: any) => {
+        console.error('Forgot password error:', err);
         this.isSubmitting = false;
-        this.errorMessage = err.error || 'Đã có lỗi xảy ra.';
+        this.errorMessage = this.extractErrorMessage(err, 'Đã có lỗi xảy ra khi gửi yêu cầu khôi phục.');
         this.cdr.detectChanges();
       }
     });
@@ -124,8 +156,9 @@ export class Auth implements OnInit {
         }, 3000);
       },
       error: (err: any) => {
+        console.error('Verify OTP error:', err);
         this.isSubmitting = false;
-        this.errorMessage = err.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.';
+        this.errorMessage = this.extractErrorMessage(err, 'Mã OTP không hợp lệ hoặc đã hết hạn.');
         this.cdr.detectChanges();
       }
     });
@@ -154,8 +187,9 @@ export class Auth implements OnInit {
         }, 3000);
       },
       error: (err: any) => {
+        console.error('Reset password error:', err);
         this.isSubmitting = false;
-        this.errorMessage = err.error || 'Đặt lại mật khẩu thất bại.';
+        this.errorMessage = this.extractErrorMessage(err, 'Đặt lại mật khẩu thất bại.');
         this.cdr.detectChanges();
       }
     });

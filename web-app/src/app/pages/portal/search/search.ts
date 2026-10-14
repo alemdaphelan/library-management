@@ -29,7 +29,7 @@ export class Search implements OnInit, OnDestroy {
 
   // Pagination State
   currentPage: number = 0;
-  pageSize: number = 10;
+  pageSize: number = 12;
   totalPages: number = 0;
   totalElements: number = 0;
 

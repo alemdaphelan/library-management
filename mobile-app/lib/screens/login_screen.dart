@@ -18,6 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  bool _obscurePassword = true;
+
   Future<void> _handleLogin() async {
     setState(() => _isLoading = true);
     
@@ -36,13 +38,11 @@ class _LoginScreenState extends State<LoginScreen> {
         final data = jsonDecode(response.body);
         if (data['accessToken'] != null) {
           await AuthService.saveToken(data['accessToken']);
-          
-          // Get user info to check isFirstLogin
-          final user = await AuthService.getCurrentUser();
+          await AuthService.saveUserProfile(data);
           
           if (!mounted) return;
           
-          if (user != null && user['isFirstLogin'] == true) {
+          if (data['isFirstLogin'] == true) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => ChangePasswordScreen(
@@ -132,6 +132,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Form
                       TextField(
                         controller: _usernameController,
+                        enableSuggestions: false,
+                        autocorrect: false,
                         decoration: InputDecoration(
                           labelText: 'Mã sinh viên / Email',
                           prefixIcon: const Icon(Icons.person_outline),
@@ -145,10 +147,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 15),
                       TextField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
+                        enableSuggestions: false,
+                        autocorrect: false,
                         decoration: InputDecoration(
                           labelText: 'Mật khẩu',
                           prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

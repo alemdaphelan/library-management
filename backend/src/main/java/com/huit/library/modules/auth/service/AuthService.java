@@ -52,9 +52,22 @@ public class AuthService {
         String jwt = jwtUtils.generateJwtToken(authentication);
         
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        String refreshToken = tokenService.generateAndStoreRefreshToken(userDetails.getUser().getEmail());
+        UserEntity user = userDetails.getUser();
+        String refreshToken = tokenService.generateAndStoreRefreshToken(user.getEmail());
 
-        return new JwtResponseDTO(jwt, refreshToken, userDetails.getUser().getRoleId());
+        return JwtResponseDTO.builder()
+                .tokenType("Bearer")
+                .accessToken(jwt)
+                .refreshToken(refreshToken)
+                .userId(user.getUserId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .mssv(user.getMssv())
+                .role(user.getRoleId())
+                .isFirstLogin(user.getIsFirstLogin())
+                .avatarUrl(user.getAvatarUrl())
+                .cardStatus(user.getCardStatus())
+                .build();
     }
 
     public void changePassword(String email, String oldPassword, String newPassword) {
@@ -88,18 +101,35 @@ public class AuthService {
         String newRefreshToken = tokenService.generateAndStoreRefreshToken(email);
         tokenService.deleteRefreshToken(refreshToken);
         
-        return new JwtResponseDTO(newJwt, newRefreshToken, user.getRoleId());
+        return JwtResponseDTO.builder()
+                .tokenType("Bearer")
+                .accessToken(newJwt)
+                .refreshToken(newRefreshToken)
+                .userId(user.getUserId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .mssv(user.getMssv())
+                .role(user.getRoleId())
+                .isFirstLogin(user.getIsFirstLogin())
+                .avatarUrl(user.getAvatarUrl())
+                .cardStatus(user.getCardStatus())
+                .build();
     }
 
     public String forgotPassword(String email) {
         UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
                 .orElseThrow(() -> new RuntimeException("Email/MSSV không tồn tại trong hệ thống"));
         
-        // Generate 6-digit OTP
-        String otp = String.format("%06d", new Random().nextInt(999999));
+        // Generate secure 6-digit OTP (100000 - 999999)
+        java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+        String otp = String.valueOf(100000 + secureRandom.nextInt(900000));
         
-        // Store in Redis with 10 mins expiry
-        redisTemplate.opsForValue().set("OTP_" + email, otp, 10, TimeUnit.MINUTES);
+        // Store in Redis with 10 mins expiry under user's email and user's input key
+        String primaryEmail = user.getEmail() != null ? user.getEmail().toLowerCase().trim() : email.toLowerCase().trim();
+        redisTemplate.opsForValue().set("OTP_" + primaryEmail, otp, 10, TimeUnit.MINUTES);
+        if (!email.toLowerCase().trim().equals(primaryEmail)) {
+            redisTemplate.opsForValue().set("OTP_" + email.toLowerCase().trim(), otp, 10, TimeUnit.MINUTES);
+        }
         
         // Send email
         SimpleMailMessage message = new SimpleMailMessage();
@@ -123,8 +153,21 @@ public class AuthService {
     }
 
     public boolean verifyOtp(String email, String otp) {
-        String storedOtp = redisTemplate.opsForValue().get("OTP_" + email);
-        if (storedOtp != null && storedOtp.equals(otp)) {
+        if (email == null || otp == null) {
+            throw new IllegalArgumentException("Thông tin xác thực không hợp lệ");
+        }
+        String inputKey = "OTP_" + email.toLowerCase().trim();
+        String storedOtp = redisTemplate.opsForValue().get(inputKey);
+        
+        // If not found directly by input, try finding user and check against user's email
+        if (storedOtp == null) {
+            UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
+            if (user != null && user.getEmail() != null) {
+                storedOtp = redisTemplate.opsForValue().get("OTP_" + user.getEmail().toLowerCase().trim());
+            }
+        }
+        
+        if (storedOtp != null && storedOtp.equals(otp.trim())) {
             return true;
         }
         throw new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn");
@@ -133,10 +176,15 @@ public class AuthService {
     public void resetPassword(String email, String otp, String newPassword) {
         if (verifyOtp(email, otp)) {
             UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
             user.setPasswordHash(passwordEncoder.encode(newPassword));
             userRepository.save(user);
-            redisTemplate.delete("OTP_" + email);
+            
+            // Delete OTP keys
+            redisTemplate.delete("OTP_" + email.toLowerCase().trim());
+            if (user.getEmail() != null) {
+                redisTemplate.delete("OTP_" + user.getEmail().toLowerCase().trim());
+            }
         }
     }
 

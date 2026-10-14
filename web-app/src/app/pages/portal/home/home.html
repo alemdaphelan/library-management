@@ -2,6 +2,43 @@
   <!-- Hero Section -->
   <section class="hero-section">
     <div class="container hero-inner">
+      <!-- 3-Image Banner Carousel Auto Rotating -->
+      <div class="hero-carousel-wrapper" (mouseenter)="stopCarouselAutoPlay()" (mouseleave)="startCarouselAutoPlay()">
+        <div class="hero-carousel-track">
+          @for (slide of slides; track $index) {
+            <div class="carousel-slide" [class.active]="$index === currentSlide" [style.background-image]="'linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.75)), url(' + slide.image + ')'">
+              <div class="slide-content">
+                <span class="slide-badge">
+                  <span class="pulse-dot"></span> {{ slide.badge }}
+                </span>
+                <h2 class="slide-title">{{ slide.title }}</h2>
+                <p class="slide-desc">{{ slide.description }}</p>
+                <div class="slide-actions">
+                  <a [routerLink]="slide.ctaLink" class="btn-carousel-cta">{{ slide.ctaText }} &rarr;</a>
+                  <a routerLink="/search" class="btn-carousel-secondary">Khám phá kho sách</a>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Navigation Controls -->
+        <button class="carousel-arrow prev" (click)="prevSlide()" aria-label="Slide trước">&#10094;</button>
+        <button class="carousel-arrow next" (click)="nextSlide()" aria-label="Slide tiếp theo">&#10095;</button>
+
+        <!-- Indicators (3 dots) -->
+        <div class="carousel-indicators">
+          @for (slide of slides; track $index) {
+            <button 
+              class="dot-indicator" 
+              [class.active]="$index === currentSlide" 
+              (click)="goToSlide($index)"
+              [attr.aria-label]="'Chuyển tới slide ' + ($index + 1)">
+            </button>
+          }
+        </div>
+      </div>
+
       <div class="hero-top-row">
         <div class="hero-left">
           <div class="hero-tag">

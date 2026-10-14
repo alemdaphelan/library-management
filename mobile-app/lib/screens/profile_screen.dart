@@ -66,9 +66,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    final role = (_user!['roleId'] ?? _user!['role'] ?? _user!['userType'] ?? '').toString().toUpperCase();
+    final email = (_user!['email'] ?? '').toString().toLowerCase();
+    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF' || email.contains('admin');
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tài khoản cá nhân'),
+        title: Text(isAdmin ? 'Tài khoản Quản trị' : 'Tài khoản cá nhân'),
         backgroundColor: const Color(0xFF0f172a),
         foregroundColor: Colors.white,
       ),
@@ -81,10 +85,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: const Color(0xFF0f172a),
               child: Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 40,
-                    backgroundColor: Colors.white24,
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                    backgroundColor: isAdmin ? Colors.amber.withOpacity(0.2) : Colors.white24,
+                    child: Icon(
+                      isAdmin ? Icons.admin_panel_settings_rounded : Icons.person,
+                      size: 48,
+                      color: isAdmin ? Colors.amber.shade300 : Colors.white,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -92,7 +100,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _user!['fullName'] ?? 'Chưa cập nhật',
+                          _user!['fullName'] ?? (isAdmin ? 'Quản trị viên hệ thống' : 'Chưa cập nhật'),
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -104,16 +112,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _user!['email'] ?? '',
                           style: const TextStyle(color: Colors.white70),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _user!['cardStatus'] == 'ACTIVE' ? Colors.green : Colors.red,
+                            color: isAdmin
+                                ? const Color(0xFFb45309)
+                                : (_user!['cardStatus'] == 'ACTIVE' ? Colors.green : Colors.red),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            _user!['cardStatus'] == 'ACTIVE' ? 'Thẻ đang hoạt động' : 'Thẻ chưa kích hoạt',
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            isAdmin
+                                ? 'Quyền Quản trị viên (ADMIN)'
+                                : (_user!['cardStatus'] == 'ACTIVE' ? 'Thẻ đang hoạt động' : 'Thẻ chưa kích hoạt'),
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                         )
                       ],
@@ -125,6 +137,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
             
             // Menu Items
+            if (isAdmin) ...[
+              ListTile(
+                leading: const Icon(Icons.dashboard_customize_rounded, color: Colors.indigo),
+                title: const Text('Cổng Web Admin (Quản trị hệ thống)'),
+                subtitle: const Text('Quản lý sách, kho và lưu thông tại http://localhost:4200', style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.open_in_new, size: 18),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Phân hệ Web Admin'),
+                      content: const Text('Toàn bộ các nghiệp vụ Quản trị hệ thống, Nhập sách, Quản lý sinh viên, Duyệt mượn trả và Thống kê báo cáo được triển khai trên nền tảng Web tại địa chỉ:\n\nhttp://localhost:4200\n\nBạn có thể mở trình duyệt trên máy tính để đăng nhập với cùng tài khoản Admin này.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đã hiểu')),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+            ],
             ListTile(
               leading: const Icon(Icons.lightbulb_outline, color: Colors.amber),
               title: const Text('Đề xuất sách mới'),

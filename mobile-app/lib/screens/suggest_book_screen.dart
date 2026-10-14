@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:mobile_app/services/auth_service.dart';
 
 class SuggestBookScreen extends StatefulWidget {
   const SuggestBookScreen({super.key});
@@ -14,7 +17,11 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   bool _isSubmitting = false;
 
   void _submit() async {
-    if (_titleController.text.trim().isEmpty || _reasonController.text.trim().isEmpty) {
+    final title = _titleController.text.trim();
+    final reason = _reasonController.text.trim();
+    final author = _authorController.text.trim();
+
+    if (title.isEmpty || reason.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập tên sách và lý do!')),
       );
@@ -23,15 +30,48 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
 
     setState(() => _isSubmitting = true);
     
-    // Giả lập gọi API (Mock)
-    await Future.delayed(const Duration(seconds: 1));
-    
-    if (!mounted) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã gửi đề xuất thành công! Thư viện sẽ xem xét.')),
-    );
-    Navigator.pop(context);
+    try {
+      final token = await AuthService.getToken();
+      final user = await AuthService.getCurrentUser();
+      
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final body = jsonEncode({
+        'title': title,
+        'authorName': author.isNotEmpty ? author : 'Chưa rõ tác giả',
+        'reason': reason,
+        'userId': user?['userId'] ?? user?['id'],
+      });
+
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8080/feedback/proposals'),
+        headers: headers,
+        body: body,
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã gửi đề xuất thành công! Dữ liệu đã lưu vào hệ thống.')),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể gửi đề xuất (${response.statusCode})')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi kết nối máy chủ: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
