@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-19T12:50:31.437Z",
+  "url": "http://localhost:8080/books?page=0&size=10",
+  "requestCount": 200,
+  "concurrency": 20,
+  "statuses": {
+    "200": 200
+  },
+  "errorCount": 0,
+  "sampleErrors": [],
+  "latencyMs": {
+    "min": 299.25,
+    "p50": 618.01,
+    "p95": 807.54,
+    "max": 1089.75
+  },
+  "throughputRequestsPerSecond": 30.9,
+  "acceptance": {
+    "maxP95Ms": 1500,
+    "passed": true
+  }
+}

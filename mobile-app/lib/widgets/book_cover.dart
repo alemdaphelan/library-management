@@ -101,9 +101,7 @@ class BookCover extends StatelessWidget {
               top: 0,
               bottom: 0,
               width: isSmall ? 4 : 8,
-              child: Container(
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
+              child: Container(color: Colors.white.withValues(alpha: 0.12)),
             ),
             // Content
             Padding(
@@ -137,42 +135,42 @@ class BookCover extends StatelessWidget {
                         ),
                     ],
                   ),
-                Expanded(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.0),
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        maxLines: isSmall ? 3 : 5,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isSmall ? 10 : 16,
-                          fontWeight: FontWeight.bold,
-                          height: 1.15,
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2.0),
+                        child: Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          maxLines: isSmall ? 3 : 5,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isSmall ? 10 : 16,
+                            fontWeight: FontWeight.bold,
+                            height: 1.15,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                if (author != null && author!.isNotEmpty)
-                  Text(
-                    author!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
-                      fontSize: isSmall ? 9 : 12,
-                      fontStyle: FontStyle.italic,
+                  if (author != null && author!.isNotEmpty)
+                    Text(
+                      author!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: isSmall ? 9 : 12,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

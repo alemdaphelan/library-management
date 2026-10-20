@@ -36,8 +36,23 @@
         
         <div class="msg-content-wrapper">
           <div class="msg-bubble" [class.user-bubble]="msg.sender === 'user'" [class.bot-bubble]="msg.sender === 'bot'">
-            <div class="msg-text" [innerHTML]="msg.text | slice:0"></div>
+            <div class="msg-text">{{ msg.text }}</div>
             <div class="msg-time">{{ msg.time }}</div>
+          </div>
+
+          <div class="source-panel" *ngIf="msg.sender === 'bot' && msg.sources.length > 0">
+            <div class="source-heading">Nguồn đã truy xuất</div>
+            <div class="source-item" *ngFor="let source of msg.sources; let index = index">
+              <span class="source-index">{{ index + 1 }}</span>
+              <div class="source-content">
+                <a *ngIf="source.type === 'CATALOG'" [href]="source.sourceUri">{{ source.title }}</a>
+                <strong *ngIf="source.type !== 'CATALOG'">{{ source.title }}</strong>
+                <span>{{ source.snippet }}</span>
+              </div>
+            </div>
+            <div class="fallback-note" *ngIf="msg.fallbackUsed">
+              Đang dùng câu trả lời trích xuất có nguồn vì dịch vụ Gemini chưa sẵn sàng.
+            </div>
           </div>
           
           <!-- Render Suggest Buttons -->

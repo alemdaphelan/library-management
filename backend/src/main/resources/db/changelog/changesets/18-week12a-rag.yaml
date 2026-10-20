@@ -1,0 +1,190 @@
+databaseChangeLog:
+  - changeSet:
+      id: 18-week12a-enable-pgvector
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE EXTENSION IF NOT EXISTS vector;
+
+  - changeSet:
+      id: 18-week12a-rag-schema
+      author: codex
+      changes:
+        - createTable:
+            tableName: rag_knowledge_documents
+            columns:
+              - column:
+                  name: document_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_key
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_uri
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: effective_date
+                  type: date
+              - column:
+                  name: content_sha256
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createTable:
+            tableName: rag_knowledge_chunks
+            columns:
+              - column:
+                  name: chunk_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: document_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: chunk_index
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding
+                  type: vector(768)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding_provider
+                  type: varchar(80)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token_estimate
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: rag_knowledge_chunks
+            baseColumnNames: document_id
+            referencedTableName: rag_knowledge_documents
+            referencedColumnNames: document_id
+            constraintName: fk_rag_chunk_document
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: rag_knowledge_chunks
+            columnNames: document_id, chunk_index
+            constraintName: uk_rag_document_chunk_index
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE INDEX idx_rag_chunks_embedding_hnsw
+              ON rag_knowledge_chunks
+              USING hnsw (embedding vector_cosine_ops);
+        - createTable:
+            tableName: rag_query_audits
+            columns:
+              - column:
+                  name: audit_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: request_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: actor_hash
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_hash
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: retrieval_count
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grounded
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fallback_used
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(120)
+              - column:
+                  name: status
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: latency_ms
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createIndex:
+            tableName: rag_query_audits
+            indexName: idx_rag_audit_created_at
+            columns:
+              - column:
+                  name: created_at

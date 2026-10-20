@@ -1,104 +1,88 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:mobile_app/services/api_service.dart';
-import 'package:mobile_app/services/auth_service.dart';
+import 'api_service.dart';
 
 class LoanService {
-  static const String _loansPrefix = 'huit_borrowed_loans_';
-
-  static final List<Map<String, dynamic>> studentDefaultLoans = [
-    {
-      'title': 'Giáo trình Cấu trúc dữ liệu và Giải thuật',
-      'author': 'Đỗ Xuân Lôi',
-      'borrowDate': '01/10/2026',
-      'dueDate': '16/10/2026',
-      'remainingDays': 5,
-      'progress': 0.6,
-      'coverUrl': null,
-      'ticketCode': 'PM-2026-1042',
-    },
-    {
-      'title': 'Kỹ nghệ phần mềm thực hành',
-      'author': 'Roger S. Pressman',
-      'borrowDate': '25/09/2026',
-      'dueDate': '13/10/2026',
-      'remainingDays': 2,
-      'progress': 0.85,
-      'coverUrl': null,
-      'ticketCode': 'PM-2026-0925',
-    }
-  ];
-
-  static Future<String> _getStorageKey() async {
-    final user = await AuthService.getCurrentUser();
-    final id = user?['email'] ?? user?['mssv'] ?? 'guest';
-    return '$_loansPrefix$id';
+  static Future<List<Map<String, dynamic>>> getLoans({
+    bool activeOnly = false,
+  }) async {
+    final data = await ApiService.get('/loans/my-loans');
+    final loans = (data as List<dynamic>)
+        .map((item) => _normalize(Map<String, dynamic>.from(item as Map)))
+        .toList();
+    if (!activeOnly) return loans;
+    return loans
+        .where(
+          (item) => const {
+            'PENDING',
+            'RESERVED',
+            'BORROWING',
+            'OVERDUE',
+          }.contains(item['status']),
+        )
+        .toList();
   }
 
-  static Future<List<Map<String, dynamic>>> getLoans() async {
-    final user = await AuthService.getCurrentUser();
-    final role = (user?['roleId'] ?? user?['role'] ?? user?['userType'] ?? '').toString().toUpperCase();
-    final email = (user?['email'] ?? '').toString().toLowerCase();
-    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF' || email.contains('admin');
-
-    final key = await _getStorageKey();
-    final prefs = await SharedPreferences.getInstance();
-    final savedJson = prefs.getString(key);
-    List<Map<String, dynamic>> userLoans = [];
-    if (savedJson != null) {
-      try {
-        final decoded = jsonDecode(savedJson) as List;
-        userLoans = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (_) {}
-    }
-
-    // Only student accounts have curriculum study book defaults
-    if (!isAdmin) {
-      return [...userLoans, ...studentDefaultLoans];
-    }
-    // Admin has their own separate loan record (no fake student loans)
-    return userLoans;
+  static Future<Map<String, dynamic>> reserveBook(
+    int bookId, {
+    String ticketType = 'BORROW',
+    String? note,
+  }) async {
+    final pickupDate = DateTime.now().add(const Duration(days: 1));
+    final data = await ApiService.post('/loans/reserve', {
+      'bookId': bookId,
+      'ticketType': ticketType,
+      'pickupDate': _dateOnly(pickupDate),
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    });
+    return Map<String, dynamic>.from(data as Map);
   }
 
-  static Future<Map<String, dynamic>> addLoan(Map<String, dynamic> book) async {
-    final key = await _getStorageKey();
-    final prefs = await SharedPreferences.getInstance();
-    final now = DateTime.now();
-    final due = now.add(const Duration(days: 14));
-    final ticketCode = 'PM-${now.year}-${(1000 + (book['title'].toString().hashCode.abs() % 9000))}';
-    
-    final newLoan = {
-      'title': book['title'] ?? 'Sách tham khảo',
-      'author': book['author'] ?? 'Nhiều tác giả',
-      'borrowDate': '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}',
-      'dueDate': '${due.day.toString().padLeft(2, '0')}/${due.month.toString().padLeft(2, '0')}/${due.year}',
-      'remainingDays': 14,
-      'progress': 0.05,
-      'coverUrl': book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl'],
-      'status': 'borrowed',
-      'ticketCode': ticketCode,
+  static Future<Map<String, dynamic>> renewLoan(
+    int ticketId,
+    int detailId,
+  ) async {
+    final data = await ApiService.post(
+      '/loans/renew/$ticketId/items/$detailId',
+      {},
+    );
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  static Future<void> cancelReservation(int ticketId) async {
+    await ApiService.post('/loans/cancel/$ticketId', {});
+  }
+
+  static Map<String, dynamic> _normalize(Map<String, dynamic> loan) {
+    final dueDate = _parseDate(loan['dueDate']);
+    final createdAt = _parseDate(loan['createdAt']);
+    final daysRemaining = loan['daysRemaining'] is num
+        ? (loan['daysRemaining'] as num).toInt()
+        : dueDate?.difference(DateTime.now()).inDays;
+    return {
+      ...loan,
+      'title': loan['bookTitle'] ?? 'Tài liệu thư viện',
+      'coverUrl': loan['bookCover'],
+      'borrowDate': _displayDate(createdAt),
+      'dueDateDisplay': _displayDate(dueDate),
+      'remainingDays': daysRemaining ?? 0,
+      'ticketCode': 'PM-${loan['ticketId']}',
+      'progress': daysRemaining == null
+          ? 0.0
+          : ((10 - daysRemaining) / 10).clamp(0.0, 1.0),
     };
-
-    // Save into SharedPreferences per user
-    final savedJson = prefs.getString(key);
-    List<Map<String, dynamic>> userLoans = [];
-    if (savedJson != null) {
-      try {
-        final decoded = jsonDecode(savedJson) as List;
-        userLoans = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (_) {}
-    }
-    userLoans.insert(0, newLoan);
-    await prefs.setString(key, jsonEncode(userLoans));
-
-    // Try backend call
-    try {
-      await ApiService.post('/loans/checkout', {
-        'bookTitle': book['title'],
-        'isbn': book['isbn'],
-      });
-    } catch (_) {}
-
-    return newLoan;
   }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString());
+  }
+
+  static String _displayDate(DateTime? value) {
+    if (value == null) return '—';
+    return '${value.day.toString().padLeft(2, '0')}/'
+        '${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+
+  static String _dateOnly(DateTime value) =>
+      '${value.year}-${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 }

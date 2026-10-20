@@ -2,12 +2,21 @@ package com.huit.library.modules.auth.controller;
 
 import com.huit.library.modules.auth.dto.JwtResponseDTO;
 import com.huit.library.modules.auth.dto.LoginRequestDTO;
+import com.huit.library.modules.auth.dto.LogoutRequestDTO;
+import com.huit.library.modules.auth.dto.ChangePasswordRequestDTO;
+import com.huit.library.modules.auth.dto.ForgotPasswordRequestDTO;
+import com.huit.library.modules.auth.dto.RefreshTokenRequestDTO;
+import com.huit.library.modules.auth.dto.ResetPasswordRequestDTO;
+import com.huit.library.modules.auth.dto.VerifyOtpRequestDTO;
 import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.service.AuthService;
+import com.huit.library.core.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,34 +38,46 @@ public class AuthController {
         try {
             JwtResponseDTO response = authService.authenticateUser(loginRequest);
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(401).body(e.getMessage());
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(401).body("Email/MSSV hoặc mật khẩu không chính xác");
         }
     }
 
     @PostMapping("/logout")
     @Operation(summary = "Logout", description = "Blacklist the current JWT token in Redis.")
-    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader,
+                                    @RequestBody(required = false) LogoutRequestDTO request) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String jwt = authHeader.substring(7);
             tokenService.blacklistToken(jwt);
+        }
+        if (request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+            tokenService.deleteRefreshToken(request.getRefreshToken());
         }
         return ResponseEntity.ok().body("User logged out successfully!");
     }
 
     @PostMapping("/refresh-token")
     @Operation(summary = "Refresh Token", description = "Get a new JWT and refresh token using a valid refresh token.")
-    public ResponseEntity<JwtResponseDTO> refreshToken(@RequestParam String refreshToken) {
-        JwtResponseDTO response = authService.refreshToken(refreshToken);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshTokenRequestDTO request) {
+        try {
+            JwtResponseDTO response = authService.refreshToken(request.getRefreshToken());
+            return ResponseEntity.ok(response);
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(401).body("Refresh token không hợp lệ hoặc đã hết hạn");
+        }
     }
 
     @PostMapping("/change-password")
     @Operation(summary = "Change Password", description = "Change user password.")
-    public ResponseEntity<?> changePassword(@RequestParam String email, @RequestParam String oldPassword, @RequestParam String newPassword) {
+    public ResponseEntity<?> changePassword(Authentication authentication,
+                                            @Valid @RequestBody ChangePasswordRequestDTO request) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            return ResponseEntity.status(401).body("Unauthorized");
+        }
         try {
-            authService.changePassword(email, oldPassword, newPassword);
+            authService.changePassword(userDetails.getUser().getUserId(),
+                    request.getCurrentPassword(), request.getNewPassword());
             return ResponseEntity.ok().body("Password changed successfully!");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -65,20 +86,16 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     @Operation(summary = "Forgot Password", description = "Send OTP to user email")
-    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
-        try {
-            String otp = authService.forgotPassword(email);
-            return ResponseEntity.ok().body("Mã OTP đã được gửi đến email của bạn (Dev OTP: " + otp + ")");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
+        authService.forgotPassword(request.getEmail().trim());
+        return ResponseEntity.ok().body("Nếu tài khoản tồn tại, mã OTP sẽ được gửi đến email đã đăng ký.");
     }
 
     @PostMapping("/verify-otp")
     @Operation(summary = "Verify OTP", description = "Verify the OTP sent to email")
-    public ResponseEntity<?> verifyOtp(@RequestParam String email, @RequestParam String otp) {
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequestDTO request) {
         try {
-            authService.verifyOtp(email, otp);
+            authService.verifyOtp(request.getEmail(), request.getOtp());
             return ResponseEntity.ok().body("Xác thực OTP thành công.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -87,9 +104,9 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     @Operation(summary = "Reset Password", description = "Set new password using OTP")
-    public ResponseEntity<?> resetPassword(@RequestParam String email, @RequestParam String otp, @RequestParam String newPassword) {
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
         try {
-            authService.resetPassword(email, otp, newPassword);
+            authService.resetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
             return ResponseEntity.ok().body("Đặt lại mật khẩu thành công!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -112,7 +129,7 @@ public class AuthController {
     @PutMapping("/me")
     @Operation(summary = "Update current user profile", description = "Update full name, phone, or avatar")
     public ResponseEntity<?> updateProfile(org.springframework.security.core.Authentication authentication,
-                                           @RequestBody com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
+                                           @Valid @RequestBody com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body("Unauthorized");
         }

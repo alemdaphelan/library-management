@@ -7,7 +7,7 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class ImportsService {
-  private apiUrl = `${environment.apiUrl}/imports`;
+  private apiUrl = `${environment.apiUrl}/inventory`;
 
   constructor(private http: HttpClient) { }
 
@@ -19,8 +19,8 @@ export class ImportsService {
     return this.http.get<any[]>(`${this.apiUrl}/receipts`);
   }
 
-  getSuppliers(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/suppliers`);
+  getSuppliers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/suppliers`);
   }
 
   saveImport(importData: any): Observable<any> {

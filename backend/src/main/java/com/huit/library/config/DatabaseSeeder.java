@@ -8,6 +8,7 @@ import com.huit.library.modules.catalog.entity.CategoryEntity;
 import com.huit.library.modules.inventory.entity.SupplierEntity;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(name = "app.database-seeding.enabled", havingValue = "true", matchIfMissing = true)
 public class DatabaseSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;

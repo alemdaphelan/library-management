@@ -12,11 +12,14 @@ export class BookService {
 
   constructor(private http: HttpClient) { }
 
-  getBooks(query?: string, page: number = 0, size: number = 10): Observable<any> {
-    const url = query 
-      ? `${this.apiUrl}?query=${query}&page=${page}&size=${size}` 
-      : `${this.apiUrl}?page=${page}&size=${size}`;
-    return this.http.get<any>(url);
+  getBooks(query?: string, page: number = 0, size: number = 10, categoryId?: number): Observable<any> {
+    const params: Record<string, string> = {
+      page: page.toString(),
+      size: size.toString()
+    };
+    if (query?.trim()) params['query'] = query.trim();
+    if (categoryId) params['categoryId'] = categoryId.toString();
+    return this.http.get<any>(this.apiUrl, { params });
   }
 
   getBookById(id: string): Observable<any> {

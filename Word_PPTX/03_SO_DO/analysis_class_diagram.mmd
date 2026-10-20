@@ -1,0 +1,239 @@
+classDiagram
+    direction LR
+
+    class User {
+        UUID userId
+        String roleId
+        String fullName
+        String mssv
+        String department
+        String email
+        String cardStatus
+        DateTime cardExpiryDate
+    }
+    class StaffRole {
+        String roleId
+        String roleName
+        String permissions
+    }
+    class Wallet {
+        Long walletId
+        UUID userId
+        Decimal depositBalance
+        Decimal totalDebt
+    }
+
+    class Book {
+        Long bookId
+        Long categoryId
+        String title
+        String author
+        String publisher
+        String isbn
+        String ddcCallNumber
+        Integer publishYear
+        String language
+        Decimal defaultPrice
+    }
+    class Category {
+        Long categoryId
+        String name
+        String description
+    }
+    class BookCopy {
+        String barcode
+        Long bookId
+        Long shelfId
+        String conditionNote
+        String status
+        UUID lockedByUser
+        DateTime lockedUntil
+    }
+    class Floor {
+        Long floorId
+        String name
+    }
+    class Bookshelf {
+        Long bookshelfId
+        Long floorId
+        String name
+    }
+    class Shelf {
+        Long shelfId
+        Long bookshelfId
+        String name
+    }
+
+    class LoanTicket {
+        Long ticketId
+        UUID userId
+        String ticketType
+        String status
+    }
+    class LoanDetail {
+        Long detailId
+        Long ticketId
+        String barcode
+        DateTime dueDate
+        DateTime returnDate
+        Integer renewalCount
+        Decimal lateFineAccrued
+        String returnStatus
+    }
+    class Waitlist {
+        Long waitlistId
+        Long bookId
+        UUID userId
+        String status
+    }
+    class Transaction {
+        Long transactionId
+        Long parentTransactionId
+        UUID userId
+        Long ticketId
+        Long loanDetailId
+        Decimal amount
+        String type
+        String status
+        String reason
+        String dedupKey
+    }
+    class Notification {
+        UUID notifId
+        UUID userId
+        String type
+        String content
+        Boolean isRead
+        DateTime sentAt
+        String referenceType
+        String referenceId
+        String dedupKey
+    }
+
+    class Supplier {
+        Long supplierId
+        String name
+        String contactInfo
+    }
+    class GoodsReceipt {
+        Long receiptId
+        Long supplierId
+        String receiptCode
+        Decimal totalAmount
+        String status
+    }
+    class ReceiptDetail {
+        Long detailId
+        Long receiptId
+        Long bookId
+        Integer quantity
+        Decimal unitPrice
+    }
+    class InventoryAudit {
+        Long auditId
+        UUID conductedBy
+        Integer totalSystemBooks
+        Integer totalActualBooks
+        String status
+    }
+    class InventoryDetail {
+        String detailId
+        Long auditId
+        String barcode
+        String scanStatus
+        String scannedLocation
+    }
+
+    class DigitalDocument {
+        Long documentId
+        Long bookId
+        String fileUrl
+        String format
+        Long fileSize
+    }
+    class DigitalUsageLog {
+        Long logId
+        Long documentId
+        UUID userId
+        DateTime accessTime
+        Integer pagesRead
+    }
+    class BookProposal {
+        Long proposalId
+        UUID userId
+        String title
+        String authorName
+        String status
+    }
+    class Review {
+        Long reviewId
+        Long bookId
+        UUID userId
+        Integer rating
+        String comment
+    }
+    class Wishlist {
+        UUID wishlistId
+        Long bookId
+        UUID userId
+        DateTime addedAt
+    }
+
+    class LibrarianQrFlow {
+        <<control>>
+        resolveStudentQr(payload)
+        resolveLoanQr(payload)
+        validateLibrarianRole()
+        rejectInvalidOrExpiredQr()
+        dispatchCheckout()
+        dispatchReturn()
+    }
+    class RecommendationFlow {
+        <<control>>
+        buildContentFeatures()
+        rankTopK()
+        usePopularFallback()
+        evaluateMetrics()
+    }
+
+    StaffRole "1" --> "0..*" User : assigns
+    User "1" --> "0..1" Wallet : owns
+    Category "1" --> "0..*" Book : classifies
+    Book "1" --> "0..*" BookCopy : has
+    Floor "1" --> "0..*" Bookshelf : contains
+    Bookshelf "1" --> "0..*" Shelf : contains
+    Shelf "1" --> "0..*" BookCopy : locates
+
+    User "1" --> "0..*" LoanTicket : creates
+    LoanTicket "1" --> "1..*" LoanDetail : contains
+    BookCopy "1" --> "0..*" LoanDetail : circulates
+    LoanDetail "1" --> "0..*" Transaction : incurs
+    User "1" --> "0..*" Transaction : pays
+    Book "1" --> "0..*" Waitlist : queues
+    User "1" --> "0..*" Waitlist : joins
+    User "1" --> "0..*" Notification : receives
+
+    Supplier "1" --> "0..*" GoodsReceipt : supplies
+    GoodsReceipt "1" --> "1..*" ReceiptDetail : contains
+    Book "1" --> "0..*" ReceiptDetail : imports
+    User "1" --> "0..*" InventoryAudit : conducts
+    InventoryAudit "1" --> "0..*" InventoryDetail : records
+    BookCopy "1" --> "0..*" InventoryDetail : verifies
+
+    Book "1" --> "0..1" DigitalDocument : has
+    DigitalDocument "1" --> "0..*" DigitalUsageLog : logs
+    User "1" --> "0..*" DigitalUsageLog : accesses
+    User "1" --> "0..*" BookProposal : proposes
+    User "1" --> "0..*" Review : writes
+    Book "1" --> "0..*" Review : receives
+    User "1" --> "0..*" Wishlist : saves
+    Book "1" --> "0..*" Wishlist : appears_in
+
+    LibrarianQrFlow ..> User : resolves
+    LibrarianQrFlow ..> LoanTicket : opens
+    LibrarianQrFlow ..> BookCopy : scans
+    RecommendationFlow ..> Book : ranks
+    RecommendationFlow ..> LoanDetail : learns_from
+
+    note for LibrarianQrFlow "Required after the Week 9 circulation state machine is complete"
+    note for RecommendationFlow "Week 10 baseline uses TF IDF and cosine similarity"

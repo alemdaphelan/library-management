@@ -1,0 +1,30 @@
+flowchart LR
+    USER["Sinh viên\nngành/khoa"]
+    HISTORY["Lịch sử mượn\nđộ mới + gia hạn"]
+    BOOKS["Metadata sách\ntên, tác giả, thể loại, NXB, chủ đề"]
+    LOANS["Thống kê lượt mượn"]
+
+    TFIDF["TF-IDF + Cosine\nContent score"]
+    MAJOR["Ánh xạ ngành - chủ đề\nDepartment score"]
+    POP["Chuẩn hóa độ phổ biến\nPopularity score"]
+    HYBRID["Hybrid score\n0.50 Content + 0.35 Department + 0.15 Popularity"]
+    FILTER["Loại sách đã mượn\nXếp hạng Top-K + lý do"]
+    CACHE["Redis cache"]
+    API["API personalized / similar"]
+    UI["Web Portal + Flutter"]
+
+    HISTORY --> TFIDF
+    BOOKS --> TFIDF
+    USER --> MAJOR
+    BOOKS --> MAJOR
+    LOANS --> POP
+    TFIDF --> HYBRID
+    MAJOR --> HYBRID
+    POP --> HYBRID
+    HYBRID --> FILTER
+    FILTER --> CACHE
+    CACHE --> API
+    API --> UI
+
+    COLD["Cold-start: chưa có lịch sử"] -->|"Content = 0; dùng ngành + phổ biến"| HYBRID
+    NEWBOOK["Sách mới: popularity = 0"] -->|"vẫn có content + ngành"| HYBRID

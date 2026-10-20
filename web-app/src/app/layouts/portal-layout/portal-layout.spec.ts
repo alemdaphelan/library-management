@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { PortalLayout } from './portal-layout';
+import { provideRouter } from '@angular/router';
 
 describe('PortalLayout', () => {
   let component: PortalLayout;
@@ -9,6 +10,7 @@ describe('PortalLayout', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [PortalLayout],
+      providers: [provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(PortalLayout);

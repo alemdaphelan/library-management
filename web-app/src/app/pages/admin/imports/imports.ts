@@ -14,7 +14,8 @@ export class Imports implements OnInit {
   isDrawerOpen = false;
   stats: any = {};
   importReceipts: any[] = [];
-  suppliers: string[] = [];
+  suppliers: any[] = [];
+  selectedSupplierId?: number;
 
   newImportLines = [
     { isbn: '', title: '', qty: 1, price: 0 }
@@ -64,14 +65,24 @@ export class Imports implements OnInit {
   }
 
   saveImport() {
+    if (!this.selectedSupplierId || this.newImportLines.some(line => !line.isbn.trim() || line.qty < 1 || line.price < 0)) {
+      alert('Vui lòng chọn nhà cung cấp và nhập ISBN, số lượng, đơn giá hợp lệ.');
+      return;
+    }
     const importData = {
-      lines: this.newImportLines
+      supplierId: this.selectedSupplierId,
+      lines: this.newImportLines.map(line => ({
+        isbn: line.isbn.trim(),
+        quantity: Number(line.qty),
+        unitPrice: Number(line.price)
+      }))
     };
     this.importsService.saveImport(importData).subscribe({
       next: () => {
         alert('Đã lưu phiếu nhập thành công!');
         this.closeDrawer();
         this.fetchData();
+        this.selectedSupplierId = undefined;
         this.newImportLines = [{ isbn: '', title: '', qty: 1, price: 0 }];
       },
       error: (err) => {
@@ -79,5 +90,13 @@ export class Imports implements OnInit {
         alert('Lỗi khi lưu phiếu nhập!');
       }
     });
+  }
+
+  get totalQuantity(): number {
+    return this.newImportLines.reduce((sum, line) => sum + (Number(line.qty) || 0), 0);
+  }
+
+  get totalAmount(): number {
+    return this.newImportLines.reduce((sum, line) => sum + (Number(line.qty) || 0) * (Number(line.price) || 0), 0);
   }
 }

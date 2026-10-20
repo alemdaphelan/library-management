@@ -1,18 +1,60 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { DigitalAsset, DigitalAssetsService } from '../../../services/digital-assets.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-digital',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './digital.html',
   styleUrls: ['./digital.css']
 })
-export class Digital {
-  databases = [
-    { name: 'IEEE Xplore', desc: 'Thư viện số chuyên ngành Kỹ thuật Điện, Điện tử, Viễn thông, Công nghệ thông tin.', img: 'https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg', link: '#' },
-    { name: 'ProQuest', desc: 'Cơ sở dữ liệu đa ngành với hàng triệu luận văn, bài báo khoa học chất lượng cao.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/ProQuest_logo.svg/512px-ProQuest_logo.svg.png', link: '#' },
-    { name: 'SpringerLink', desc: 'Kho tàng tài liệu khổng lồ về khoa học, công nghệ, y học và toán học.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Springer.svg/512px-Springer.svg.png', link: '#' },
-    { name: 'ScienceDirect', desc: 'Cơ sở dữ liệu khoa học uy tín hàng đầu thế giới của nhà xuất bản Elsevier.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/ScienceDirect_logo.svg/512px-ScienceDirect_logo.svg.png', link: '#' }
-  ];
+export class Digital implements OnInit {
+  assets: DigitalAsset[] = [];
+  loading = false;
+  errorMessage = '';
+
+  constructor(private assetService: DigitalAssetsService, public authService: AuthService) {}
+
+  ngOnInit() {
+    if (this.authService.isLoggedIn()) this.loadAssets();
+  }
+
+  loadAssets() {
+    this.loading = true;
+    this.errorMessage = '';
+    this.assetService.getAssets().subscribe({
+      next: assets => {
+        this.assets = assets;
+        this.loading = false;
+      },
+      error: () => {
+        this.errorMessage = 'Không thể tải kho tài liệu số lúc này.';
+        this.loading = false;
+      }
+    });
+  }
+
+  download(asset: DigitalAsset) {
+    this.assetService.downloadAsset(asset.id).subscribe({
+      next: response => {
+        if (!response.body) return;
+        const url = URL.createObjectURL(response.body);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = asset.name;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.errorMessage = 'Không thể tải tài liệu. Vui lòng thử lại.'
+    });
+  }
+
+  formatSize(bytes: number): string {
+    if (!bytes) return '0 B';
+    const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
+    return `${(bytes / Math.pow(1024, index)).toFixed(index ? 1 : 0)} ${['B', 'KB', 'MB', 'GB'][index]}`;
+  }
 }

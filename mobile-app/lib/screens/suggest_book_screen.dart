@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/services/proposal_service.dart';
 
 class SuggestBookScreen extends StatefulWidget {
   const SuggestBookScreen({super.key});
@@ -15,6 +13,25 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   final _authorController = TextEditingController();
   final _reasonController = TextEditingController();
   bool _isSubmitting = false;
+  bool _isLoadingHistory = true;
+  List<Map<String, dynamic>> _history = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final data = await ProposalService.getMine();
+      if (mounted) setState(() => _history = data);
+    } catch (_) {
+      // Form remains usable even when history cannot be loaded.
+    } finally {
+      if (mounted) setState(() => _isLoadingHistory = false);
+    }
+  }
 
   void _submit() async {
     final title = _titleController.text.trim();
@@ -29,46 +46,27 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
     }
 
     setState(() => _isSubmitting = true);
-    
+
     try {
-      final token = await AuthService.getToken();
-      final user = await AuthService.getCurrentUser();
-      
-      final headers = {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final body = jsonEncode({
-        'title': title,
-        'authorName': author.isNotEmpty ? author : 'Chưa rõ tác giả',
-        'reason': reason,
-        'userId': user?['userId'] ?? user?['id'],
-      });
-
-      final response = await http.post(
-        Uri.parse('http://10.0.2.2:8080/feedback/proposals'),
-        headers: headers,
-        body: body,
+      await ProposalService.create(
+        title: title,
+        authorName: author.isEmpty ? null : author,
+        reason: reason,
       );
 
-      if (!mounted) return;
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã gửi đề xuất thành công! Dữ liệu đã lưu vào hệ thống.')),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể gửi đề xuất (${response.statusCode})')),
-        );
-      }
-    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi kết nối máy chủ: $e')),
+        const SnackBar(content: Text('Đã gửi đề xuất thành công.')),
       );
+      _titleController.clear();
+      _authorController.clear();
+      _reasonController.clear();
+      await _loadHistory();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi kết nối máy chủ: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -78,7 +76,10 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Đề xuất sách mới', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Đề xuất sách mới',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -103,7 +104,9 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
               controller: _titleController,
               decoration: InputDecoration(
                 labelText: 'Tên sách (Bắt buộc)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 filled: true,
                 fillColor: Colors.white,
               ),
@@ -113,7 +116,9 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
               controller: _authorController,
               decoration: InputDecoration(
                 labelText: 'Tác giả',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 filled: true,
                 fillColor: Colors.white,
               ),
@@ -124,7 +129,9 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
               maxLines: 4,
               decoration: InputDecoration(
                 labelText: 'Lý do đề xuất (Phục vụ môn học, nghiên cứu...)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 filled: true,
                 fillColor: Colors.white,
               ),
@@ -137,16 +144,82 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284c7),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: _isSubmitting 
+                child: _isSubmitting
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('GỬI ĐỀ XUẤT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    : const Text(
+                        'GỬI ĐỀ XUẤT',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
               ),
-            )
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'LỊCH SỬ ĐỀ XUẤT',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            if (_isLoadingHistory)
+              const Center(child: CircularProgressIndicator())
+            else if (_history.isEmpty)
+              const Text(
+                'Bạn chưa có đề xuất nào.',
+                style: TextStyle(color: Colors.grey),
+              )
+            else
+              ..._history.map(
+                (proposal) => Card(
+                  child: ListTile(
+                    title: Text(
+                      proposal['title']?.toString() ?? 'Sách chưa đặt tên',
+                    ),
+                    subtitle: Text(
+                      '${proposal['authorName'] ?? 'Chưa rõ tác giả'}\n'
+                      '${proposal['adminNote'] ?? proposal['reason'] ?? ''}',
+                    ),
+                    isThreeLine: true,
+                    trailing: _statusChip(
+                      proposal['status']?.toString() ?? 'PENDING',
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _statusChip(String status) {
+    final normalized = status.toUpperCase();
+    final color = normalized == 'APPROVED'
+        ? Colors.green
+        : normalized == 'REJECTED'
+        ? Colors.red
+        : Colors.orange;
+    final label = normalized == 'APPROVED'
+        ? 'Đã duyệt'
+        : normalized == 'REJECTED'
+        ? 'Từ chối'
+        : 'Chờ duyệt';
+    return Chip(
+      label: Text(label),
+      backgroundColor: color.withValues(alpha: 0.1),
+      side: BorderSide(color: color.withValues(alpha: 0.3)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _authorController.dispose();
+    _reasonController.dispose();
+    super.dispose();
   }
 }

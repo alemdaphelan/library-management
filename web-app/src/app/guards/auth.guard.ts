@@ -1,15 +1,23 @@
 import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import { CanActivate, CanActivateChild, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { AuthService, Role } from '../services/auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AuthGuard implements CanActivate {
+export class AuthGuard implements CanActivate, CanActivateChild {
 
   constructor(private authService: AuthService, private router: Router) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+    return this.checkAccess(route);
+  }
+
+  canActivateChild(childRoute: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+    return this.checkAccess(childRoute);
+  }
+
+  private checkAccess(route: ActivatedRouteSnapshot): boolean {
     const isLoggedIn = this.authService.isLoggedIn();
     
     if (!isLoggedIn) {
@@ -21,8 +29,6 @@ export class AuthGuard implements CanActivate {
     if (requiredRoles) {
       const userRole = this.authService.getRole();
       if (!requiredRoles.includes(userRole)) {
-        // Redirect to a safe page if no permission
-        alert("Bạn không có quyền truy cập trang này!");
         this.router.navigate(['/']);
         return false;
       }

@@ -16,27 +16,59 @@ class _SearchScreenState extends State<SearchScreen> {
   bool isLoading = true;
   bool isFetchingMore = false;
   String searchQuery = '';
-  String selectedCategory = 'Tất cả';
-  
+  int? selectedCategoryId;
+  String? selectedDepartment;
+  List<Map<String, dynamic>> categories = [];
+  List<Map<String, dynamic>> departments = [];
+
   int currentPage = 0;
   int pageSize = 10;
   int totalPages = 1;
-  ScrollController _scrollController = ScrollController();
-
-  final List<String> categories = ['Tất cả', 'Khoa học máy tính', 'Hệ thống thông tin', 'Đồ họa', 'Kinh tế', 'Ngoại ngữ'];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    fetchCategories();
+    fetchDepartments();
     fetchBooks(reset: true);
-    
+
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
         if (currentPage + 1 < totalPages && !isFetchingMore) {
           fetchBooks(reset: false);
         }
       }
     });
+  }
+
+  Future<void> fetchDepartments() async {
+    try {
+      final data = await ApiService.getPublic('/books/departments');
+      if (!mounted || data is! List) return;
+      setState(() {
+        departments = data
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      });
+    } catch (error) {
+      debugPrint('Error fetching departments: $error');
+    }
+  }
+
+  Future<void> fetchCategories() async {
+    try {
+      final data = await ApiService.get('/categories');
+      if (!mounted || data is! List) return;
+      setState(() {
+        categories = data
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      });
+    } catch (e) {
+      debugPrint('Error fetching categories: $e');
+    }
   }
 
   Future<void> fetchBooks({bool reset = false}) async {
@@ -54,9 +86,22 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     try {
-      final queryParam = searchQuery.isNotEmpty ? '?query=$searchQuery&page=$currentPage&size=$pageSize' : '?page=$currentPage&size=$pageSize';
+      final params = <String, String>{
+        'page': '$currentPage',
+        'size': '$pageSize',
+      };
+      if (searchQuery.trim().isNotEmpty) {
+        params['query'] = searchQuery.trim();
+      }
+      if (selectedCategoryId != null) {
+        params['categoryId'] = '$selectedCategoryId';
+      }
+      if (selectedDepartment != null && selectedDepartment!.isNotEmpty) {
+        params['department'] = selectedDepartment!;
+      }
+      final queryParam = '?${Uri(queryParameters: params).query}';
       final data = await ApiService.get('/books$queryParam');
-      
+
       setState(() {
         if (data != null && data['content'] != null) {
           allBooks.addAll(data['content']);
@@ -64,10 +109,10 @@ class _SearchScreenState extends State<SearchScreen> {
         }
         isLoading = false;
         isFetchingMore = false;
-        applyFilters();
+        books = List<dynamic>.from(allBooks);
       });
     } catch (e) {
-      print('Error fetching books: $e');
+      debugPrint('Error fetching books: $e');
       setState(() {
         isLoading = false;
         isFetchingMore = false;
@@ -75,23 +120,14 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  void applyFilters() {
-    setState(() {
-      books = allBooks.where((book) {
-        bool matchesCategory = true;
-        if (selectedCategory != 'Tất cả') {
-          matchesCategory = book['category'] == selectedCategory;
-        }
-        return matchesCategory;
-      }).toList();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tra cứu tài liệu', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Tra cứu tài liệu',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: Column(
         children: [
@@ -124,42 +160,105 @@ class _SearchScreenState extends State<SearchScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: categories.map((cat) => _buildChip(cat, selectedCategory == cat)).toList(),
+              children: [
+                _buildChip('Tất cả', null, selectedCategoryId == null),
+                ...categories.map(
+                  (category) => _buildChip(
+                    category['name']?.toString() ?? 'Khác',
+                    category['categoryId'] as int?,
+                    selectedCategoryId == category['categoryId'],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
 
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: DropdownButtonFormField<String?>(
+              initialValue: selectedDepartment,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: 'Lọc theo khoa / chuyên ngành',
+                prefixIcon: const Icon(Icons.school_outlined),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('Tất cả chuyên ngành'),
+                ),
+                ...departments.map(
+                  (department) => DropdownMenuItem<String?>(
+                    value: department['key']?.toString(),
+                    child: Text(
+                      department['displayName']?.toString() ??
+                          department['key']?.toString() ??
+                          'Chuyên ngành',
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() => selectedDepartment = value);
+                fetchBooks(reset: true);
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+
           // Search Results
           Expanded(
-            child: isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : books.isEmpty
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : books.isEmpty
                 ? const Center(child: Text('Không tìm thấy kết quả.'))
                 : ListView.separated(
                     controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     itemCount: books.length + (isFetchingMore ? 1 : 0),
-                    separatorBuilder: (context, index) => const Divider(height: 24),
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 24),
                     itemBuilder: (context, index) {
                       if (index == books.length) {
-                        return const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()));
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
                       }
                       final book = books[index];
-                      final bool isAvailable = (book['status'] ?? 'available') == 'available';
-                      
+                      final bool isAvailable =
+                          ((book['availableCopies'] as num?)?.toInt() ?? 0) > 0;
+
                       return InkWell(
                         onTap: () {
-                          // In a real app, pass book ID to detail screen
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => DetailScreen(book: book)),
+                            MaterialPageRoute(
+                              builder: (context) => DetailScreen(book: book),
+                            ),
                           );
                         },
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             BookCover(
-                              imageUrl: book['imageUrlM'] ?? book['imageUrlL'] ?? book['imageUrlS'] ?? book['coverUrl'],
+                              imageUrl:
+                                  book['imageUrlM'] ??
+                                  book['imageUrlL'] ??
+                                  book['imageUrlS'] ??
+                                  book['coverUrl'],
                               title: book['title'] ?? 'Unknown',
                               author: book['author'] ?? 'Unknown',
                               width: 70,
@@ -173,47 +272,65 @@ class _SearchScreenState extends State<SearchScreen> {
                                 children: [
                                   Text(
                                     book['title'] ?? 'Unknown',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(book['author'] ?? 'Unknown', style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                                  Text(
+                                    book['author'] ?? 'Unknown',
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 14,
+                                    ),
+                                  ),
                                   const SizedBox(height: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
+                                      color: isAvailable
+                                          ? Colors.green.shade50
+                                          : Colors.red.shade50,
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       isAvailable ? 'Có sẵn' : 'Đã mượn hết',
                                       style: TextStyle(
-                                        color: isAvailable ? Colors.green.shade700 : Colors.red.shade700,
-                                        fontSize: 12, fontWeight: FontWeight.bold
+                                        color: isAvailable
+                                            ? Colors.green.shade700
+                                            : Colors.red.shade700,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  )
+                                  ),
                                 ],
                               ),
-                            )
+                            ),
                           ],
                         ),
                       );
                     },
                   ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildChip(String label, bool isSelected) {
+  Widget _buildChip(String label, int? categoryId, bool isSelected) {
     return InkWell(
       onTap: () {
         setState(() {
-          selectedCategory = label;
-          applyFilters();
+          selectedCategoryId = categoryId;
         });
+        fetchBooks(reset: true);
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),

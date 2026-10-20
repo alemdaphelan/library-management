@@ -217,3 +217,26 @@
   gap: 12px;
   background-color: #f8fafc;
 }
+
+.page-subtitle { color: #64748b; margin: 5px 0 0; }
+.table-toolbar { gap: 12px; align-items: center; }
+.table-toolbar .search { min-width: 280px; flex: 1; }
+.message { padding: 11px 14px; border-radius: 8px; margin: 0 0 16px; }
+.message.error { color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; }
+.message.success { color: #075985; background: #f0f9ff; border: 1px solid #bae6fd; }
+.empty { color: #64748b; padding: 24px; }
+.result-count { margin-top: 15px; font-size: .85rem; color: #64748b; }
+.action-text { border: 0; background: #e0f2fe; color: #0369a1; padding: 7px 11px; border-radius: 7px; margin-right: 6px; cursor: pointer; font-weight: 600; }
+.action-text:hover { background: #bae6fd; }
+.action-text.danger { color: #991b1b; background: #fef2f2; }
+.student-dialog { width: min(620px, 100%); background: #fff; border-radius: 16px; overflow: hidden; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.form-grid label { display: grid; gap: 7px; color: #334155; font-size: .9rem; font-weight: 600; }
+.password-note { grid-column: 1 / -1; margin: 0; padding: 10px 12px; color: #0369a1; background: #f0f9ff; border-radius: 8px; }
+button:disabled { opacity: .6; cursor: not-allowed; }
+
+@media (max-width: 700px) {
+  .admin-header, .table-toolbar { flex-direction: column; align-items: stretch; }
+  .form-grid { grid-template-columns: 1fr; }
+  .table-toolbar .search { min-width: 0; }
+}

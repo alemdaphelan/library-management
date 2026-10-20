@@ -26,6 +26,24 @@
   gap: 12px;
 }
 
+.data-time {
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.dashboard-message {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.loading-message { background: #e0f2fe; color: #075985; }
+.error-message { background: #fee2e2; color: #991b1b; }
+
 /* Stats Cards */
 .stats-grid {
   display: grid;
@@ -81,6 +99,15 @@
 .stat-trend {
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+.stat-source {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.fine-value {
+  font-size: 1.5rem;
 }
 
 .trend-up { color: #10b981; }
@@ -212,6 +239,54 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: #64748b;
+}
+
+.bar-date {
+  margin-top: -7px;
+  color: #94a3b8;
+  font-size: 0.7rem;
+}
+
+.inventory-card {
+  min-height: 220px;
+}
+
+.inventory-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 7px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.inventory-row > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.inventory-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.inventory-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.available { background: #10b981; }
+.borrowed { background: #0284c7; }
+.reserved { background: #f59e0b; }
+
+.empty-state {
+  margin: 24px 0;
+  color: #94a3b8;
+  text-align: center;
 }
 
 /* CSS Pie Chart */

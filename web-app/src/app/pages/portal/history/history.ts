@@ -4,6 +4,7 @@ import { RouterLink, Router } from '@angular/router';
 import * as QRCode from 'qrcode';
 import { AuthService } from '../../../services/auth.service';
 import { CirculationService } from '../../../services/circulation.service';
+import { DebtEntry, PenaltyCase, PenaltyService } from '../../../services/penalty.service';
 
 export interface LoanItem {
   ticketId: number;
@@ -59,10 +60,13 @@ export class History implements OnInit {
   // Action states
   cancellingTicketId: number | null = null;
   renewingTicketId: number | null = null;
+  debtEntries: DebtEntry[] = [];
+  penaltyCases: PenaltyCase[] = [];
 
   constructor(
     private authService: AuthService,
     private circulationService: CirculationService,
+    private penaltyService: PenaltyService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -71,9 +75,21 @@ export class History implements OnInit {
     this.isLoggedIn = this.authService.isLoggedIn();
     if (this.isLoggedIn) {
       this.loadLoans();
+      this.loadFinancials();
     } else {
       this.isLoading = false;
     }
+  }
+
+  get outstandingDebt(): number {
+    return this.debtEntries
+      .filter(entry => Number(entry.amount) > 0)
+      .reduce((sum, entry) => sum + Math.max(0, Number(entry.amount) - Number(entry.paidAmount || 0)), 0);
+  }
+
+  loadFinancials(): void {
+    this.penaltyService.getMyLedger().subscribe({ next: value => this.debtEntries = value || [] });
+    this.penaltyService.getMyCases().subscribe({ next: value => this.penaltyCases = value || [] });
   }
 
   setTab(tab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST'): void {
@@ -182,24 +198,31 @@ export class History implements OnInit {
     this.isGeneratingQr = true;
     this.qrCodeDataUrl = null;
 
-    const qrPayload = `HUIT-PM-${item.ticketId}`;
-    QRCode.toDataURL(qrPayload, {
-      width: 240,
-      margin: 1.5,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff'
+    this.circulationService.getTicketQrPayload(item.ticketId).subscribe({
+      next: ({ payload }) => {
+        QRCode.toDataURL(payload, {
+          width: 240,
+          margin: 1.5,
+          color: {
+            dark: '#0f172a',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'M'
+        }).then((url: string) => {
+          this.qrCodeDataUrl = url;
+          this.isGeneratingQr = false;
+          this.cdr.detectChanges();
+        }).catch((err: any) => this.handleQrError(err));
       },
-      errorCorrectionLevel: 'M'
-    }).then((url: string) => {
-      this.qrCodeDataUrl = url;
-      this.isGeneratingQr = false;
-      this.cdr.detectChanges();
-    }).catch((err: any) => {
-      console.error('Lỗi tạo mã QR:', err);
-      this.isGeneratingQr = false;
-      this.cdr.detectChanges();
+      error: (err) => this.handleQrError(err),
     });
+  }
+
+  private handleQrError(err: unknown): void {
+    console.error('Lỗi tạo mã QR:', err);
+    this.isGeneratingQr = false;
+    this.errorMessage = 'Không thể tạo mã QR bảo mật. Vui lòng thử lại.';
+    this.cdr.detectChanges();
   }
 
   closeQrModal(): void {
@@ -218,21 +241,21 @@ export class History implements OnInit {
   }
 
   renewBook(item: LoanItem): void {
-    if (item.renewalCount !== undefined && item.renewalCount >= 2) {
-      alert('Tài liệu này đã đạt số lần gia hạn tối đa (2/2 lần). Vui lòng hoàn trả tài liệu đúng hạn tại quầy!');
+    if (item.renewalCount !== undefined && item.renewalCount >= 1) {
+      alert('Tài liệu này đã đạt số lần gia hạn tối đa (1/1 lần). Vui lòng hoàn trả đúng hạn tại quầy!');
       return;
     }
 
-    if (!confirm(`Bạn có chắc chắn muốn gia hạn thêm 7 ngày cho cuốn sách "${item.bookTitle}" (Phiếu #${item.ticketId}) không?`)) {
+    if (!confirm(`Bạn có chắc chắn muốn gia hạn thêm 10 ngày cho cuốn sách "${item.bookTitle}" (Phiếu #${item.ticketId}) không?`)) {
       return;
     }
 
     this.renewingTicketId = item.ticketId;
-    this.circulationService.renewLoan(item.ticketId).subscribe({
+    this.circulationService.renewLoan(item.ticketId, item.detailId).subscribe({
       next: (res: any) => {
         this.renewingTicketId = null;
-        const newDueStr = res.dueDate ? new Date(res.dueDate).toLocaleDateString('vi-VN') : 'thêm 7 ngày';
-        this.showToast(`Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/2)`);
+        const newDueStr = res.dueDate ? new Date(res.dueDate).toLocaleDateString('vi-VN') : 'thêm 10 ngày';
+        this.showToast(`Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/1)`);
         this.loadLoans();
       },
       error: (err: any) => {

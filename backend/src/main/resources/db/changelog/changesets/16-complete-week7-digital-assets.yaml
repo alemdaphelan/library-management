@@ -1,0 +1,151 @@
+databaseChangeLog:
+  - changeSet:
+      id: 16-complete-week7-digital-assets
+      author: codex
+      validCheckSum: ANY
+      changes:
+        - addColumn:
+            tableName: digital_documents
+            columns:
+              - column:
+                  name: original_filename
+                  type: varchar(255)
+              - column:
+                  name: display_name
+                  type: varchar(255)
+              - column:
+                  name: content_type
+                  type: varchar(150)
+              - column:
+                  name: storage_key
+                  type: varchar(255)
+              - column:
+                  name: access_level
+                  type: varchar(30)
+                  defaultValue: AUTHENTICATED
+                  constraints:
+                    nullable: false
+              - column:
+                  name: uploaded_by
+                  type: uuid
+        - sql:
+            dbms: postgresql
+            sql: |
+              UPDATE digital_documents d
+              SET book_id = NULL
+              WHERE d.book_id IS NOT NULL
+                AND NOT EXISTS (
+                    SELECT 1 FROM books b WHERE b.book_id = d.book_id
+                );
+
+              DELETE FROM digital_usage_logs l
+              WHERE l.document_id IS NOT NULL
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM digital_documents d
+                    WHERE d.document_id = l.document_id
+                );
+
+              UPDATE digital_usage_logs l
+              SET user_id = NULL
+              WHERE l.user_id IS NOT NULL
+                AND NOT EXISTS (
+                    SELECT 1 FROM users u WHERE u.user_id = l.user_id
+                );
+        - addUniqueConstraint:
+            tableName: digital_documents
+            columnNames: storage_key
+            constraintName: uk_digital_documents_storage_key
+        - addForeignKeyConstraint:
+            baseTableName: digital_documents
+            baseColumnNames: book_id
+            referencedTableName: books
+            referencedColumnNames: book_id
+            constraintName: fk_digital_documents_book
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: digital_documents
+            baseColumnNames: uploaded_by
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_digital_documents_uploaded_by
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: digital_usage_logs
+            baseColumnNames: document_id
+            referencedTableName: digital_documents
+            referencedColumnNames: document_id
+            constraintName: fk_digital_usage_document
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: digital_usage_logs
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_digital_usage_user
+            onDelete: SET NULL
+        - createIndex:
+            tableName: digital_documents
+            indexName: idx_digital_documents_book
+            columns:
+              - column:
+                  name: book_id
+              - column:
+                  name: created_at
+        - createIndex:
+            tableName: digital_usage_logs
+            indexName: idx_digital_usage_document_access
+            columns:
+              - column:
+                  name: document_id
+              - column:
+                  name: access_time
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE digital_documents
+              ADD CONSTRAINT chk_digital_documents_access_level
+              CHECK (access_level IN ('AUTHENTICATED', 'STAFF_ONLY'))
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE digital_documents DROP CONSTRAINT IF EXISTS chk_digital_documents_access_level
+        - dropIndex:
+            tableName: digital_usage_logs
+            indexName: idx_digital_usage_document_access
+        - dropIndex:
+            tableName: digital_documents
+            indexName: idx_digital_documents_book
+        - dropForeignKeyConstraint:
+            baseTableName: digital_usage_logs
+            constraintName: fk_digital_usage_user
+        - dropForeignKeyConstraint:
+            baseTableName: digital_usage_logs
+            constraintName: fk_digital_usage_document
+        - dropForeignKeyConstraint:
+            baseTableName: digital_documents
+            constraintName: fk_digital_documents_uploaded_by
+        - dropForeignKeyConstraint:
+            baseTableName: digital_documents
+            constraintName: fk_digital_documents_book
+        - dropUniqueConstraint:
+            tableName: digital_documents
+            constraintName: uk_digital_documents_storage_key
+        - dropColumn:
+            tableName: digital_documents
+            columnName: uploaded_by
+        - dropColumn:
+            tableName: digital_documents
+            columnName: access_level
+        - dropColumn:
+            tableName: digital_documents
+            columnName: storage_key
+        - dropColumn:
+            tableName: digital_documents
+            columnName: content_type
+        - dropColumn:
+            tableName: digital_documents
+            columnName: display_name
+        - dropColumn:
+            tableName: digital_documents
+            columnName: original_filename

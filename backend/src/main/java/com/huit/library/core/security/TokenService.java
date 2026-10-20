@@ -1,6 +1,7 @@
 package com.huit.library.core.security;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -14,9 +15,11 @@ public class TokenService {
     private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
     private static final String REFRESH_TOKEN_PREFIX = "jwt:refresh:";
 
-    // In a real application, these should be configured via application.yml
-    private final long refreshTokenDurationMs = 2592000000L; // 30 days
-    private final long jwtExpirationMs = 86400000L; // 1 day
+    @Value("${app.refreshTokenExpirationMs:2592000000}")
+    private long refreshTokenDurationMs;
+
+    @Value("${app.jwtExpirationMs:86400000}")
+    private long jwtExpirationMs;
 
     public TokenService(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;

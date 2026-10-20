@@ -1,6 +1,7 @@
 package com.huit.library.modules.auth.entity;
 
 import com.huit.library.core.entity.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -18,6 +19,7 @@ public class UserEntity extends BaseEntity {
     private UUID userId;
 
     private String roleId;
+    @JsonIgnore
     private String passwordHash;
     private Boolean isFirstLogin;
     private String fullName;
@@ -30,5 +32,9 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime cardExpiryDate;
     private Boolean disciplineFlag;
     private Integer roomViolationCount = 0;
+    private Integer overdueViolationCount = 0;
+    private String violationAcademicYear;
+    private LocalDateTime circulationLockedUntil;
+    private String circulationLockReason;
     private String avatarUrl;
 }

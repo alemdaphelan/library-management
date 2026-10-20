@@ -9,19 +9,36 @@ import com.huit.library.modules.auth.repository.UserRepository;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Random;
+import java.security.SecureRandom;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String OTP_PREFIX = "auth:otp:";
+    private static final String OTP_RESEND_PREFIX = "auth:otp:resend:";
+    private static final String OTP_ATTEMPTS_PREFIX = "auth:otp:attempts:";
+    private static final String OTP_LOCK_PREFIX = "auth:otp:lock:";
+    private static final long OTP_TTL_MINUTES = 10;
+    private static final long OTP_RESEND_SECONDS = 60;
+    private static final long OTP_LOCK_MINUTES = 15;
+    private static final long OTP_MAX_ATTEMPTS = 5;
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
@@ -70,26 +87,28 @@ public class AuthService {
                 .build();
     }
 
-    public void changePassword(String email, String oldPassword, String newPassword) {
-        try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, oldPassword));
-        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+    public void changePassword(UUID userId, String currentPassword, String newPassword) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Tài khoản không tồn tại"));
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new IllegalArgumentException("Mật khẩu cũ không chính xác");
         }
-                
-        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email).orElseThrow();
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setIsFirstLogin(false);
         userRepository.save(user);
     }
 
     public JwtResponseDTO refreshToken(String refreshToken) {
         String email = tokenService.getEmailFromRefreshToken(refreshToken);
         if (email == null) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new BadCredentialsException("Invalid refresh token");
         }
         
-        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email).orElseThrow(() -> new RuntimeException("User not found"));
+        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
         
         org.springframework.security.core.userdetails.UserDetails userDetails = 
                 new com.huit.library.core.security.CustomUserDetails(user);
@@ -116,19 +135,30 @@ public class AuthService {
                 .build();
     }
 
-    public String forgotPassword(String email) {
-        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
-                .orElseThrow(() -> new RuntimeException("Email/MSSV không tồn tại trong hệ thống"));
-        
+    public void forgotPassword(String email) {
+        String input = normalizeIdentifier(email);
+        if (input == null || !acquireResendWindow(input)) {
+            return;
+        }
+
+        UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+
+        String primaryEmail = normalizeIdentifier(user.getEmail());
+        if (!primaryEmail.equals(input) && !acquireResendWindow(primaryEmail)) {
+            return;
+        }
+
         // Generate secure 6-digit OTP (100000 - 999999)
-        java.security.SecureRandom secureRandom = new java.security.SecureRandom();
-        String otp = String.valueOf(100000 + secureRandom.nextInt(900000));
-        
+        String otp = String.valueOf(100000 + SECURE_RANDOM.nextInt(900000));
+
         // Store in Redis with 10 mins expiry under user's email and user's input key
-        String primaryEmail = user.getEmail() != null ? user.getEmail().toLowerCase().trim() : email.toLowerCase().trim();
-        redisTemplate.opsForValue().set("OTP_" + primaryEmail, otp, 10, TimeUnit.MINUTES);
-        if (!email.toLowerCase().trim().equals(primaryEmail)) {
-            redisTemplate.opsForValue().set("OTP_" + email.toLowerCase().trim(), otp, 10, TimeUnit.MINUTES);
+        for (String identifier : identifiers(input, primaryEmail)) {
+            redisTemplate.opsForValue().set(OTP_PREFIX + identifier, otp, OTP_TTL_MINUTES, TimeUnit.MINUTES);
+            redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier);
+            redisTemplate.delete(OTP_LOCK_PREFIX + identifier);
         }
         
         // Send email
@@ -144,31 +174,48 @@ public class AuthService {
             try {
                 mailSender.send(message);
             } catch (Exception e) {
-                System.err.println("Lỗi gửi email: " + e.getMessage());
-                System.out.println("OTP cho " + email + " là: " + otp);
+                LOGGER.error("Không thể gửi email OTP", e);
             }
         }).start();
-        
-        return otp;
     }
 
     public boolean verifyOtp(String email, String otp) {
         if (email == null || otp == null) {
             throw new IllegalArgumentException("Thông tin xác thực không hợp lệ");
         }
-        String inputKey = "OTP_" + email.toLowerCase().trim();
-        String storedOtp = redisTemplate.opsForValue().get(inputKey);
-        
-        // If not found directly by input, try finding user and check against user's email
-        if (storedOtp == null) {
-            UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
-            if (user != null && user.getEmail() != null) {
-                storedOtp = redisTemplate.opsForValue().get("OTP_" + user.getEmail().toLowerCase().trim());
-            }
+        String input = normalizeIdentifier(email);
+        UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
+        String primaryEmail = user == null ? null : normalizeIdentifier(user.getEmail());
+        Set<String> identifiers = identifiers(input, primaryEmail);
+
+        if (identifiers.stream().anyMatch(identifier -> Boolean.TRUE.equals(
+                redisTemplate.hasKey(OTP_LOCK_PREFIX + identifier)))) {
+            throw new IllegalArgumentException("Bạn đã nhập sai OTP quá nhiều lần. Vui lòng thử lại sau 15 phút");
         }
-        
+
+        String storedOtp = identifiers.stream()
+                .map(identifier -> redisTemplate.opsForValue().get(OTP_PREFIX + identifier))
+                .filter(value -> value != null)
+                .findFirst()
+                .orElse(null);
+
         if (storedOtp != null && storedOtp.equals(otp.trim())) {
+            identifiers.forEach(identifier -> redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier));
             return true;
+        }
+
+        String attemptIdentifier = primaryEmail == null ? input : primaryEmail;
+        Long attempts = redisTemplate.opsForValue().increment(OTP_ATTEMPTS_PREFIX + attemptIdentifier);
+        if (attempts != null && attempts == 1L) {
+            redisTemplate.expire(OTP_ATTEMPTS_PREFIX + attemptIdentifier, OTP_TTL_MINUTES, TimeUnit.MINUTES);
+        }
+        if (attempts != null && attempts >= OTP_MAX_ATTEMPTS) {
+            for (String identifier : identifiers) {
+                redisTemplate.opsForValue().set(OTP_LOCK_PREFIX + identifier, "1", OTP_LOCK_MINUTES,
+                        TimeUnit.MINUTES);
+                redisTemplate.delete(OTP_PREFIX + identifier);
+            }
+            throw new IllegalArgumentException("Bạn đã nhập sai OTP quá nhiều lần. Vui lòng thử lại sau 15 phút");
         }
         throw new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn");
     }
@@ -180,12 +227,33 @@ public class AuthService {
             user.setPasswordHash(passwordEncoder.encode(newPassword));
             userRepository.save(user);
             
-            // Delete OTP keys
-            redisTemplate.delete("OTP_" + email.toLowerCase().trim());
-            if (user.getEmail() != null) {
-                redisTemplate.delete("OTP_" + user.getEmail().toLowerCase().trim());
+            // Delete all password-recovery state after a successful reset.
+            for (String identifier : identifiers(normalizeIdentifier(email), normalizeIdentifier(user.getEmail()))) {
+                redisTemplate.delete(OTP_PREFIX + identifier);
+                redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier);
+                redisTemplate.delete(OTP_LOCK_PREFIX + identifier);
+                redisTemplate.delete(OTP_RESEND_PREFIX + identifier);
             }
         }
+    }
+
+    private boolean acquireResendWindow(String identifier) {
+        return !Boolean.FALSE.equals(redisTemplate.opsForValue().setIfAbsent(
+                OTP_RESEND_PREFIX + identifier, "1", OTP_RESEND_SECONDS, TimeUnit.SECONDS));
+    }
+
+    private String normalizeIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return null;
+        }
+        return identifier.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private Set<String> identifiers(String input, String primaryEmail) {
+        Set<String> identifiers = new LinkedHashSet<>();
+        if (input != null) identifiers.add(input);
+        if (primaryEmail != null) identifiers.add(primaryEmail);
+        return identifiers;
     }
 
     public UserEntity getFreshUser(UUID userId) {

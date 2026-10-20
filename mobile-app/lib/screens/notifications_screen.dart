@@ -1,121 +1,169 @@
 import 'package:flutter/material.dart';
 
-class NotificationsScreen extends StatelessWidget {
+import '../services/notification_service.dart';
+
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final items = await NotificationService.getMyNotifications();
+      if (!mounted) return;
+      setState(() => _items = items);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _markRead(Map<String, dynamic> item) async {
+    if (item['isRead'] == true || item['notifId'] == null) return;
+    try {
+      await NotificationService.markAsRead(item['notifId'].toString());
+      if (!mounted) return;
+      setState(() => item['isRead'] = true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông báo', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+        title: const Text(
+          'Thông báo',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
+        ],
       ),
       backgroundColor: const Color(0xFFf8f9ff),
-      body: ListView(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(child: Text(_error!, textAlign: TextAlign.center))
+          : _items.isEmpty
+          ? const Center(child: Text('Bạn chưa có thông báo nào.'))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _items.length,
+                separatorBuilder: (_, index) => const SizedBox(height: 12),
+                itemBuilder: (_, index) => _buildItem(_items[index]),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildItem(Map<String, dynamic> item) {
+    final unread = item['isRead'] != true;
+    final type = item['type']?.toString().toUpperCase() ?? '';
+    final (icon, color) = switch (type) {
+      'OVERDUE' => (Icons.warning_rounded, Colors.red),
+      'DUE_SOON' => (Icons.access_time_filled, Colors.orange),
+      'RESERVATION_EXPIRED' => (Icons.event_busy, Colors.deepOrange),
+      _ => (Icons.notifications, Colors.blue),
+    };
+    final sentAt = DateTime.tryParse(item['sentAt']?.toString() ?? '');
+
+    return InkWell(
+      onTap: () => _markRead(item),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
         padding: const EdgeInsets.all(16),
-        children: [
-          _buildNotificationItem(
-            icon: Icons.warning_rounded,
-            iconColor: Colors.red,
-            title: 'Sách quá hạn!',
-            message: 'Cuốn "Clean Architecture" đã quá hạn 5 ngày. Vui lòng trả sách hoặc đóng phạt tại quầy.',
-            time: '2 giờ trước',
-            isUnread: true,
+        decoration: BoxDecoration(
+          color: unread ? Colors.white : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: unread ? Colors.blue.shade100 : Colors.grey.shade200,
+            width: unread ? 1.5 : 1,
           ),
-          const SizedBox(height: 12),
-          _buildNotificationItem(
-            icon: Icons.access_time_filled,
-            iconColor: Colors.orange,
-            title: 'Sắp đến hạn trả sách',
-            message: 'Cuốn "Flutter in Action" còn 2 ngày nữa là đến hạn trả. Đừng quên nhé!',
-            time: '1 ngày trước',
-            isUnread: false,
-          ),
-          const SizedBox(height: 12),
-          _buildNotificationItem(
-            icon: Icons.check_circle,
-            iconColor: Colors.green,
-            title: 'Đề xuất sách được duyệt',
-            message: 'Đề xuất sách "Domain-Driven Design" của bạn đã được duyệt và đang trong quá trình đặt mua.',
-            time: '3 ngày trước',
-            isUnread: false,
-          ),
-        ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              backgroundColor: color.withValues(alpha: 0.1),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _titleFor(type),
+                          style: TextStyle(
+                            fontWeight: unread
+                                ? FontWeight.bold
+                                : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (unread)
+                        const Icon(Icons.circle, color: Colors.red, size: 9),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(item['content']?.toString() ?? ''),
+                  if (sentAt != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '${sentAt.day.toString().padLeft(2, '0')}/'
+                      '${sentAt.month.toString().padLeft(2, '0')}/${sentAt.year} '
+                      '${sentAt.hour.toString().padLeft(2, '0')}:'
+                      '${sentAt.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildNotificationItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String message,
-    required String time,
-    required bool isUnread,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isUnread ? Colors.white : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: isUnread ? Border.all(color: Colors.blue.shade100, width: 1.5) : Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          if (isUnread)
-            BoxShadow(color: Colors.blue.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            backgroundColor: iconColor.withOpacity(0.1),
-            child: Icon(icon, color: iconColor),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    if (isUnread)
-                      Container(
-                        width: 8, height: 8,
-                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                      )
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  message,
-                  style: TextStyle(
-                    color: isUnread ? Colors.black87 : Colors.grey.shade600,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  time,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
+  String _titleFor(String type) => switch (type) {
+    'OVERDUE' => 'Sách quá hạn',
+    'DUE_SOON' => 'Sắp đến hạn trả',
+    'RESERVATION_EXPIRED' => 'Phiếu đặt giữ đã hết hạn',
+    _ => 'Thông báo thư viện',
+  };
 }

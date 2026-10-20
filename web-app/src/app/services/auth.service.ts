@@ -46,8 +46,9 @@ export class AuthService {
 
   logout() {
     const token = this.getToken();
+    const refreshToken = this.getUserProfile()?.refreshToken;
     if (token) {
-      this.http.post(`${this.apiUrl}/logout`, {}, {
+      this.http.post(`${this.apiUrl}/logout`, { refreshToken }, {
         headers: { 'Authorization': `Bearer ${token}` }
       }).subscribe({
         next: () => this.clearLocalData(),
@@ -107,9 +108,10 @@ export class AuthService {
   }
 
   changePassword(oldPassword: string, newPassword: string): Observable<any> {
-    const email = this.getCurrentUser();
-    return this.http.post(`${this.apiUrl}/change-password`, null, {
-      params: { email: email || '', oldPassword, newPassword },
+    return this.http.post(`${this.apiUrl}/change-password`, {
+      currentPassword: oldPassword,
+      newPassword
+    }, {
       responseType: 'text'
     });
   }
@@ -119,22 +121,19 @@ export class AuthService {
   }
 
   forgotPassword(email: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/forgot-password`, null, {
-      params: { email },
+    return this.http.post(`${this.apiUrl}/forgot-password`, { email }, {
       responseType: 'text'
     });
   }
 
   verifyOtp(email: string, otp: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/verify-otp`, null, {
-      params: { email, otp },
+    return this.http.post(`${this.apiUrl}/verify-otp`, { email, otp }, {
       responseType: 'text'
     });
   }
 
   resetPassword(email: string, otp: string, newPassword: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/reset-password`, null, {
-      params: { email, otp, newPassword },
+    return this.http.post(`${this.apiUrl}/reset-password`, { email, otp, newPassword }, {
       responseType: 'text'
     });
   }

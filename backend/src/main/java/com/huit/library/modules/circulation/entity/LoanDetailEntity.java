@@ -28,4 +28,5 @@ public class LoanDetailEntity extends BaseEntity {
     private Integer renewalCount = 0;
     private Boolean isRecalled = false;
     private BigDecimal lateFineAccrued = BigDecimal.ZERO;
+    private LocalDateTime fineStoppedAt;
 }

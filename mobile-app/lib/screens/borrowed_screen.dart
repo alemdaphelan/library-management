@@ -4,6 +4,8 @@ import 'package:mobile_app/services/auth_service.dart';
 import 'package:mobile_app/services/loan_service.dart';
 import 'package:mobile_app/widgets/book_cover.dart';
 import 'package:mobile_app/screens/login_screen.dart';
+import 'package:mobile_app/services/librarian_qr_service.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class BorrowedScreen extends StatefulWidget {
   const BorrowedScreen({super.key});
@@ -54,65 +56,108 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
     }
   }
 
+  Future<void> _showTicketQr(int ticketId) async {
+    try {
+      final response = await LibrarianQrService.issueTicket(ticketId);
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('QR phiếu #$ticketId'),
+          content: QrImageView(
+            data: response['payload']?.toString() ?? '',
+            size: 230,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFf8f9ff),
       appBar: AppBar(
-        title: const Text('Cá nhân', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Cá nhân',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.red),
             onPressed: _handleLogout,
-          )
+          ),
         ],
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator()) 
-        : SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProfileHeader(),
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Sách đang mượn (${_borrowedBooks.length})',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0f172a),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildProfileHeader(),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Lịch sử mượn (${_borrowedBooks.length})',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0f172a),
+                          ),
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text('Lịch sử mượn >'),
-                      )
-                    ],
+                        IconButton(
+                          onPressed: _fetchData,
+                          icon: const Icon(Icons.refresh),
+                          tooltip: 'Tải lại',
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                _buildBorrowedBookList(),
-              ],
+                  const SizedBox(height: 10),
+                  _buildBorrowedBookList(),
+                ],
+              ),
             ),
-          ),
     );
   }
 
   Widget _buildProfileHeader() {
-    final role = (_userProfile?['roleId'] ?? _userProfile?['role'] ?? _userProfile?['userType'] ?? '').toString().toUpperCase();
-    final email = (_userProfile?['email'] ?? '').toString().toLowerCase();
-    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF' || email.contains('admin');
+    final role =
+        (_userProfile?['roleId'] ??
+                _userProfile?['role'] ??
+                _userProfile?['userType'] ??
+                '')
+            .toString()
+            .toUpperCase();
+    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF';
 
-    final fullName = _userProfile?['fullName'] ?? _userProfile?['name'] ?? (isAdmin ? 'Quản trị viên hệ thống' : 'Sinh viên HUIT');
+    final fullName =
+        _userProfile?['fullName'] ?? _userProfile?['name'] ?? 'Chưa cập nhật';
     final studentId = _userProfile?['studentId'] ?? _userProfile?['mssv'];
-    final faculty = _userProfile?['faculty'] ?? _userProfile?['department'] ?? (isAdmin ? 'Phòng Quản lý & Vận hành Thư viện' : 'Khoa Công nghệ thông tin');
+    final faculty =
+        _userProfile?['faculty'] ??
+        _userProfile?['department'] ??
+        'Chưa cập nhật';
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -128,10 +173,11 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (isAdmin ? Colors.black : const Color(0xFF0284c7)).withOpacity(0.3),
+            color: (isAdmin ? Colors.black : const Color(0xFF0284c7))
+                .withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -140,11 +186,15 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
             children: [
               CircleAvatar(
                 radius: 35,
-                backgroundColor: isAdmin ? Colors.amber.shade400.withOpacity(0.2) : Colors.white,
+                backgroundColor: isAdmin
+                    ? Colors.amber.shade400.withValues(alpha: 0.2)
+                    : Colors.white,
                 child: Icon(
                   isAdmin ? Icons.admin_panel_settings_rounded : Icons.person,
                   size: 40,
-                  color: isAdmin ? Colors.amber.shade300 : const Color(0xFF0284c7),
+                  color: isAdmin
+                      ? Colors.amber.shade300
+                      : const Color(0xFF0284c7),
                 ),
               ),
               const SizedBox(width: 15),
@@ -163,8 +213,8 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                     const SizedBox(height: 5),
                     Text(
                       isAdmin
-                          ? 'Mã cán bộ: CB-2026-001  •  Email: ${_userProfile?['email'] ?? 'admin@huit.edu.vn'}'
-                          : 'MSSV: ${studentId ?? '2001230430'}',
+                          ? 'Email: ${_userProfile?['email'] ?? 'Chưa cập nhật'}'
+                          : 'MSSV: ${studentId ?? 'Chưa cập nhật'}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -179,14 +229,14 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                     ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -196,38 +246,48 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isAdmin ? 'Quyền hạn' : 'Tiền phạt',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      isAdmin ? 'Quyền hạn' : 'Sách trong lịch sử',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
                     ),
                     Text(
-                      isAdmin ? 'Quản trị viên' : '0 VNĐ',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      isAdmin
+                          ? 'Quản trị viên'
+                          : '${_borrowedBooks.length} cuốn',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: isAdmin ? const Color(0xFF0f172a) : const Color(0xFF0284c7),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                Chip(
+                  avatar: const Icon(Icons.verified_user, size: 18),
+                  label: Text(
+                    _userProfile?['cardStatus']?.toString() ?? 'ACTIVE',
                   ),
-                  child: Text(isAdmin ? 'Mã QR Cán Bộ' : 'Thẻ Thư Viện QR'),
-                )
+                  backgroundColor: Colors.white,
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
   Widget _buildBorrowedBookList() {
-    final role = (_userProfile?['roleId'] ?? _userProfile?['role'] ?? _userProfile?['userType'] ?? '').toString().toUpperCase();
-    final email = (_userProfile?['email'] ?? '').toString().toLowerCase();
-    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF' || email.contains('admin');
+    final role =
+        (_userProfile?['roleId'] ??
+                _userProfile?['role'] ??
+                _userProfile?['userType'] ??
+                '')
+            .toString()
+            .toUpperCase();
+    final isAdmin = role == 'ADMIN' || role == 'LIBRARIAN' || role == 'STAFF';
 
     if (_borrowedBooks.isEmpty) {
       return Padding(
@@ -242,7 +302,7 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
         ),
       );
     }
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
@@ -254,9 +314,13 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                 title: book['title'] ?? 'Unknown',
                 author: book['author'] ?? 'Unknown',
                 borrowDate: book['borrowDate'] ?? '---',
-                dueDate: book['dueDate'] ?? '---',
+                dueDate: book['dueDateDisplay'] ?? '---',
                 daysLeft: remainingDays,
                 isWarning: remainingDays <= 3,
+                status: book['status']?.toString() ?? 'PENDING',
+                ticketId: (book['ticketId'] as num?)?.toInt(),
+                detailId: (book['detailId'] as num?)?.toInt(),
+                renewalCount: (book['renewalCount'] as num?)?.toInt() ?? 0,
               ),
               const SizedBox(height: 15),
             ],
@@ -273,10 +337,32 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
     required String dueDate,
     required int daysLeft,
     required bool isWarning,
+    required String status,
+    required int? ticketId,
+    required int? detailId,
+    required int renewalCount,
   }) {
-    Color statusColor = isWarning ? Colors.red : const Color(0xFF0284c7);
-    String statusText = isWarning ? 'Quá hạn ${daysLeft.abs()} ngày' : 'Còn $daysLeft ngày';
-    double progress = isWarning ? 1.0 : (10 - daysLeft) / 10;
+    final canRenew =
+        status == 'BORROWING' &&
+        daysLeft >= 0 &&
+        ticketId != null &&
+        detailId != null &&
+        renewalCount < 1;
+    final canCancel =
+        (status == 'PENDING' || status == 'RESERVED') && ticketId != null;
+    Color statusColor = status == 'OVERDUE' || daysLeft < 0
+        ? Colors.red
+        : const Color(0xFF0284c7);
+    String statusText = switch (status) {
+      'PENDING' => 'Chờ duyệt',
+      'RESERVED' => 'Đang giữ tại quầy',
+      'RETURNED' => 'Đã trả',
+      'CANCELLED' => 'Đã hủy',
+      'REJECTED' => 'Bị từ chối',
+      'OVERDUE' => 'Quá hạn ${daysLeft.abs()} ngày',
+      _ => 'Còn $daysLeft ngày',
+    };
+    double progress = ((10 - daysLeft) / 10).clamp(0.0, 1.0);
 
     return Container(
       decoration: BoxDecoration(
@@ -284,10 +370,10 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Padding(
@@ -338,15 +424,34 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ngày mượn', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    Text(borrowDate, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                    const Text(
+                      'Ngày mượn',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      borrowDate,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('Hạn trả', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    Text(dueDate, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: statusColor)),
+                    const Text(
+                      'Hạn trả',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    Text(
+                      dueDate,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -371,25 +476,70 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                     fontWeight: FontWeight.bold,
                     color: statusColor,
                   ),
-                )
+                ),
               ],
             ),
-            const SizedBox(height: 15),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isWarning ? Colors.red[50] : const Color(0xFFf0f9ff),
-                  foregroundColor: statusColor,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            if (ticketId != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showTicketQr(ticketId),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Hiển thị QR phiếu mượn'),
+                ),
+              ),
+            ],
+            if (canRenew || canCancel) ...[
+              const SizedBox(height: 15),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      if (canRenew) {
+                        await LoanService.renewLoan(ticketId, detailId);
+                      } else {
+                        await LoanService.cancelReservation(ticketId);
+                      }
+                      await _fetchData();
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            canRenew ? 'Gia hạn thành công.' : 'Đã hủy phiếu.',
+                          ),
+                        ),
+                      );
+                    } catch (error) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            error.toString().replaceFirst('Exception: ', ''),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isWarning
+                        ? Colors.red[50]
+                        : const Color(0xFFf0f9ff),
+                    foregroundColor: statusColor,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    canRenew
+                        ? 'Gia hạn thêm 10 ngày (1 lần)'
+                        : 'Hủy phiếu đặt giữ',
                   ),
                 ),
-                child: const Text('Gia hạn sách'),
               ),
-            )
+            ],
           ],
         ),
       ),

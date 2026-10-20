@@ -19,4 +19,9 @@ public class LoanTicketEntity extends BaseEntity {
     private UUID userId;
     private String ticketType; // ONSITE or BORROW
     private String status;
+    private UUID processedBy;
+    private String decisionNote;
+
+    @Version
+    private Long version;
 }

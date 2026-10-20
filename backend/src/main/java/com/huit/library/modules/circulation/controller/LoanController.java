@@ -5,6 +5,9 @@ import com.huit.library.modules.circulation.dto.BorrowRequestDTO;
 import com.huit.library.modules.circulation.dto.BorrowResponseDTO;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
+import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
+import com.huit.library.modules.circulation.dto.RejectLoanRequestDTO;
+import com.huit.library.modules.circulation.service.CirculationStateService;
 import com.huit.library.modules.circulation.service.LoanService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,9 +25,11 @@ import java.util.UUID;
 public class LoanController {
 
     private final LoanService loanService;
+    private final CirculationStateService circulationStateService;
 
-    public LoanController(LoanService loanService) {
+    public LoanController(LoanService loanService, CirculationStateService circulationStateService) {
         this.loanService = loanService;
+        this.circulationStateService = circulationStateService;
     }
 
     @PostMapping("/reserve")
@@ -43,6 +48,20 @@ public class LoanController {
         return ResponseEntity.ok(loanService.getMyLoans(userId));
     }
 
+    @GetMapping("/staff")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "List loan tickets for staff", description = "Returns real circulation tickets for the librarian management screen.")
+    public ResponseEntity<?> getStaffLoans() {
+        return ResponseEntity.ok(loanService.getStaffLoans());
+    }
+
+    @GetMapping("/{ticketId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Get loan ticket detail", description = "Returns reader and copy details required for reservation review at the circulation desk.")
+    public ResponseEntity<?> getLoan(@PathVariable Long ticketId) {
+        return ResponseEntity.ok(loanService.getLoan(ticketId));
+    }
+
     @PostMapping("/cancel/{ticketId}")
     @Operation(summary = "Cancel Reservation", description = "Reader cancels a pending reservation.")
     public ResponseEntity<?> cancelReservation(
@@ -54,7 +73,7 @@ public class LoanController {
     }
 
     @PostMapping("/renew/{ticketId}")
-    @Operation(summary = "Renew Loan", description = "Reader renews a currently borrowed book, extending due date by 7 days.")
+    @Operation(summary = "Renew Loan", description = "Reader renews a currently borrowed book, extending due date by 10 days.")
     public ResponseEntity<?> renewLoan(
             @PathVariable Long ticketId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -62,19 +81,54 @@ public class LoanController {
         return ResponseEntity.ok(loanService.renewLoan(ticketId, userId));
     }
 
+    @PostMapping("/renew/{ticketId}/items/{detailId}")
+    @Operation(summary = "Renew one loan item", description = "Renews exactly one borrowed item by 10 days from its current due date.")
+    public ResponseEntity<?> renewLoanItem(
+            @PathVariable Long ticketId,
+            @PathVariable Long detailId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(loanService.renewLoan(
+                ticketId, detailId, userDetails.getUser().getUserId()));
+    }
+
+    @PostMapping("/{ticketId}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Approve reservation", description = "Moves a pending reservation to RESERVED and records the staff transition.")
+    public ResponseEntity<LoanStateResponseDTO> approveReservation(
+            @PathVariable Long ticketId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(circulationStateService.approveReservation(
+                ticketId, userDetails.getUser().getUserId()));
+    }
+
+    @PostMapping("/{ticketId}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Reject reservation", description = "Rejects a pending or reserved request, records the reason and releases its copies.")
+    public ResponseEntity<LoanStateResponseDTO> rejectReservation(
+            @PathVariable Long ticketId,
+            @Valid @RequestBody RejectLoanRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(circulationStateService.rejectReservation(
+                ticketId, userDetails.getUser().getUserId(), request.getReason()));
+    }
+
     @PostMapping("/checkout")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Counter Checkout", description = "Librarian processes book checkout at the desk using barcodes.")
-    public ResponseEntity<?> checkoutBooks(@RequestBody(required = false) CheckoutRequestDTO request) {
-        // Keeps compatibility with admin circulation desk
-        return ResponseEntity.ok("Mượn sách thành công");
+    public ResponseEntity<?> checkoutBooks(
+            @Valid @RequestBody CheckoutRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(circulationStateService.checkout(
+                request, userDetails.getUser().getUserId()));
     }
 
     @PostMapping("/return")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Counter Return", description = "Librarian processes book returns at the desk.")
-    public ResponseEntity<?> returnBooks(@RequestBody(required = false) ReturnRequestDTO request) {
-        // Keeps compatibility with admin circulation desk
-        return ResponseEntity.ok("Trả sách thành công");
+    public ResponseEntity<?> returnBooks(
+            @Valid @RequestBody ReturnRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(circulationStateService.returnBooks(
+                request, userDetails.getUser().getUserId()));
     }
 }

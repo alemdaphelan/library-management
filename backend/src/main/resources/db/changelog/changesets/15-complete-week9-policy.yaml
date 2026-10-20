@@ -1,0 +1,651 @@
+databaseChangeLog:
+  - changeSet:
+      id: 15-complete-week9-policy
+      author: codex
+      changes:
+        - addColumn:
+            tableName: loan_details
+            columns:
+              - column:
+                  name: fine_stopped_at
+                  type: timestamp
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE loan_details DROP CONSTRAINT IF EXISTS chk_loan_detail_status;
+              ALTER TABLE loan_details
+                ADD CONSTRAINT chk_loan_detail_status
+                CHECK (return_status IN ('PENDING', 'BORROWING', 'OVERDUE', 'RETURNED', 'CANCELLED', 'LOST', 'DAMAGED', 'SETTLED'));
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: overdue_violation_count
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: violation_academic_year
+                  type: varchar(20)
+              - column:
+                  name: circulation_locked_until
+                  type: timestamp
+              - column:
+                  name: circulation_lock_reason
+                  type: varchar(500)
+        - addColumn:
+            tableName: waitlists
+            columns:
+              - column:
+                  name: notified_at
+                  type: timestamp
+              - column:
+                  name: expires_at
+                  type: timestamp
+              - column:
+                  name: reserved_barcode
+                  type: varchar(255)
+        - createTable:
+            tableName: compensation_rates
+            columns:
+              - column:
+                  name: rate_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: material_type
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: language_category
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: decimal(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: valid_from
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: valid_until
+                  type: date
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: configured_by
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note
+                  type: varchar(500)
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createTable:
+            tableName: penalty_cases
+            columns:
+              - column:
+                  name: case_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ticket_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: loan_detail_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: barcode
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: incident_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: damage_severity
+                  type: varchar(20)
+              - column:
+                  name: pages_affected
+                  type: int
+              - column:
+                  name: description
+                  type: varchar(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: evidence_url
+                  type: varchar(500)
+              - column:
+                  name: material_type
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: language_category
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: still_in_market
+                  type: boolean
+              - column:
+                  name: settlement_method
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: replacement_barcode
+                  type: varchar(255)
+              - column:
+                  name: replacement_accepted_at
+                  type: timestamp
+              - column:
+                  name: replacement_accepted_by
+                  type: uuid
+              - column:
+                  name: replacement_verification_note
+                  type: varchar(1000)
+              - column:
+                  name: cover_price
+                  type: decimal(19,2)
+              - column:
+                  name: original_currency
+                  type: varchar(3)
+              - column:
+                  name: fx_rate
+                  type: decimal(19,6)
+              - column:
+                  name: fx_source
+                  type: varchar(255)
+              - column:
+                  name: multiplier
+                  type: decimal(5,2)
+              - column:
+                  name: repair_fee
+                  type: decimal(19,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: compensation_amount
+                  type: decimal(19,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: technical_fee
+                  type: decimal(19,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: overdue_fine_snapshot
+                  type: decimal(19,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: total_amount
+                  type: decimal(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: paid_amount
+                  type: decimal(19,2)
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reported_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: settlement_due_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: decision_by
+                  type: uuid
+              - column:
+                  name: external_decision_maker
+                  type: varchar(255)
+              - column:
+                  name: decision_document_no
+                  type: varchar(100)
+              - column:
+                  name: decision_date
+                  type: date
+              - column:
+                  name: waiver_amount
+                  type: decimal(19,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: decision_reason
+                  type: varchar(1000)
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createTable:
+            tableName: transaction_adjustments
+            columns:
+              - column:
+                  name: adjustment_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_amount
+                  type: decimal(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: varchar(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requested_by
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reviewed_by
+                  type: uuid
+              - column:
+                  name: review_note
+                  type: varchar(1000)
+              - column:
+                  name: reversal_transaction_id
+                  type: bigint
+              - column:
+                  name: reviewed_at
+                  type: timestamp
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createTable:
+            tableName: payment_allocations
+            columns:
+              - column:
+                  name: allocation_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: payment_transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: debt_transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: decimal(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createTable:
+            tableName: overdue_violations
+            columns:
+              - column:
+                  name: violation_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ticket_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: academic_year
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - createTable:
+            tableName: library_violations
+            columns:
+              - column:
+                  name: violation_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ticket_id
+                  type: bigint
+              - column:
+                  name: barcode
+                  type: varchar(255)
+              - column:
+                  name: violation_type
+                  type: varchar(40)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action_taken
+                  type: varchar(1000)
+              - column:
+                  name: recorded_by
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+              - column:
+                  name: updated_at
+                  type: timestamp
+        - addColumn:
+            tableName: transactions
+            columns:
+              - column:
+                  name: penalty_case_id
+                  type: bigint
+              - column:
+                  name: payment_method
+                  type: varchar(20)
+              - column:
+                  name: receipt_number
+                  type: varchar(80)
+              - column:
+                  name: confirmed_by
+                  type: uuid
+              - column:
+                  name: paid_amount
+                  type: decimal(19,2)
+                  defaultValueNumeric: 0
+              - column:
+                  name: paid_at
+                  type: timestamp
+        - addForeignKeyConstraint:
+            baseTableName: penalty_cases
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_penalty_case_user
+        - addForeignKeyConstraint:
+            baseTableName: penalty_cases
+            baseColumnNames: ticket_id
+            referencedTableName: loan_tickets
+            referencedColumnNames: ticket_id
+            constraintName: fk_penalty_case_ticket
+        - addForeignKeyConstraint:
+            baseTableName: penalty_cases
+            baseColumnNames: loan_detail_id
+            referencedTableName: loan_details
+            referencedColumnNames: detail_id
+            constraintName: fk_penalty_case_detail
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: penalty_case_id
+            referencedTableName: penalty_cases
+            referencedColumnNames: case_id
+            constraintName: fk_transaction_penalty_case
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: transaction_adjustments
+            baseColumnNames: transaction_id
+            referencedTableName: transactions
+            referencedColumnNames: transaction_id
+            constraintName: fk_adjustment_transaction
+        - addForeignKeyConstraint:
+            baseTableName: payment_allocations
+            baseColumnNames: payment_transaction_id
+            referencedTableName: transactions
+            referencedColumnNames: transaction_id
+            constraintName: fk_payment_allocation_payment
+        - addForeignKeyConstraint:
+            baseTableName: payment_allocations
+            baseColumnNames: debt_transaction_id
+            referencedTableName: transactions
+            referencedColumnNames: transaction_id
+            constraintName: fk_payment_allocation_debt
+        - addForeignKeyConstraint:
+            baseTableName: overdue_violations
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_overdue_violation_user
+        - addForeignKeyConstraint:
+            baseTableName: overdue_violations
+            baseColumnNames: ticket_id
+            referencedTableName: loan_tickets
+            referencedColumnNames: ticket_id
+            constraintName: fk_overdue_violation_ticket
+        - addForeignKeyConstraint:
+            baseTableName: library_violations
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_library_violation_user
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE UNIQUE INDEX ux_compensation_rates_active
+                ON compensation_rates (material_type, language_category, valid_from);
+              CREATE UNIQUE INDEX ux_penalty_case_open_detail
+                ON penalty_cases (loan_detail_id)
+                WHERE status NOT IN ('CANCELLED', 'REJECTED');
+              CREATE UNIQUE INDEX ux_overdue_violation_ticket_year
+                ON overdue_violations (ticket_id, academic_year);
+              CREATE UNIQUE INDEX ux_transactions_receipt_number
+                ON transactions (receipt_number)
+                WHERE receipt_number IS NOT NULL;
+              CREATE UNIQUE INDEX ux_penalty_case_replacement_barcode
+                ON penalty_cases (replacement_barcode)
+                WHERE replacement_barcode IS NOT NULL;
+              CREATE INDEX idx_penalty_cases_user_status
+                ON penalty_cases (user_id, status);
+              CREATE INDEX idx_payment_allocations_payment
+                ON payment_allocations (payment_transaction_id);
+              CREATE INDEX idx_waitlists_expiry
+                ON waitlists (expires_at)
+                WHERE status = 'NOTIFIED';
+              CREATE INDEX idx_library_violations_user_occurred
+                ON library_violations (user_id, occurred_at);
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: |
+              UPDATE loan_details SET return_status = 'RETURNED'
+                WHERE return_status IN ('LOST', 'DAMAGED', 'SETTLED');
+              ALTER TABLE loan_details DROP CONSTRAINT IF EXISTS chk_loan_detail_status;
+              ALTER TABLE loan_details
+                ADD CONSTRAINT chk_loan_detail_status
+                CHECK (return_status IN ('PENDING', 'BORROWING', 'OVERDUE', 'RETURNED', 'CANCELLED'));
+        - sql:
+            dbms: postgresql
+            sql: |
+              DROP INDEX IF EXISTS idx_waitlists_expiry;
+              DROP INDEX IF EXISTS idx_library_violations_user_occurred;
+              DROP INDEX IF EXISTS idx_penalty_cases_user_status;
+              DROP INDEX IF EXISTS idx_payment_allocations_payment;
+              DROP INDEX IF EXISTS ux_transactions_receipt_number;
+              DROP INDEX IF EXISTS ux_penalty_case_replacement_barcode;
+              DROP INDEX IF EXISTS ux_overdue_violation_ticket_year;
+              DROP INDEX IF EXISTS ux_penalty_case_open_detail;
+              DROP INDEX IF EXISTS ux_compensation_rates_active;
+        - dropForeignKeyConstraint:
+            baseTableName: overdue_violations
+            constraintName: fk_overdue_violation_ticket
+        - dropForeignKeyConstraint:
+            baseTableName: library_violations
+            constraintName: fk_library_violation_user
+        - dropForeignKeyConstraint:
+            baseTableName: overdue_violations
+            constraintName: fk_overdue_violation_user
+        - dropForeignKeyConstraint:
+            baseTableName: transaction_adjustments
+            constraintName: fk_adjustment_transaction
+        - dropForeignKeyConstraint:
+            baseTableName: payment_allocations
+            constraintName: fk_payment_allocation_debt
+        - dropForeignKeyConstraint:
+            baseTableName: payment_allocations
+            constraintName: fk_payment_allocation_payment
+        - dropForeignKeyConstraint:
+            baseTableName: transactions
+            constraintName: fk_transaction_penalty_case
+        - dropForeignKeyConstraint:
+            baseTableName: penalty_cases
+            constraintName: fk_penalty_case_detail
+        - dropForeignKeyConstraint:
+            baseTableName: penalty_cases
+            constraintName: fk_penalty_case_ticket
+        - dropForeignKeyConstraint:
+            baseTableName: penalty_cases
+            constraintName: fk_penalty_case_user
+        - dropColumn:
+            tableName: transactions
+            columnName: paid_at
+        - dropColumn:
+            tableName: transactions
+            columnName: paid_amount
+        - dropColumn:
+            tableName: transactions
+            columnName: confirmed_by
+        - dropColumn:
+            tableName: transactions
+            columnName: receipt_number
+        - dropColumn:
+            tableName: transactions
+            columnName: payment_method
+        - dropColumn:
+            tableName: transactions
+            columnName: penalty_case_id
+        - dropTable:
+            tableName: overdue_violations
+        - dropTable:
+            tableName: library_violations
+        - dropTable:
+            tableName: transaction_adjustments
+        - dropTable:
+            tableName: payment_allocations
+        - dropTable:
+            tableName: penalty_cases
+        - dropTable:
+            tableName: compensation_rates
+        - dropColumn:
+            tableName: waitlists
+            columnName: reserved_barcode
+        - dropColumn:
+            tableName: waitlists
+            columnName: expires_at
+        - dropColumn:
+            tableName: waitlists
+            columnName: notified_at
+        - dropColumn:
+            tableName: users
+            columnName: circulation_lock_reason
+        - dropColumn:
+            tableName: users
+            columnName: circulation_locked_until
+        - dropColumn:
+            tableName: users
+            columnName: violation_academic_year
+        - dropColumn:
+            tableName: users
+            columnName: overdue_violation_count
+        - dropColumn:
+            tableName: loan_details
+            columnName: fine_stopped_at

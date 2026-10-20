@@ -1,7 +1,11 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { HomeService } from '../../../services/home.service';
+import {
+  HomeService,
+  RecommendationItem,
+  RecommendationResponse
+} from '../../../services/home.service';
 
 export interface CarouselSlide {
   image: string;
@@ -20,8 +24,11 @@ export interface CarouselSlide {
   styleUrls: ['./home.css'],
 })
 export class Home implements OnInit, OnDestroy {
-  featuredBooks: any[] = [];
-  recommendedBooks: any[] = [];
+  recommendedBooks: RecommendationItem[] = [];
+  recommendationMethod = '';
+  recommendationDataSufficient = false;
+  recommendationLoading = true;
+  recommendationError = false;
 
   // Carousel 3 ảnh tự động chạy
   currentSlide = 0;
@@ -58,14 +65,18 @@ export class Home implements OnInit, OnDestroy {
   ngOnInit() {
     this.startCarouselAutoPlay();
 
-    this.homeService.getFeaturedBooks().subscribe({
-      next: (data) => this.featuredBooks = data,
-      error: (err) => console.error('Error fetching featured books', err)
-    });
-
     this.homeService.getRecommendedBooks().subscribe({
-      next: (data) => this.recommendedBooks = data,
-      error: (err) => console.error('Error fetching recommended books', err)
+      next: (response: RecommendationResponse) => {
+        this.recommendedBooks = response.items ?? [];
+        this.recommendationMethod = response.method;
+        this.recommendationDataSufficient = response.dataSufficient;
+        this.recommendationLoading = false;
+      },
+      error: (err) => {
+        console.error('Error fetching recommended books', err);
+        this.recommendationError = true;
+        this.recommendationLoading = false;
+      }
     });
   }
 
@@ -97,5 +108,33 @@ export class Home implements OnInit, OnDestroy {
   goToSlide(index: number) {
     this.currentSlide = index;
     this.startCarouselAutoPlay();
+  }
+
+  get recommendationTitle(): string {
+    return this.recommendationMethod === 'POPULARITY_BASELINE'
+      ? 'Sách được quan tâm nhiều'
+      : 'Gợi ý riêng cho bạn';
+  }
+
+  get recommendationDescription(): string {
+    switch (this.recommendationMethod) {
+      case 'HYBRID_PERSONALIZED':
+        return 'Dựa trên lịch sử mượn, chuyên ngành và xu hướng đọc tại thư viện.';
+      case 'HYBRID_COLD_START':
+        return 'Khởi đầu theo chuyên ngành của bạn và những tài liệu đang được quan tâm.';
+      case 'POPULARITY_BASELINE':
+        return 'Các tài liệu nổi bật dựa trên lượt mượn gần đây của toàn thư viện.';
+      default:
+        return 'Đang phân tích dữ liệu phù hợp với nhu cầu học tập của bạn.';
+    }
+  }
+
+  recommendationPercent(book: RecommendationItem): number {
+    return Math.max(0, Math.min(100, Math.round((book.score ?? 0) * 100)));
+  }
+
+  onCoverError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    image.src = '/assets/images/cover_1.jpg';
   }
 }

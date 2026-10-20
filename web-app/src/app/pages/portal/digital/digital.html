@@ -1,19 +1,29 @@
 <div class="digital-page container">
   <div class="page-header text-center">
-    <h1>TÀI NGUYÊN SỐ & CSDL QUỐC TẾ</h1>
-    <p>Truy cập miễn phí các cơ sở dữ liệu học thuật hàng đầu thế giới dành riêng cho Sinh viên & Giảng viên HUIT.</p>
+    <h1>TÀI NGUYÊN SỐ HUIT</h1>
+    <p>Tài liệu điện tử do thư viện quản lý, có kiểm soát truy cập và liên kết trực tiếp với danh mục sách.</p>
   </div>
 
-  <div class="db-grid">
-    <div class="db-card" *ngFor="let db of databases">
-      <div class="db-logo-wrapper">
-        <img [src]="db.img" alt="{{db.name}}" class="db-logo">
-      </div>
-      <div class="db-info">
-        <h3>{{ db.name }}</h3>
-        <p>{{ db.desc }}</p>
-        <a [href]="db.link" class="btn-access">Truy cập ngay &rarr;</a>
-      </div>
+  <section class="login-required" *ngIf="!authService.isLoggedIn()">
+    <h2>Đăng nhập để sử dụng tài liệu số</h2>
+    <p>Kho tài liệu chỉ dành cho bạn đọc và nhân viên thư viện đã xác thực.</p>
+    <a routerLink="/login" class="btn-access">Đăng nhập</a>
+  </section>
+
+  <section *ngIf="authService.isLoggedIn()">
+    <p class="state" *ngIf="loading">Đang tải kho tài liệu…</p>
+    <p class="state error" *ngIf="errorMessage">{{ errorMessage }}</p>
+    <div class="asset-grid" *ngIf="!loading && assets.length; else emptyAssets">
+      <article class="asset-card" *ngFor="let asset of assets">
+        <div class="format">{{ asset.type }}</div>
+        <div class="asset-body">
+          <h3>{{ asset.name }}</h3>
+          <p>{{ asset.bookTitle ? ('Liên kết: ' + asset.bookTitle) : 'Tài liệu độc lập' }}</p>
+          <small>{{ formatSize(asset.size) }} · {{ asset.createdAt | date:'dd/MM/yyyy' }}</small>
+          <button type="button" class="btn-access" (click)="download(asset)">Tải tài liệu</button>
+        </div>
+      </article>
     </div>
-  </div>
+    <ng-template #emptyAssets><p class="state" *ngIf="!loading">Thư viện chưa công bố tài liệu số nào.</p></ng-template>
+  </section>
 </div>

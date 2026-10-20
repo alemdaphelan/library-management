@@ -8,7 +8,13 @@ class DetailScreen extends StatelessWidget {
 
   const DetailScreen({super.key, this.book});
 
-  void _showBorrowModal(BuildContext context, String title, String author, String category, String shelfLocation) {
+  void _showBorrowModal(
+    BuildContext context,
+    String title,
+    String author,
+    String category,
+    String shelfLocation,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -43,13 +49,20 @@ class DetailScreen extends StatelessWidget {
                       color: const Color(0xFF0284c7).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.bookmark_add_rounded, color: Color(0xFF0284c7), size: 28),
+                    child: const Icon(
+                      Icons.bookmark_add_rounded,
+                      color: Color(0xFF0284c7),
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
                     child: Text(
                       'Xác nhận đăng ký mượn',
-                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -70,11 +83,21 @@ class DetailScreen extends StatelessWidget {
                     const Divider(height: 18),
                     _buildInfoRow('Vị trí:', shelfLocation),
                     const Divider(height: 18),
-                    _buildInfoRow('Nơi nhận:', 'Quầy thủ thư - Tầng 2 (Thư viện HUIT)'),
+                    _buildInfoRow(
+                      'Nơi nhận:',
+                      'Quầy thủ thư - Tầng 2 (Thư viện HUIT)',
+                    ),
                     const Divider(height: 18),
-                    _buildInfoRow('Thời gian giữ:', '24 giờ kể từ thời điểm đăng ký'),
+                    _buildInfoRow(
+                      'Thời gian giữ:',
+                      '24 giờ kể từ thời điểm đăng ký',
+                    ),
                     const Divider(height: 18),
-                    _buildInfoRow('Thời hạn mượn:', '14 ngày (tối đa)', highlightColor: Colors.green.shade700),
+                    _buildInfoRow(
+                      'Thời hạn mượn:',
+                      '10 ngày theo quy định thư viện',
+                      highlightColor: Colors.green.shade700,
+                    ),
                   ],
                 ),
               ),
@@ -86,9 +109,14 @@ class DetailScreen extends StatelessWidget {
                       onPressed: () => Navigator.pop(ctx),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Hủy bỏ', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Hủy bỏ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -103,9 +131,14 @@ class DetailScreen extends StatelessWidget {
                         backgroundColor: const Color(0xFF0284c7),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('XÁC NHẬN MƯỢN', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'XÁC NHẬN MƯỢN',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -118,13 +151,21 @@ class DetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isBold = false, Color? highlightColor}) {
+  Widget _buildInfoRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? highlightColor,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 100,
-          child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
         ),
         Expanded(
           child: Text(
@@ -140,23 +181,39 @@ class DetailScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _processBorrow(BuildContext context, String title, String author) async {
+  Future<void> _processBorrow(
+    BuildContext context,
+    String title,
+    String author,
+  ) async {
     // Show quick progress loading
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+      builder: (ctx) =>
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
     );
 
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    final newLoan = await LoanService.addLoan(book ?? {
-      'title': title,
-      'author': author,
-    });
+    Map<String, dynamic> newLoan;
+    try {
+      final bookId = (book?['bookId'] ?? book?['id']) as num?;
+      if (bookId == null) {
+        throw Exception('Không xác định được mã sách.');
+      }
+      newLoan = await LoanService.reserveBook(bookId.toInt());
+    } catch (error) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+      return;
+    }
 
     if (!context.mounted) return;
-    Navigator.pop(context); // Close loading indicator
+    Navigator.pop(context);
 
     // Show Success Dialog
     showDialog(
@@ -173,7 +230,11 @@ class DetailScreen extends StatelessWidget {
                 color: Colors.green.shade50,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 54),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.green,
+                size: 54,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -182,8 +243,12 @@ class DetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Phiếu mượn: ${newLoan['ticketCode']}',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0284c7), fontSize: 15),
+              'Phiếu mượn: #${newLoan['ticketId'] ?? '—'}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0284c7),
+                fontSize: 15,
+              ),
             ),
             const SizedBox(height: 12),
             Container(
@@ -206,7 +271,9 @@ class DetailScreen extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(dialogCtx),
                     style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text('Đóng'),
                   ),
@@ -218,19 +285,23 @@ class DetailScreen extends StatelessWidget {
                       Navigator.pop(dialogCtx);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const BorrowedScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const BorrowedScreen(),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0284c7),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: const Text('Xem sách mượn'),
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -244,16 +315,27 @@ class DetailScreen extends StatelessWidget {
     final publisher = book?['publisher'] ?? 'NXB Đại học Quốc gia TP.HCM';
     final year = book?['publishYear']?.toString() ?? '2023';
     final categoryObj = book?['category'];
-    final category = categoryObj is Map 
-        ? (categoryObj['name'] ?? 'Công nghệ thông tin') 
+    final category = categoryObj is Map
+        ? (categoryObj['name'] ?? 'Công nghệ thông tin')
         : (categoryObj?.toString() ?? 'Công nghệ thông tin');
-    final isAvailable = (book?['status'] ?? 'available') == 'available';
-    final imageUrl = book?['imageUrlL'] ?? book?['imageUrlM'] ?? book?['imageUrlS'] ?? book?['coverUrl'];
-    final shelfLocation = 'Tầng 2 - Kệ A${(category.hashCode.abs() % 8) + 1} ($category)';
+    final availableCopies = (book?['availableCopies'] as num?)?.toInt() ?? 0;
+    final totalCopies = (book?['copies'] as num?)?.toInt() ?? 0;
+    final isAvailable = availableCopies > 0;
+    final imageUrl =
+        book?['imageUrlL'] ??
+        book?['imageUrlM'] ??
+        book?['imageUrlS'] ??
+        book?['coverUrl'];
+    final shelfLocation = (book?['location']?.toString().isNotEmpty ?? false)
+        ? book!['location'].toString()
+        : 'Chưa xếp vị trí';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chi tiết sách', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Chi tiết sách',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.bookmark_outline),
@@ -288,7 +370,7 @@ class DetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Book Info
             Padding(
               padding: const EdgeInsets.all(20.0),
@@ -302,35 +384,56 @@ class DetailScreen extends StatelessWidget {
                       Expanded(
                         child: Text(
                           title,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, height: 1.2),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
-                          color: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
+                          color: isAvailable
+                              ? Colors.green.shade50
+                              : Colors.red.shade50,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: isAvailable ? Colors.green.shade200 : Colors.red.shade200),
+                          border: Border.all(
+                            color: isAvailable
+                                ? Colors.green.shade200
+                                : Colors.red.shade200,
+                          ),
                         ),
                         child: Text(
                           isAvailable ? 'Có sẵn' : 'Đã mượn hết',
                           style: TextStyle(
-                            color: isAvailable ? Colors.green.shade700 : Colors.red.shade700,
+                            color: isAvailable
+                                ? Colors.green.shade700
+                                : Colors.red.shade700,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text('Tác giả: $author', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+                  Text(
+                    'Tác giả: $author',
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
                   const SizedBox(height: 5),
-                  Text('Năm xuất bản: $year | $publisher', style: const TextStyle(fontSize: 14, color: Colors.grey)),
-                  
+                  Text(
+                    'Năm xuất bản: $year | $publisher',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+
                   const SizedBox(height: 25),
-                  
+
                   // Location Card
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -339,38 +442,73 @@ class DetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade200),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 5)),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
                       ],
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.location_on, color: Color(0xFF0284c7), size: 32),
+                        const Icon(
+                          Icons.location_on,
+                          color: Color(0xFF0284c7),
+                          size: 32,
+                        ),
                         const SizedBox(width: 15),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('VỊ TRÍ LƯU TRỮ TRONG THƯ VIỆN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                              const Text(
+                                'VỊ TRÍ LƯU TRỮ TRONG THƯ VIỆN',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                ),
+                              ),
                               const SizedBox(height: 5),
-                              Text(shelfLocation, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              Text('Mã định danh: ISBN ${book?['isbn'] ?? '978-604-0-1234'}', style: const TextStyle(fontSize: 14)),
+                              Text(
+                                shelfLocation,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Mã định danh: ISBN ${book?['isbn'] ?? 'Chưa cập nhật'}',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              Text(
+                                'Bản sao sẵn sàng: $availableCopies/$totalCopies',
+                                style: const TextStyle(fontSize: 14),
+                              ),
                             ],
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 30),
-                  const Text('TÓM TẮT', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'TÓM TẮT',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 10),
                   const Text(
                     'Tài liệu học tập và nghiên cứu chính thức được lưu trữ tại Thư viện Trường Đại học Công Thương TP. Hồ Chí Minh (HUIT). Sinh viên có thể mượn sách trực tiếp tại quầy hoặc đọc tại các khu vực tự học của Thư viện.',
-                    style: TextStyle(fontSize: 15, height: 1.6, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -380,9 +518,17 @@ class DetailScreen extends StatelessWidget {
           child: SizedBox(
             height: 55,
             child: ElevatedButton(
-              onPressed: () {
-                _showBorrowModal(context, title, author, category, shelfLocation);
-              },
+              onPressed: isAvailable
+                  ? () {
+                      _showBorrowModal(
+                        context,
+                        title,
+                        author,
+                        category,
+                        shelfLocation,
+                      );
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0284c7),
                 foregroundColor: Colors.white,
@@ -390,7 +536,10 @@ class DetailScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('ĐĂNG KÝ MƯỢN SÁCH', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              child: const Text(
+                'ĐĂNG KÝ MƯỢN SÁCH',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ),
           ),
         ),

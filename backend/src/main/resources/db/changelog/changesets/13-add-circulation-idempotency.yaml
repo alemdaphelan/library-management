@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 13-add-circulation-idempotency
+      author: codex
+      changes:
+        - createTable:
+            tableName: circulation_operations
+            columns:
+              - column:
+                  name: operation_id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: idempotency_key
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_circulation_operation_idempotency
+              - column:
+                  name: operation_type
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: request_hash
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ticket_ids
+                  type: varchar(1000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: barcodes
+                  type: varchar(4000)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result_status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: processed_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: circulation_operations
+            indexName: idx_circulation_operation_processed_at
+            columns:
+              - column:
+                  name: processed_at
+      rollback:
+        - dropTable:
+            tableName: circulation_operations

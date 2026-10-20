@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BookService } from '../../../services/book.service';
+import { Category, CategoryService } from '../../../services/category.service';
 
 @Component({
   selector: 'app-books',
@@ -16,6 +17,9 @@ export class Books implements OnInit {
   currentBook: any = {};
 
   books: any[] = [];
+  categories: Category[] = [];
+  searchQuery = '';
+  selectedCategoryId?: number;
   
   // Pagination State
   currentPage: number = 0;
@@ -23,14 +27,18 @@ export class Books implements OnInit {
   totalPages: number = 0;
   totalElements: number = 0;
 
-  constructor(private bookService: BookService) {}
+  constructor(private bookService: BookService, private categoryService: CategoryService) {}
 
   ngOnInit() {
+    this.categoryService.getCategories().subscribe({
+      next: categories => this.categories = categories,
+      error: err => console.error('Failed to load categories', err)
+    });
     this.loadBooks();
   }
 
   loadBooks() {
-    this.bookService.getBooks(undefined, this.currentPage, this.pageSize).subscribe({
+    this.bookService.getBooks(this.searchQuery, this.currentPage, this.pageSize, this.selectedCategoryId).subscribe({
       next: (data) => {
         this.books = data.content;
         this.totalPages = data.totalPages;
@@ -38,6 +46,11 @@ export class Books implements OnInit {
       },
       error: (err) => console.error('Failed to load books', err)
     });
+  }
+
+  applyFilters() {
+    this.currentPage = 0;
+    this.loadBooks();
   }
 
   goToPage(page: number) {
@@ -59,7 +72,11 @@ export class Books implements OnInit {
     this.drawerMode = mode;
     this.isDrawerOpen = true;
     if (mode === 'edit' && book) {
-      this.currentBook = { ...book, imgError: false };
+      this.currentBook = {
+        ...book,
+        categoryId: book.category?.categoryId,
+        imgError: false
+      };
     } else {
       this.currentBook = { imgError: false };
     }
@@ -70,8 +87,17 @@ export class Books implements OnInit {
   }
 
   saveBook() {
+    if (!this.currentBook.title?.trim() || !this.currentBook.author?.trim()) {
+      alert('Vui lòng nhập tên sách và tác giả');
+      return;
+    }
+    const { bookId, categoryId, copies, availableCopies, location, status, imgError, ...editableFields } = this.currentBook;
+    const payload = {
+      ...editableFields,
+      category: categoryId ? { categoryId: Number(categoryId) } : null
+    };
     if (this.drawerMode === 'add') {
-      this.bookService.createBook(this.currentBook).subscribe({
+      this.bookService.createBook(payload).subscribe({
         next: () => {
           this.loadBooks();
           this.closeDrawer();
@@ -82,7 +108,7 @@ export class Books implements OnInit {
         }
       });
     } else if (this.drawerMode === 'edit') {
-      this.bookService.updateBook(this.currentBook.id || this.currentBook.isbn, this.currentBook).subscribe({
+      this.bookService.updateBook(String(bookId), payload).subscribe({
         next: () => {
           this.loadBooks();
           this.closeDrawer();
@@ -93,6 +119,20 @@ export class Books implements OnInit {
         }
       });
     }
+  }
+
+  deleteBook(book: any) {
+    if (!confirm(`Bạn có chắc muốn xóa “${book.title}”?`)) return;
+    this.bookService.deleteBook(String(book.bookId)).subscribe({
+      next: () => {
+        if (this.books.length === 1 && this.currentPage > 0) this.currentPage--;
+        this.loadBooks();
+      },
+      error: err => {
+        console.error('Failed to delete book', err);
+        alert('Không thể xóa sách. Hãy kiểm tra các bản sao hoặc giao dịch đang liên kết.');
+      }
+    });
   }
 
   get visiblePages(): (number | string)[] {

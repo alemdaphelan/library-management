@@ -26,6 +26,8 @@ import { DigitalAssets } from './pages/admin/digital-assets/digital-assets';
 import { AdminSuggestions } from './pages/admin/suggestions/suggestions';
 import { Notifications } from './pages/admin/notifications/notifications';
 import { ShelfMap } from './pages/admin/shelf-map/shelf-map';
+import { InventoryAudit } from './pages/admin/inventory-audit/inventory-audit';
+import { Penalties } from './pages/admin/penalties/penalties';
 
 // Auth Pages
 import { Auth } from './pages/auth/auth';
@@ -41,6 +43,7 @@ export const routes: Routes = [
       { path: '', component: Home, title: 'Trang chủ' },
       { path: 'search', component: Search, title: 'Tra cứu sách' },
       { path: 'history', component: History, title: 'Lịch sử mượn' },
+      { path: 'notifications', component: Notifications, canActivate: [AuthGuard], title: 'Thông báo & Nhắc hạn' },
       { path: 'suggest', component: Suggest, title: 'Đề xuất sách' },
       { path: 'book/:id', component: Detail, title: 'Chi tiết sách' },
       { path: 'about', component: About, title: 'Giới thiệu Thư viện' },
@@ -53,18 +56,21 @@ export const routes: Routes = [
     path: 'admin',
     component: AdminLayout,
     canActivate: [AuthGuard],
+    canActivateChild: [AuthGuard],
     data: { roles: ['ADMIN', 'LIBRARIAN'] },
     children: [
       { path: '', component: Dashboard, title: 'Dashboard' },
       { path: 'profile', component: Profile, title: 'Cài đặt tài khoản' },
-      { path: 'accounts', component: Accounts, title: 'Quản lý tài khoản', data: { roles: ['ADMIN'] } },
+      { path: 'accounts', component: Accounts, title: 'Quản lý tài khoản', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
       { path: 'books', component: Books, title: 'Quản lý sách' },
-      { path: 'imports', component: Imports, title: 'Quản lý nhập kho', data: { roles: ['ADMIN'] } },
+      { path: 'imports', component: Imports, title: 'Quản lý nhập kho', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
+      { path: 'inventory-audit', component: InventoryAudit, title: 'Kiểm kê kho', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
       { path: 'circulation', component: Circulation, title: 'Quầy mượn trả' },
       { path: 'borrows', component: Borrows, title: 'Quản lý nợ phạt' },
+      { path: 'penalties', component: Penalties, title: 'Mất hỏng và thu phạt' },
       { path: 'digital-assets', component: DigitalAssets, title: 'Quản trị Tài liệu số' },
       { path: 'suggestions', component: AdminSuggestions, title: 'Duyệt Đề xuất sách' },
-      { path: 'notifications', component: Notifications, title: 'Thông báo & Nhắc hạn' },
+      { path: 'notifications', component: Notifications, title: 'Thông báo của tôi' },
       { path: 'shelf-map', component: ShelfMap, title: 'Sơ đồ Kệ Sách' }
     ]
   },

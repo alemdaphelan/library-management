@@ -1,0 +1,32 @@
+sequenceDiagram
+    actor Student as Sinh viên
+    participant Web as Angular Chatbot
+    participant API as RagChatController
+    participant Guard as Guard/RateLimit
+    participant Retrieve as RetrievalService
+    participant PG as PostgreSQL/pgvector
+    participant Gemini as Gemini API
+    participant Audit as RAG Audit
+
+    Student->>Web: Nhập câu hỏi
+    Web->>API: POST /api/v1/chatbot/query
+    API->>Guard: Kiểm tra injection, độ dài, tần suất
+    Guard-->>API: Câu hỏi hợp lệ
+    API->>Retrieve: Tạo embedding và truy xuất Top-K
+    Retrieve->>PG: Vector search + catalog lookup
+    PG-->>Retrieve: Nguồn và điểm liên quan
+    alt Không có nguồn đạt ngưỡng
+        Retrieve-->>API: Danh sách rỗng
+        API->>Audit: Ghi hash, no-evidence, latency
+        API-->>Web: Từ chối có kiểm soát
+    else Có bằng chứng
+        Retrieve-->>API: Context đã xếp hạng
+        API->>Gemini: Câu hỏi đã lọc + context
+        alt Gemini trả lời có citation
+            Gemini-->>API: Grounded answer [n]
+        else Timeout, quota hoặc thiếu citation
+            API->>API: Extractive fallback từ nguồn hạng 1
+        end
+        API->>Audit: Ghi hash, model, fallback, latency
+        API-->>Web: Answer + sources + suggestions
+    end

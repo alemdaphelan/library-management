@@ -1,23 +1,14 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../config/api_config.dart';
 
 class ApiService {
-  static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:8080';
-    try {
-      if (Platform.isAndroid) return 'http://10.0.2.2:8080';
-    } catch (_) {}
-    return 'http://localhost:8080';
-  }
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static Future<Map<String, String>> _getHeaders() async {
     final token = await AuthService.getToken();
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-    };
+    final headers = <String, String>{'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
@@ -26,25 +17,126 @@ class ApiService {
 
   static Future<dynamic> get(String endpoint) async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl$endpoint'), headers: headers);
-    if (response.statusCode == 200) {
-      return json.decode(utf8.decode(response.bodyBytes));
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decodeSuccessBody(response);
     } else {
-      throw Exception('Failed to load data: ${response.statusCode}');
+      throw ApiException(response.statusCode, _message(response));
     }
   }
 
-  static Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
+  static Future<dynamic> getPublic(String endpoint) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: const {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decodeSuccessBody(response);
+    }
+    throw ApiException(response.statusCode, _message(response));
+  }
+
+  static Future<dynamic> post(
+    String endpoint,
+    Map<String, dynamic> data,
+  ) async {
     final headers = await _getHeaders();
     final response = await http.post(
       Uri.parse('$baseUrl$endpoint'),
       headers: headers,
       body: json.encode(data),
     );
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return json.decode(utf8.decode(response.bodyBytes));
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decodeSuccessBody(response);
     } else {
-      throw Exception('Failed to post data: ${response.statusCode}');
+      throw ApiException(response.statusCode, _message(response));
     }
   }
+
+  static Future<dynamic> patch(
+    String endpoint, [
+    Map<String, dynamic>? data,
+  ]) async {
+    final headers = await _getHeaders();
+    final response = await http.patch(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: json.encode(data ?? const <String, dynamic>{}),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decodeSuccessBody(response);
+    }
+    throw ApiException(response.statusCode, _message(response));
+  }
+
+  static Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: json.encode(data),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decodeSuccessBody(response);
+    }
+    throw ApiException(response.statusCode, _message(response));
+  }
+
+  static Future<dynamic> delete(
+    String endpoint, [
+    Map<String, dynamic>? data,
+  ]) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: json.encode(data ?? const <String, dynamic>{}),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return decodeSuccessBody(response);
+    }
+    throw ApiException(response.statusCode, _message(response));
+  }
+
+  static String _message(http.Response response) {
+    final body = utf8.decode(response.bodyBytes).trim();
+    if (body.isEmpty) return 'Yêu cầu thất bại (${response.statusCode})';
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map) {
+        return (decoded['detail'] ??
+                decoded['message'] ??
+                decoded['error'] ??
+                body)
+            .toString();
+      }
+    } catch (_) {}
+    return body;
+  }
+
+  /// Backend endpoints may legitimately return JSON, plain text, or an empty
+  /// body. Treat all successful variants as success instead of throwing a
+  /// FormatException after the server has already committed the operation.
+  static dynamic decodeSuccessBody(http.Response response) {
+    final body = utf8.decode(response.bodyBytes).trim();
+    if (body.isEmpty) return null;
+    try {
+      return json.decode(body);
+    } on FormatException {
+      return body;
+    }
+  }
+}
+
+class ApiException implements Exception {
+  final int statusCode;
+  final String message;
+
+  const ApiException(this.statusCode, this.message);
+
+  @override
+  String toString() => message;
 }

@@ -118,14 +118,11 @@ export class Detail implements OnInit, OnDestroy {
       publisherStr += ` (${data.publishYear})`;
     }
 
-    // Call number & Shelf location
+    // Call number & real shelf location returned by the catalog API
     const callNo = data.ddcCallNumber || (data.isbn ? `DDC ${data.isbn.slice(0, 3)}` : 'DDC 004 HUIT');
-    const shelf = catId ? `Kệ K-${catId.toString().padStart(2, '0')}` : `Kệ A-${(rawId % 20) + 100}`;
+    const shelf = data.location || 'Chưa xếp vị trí';
 
-    // Available copies: dynamic realistic distribution
-    const availableCopies = data.availableCopies !== undefined 
-      ? data.availableCopies 
-      : ((rawId % 7) + 2);
+    const availableCopies = Number(data.availableCopies || 0);
 
     const pages = data.pages || (180 + (rawId % 340));
     const rating = (4.5 + ((rawId % 5) / 10)).toFixed(1);
@@ -155,6 +152,7 @@ export class Detail implements OnInit, OnDestroy {
       callNo: callNo,
       shelf: shelf,
       availableCopies: availableCopies,
+      totalCopies: Number(data.copies || 0),
       isDigital: !!data.isDigital,
       rating: rating,
       reviewsCount: reviewsCount,
@@ -279,21 +277,29 @@ export class Detail implements OnInit, OnDestroy {
   }
 
   generateQrCode(ticketId: number | string) {
-    const qrPayload = `HUIT-PM-${ticketId}`;
-    QRCode.toDataURL(qrPayload, {
-      width: 220,
-      margin: 1.5,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff'
+    this.circulationService.getTicketQrPayload(Number(ticketId)).subscribe({
+      next: ({ payload }) => {
+        QRCode.toDataURL(payload, {
+          width: 220,
+          margin: 1.5,
+          color: {
+            dark: '#0f172a',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'M'
+        }).then((url: string) => {
+          this.qrCodeDataUrl = url;
+          this.cdr.detectChanges();
+        }).catch((err: any) => this.handleQrError(err));
       },
-      errorCorrectionLevel: 'M'
-    }).then((url: string) => {
-      this.qrCodeDataUrl = url;
-      this.cdr.detectChanges();
-    }).catch((err: any) => {
-      console.error('Lỗi tạo mã QR phiếu mượn:', err);
+      error: (err) => this.handleQrError(err),
     });
+  }
+
+  private handleQrError(err: unknown) {
+    console.error('Lỗi tạo mã QR phiếu mượn:', err);
+    this.borrowErrorMessage = 'Đã tạo phiếu nhưng chưa thể tạo QR bảo mật. Bạn có thể mở lại QR trong Lịch sử mượn.';
+    this.cdr.detectChanges();
   }
 
   downloadQrCode() {

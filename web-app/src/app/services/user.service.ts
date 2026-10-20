@@ -4,6 +4,27 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 
+export interface Student {
+  userId: string;
+  fullName: string;
+  mssv: string;
+  department?: string;
+  email: string;
+  phone?: string;
+  cardStatus?: string;
+  cardExpiryDate?: string;
+}
+
+export interface StudentUpsert {
+  mssv: string;
+  fullName: string;
+  email: string;
+  department?: string;
+  phone?: string;
+  cardStatus: 'ACTIVE' | 'LOCKED' | 'EXPIRED';
+  cardExpiryDate?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -12,23 +33,23 @@ export class UserService {
 
   constructor(private http: HttpClient) { }
 
-  getStudents(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/students`);
+  getStudents(): Observable<Student[]> {
+    return this.http.get<Student[]>(`${this.apiUrl}/students`);
   }
 
   getStudentById(id: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/students/${id}`);
   }
 
-  createStudent(student: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/students`, student);
+  createStudent(student: StudentUpsert): Observable<Student> {
+    return this.http.post<Student>(`${this.apiUrl}/students`, student);
   }
 
-  updateStudent(id: string, student: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/students/${id}`, student);
+  updateStudent(mssv: string, student: StudentUpsert): Observable<Student> {
+    return this.http.put<Student>(`${this.apiUrl}/students/${encodeURIComponent(mssv)}`, student);
   }
 
-  deleteStudent(id: string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/students/${id}`);
+  deleteStudent(mssv: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/students/${encodeURIComponent(mssv)}`);
   }
 }

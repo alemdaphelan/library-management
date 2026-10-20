@@ -1,8 +1,17 @@
 import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChatbotService, RagSource } from '../../services/chatbot.service';
+
+interface ChatMessage {
+  sender: 'user' | 'bot';
+  text: string;
+  time: string;
+  suggests: string[];
+  sources: RagSource[];
+  fallbackUsed?: boolean;
+}
 
 @Component({
   selector: 'app-chatbot',
@@ -12,15 +21,20 @@ import { environment } from '../../../environments/environment';
   styleUrls: ['./chatbot.css']
 })
 export class Chatbot {
-  private http = inject(HttpClient);
+  private chatbotService = inject(ChatbotService);
   private cdr = inject(ChangeDetectorRef);
-  private apiKey = environment.cohereApiKey;
 
   isOpen = false;
   userInput = '';
 
-  messages: { sender: string, text: string, time: string, suggests: string[] }[] = [
-    { sender: 'bot', text: 'Xin chào! Tôi là Trợ lý AI của HUIT Library. Tôi có thể giúp gì cho bạn?', time: '20:34', suggests: ['Quy định mượn sách?', 'Giờ mở cửa thư viện?'] }
+  messages: ChatMessage[] = [
+    {
+      sender: 'bot',
+      text: 'Xin chào! Tôi là Trợ lý RAG của HUIT Library. Câu trả lời của tôi sẽ kèm nguồn từ kho tri thức thư viện.',
+      time: this.getCurrentTime(),
+      suggests: ['Quy định gia hạn sách?', 'Quá hạn trả sách bị xử lý thế nào?'],
+      sources: []
+    }
   ];
 
   isTyping = false;
@@ -36,61 +50,42 @@ export class Chatbot {
       this.messages[this.messages.length - 1].suggests = [];
     }
 
-    this.messages.push({ sender: 'user', text: text.trim(), time: this.getCurrentTime(), suggests: [] });
+    this.messages.push({ sender: 'user', text: text.trim(), time: this.getCurrentTime(), suggests: [], sources: [] });
     this.userInput = '';
     this.isTyping = true;
 
-    this.callGeminiAPI(text.trim());
+    this.callRagApi(text.trim());
   }
 
-  callGeminiAPI(query: string) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${this.apiKey}`;
-
-    // RAG System Prompt
-    const payload = {
-      contents: [{
-        parts: [{
-          text: `Bạn là trợ lý AI của Thư viện Đại học Công Thương TP.HCM (HUIT). 
-Hãy đóng vai lịch sự, thân thiện. 
-Dựa vào Dữ liệu (Context) sau đây để trả lời câu hỏi của sinh viên:
-- Trễ hạn: Phạt 1,000đ/ngày.
-- Làm mất sách: Đền sách mới cùng năm xuất bản hoặc phạt gấp 5 lần giá bìa.
-- Mượn tối đa 3 tài liệu trong 10 ngày.
-- Giờ mở cửa: T2-T7 từ 07:30 đến 20:30.
-- Sinh viên có thể dùng Thẻ sinh viên điện tử (Mã QR) trên Mobile App hoặc mượn bằng HUIT SSO.
-
-Yêu cầu BẮT BUỘC: Ở cuối câu trả lời, hãy gợi ý chính xác 2 câu hỏi liên quan tiếp theo mà sinh viên có thể muốn hỏi. 
-Mỗi câu hỏi phải được đặt sau chữ [SUGGEST]. Tuyệt đối KHÔNG gạch đầu dòng, KHÔNG xuống dòng ở phần gợi ý.
-Ví dụ định dạng trả lời: Trả lời ABC... [SUGGEST]Làm sao để đăng nhập?[SUGGEST]Vị trí kệ sách?
-
-Câu hỏi của sinh viên: ${query}`
-        }]
-      }]
-    };
-
-    this.http.post(url, payload).subscribe({
-      next: (res: any) => {
+  callRagApi(query: string) {
+    this.chatbotService.ask(query).subscribe({
+      next: (response) => {
         this.isTyping = false;
-        const rawResponse = res?.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin lỗi, tôi không thể lấy câu trả lời.';
-        this.parseAndAddMessage(rawResponse);
-        this.cdr.detectChanges(); // Ép UI cập nhật ngay lập tức
+        this.messages.push({
+          sender: 'bot',
+          text: response.answer,
+          time: this.getCurrentTime(),
+          suggests: response.suggestions ?? [],
+          sources: response.sources ?? [],
+          fallbackUsed: response.fallbackUsed
+        });
+        this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.error('API Error:', err);
+      error: (error: HttpErrorResponse) => {
         this.isTyping = false;
-        this.parseAndAddMessage('Xin lỗi, đã xảy ra lỗi kết nối với máy chủ AI (API Key không hợp lệ hoặc đường truyền bị đứt).[SUGGEST]Thử lại[SUGGEST]Trở về trang chủ');
-        this.cdr.detectChanges(); // Ép UI cập nhật ngay lập tức
+        const message = error.status === 429
+          ? 'Bạn đã gửi quá nhiều câu hỏi. Vui lòng thử lại sau một phút.'
+          : 'Xin lỗi, kho tri thức hiện chưa phản hồi. Bạn có thể thử lại hoặc liên hệ thủ thư.';
+        this.messages.push({
+          sender: 'bot',
+          text: message,
+          time: this.getCurrentTime(),
+          suggests: ['Thử lại', 'Quy định mượn sách?'],
+          sources: []
+        });
+        this.cdr.detectChanges();
       }
     });
-  }
-
-  parseAndAddMessage(rawResponse: string) {
-    const parts = rawResponse.split('[SUGGEST]');
-    const mainText = parts[0].trim();
-    // Lọc bỏ những phần tử rỗng nếu có
-    const suggests = parts.slice(1).map(s => s.trim()).filter(s => s.length > 0);
-
-    this.messages.push({ sender: 'bot', text: mainText, time: this.getCurrentTime(), suggests: suggests });
   }
 
   handleSuggestClick(suggestText: string) {

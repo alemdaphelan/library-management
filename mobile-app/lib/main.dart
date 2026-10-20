@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/screens/splash_screen.dart';
+import 'package:mobile_app/services/push_notification_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PushNotificationService.initialize();
   runApp(const HuitLibraryApp());
 }
 
@@ -19,7 +22,6 @@ class HuitLibraryApp extends StatelessWidget {
           seedColor: const Color(0xFF0284c7), // Primary Academic Blue
           primary: const Color(0xFF0284c7),
           secondary: const Color(0xFF0f172a), // Navy Dark
-          background: const Color(0xFFf8f9ff), // Light Tone
           surface: Colors.white,
         ),
         scaffoldBackgroundColor: const Color(0xFFf8f9ff),

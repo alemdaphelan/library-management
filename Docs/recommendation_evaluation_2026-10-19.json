@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-10-19T08:02:46.1862558",
+  "k": 10,
+  "requestedScenarios": 40,
+  "evaluatedScenarios": 38,
+  "classifiedCatalogSize": 4387,
+  "evaluationDataset": "SYNTHETIC_TOPIC_PROXY_FROM_PRODUCTION_TAXONOMY",
+  "realHistory": {
+    "dataSource": "PRODUCTION_LOAN_HISTORY",
+    "interactions": 2,
+    "distinctUsers": 2,
+    "eligibleUsers": 0,
+    "trainingInteractions": 0,
+    "testInteractions": 0,
+    "sufficientForPublication": false,
+    "splitRule": "Theo từng người dùng: 80% tương tác đầu làm train, 20% cuối theo thời gian làm test; cần ít nhất 5 tương tác/người.",
+    "note": "Chưa đủ tối thiểu 30 người dùng hợp lệ và 200 tương tác; không công bố Precision/Recall như dữ liệu thật."
+  },
+  "methods": [
+    {
+      "method": "POPULARITY_BASELINE",
+      "precisionAtK": 0.102632,
+      "recallAtK": 0.001956,
+      "hitRateAtK": 0.552632,
+      "catalogCoverage": 0.003419,
+      "p50LatencyMs": 0.136,
+      "p95LatencyMs": 0.424,
+      "totalRecommendations": 380
+    },
+    {
+      "method": "CONTENT_TFIDF",
+      "precisionAtK": 0.984211,
+      "recallAtK": 0.166917,
+      "hitRateAtK": 1.0,
+      "catalogCoverage": 0.047641,
+      "p50LatencyMs": 53.043,
+      "p95LatencyMs": 95.092,
+      "totalRecommendations": 380
+    },
+    {
+      "method": "PROPOSED_HYBRID",
+      "precisionAtK": 1.0,
+      "recallAtK": 0.167082,
+      "hitRateAtK": 1.0,
+      "catalogCoverage": 0.04878,
+      "p50LatencyMs": 53.946,
+      "p95LatencyMs": 85.162,
+      "totalRecommendations": 380
+    }
+  ],
+  "disclaimer": "Các metric là proxy theo độ phù hợp chủ đề trên taxonomy production, không phải hành vi mượn thật."
+}

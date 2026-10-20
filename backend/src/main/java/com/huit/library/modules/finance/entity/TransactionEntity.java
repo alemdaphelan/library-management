@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -21,4 +23,17 @@ public class TransactionEntity extends BaseEntity {
     private String proofDocumentUrl;
     private BigDecimal amount;
     private String type; // e.g., FINE, DEPOSIT, REFUND
+    private UUID userId;
+    private Long ticketId;
+    private Long loanDetailId;
+    private Long penaltyCaseId;
+    private String reason;
+    private String status;
+    private String paymentMethod;
+    private String receiptNumber;
+    private UUID confirmedBy;
+    private BigDecimal paidAmount = BigDecimal.ZERO;
+    private LocalDateTime paidAt;
+    @Column(unique = true, length = 160)
+    private String dedupKey;
 }

@@ -1,7 +1,9 @@
 package com.huit.library.modules.auth.controller;
 
 import com.huit.library.modules.auth.entity.UserEntity;
+import com.huit.library.modules.auth.dto.StudentUpsertRequestDTO;
 import com.huit.library.modules.auth.service.UserService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -37,16 +39,17 @@ public class UserController {
     }
 
     @PostMapping("/students")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new student manually")
-    public ResponseEntity<?> createStudent(@RequestBody UserEntity student) {
-        return ResponseEntity.ok(userService.createStudent(student));
+    public ResponseEntity<?> createStudent(@Valid @RequestBody StudentUpsertRequestDTO student) {
+        return ResponseEntity.status(201).body(userService.createStudent(student));
     }
 
     @PutMapping("/students/{mssv}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update an existing student")
-    public ResponseEntity<?> updateStudent(@PathVariable String mssv, @RequestBody UserEntity student) {
+    public ResponseEntity<?> updateStudent(@PathVariable String mssv,
+                                           @Valid @RequestBody StudentUpsertRequestDTO student) {
         return ResponseEntity.ok(userService.updateStudent(mssv, student));
     }
 
@@ -55,11 +58,12 @@ public class UserController {
     @Operation(summary = "Delete a student")
     public ResponseEntity<?> deleteStudent(@PathVariable String mssv) {
         userService.deleteStudent(mssv);
-        return ResponseEntity.ok("Student deleted successfully");
+        return ResponseEntity.noContent().build();
     }
 
 
     @PostMapping("/sync")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Sync University Data", description = "Trigger sync with University Academic Dept (matching Student ID).")
     public ResponseEntity<?> syncWithUniversity(@RequestBody List<UserEntity> universityData) {
         userService.syncWithUniversity(universityData);

@@ -1,7 +1,5 @@
 package com.huit.library.modules.inventory.entity;
 
-import java.util.UUID;
-
 import com.huit.library.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;

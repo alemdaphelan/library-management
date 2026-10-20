@@ -379,22 +379,40 @@
       </div>
     </section>
 
-    <!-- Carousel: Gợi ý riêng cho bạn -->
+    <!-- Carousel: Gợi ý Hybrid / Popularity thật từ Backend -->
     <section class="recommendations-section">
       <div class="container">
         <div class="section-header">
           <div class="sh-text">
-            <h2>Gợi ý riêng cho bạn</h2>
-            <p>Dựa trên lịch sử mượn sách "Lập trình" của bạn.</p>
+            <h2>{{ recommendationTitle }}</h2>
+            <p>{{ recommendationDescription }}</p>
           </div>
-          <button class="btn-view-all">Xem tất cả &rsaquo;</button>
+          <a class="btn-view-all" routerLink="/search">Xem tất cả &rsaquo;</a>
         </div>
 
-        <div class="carousel-container">
+        <div class="recommendation-state" *ngIf="recommendationLoading">
+          <span class="recommendation-spinner" aria-hidden="true"></span>
+          <span>Đang tạo danh sách phù hợp với bạn...</span>
+        </div>
+
+        <div class="recommendation-state error" *ngIf="recommendationError && !recommendationLoading">
+          Chưa thể tải gợi ý lúc này. Bạn vẫn có thể tra cứu toàn bộ danh mục sách.
+        </div>
+
+        <div class="recommendation-state" *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length === 0">
+          Chưa có đủ tài liệu phù hợp để gợi ý.
+        </div>
+
+        <div class="carousel-container" *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length > 0">
           <div class="carousel-track">
-            <div class="book-card" *ngFor="let book of recommendedBooks" routerLink="/book/{{book.id}}">
+            <div class="book-card" *ngFor="let book of recommendedBooks" [routerLink]="['/book', book.bookId]">
               <div class="book-cover-wrapper">
-                <img [src]="book.cover" alt="{{ book.title }}" class="book-cover-img">
+                <img
+                  [src]="book.imageUrl || '/assets/images/cover_1.jpg'"
+                  [alt]="book.title"
+                  (error)="onCoverError($event)"
+                  class="book-cover-img">
+                <span class="recommendation-score">{{ recommendationPercent(book) }}% phù hợp</span>
                 <div class="book-overlay">
                   <button class="btn-primary btn-sm">Xem chi tiết</button>
                 </div>
@@ -402,6 +420,7 @@
               <div class="book-info">
                 <h3 class="book-name">{{ book.title }}</h3>
                 <p class="book-author">{{ book.author }}</p>
+                <p class="recommendation-reason">{{ book.reason }}</p>
               </div>
             </div>
           </div>

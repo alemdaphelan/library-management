@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_app/services/auth_service.dart';
@@ -6,9 +7,8 @@ import 'package:mobile_app/screens/login_screen.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   final bool isFirstLogin;
-  final String email;
 
-  const ChangePasswordScreen({super.key, required this.isFirstLogin, required this.email});
+  const ChangePasswordScreen({super.key, required this.isFirstLogin});
 
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
@@ -33,10 +33,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       final token = await AuthService.getToken();
       final response = await http.post(
-        Uri.parse('${AuthService.baseUrl}/change-password?email=${widget.email}&oldPassword=${_oldPasswordController.text}&newPassword=${_newPasswordController.text}'),
+        Uri.parse('${AuthService.baseUrl}/change-password'),
         headers: {
           'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
         },
+        body: jsonEncode({
+          'currentPassword': _oldPasswordController.text,
+          'newPassword': _newPasswordController.text,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -44,7 +49,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đổi mật khẩu thành công!')),
         );
-        
+
         if (widget.isFirstLogin) {
           Navigator.pushReplacement(
             context,
@@ -55,15 +60,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         }
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: ${response.body}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: ${response.body}')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lỗi kết nối máy chủ!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Lỗi kết nối máy chủ!')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -146,12 +151,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     AuthService.logout();
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
                     );
                   },
                   child: const Text('Đăng xuất'),
                 ),
-              ]
+              ],
             ],
           ),
         ),

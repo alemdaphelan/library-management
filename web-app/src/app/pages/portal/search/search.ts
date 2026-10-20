@@ -73,7 +73,7 @@ export class Search implements OnInit, OnDestroy {
       } else {
         this.quickSearchResults = [];
       }
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
     });
   }
 
@@ -102,7 +102,7 @@ export class Search implements OnInit, OnDestroy {
   onBlur() {
     setTimeout(() => {
       this.showDropdown = false;
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
     }, 150);
   }
 
@@ -122,7 +122,7 @@ export class Search implements OnInit, OnDestroy {
       next: (cats: Category[]) => {
         this.availableCategories = cats.map(c => c.name);
         this.availableCategories.forEach(cat => this.selectedCategories[cat] = false);
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
       error: (err) => console.error('Error fetching categories', err)
     });
@@ -148,13 +148,13 @@ export class Search implements OnInit, OnDestroy {
           this.totalElements = 0;
         }
         this.applyFilters();
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error fetching books', err);
         this.allBooks = [];
         this.applyFilters();
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
       }
     });
   }
@@ -219,7 +219,7 @@ export class Search implements OnInit, OnDestroy {
     
     this.sortOption = 'newest';
     this.applyFilters();
-    this.cdr.detectChanges(); // Force UI to update immediately
+    this.cdr.markForCheck();
   }
 
   setViewMode(mode: 'grid' | 'list') {

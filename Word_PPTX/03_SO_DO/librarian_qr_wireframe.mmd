@@ -1,0 +1,32 @@
+flowchart TB
+    A[Đăng nhập thủ thư] --> B{Role LIBRARIAN}
+    B -- Không --> C[Ẩn chức năng quét QR]
+    B -- Có --> D[Trang chủ thủ thư]
+    D --> E[Mở Quét QR]
+    E --> F[Camera hoặc máy quét<br/>Khung căn mã và nút bật đèn]
+    F --> G{Kết quả resolve}
+    G -- Sai hoặc hết hạn --> H[Thông báo lỗi<br/>Quét lại hoặc nhập mã thủ công]
+    H --> F
+    G -- Thẻ sinh viên --> I[Hồ sơ tối thiểu<br/>Họ tên MSSV trạng thái thẻ<br/>Sách đang mượn và khoản nợ]
+    G -- Phiếu mượn --> J[Chi tiết phiếu<br/>Trạng thái và danh sách bản sao]
+    I --> K{Chọn nghiệp vụ}
+    J --> K
+    K -- Mượn --> L[Quét barcode sách<br/>Kiểm tra giới hạn và trạng thái]
+    K -- Trả --> M[Quét barcode sách<br/>Ghi nhận tình trạng trả]
+    L --> N[Xác nhận checkout]
+    M --> O[Xác nhận return và tiền phạt]
+    N --> P{Backend xử lý}
+    O --> P
+    P -- Lỗi --> Q[Hiển thị lý do<br/>Không đổi dữ liệu cục bộ]
+    P -- Thành công --> R[Biên nhận<br/>Trạng thái phiếu và bản sao mới]
+    Q --> K
+    R --> S[Quét lượt tiếp theo hoặc kết thúc]
+
+    classDef screen fill:#F7FAFC,stroke:#1F4E78,color:#000000
+    classDef decision fill:#FFF4CC,stroke:#A67C00,color:#000000
+    classDef error fill:#FDECEC,stroke:#A61B1B,color:#000000
+    classDef success fill:#EAF6EA,stroke:#2E7D32,color:#000000
+    class A,D,E,F,I,J,L,M,N,O,Q,S screen
+    class B,G,K,P decision
+    class C,H error
+    class R success
