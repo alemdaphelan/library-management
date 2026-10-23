@@ -43,7 +43,7 @@ export class Chatbot {
     this.callGeminiAPI(text.trim());
   }
 
-  callGeminiAPI(query: string) {
+  callGeminiAPI(query: string, retryCount: number = 0) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${this.apiKey}`;
 
     // RAG System Prompt
@@ -77,8 +77,16 @@ Câu hỏi của sinh viên: ${query}`
       },
       error: (err) => {
         console.error('API Error:', err);
+        // Tự động thử lại nếu gặp quá tải tạm thời (503)
+        if (err.status === 503 && retryCount < 2) {
+          setTimeout(() => this.callGeminiAPI(query, retryCount + 1), 1500);
+          return;
+        }
         this.isTyping = false;
-        this.parseAndAddMessage('Xin lỗi, đã xảy ra lỗi kết nối với máy chủ AI (API Key không hợp lệ hoặc đường truyền bị đứt).[SUGGEST]Thử lại[SUGGEST]Trở về trang chủ');
+        const errMsg = err.status === 503
+          ? 'Máy chủ AI hiện đang chịu tải cao, bạn vui lòng bấm thử lại nhé![SUGGEST]Thử lại[SUGGEST]Quy định mượn sách?'
+          : 'Xin lỗi, đã xảy ra lỗi kết nối với máy chủ AI.[SUGGEST]Thử lại[SUGGEST]Quy định mượn sách?';
+        this.parseAndAddMessage(errMsg);
         this.cdr.detectChanges(); // Ép UI cập nhật ngay lập tức
       }
     });
