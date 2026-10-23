@@ -24,17 +24,23 @@ public class FirebasePushNotificationService {
 
     private final ObjectProvider<FirebaseMessaging> messagingProvider;
     private final PushDeviceRegistrationRepository deviceRepository;
+    private final NotificationPreferenceService preferenceService;
 
     public FirebasePushNotificationService(
             ObjectProvider<FirebaseMessaging> messagingProvider,
-            PushDeviceRegistrationRepository deviceRepository) {
+            PushDeviceRegistrationRepository deviceRepository,
+            NotificationPreferenceService preferenceService) {
         this.messagingProvider = messagingProvider;
         this.deviceRepository = deviceRepository;
+        this.preferenceService = preferenceService;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void send(PushNotificationEvent event) {
+        if (!preferenceService.isPushEnabled(event.userId())) {
+            return;
+        }
         FirebaseMessaging messaging = messagingProvider.getIfAvailable();
         if (messaging == null) {
             LOGGER.debug("Firebase push is disabled; notification remains available in-app");
@@ -79,9 +85,12 @@ public class FirebasePushNotificationService {
             case "DUE_TODAY" -> "Đến hạn trả sách";
             case "OVERDUE" -> "Sách đang quá hạn";
             case "PENALTY", "FINE" -> "Phát sinh khoản phí";
-            case "ACCOUNT_LOCKED" -> "Tài khoản bị khóa";
-            case "ACCOUNT_UNLOCKED" -> "Tài khoản đã mở lại";
+            case "ACCOUNT_LOCKED", "CIRCULATION_LOCKED" -> "Tài khoản bị khóa";
+            case "ACCOUNT_UNLOCKED", "CIRCULATION_UNLOCKED" -> "Tài khoản đã mở lại";
             case "WAITLIST_READY" -> "Sách đặt giữ đã sẵn sàng";
+            case "PROPOSAL_APPROVED" -> "Đề xuất tài liệu đã được chấp nhận";
+            case "PROPOSAL_REJECTED" -> "Kết quả đề xuất tài liệu";
+            case "RESERVATION_NO_SHOW" -> "Cảnh báo không đến nhận tài liệu";
             default -> "Thông báo Thư viện HUIT";
         };
     }

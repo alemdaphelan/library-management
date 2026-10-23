@@ -31,4 +31,17 @@ describe('NotificationService', () => {
     expect(request.request.body).toEqual({});
     request.flush({ notifId: 'notif-1', isRead: true });
   });
+
+  it('loads and persists notification delivery preferences', () => {
+    service.getPreferences().subscribe();
+    const getRequest = httpTesting.expectOne(`${apiUrl}/preferences`);
+    expect(getRequest.request.method).toBe('GET');
+    getRequest.flush({ emailEnabled: true, pushEnabled: true });
+
+    service.updatePreferences({ emailEnabled: false, pushEnabled: true }).subscribe();
+    const patchRequest = httpTesting.expectOne(`${apiUrl}/preferences`);
+    expect(patchRequest.request.method).toBe('PATCH');
+    expect(patchRequest.request.body).toEqual({ emailEnabled: false, pushEnabled: true });
+    patchRequest.flush({ emailEnabled: false, pushEnabled: true });
+  });
 });

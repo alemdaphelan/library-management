@@ -66,6 +66,14 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
     List<LoanDetailEntity> findActiveByBarcodesForUpdate(@Param("barcodes") Collection<String> barcodes);
 
     @Query("""
+            select detail from LoanDetailEntity detail
+            where detail.barcode = :barcode
+              and detail.returnDate is null
+              and detail.returnStatus in ('BORROWING', 'OVERDUE')
+            """)
+    Optional<LoanDetailEntity> findActiveByBarcode(@Param("barcode") String barcode);
+
+    @Query("""
             select count(detail) from LoanDetailEntity detail, LoanTicketEntity ticket
             where detail.ticketId = ticket.ticketId
               and ticket.userId = :userId
@@ -77,6 +85,21 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             @Param("userId") UUID userId,
             @Param("statuses") Collection<String> statuses);
 
+    @Query(value = """
+            SELECT COUNT(ld.detail_id)
+            FROM loan_details ld
+            JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
+            JOIN book_copies bc ON bc.barcode = ld.barcode
+            WHERE lt.user_id = :userId
+              AND bc.book_id = :bookId
+              AND ld.return_date IS NULL
+              AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
+              AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
+            """, nativeQuery = true)
+    long countOpenItemsByUserIdAndBookId(
+            @Param("userId") UUID userId,
+            @Param("bookId") Long bookId);
+
     @Query("""
             select count(detail) from LoanDetailEntity detail, LoanTicketEntity ticket
             where detail.ticketId = ticket.ticketId
@@ -86,6 +109,23 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
                    or (ticket.status = 'BORROWING' and detail.dueDate < :now))
             """)
     long countOverdueItemsByUserId(@Param("userId") UUID userId, @Param("now") LocalDateTime now);
+
+    @Query(value = """
+            SELECT COUNT(ld.detail_id)
+            FROM loan_details ld
+            JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
+            JOIN book_copies bc ON bc.barcode = ld.barcode
+            WHERE bc.book_id = :bookId
+              AND COALESCE(ld.created_at, lt.created_at) >= :since
+              AND (
+                    ld.return_status IN ('BORROWING', 'OVERDUE', 'RETURNED', 'LOST', 'DAMAGED')
+                    OR ld.return_date IS NOT NULL
+                  )
+              AND COALESCE(lt.status, '') NOT IN ('CANCELLED', 'REJECTED')
+            """, nativeQuery = true)
+    long countBorrowedByBookIdSince(
+            @Param("bookId") Long bookId,
+            @Param("since") LocalDateTime since);
 
     @Query(value = """
             SELECT b.book_id AS bookId, b.title AS title, b.author AS author,

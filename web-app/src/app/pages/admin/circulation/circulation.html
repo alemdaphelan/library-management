@@ -77,6 +77,7 @@
             <div class="item-info">
               <h4>{{ item.displayTitle }}</h4>
               <p>Barcode: {{ item.barcode }} · Trạng thái: {{ item.status }}</p>
+              <p *ngIf="activeTab === 'return' && item.loanTicketId">Thuộc phiếu mượn #{{ item.loanTicketId }}</p>
               <p *ngIf="item.location">Vị trí: {{ item.location }}</p>
             </div>
             <button class="remove-btn" type="button" (click)="removeBook(item.barcode)">Xóa</button>

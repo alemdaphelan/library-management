@@ -4,6 +4,35 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 
+export interface BookReview {
+  reviewId: number;
+  reviewerName: string;
+  rating: number;
+  comment?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  mine: boolean;
+}
+
+export interface BookReviewSummary {
+  bookId: number;
+  averageRating: number;
+  reviewCount: number;
+  myReview?: BookReview;
+  reviews: BookReview[];
+}
+
+export interface WishlistItem {
+  wishlistId: string;
+  bookId: number;
+  title: string;
+  author?: string;
+  category?: string;
+  cover?: string;
+  availableCopies: number;
+  addedAt: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -36,5 +65,33 @@ export class BookService {
 
   deleteBook(id: string): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  }
+
+  getReviews(id: number): Observable<BookReviewSummary> {
+    return this.http.get<BookReviewSummary>(`${this.apiUrl}/${id}/reviews`);
+  }
+
+  saveReview(id: number, rating: number, comment: string): Observable<BookReviewSummary> {
+    return this.http.post<BookReviewSummary>(`${this.apiUrl}/${id}/reviews`, { rating, comment });
+  }
+
+  deleteMyReview(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}/reviews/me`);
+  }
+
+  getWishlist(): Observable<WishlistItem[]> {
+    return this.http.get<WishlistItem[]>(`${environment.apiUrl}/users/wishlist`);
+  }
+
+  getWishlistStatus(bookId: number): Observable<{ saved: boolean }> {
+    return this.http.get<{ saved: boolean }>(`${environment.apiUrl}/users/wishlist/${bookId}/status`);
+  }
+
+  addToWishlist(bookId: number): Observable<WishlistItem> {
+    return this.http.post<WishlistItem>(`${environment.apiUrl}/users/wishlist`, { bookId });
+  }
+
+  removeFromWishlist(bookId: number): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/users/wishlist/${bookId}`);
   }
 }

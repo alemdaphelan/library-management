@@ -3,12 +3,16 @@ package com.huit.library.modules.auth.controller;
 import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.dto.StudentUpsertRequestDTO;
 import com.huit.library.modules.auth.service.UserService;
+import com.huit.library.core.security.CustomUserDetails;
+import com.huit.library.modules.interactive.dto.WishlistRequestDTO;
+import com.huit.library.modules.interactive.service.BookInteractionService;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,9 +23,11 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final BookInteractionService bookInteractionService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, BookInteractionService bookInteractionService) {
         this.userService = userService;
+        this.bookInteractionService = bookInteractionService;
     }
 
     @GetMapping("/students")
@@ -70,10 +76,36 @@ public class UserController {
         return ResponseEntity.ok("Sync completed successfully!");
     }
 
+    @GetMapping("/wishlist")
+    @Operation(summary = "Get my wishlist", description = "Lists books saved by the current user.")
+    public ResponseEntity<?> getWishlist(@AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(bookInteractionService.getWishlist(principal.getUser().getUserId()));
+    }
+
+    @GetMapping("/wishlist/{bookId}/status")
+    @Operation(summary = "Check wishlist status")
+    public ResponseEntity<?> getWishlistStatus(
+            @PathVariable Long bookId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(java.util.Map.of(
+                "saved", bookInteractionService.isSaved(principal.getUser().getUserId(), bookId)));
+    }
+
     @PostMapping("/wishlist")
     @Operation(summary = "Add to Wishlist", description = "Add a specific book to the user's wishlist.")
-    public ResponseEntity<?> addToWishlist() {
-        // Will be connected to Interactive module WishlistService later
-        return ResponseEntity.ok("Added to wishlist successfully!");
+    public ResponseEntity<?> addToWishlist(
+            @Valid @RequestBody WishlistRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(bookInteractionService.addToWishlist(
+                principal.getUser().getUserId(), request.getBookId()));
+    }
+
+    @DeleteMapping("/wishlist/{bookId}")
+    @Operation(summary = "Remove from Wishlist")
+    public ResponseEntity<Void> removeFromWishlist(
+            @PathVariable Long bookId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        bookInteractionService.removeFromWishlist(principal.getUser().getUserId(), bookId);
+        return ResponseEntity.noContent().build();
     }
 }

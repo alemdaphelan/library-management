@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ProposalService, BookProposal } from '../../../services/proposal.service';
 import { AuthService } from '../../../services/auth.service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-suggest',
@@ -17,9 +18,15 @@ export class Suggest implements OnInit {
 
   suggestion = {
     title: '',
-    author: '',
+    authorName: '',
     publisher: '',
-    link: '',
+    isbn: '',
+    publicationYear: null as number | null,
+    edition: '',
+    estimatedPrice: null as number | null,
+    externalUrl: '',
+    genre: '',
+    urgencyLevel: 'NORMAL' as 'LOW' | 'NORMAL' | 'HIGH',
     reason: ''
   };
 
@@ -32,7 +39,8 @@ export class Suggest implements OnInit {
   constructor(
     private proposalService: ProposalService,
     public authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -50,19 +58,26 @@ export class Suggest implements OnInit {
 
   loadMyProposals() {
     this.isLoadingHistory = true;
-    this.proposalService.getMyProposals().subscribe({
+    this.proposalService.getMyProposals().pipe(
+      finalize(() => {
+        this.isLoadingHistory = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
       next: (list) => {
         this.myProposals = list;
-        this.isLoadingHistory = false;
       },
       error: (err) => {
         console.error('Lỗi tải lịch sử đề xuất:', err);
-        this.isLoadingHistory = false;
       }
     });
   }
 
   onSubmit() {
+    if (this.isSubmitting) {
+      return;
+    }
+
     if (!this.suggestion.title.trim() || !this.suggestion.reason.trim()) {
       this.errorMessage = 'Vui lòng nhập tên tài liệu và lý do đề xuất!';
       return;
@@ -74,42 +89,60 @@ export class Suggest implements OnInit {
     }
 
     this.isSubmitting = true;
+    this.isSubmitted = false;
     this.errorMessage = '';
 
     const payload = {
       title: this.suggestion.title.trim(),
-      authorName: this.suggestion.author.trim(),
+      authorName: this.suggestion.authorName.trim(),
       publisher: this.suggestion.publisher.trim(),
+      isbn: this.suggestion.isbn.trim(),
+      publicationYear: this.suggestion.publicationYear,
+      edition: this.suggestion.edition.trim(),
+      estimatedPrice: this.suggestion.estimatedPrice,
+      externalUrl: this.suggestion.externalUrl.trim(),
+      genre: this.suggestion.genre.trim(),
+      urgencyLevel: this.suggestion.urgencyLevel,
       reason: this.suggestion.reason.trim(),
-      note: this.suggestion.link.trim()
     };
 
-    this.proposalService.submitProposal(payload).subscribe({
-      next: (res) => {
+    this.proposalService.submitProposal(payload).pipe(
+      finalize(() => {
         this.isSubmitting = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (res) => {
         this.isSubmitted = true;
-        this.suggestion = { title: '', author: '', publisher: '', link: '', reason: '' };
+        this.suggestion = {
+          title: '', authorName: '', publisher: '', isbn: '', publicationYear: null,
+          edition: '', estimatedPrice: null, externalUrl: '', genre: '',
+          urgencyLevel: 'NORMAL', reason: ''
+        };
         this.loadMyProposals();
         setTimeout(() => {
           this.isSubmitted = false;
         }, 5000);
       },
       error: (err) => {
-        this.isSubmitting = false;
         console.error('Error submitting proposal:', err);
-        if (typeof err.error === 'string') {
-          this.errorMessage = err.error;
-        } else if (err.error && typeof err.error.message === 'string') {
-          this.errorMessage = err.error.message;
-        } else if (err.error && typeof err.error.error === 'string') {
-          this.errorMessage = err.error.error;
-        } else if (err.status === 401 || err.status === 403) {
-          this.errorMessage = 'Phiên đăng nhập đã hết hạn hoặc không có quyền. Vui lòng đăng nhập lại!';
-        } else {
-          this.errorMessage = 'Có lỗi xảy ra khi gửi đề xuất. Vui lòng thử lại sau!';
-        }
+        this.errorMessage = this.extractErrorMessage(err);
       }
     });
+  }
+
+  private extractErrorMessage(err: any): string {
+    if (err?.status === 401 || err?.status === 403) {
+      return 'Phiên đăng nhập đã hết hạn hoặc không có quyền. Vui lòng đăng nhập lại!';
+    }
+    const body = err?.error;
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+    const message = body?.detail ?? body?.message ?? body?.error;
+    return typeof message === 'string' && message.trim()
+      ? message
+      : 'Có lỗi xảy ra khi gửi đề xuất. Vui lòng thử lại sau!';
   }
 
   goToLogin() {

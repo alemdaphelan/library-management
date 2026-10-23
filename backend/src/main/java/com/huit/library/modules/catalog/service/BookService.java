@@ -9,12 +9,15 @@ import com.huit.library.modules.catalog.repository.CategoryRepository;
 import com.huit.library.modules.catalog.dto.DepartmentOptionDTO;
 import com.huit.library.modules.recommendation.repository.DepartmentSubjectAffinityRepository;
 import com.huit.library.modules.recommendation.service.DepartmentKeyNormalizer;
+import com.huit.library.modules.interactive.repository.ReviewRepository;
+import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
+import java.time.LocalDate;
 
 @Service
 public class BookService {
@@ -23,14 +26,20 @@ public class BookService {
     private final BookCopyRepository bookCopyRepository;
     private final CategoryRepository categoryRepository;
     private final DepartmentSubjectAffinityRepository departmentRepository;
+    private final ReviewRepository reviewRepository;
+    private final LoanDetailRepository loanDetailRepository;
 
     public BookService(BookRepository bookRepository, BookCopyRepository bookCopyRepository,
                        CategoryRepository categoryRepository,
-                       DepartmentSubjectAffinityRepository departmentRepository) {
+                       DepartmentSubjectAffinityRepository departmentRepository,
+                       ReviewRepository reviewRepository,
+                       LoanDetailRepository loanDetailRepository) {
         this.bookRepository = bookRepository;
         this.bookCopyRepository = bookCopyRepository;
         this.categoryRepository = categoryRepository;
         this.departmentRepository = departmentRepository;
+        this.reviewRepository = reviewRepository;
+        this.loanDetailRepository = loanDetailRepository;
     }
 
     @Transactional(readOnly = true)
@@ -42,16 +51,18 @@ public class BookService {
         String departmentKey = DepartmentKeyNormalizer.normalize(department);
         if (!departmentKey.isBlank()) {
             books = bookRepository.searchByDepartment(
-                    departmentKey, hasQuery ? query.trim() : "", categoryId, pageable);
-        } else if (hasQuery && hasCategory) {
-            books = bookRepository.findByCategory_CategoryIdAndTitleContainingIgnoreCaseOrCategory_CategoryIdAndAuthorContainingIgnoreCase(
-                    categoryId, query, categoryId, query, pageable);
-        } else if (hasCategory) {
-            books = bookRepository.findByCategory_CategoryId(categoryId, pageable);
-        } else if (hasQuery) {
-            books = bookRepository.findByTitleContainingIgnoreCaseOrIsbnContainingIgnoreCaseOrAuthorContainingIgnoreCase(query, query, query, pageable);
+                    departmentKey,
+                    hasQuery ? query.trim() : "",
+                    resolveSubjectCode(hasQuery ? query.trim() : ""),
+                    categoryId,
+                    pageable);
         } else {
-            books = bookRepository.findAll(pageable);
+            String normalizedQuery = hasQuery ? query.trim() : "";
+            books = bookRepository.searchCatalog(
+                    normalizedQuery,
+                    resolveSubjectCode(normalizedQuery),
+                    categoryId,
+                    pageable);
         }
         return books.map(this::toResponse);
     }
@@ -65,8 +76,11 @@ public class BookService {
         return bookRepository.findById(id).orElseThrow(() -> new RuntimeException("Book not found"));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public BookResponseDTO getBookById(Long id) {
+        if (bookRepository.incrementViewCount(id) == 0) {
+            throw new RuntimeException("Book not found");
+        }
         return toResponse(getBookEntity(id));
     }
 
@@ -90,6 +104,7 @@ public class BookService {
         existing.setIsDigital(updatedBook.getIsDigital());
         existing.setAuthor(updatedBook.getAuthor());
         existing.setPublisher(updatedBook.getPublisher());
+        existing.setDescription(updatedBook.getDescription());
         existing.setCategory(updatedBook.getCategory());
         existing.setImageUrlS(updatedBook.getImageUrlS());
         existing.setImageUrlM(updatedBook.getImageUrlM());
@@ -144,6 +159,7 @@ public class BookService {
                 .isDigital(book.getIsDigital())
                 .author(book.getAuthor())
                 .publisher(book.getPublisher())
+                .description(resolveDescription(book))
                 .category(book.getCategory())
                 .imageUrlS(book.getImageUrlS())
                 .imageUrlM(book.getImageUrlM())
@@ -152,6 +168,60 @@ public class BookService {
                 .availableCopies(availableCopies)
                 .location(location)
                 .status(availableCopies > 0 ? "available" : "out_of_stock")
+                .rating(roundRating(reviewRepository.averageRatingByBookId(book.getBookId())))
+                .reviewsCount(reviewRepository.countByBookId(book.getBookId()))
+                .borrowCount(loanDetailRepository.countBorrowedByBookIdSince(
+                        book.getBookId(), LocalDate.now().withDayOfYear(1).atStartOfDay()))
+                .viewCount(book.getViewCount() == null ? 0L : book.getViewCount())
                 .build();
+    }
+
+    private String resolveSubjectCode(String query) {
+        String normalized = DepartmentKeyNormalizer.normalize(query);
+        if (normalized.isBlank()) {
+            return "";
+        }
+        if (containsAny(normalized, "k nn", "knn", "nearest neighbor", "machine learning",
+                "hoc may", "deep learning", "tri tue nhan tao", "artificial intelligence", "ai")) {
+            return "IT_DATA_AI";
+        }
+        if (containsAny(normalized, "an toan thuc pham", "food technology", "food science")) {
+            return "FOOD_TECH";
+        }
+        if (containsAny(normalized, "logistics", "supply chain", "chuoi cung ung")) {
+            return "LOGISTICS_INDUSTRIAL";
+        }
+        return "";
+    }
+
+    private boolean containsAny(String value, String... terms) {
+        for (String term : terms) {
+            if ("ai".equals(term)) {
+                if (java.util.Arrays.asList(value.split(" ")).contains("ai")) {
+                    return true;
+                }
+            } else if (value.contains(term)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String resolveDescription(BookEntity book) {
+        if (book.getDescription() != null && !book.getDescription().isBlank()) {
+            return book.getDescription();
+        }
+        String category = book.getCategory() == null || book.getCategory().getName() == null
+                ? "Tài liệu chung"
+                : book.getCategory().getName();
+        return "Tài liệu " + book.getTitle() + " thuộc chủ đề " + category
+                + ", phục vụ học tập, nghiên cứu và tham khảo tại Thư viện HUIT.";
+    }
+
+    private double roundRating(Double rating) {
+        if (rating == null) {
+            return 0.0;
+        }
+        return Math.round(rating * 10.0) / 10.0;
     }
 }

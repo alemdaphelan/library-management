@@ -157,6 +157,37 @@
   color: #cbd5e1;
 }
 
+.account-status {
+  width: fit-content;
+  margin-top: 12px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+}
+
+.account-status.locked {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.lock-reason {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
 /* Layout */
 .profile-layout {
   display: flex;

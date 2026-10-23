@@ -7,6 +7,8 @@ import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.BookRepository;
 import com.huit.library.modules.circulation.dto.LoanTicketDetailDTO;
+import com.huit.library.modules.circulation.dto.BorrowRequestDTO;
+import com.huit.library.modules.circulation.dto.BatchBorrowRequestDTO;
 import com.huit.library.modules.circulation.entity.LoanDetailEntity;
 import com.huit.library.modules.circulation.entity.LoanTicketEntity;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
@@ -14,11 +16,13 @@ import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 class LoanServiceTest {
     private LoanTicketRepository ticketRepository;
@@ -35,6 +40,8 @@ class LoanServiceTest {
     private BookRepository bookRepository;
     private UserRepository userRepository;
     private WaitlistRepository waitlistRepository;
+    private CirculationStateService circulationStateService;
+    private WaitlistService waitlistService;
     private LoanService service;
 
     @BeforeEach
@@ -45,6 +52,8 @@ class LoanServiceTest {
         bookRepository = mock(BookRepository.class);
         userRepository = mock(UserRepository.class);
         waitlistRepository = mock(WaitlistRepository.class);
+        circulationStateService = mock(CirculationStateService.class);
+        waitlistService = mock(WaitlistService.class);
         service = new LoanService(
                 ticketRepository,
                 detailRepository,
@@ -52,7 +61,87 @@ class LoanServiceTest {
                 copyRepository,
                 bookRepository,
                 userRepository,
-                mock(CirculationStateService.class));
+                circulationStateService,
+                waitlistService);
+    }
+
+    @Test
+    void reserveRejectsDuplicateBookWhileExistingItemIsOpen() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setUserId(userId);
+        user.setCardStatus("ACTIVE");
+
+        BookEntity book = new BookEntity();
+        book.setBookId(41L);
+        book.setTitle("Clean Architecture");
+
+        BorrowRequestDTO request = new BorrowRequestDTO();
+        request.setBookId(41L);
+
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+        when(bookRepository.findById(41L)).thenReturn(Optional.of(book));
+        when(detailRepository.countOpenItemsByUserIdAndBookId(userId, 41L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.reserveOrBorrowBook(request, userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("đã có đầu sách")
+                .hasMessageContaining("Clean Architecture");
+
+        verify(copyRepository, never()).findFirstByBookIdAndStatusOrderByBarcodeAsc(41L, "AVAILABLE");
+        verify(ticketRepository, never()).save(org.mockito.ArgumentMatchers.any(LoanTicketEntity.class));
+    }
+
+    @Test
+    void batchReservationCreatesOneTicketWithMultipleDetails() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setUserId(userId);
+        user.setCardStatus("ACTIVE");
+
+        BookEntity firstBook = new BookEntity();
+        firstBook.setBookId(51L);
+        firstBook.setTitle("Cấu trúc dữ liệu");
+        BookEntity secondBook = new BookEntity();
+        secondBook.setBookId(52L);
+        secondBook.setTitle("Trí tuệ nhân tạo");
+        BookCopyEntity firstCopy = new BookCopyEntity();
+        firstCopy.setBarcode("BC-051");
+        firstCopy.setBookId(51L);
+        BookCopyEntity secondCopy = new BookCopyEntity();
+        secondCopy.setBarcode("BC-052");
+        secondCopy.setBookId(52L);
+        LocalDateTime deadline = LocalDateTime.of(2026, 10, 24, 17, 0);
+
+        BatchBorrowRequestDTO request = new BatchBorrowRequestDTO();
+        request.setBookIds(List.of(51L, 52L));
+        request.setTicketType("BORROW");
+        request.setPickupDate(LocalDate.of(2026, 10, 24));
+
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+        when(bookRepository.findById(51L)).thenReturn(Optional.of(firstBook));
+        when(bookRepository.findById(52L)).thenReturn(Optional.of(secondBook));
+        when(copyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(51L, "AVAILABLE"))
+                .thenReturn(Optional.of(firstCopy));
+        when(copyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(52L, "AVAILABLE"))
+                .thenReturn(Optional.of(secondCopy));
+        when(waitlistService.calculateDirectReservationDeadline(any(LocalDate.class), any(LocalDateTime.class)))
+                .thenReturn(deadline);
+        when(ticketRepository.save(any(LoanTicketEntity.class))).thenAnswer(invocation -> {
+            LoanTicketEntity ticket = invocation.getArgument(0);
+            ticket.setTicketId(91L);
+            return ticket;
+        });
+
+        var result = service.reserveBooks(request, userId);
+
+        assertThat(result.getTicketId()).isEqualTo(91L);
+        assertThat(result.getBookIds()).containsExactly(51L, 52L);
+        assertThat(result.getBarcodes()).containsExactly("BC-051", "BC-052");
+        assertThat(result.getPickupDeadline()).isEqualTo(deadline);
+        verify(circulationStateService).ensureEligibleForReservation(userId, 2);
+        verify(detailRepository, org.mockito.Mockito.times(2)).save(any(LoanDetailEntity.class));
+        verify(copyRepository, org.mockito.Mockito.times(2)).save(any(BookCopyEntity.class));
     }
 
     @Test

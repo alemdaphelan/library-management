@@ -60,4 +60,13 @@ describe('Home', () => {
     expect(text).toContain('Lập trình Java');
     expect(text).toContain('72% phù hợp');
   });
+
+  it('does not render the removed mock room, seat, news or book sections', () => {
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    expect(text).not.toContain('Đặt Phòng Nhóm');
+    expect(text).not.toContain('482 / 1.200');
+    expect(text).not.toContain('Tin Tức & Hoạt Động Học Thuật');
+    expect(text).not.toContain('Còn 22 cuốn');
+  });
 });

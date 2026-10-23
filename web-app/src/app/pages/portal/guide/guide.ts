@@ -10,9 +10,9 @@ import { CommonModule } from '@angular/common';
 })
 export class Guide {
   faqs = [
-    { q: 'Làm thế nào để mượn sách mang về?', a: 'Bạn cần sử dụng thẻ sinh viên hoặc ứng dụng HUIT SSO trên điện thoại. Chọn sách tại các kho mở, mang ra quầy thủ thư hoặc máy mượn trả tự động để làm thủ tục.' },
-    { q: 'Thời hạn mượn sách là bao lâu?', a: 'Đối với sinh viên đại trà: 14 ngày. Đối với sinh viên tài năng/chất lượng cao: 21 ngày. Bạn có thể gia hạn 1 lần trên web portal nếu sách chưa bị người khác đặt trước.' },
-    { q: 'Mức phạt khi trả sách trễ hạn?', a: 'Quy định hiện hành của Thư viện HUIT: 2,000 VNĐ / 1 cuốn / 1 ngày trễ. Nếu làm mất sách, bạn phải đền bù cuốn mới tương đương hoặc đền tiền gấp 3 lần giá trị sách.' },
-    { q: 'Sinh viên có được mượn tài liệu số (E-book) không?', a: 'Hoàn toàn được. Các tài liệu số có thể xem trực tiếp trên Web Portal hoặc tải PDF (có mã hóa DRM) để đọc offline trong 7 ngày.' }
+    { q: 'Làm thế nào để mượn sách mang về?', a: 'Đăng nhập, chọn tối đa 3 đầu sách vào giỏ mượn, tạo một phiếu và đến quầy để thủ thư quét mã QR hoặc mã vạch, kiểm tra tình trạng rồi giao sách.' },
+    { q: 'Thời hạn mượn sách là bao lâu?', a: 'Mượn về trong 10 ngày và được gia hạn tối đa 1 lần thêm 10 ngày nếu sách chưa quá hạn, tài khoản không có nợ, thẻ hoạt động và đầu sách không có người chờ.' },
+    { q: 'Mức phạt khi trả sách trễ hạn?', a: 'Tiền phạt tính riêng từng tài liệu từ ngày kế tiếp ngày phải trả: sách nhãn trắng 1.000 VNĐ/tài liệu/ngày, sách nhãn cam đọc trong ngày 5.000 VNĐ/tài liệu/ngày.' },
+    { q: 'Đặt giữ sách được giữ bao lâu?', a: 'Tài liệu có sẵn được giữ đến giờ đóng cửa của ngày nhận đã chọn. Tài liệu từ hàng đợi được giữ 48 giờ kể từ thông báo và kéo dài đến lần mở cửa tiếp theo nếu hạn rơi vào lúc thư viện đóng cửa.' }
   ];
 }

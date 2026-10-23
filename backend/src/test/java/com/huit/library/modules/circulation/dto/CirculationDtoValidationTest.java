@@ -67,4 +67,14 @@ class CirculationDtoValidationTest {
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .containsExactly("reason");
     }
+
+    @Test
+    void batchReservationAllowsAtMostThreeBooks() {
+        BatchBorrowRequestDTO request = new BatchBorrowRequestDTO();
+        request.setBookIds(List.of(1L, 2L, 3L, 4L));
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .containsExactly("bookIds");
+    }
 }

@@ -35,6 +35,33 @@ describe('CirculationService', () => {
     request.flush([{ ticketId: 19, status: 'OVERDUE', itemCount: 1, overdueItemCount: 1, totalLateFine: 3000 }]);
   });
 
+  it('creates one reservation ticket for all books in the borrow cart', () => {
+    service.reserveBooks({
+      bookIds: [1, 2, 3],
+      ticketType: 'BORROW',
+      pickupDate: '2026-10-24',
+      note: 'Nhận tại quầy',
+    }).subscribe();
+
+    const request = httpTesting.expectOne(`${apiUrl}/reserve-batch`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      bookIds: [1, 2, 3],
+      ticketType: 'BORROW',
+      pickupDate: '2026-10-24',
+      note: 'Nhận tại quầy',
+    });
+    request.flush({ ticketId: 25, status: 'PENDING', bookIds: [1, 2, 3] });
+  });
+
+  it('loads the active loan item so one return can include books from different tickets', () => {
+    service.getActiveLoanItemByBarcode('BC/019').subscribe();
+
+    const request = httpTesting.expectOne(`${apiUrl}/active-item/BC%2F019`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ ticketId: 19, detailId: 29, barcode: 'BC/019', status: 'BORROWING' });
+  });
+
   it('uses explicit approve and reject transition endpoints', () => {
     service.approveReservation(19).subscribe();
     service.rejectReservation(20, 'Thẻ thư viện hết hạn').subscribe();

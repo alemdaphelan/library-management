@@ -1,0 +1,23 @@
+.tool-btn.saved { color: #087eae; border-color: #70bddc; background: #eef9fd; }
+.tool-btn:disabled { cursor: wait; opacity: .65; }
+.reviews-section { margin-top: 24px; padding: 22px; border: 1px solid #dce8f1; border-radius: 14px; background: #fff; }
+.reviews-heading h3 { margin: 0 0 5px; color: #153a5b; font-size: 16px; }
+.reviews-heading p { margin: 0 0 16px; color: #6b7f91; font-size: 13px; }
+.review-form { padding: 16px; border-radius: 11px; background: #f4f9fc; border: 1px solid #dceaf2; }
+.rating-picker { display: flex; gap: 3px; margin-bottom: 10px; }
+.rating-picker button { padding: 0; border: 0; background: transparent; color: #cbd5df; font-size: 27px; cursor: pointer; }
+.rating-picker button.active { color: #f4a825; }
+.review-form textarea { width: 100%; min-height: 82px; resize: vertical; box-sizing: border-box; border: 1px solid #cbdbe7; border-radius: 8px; padding: 11px; font: inherit; }
+.review-form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+.review-form-actions button { border-radius: 8px; padding: 9px 14px; font-weight: 700; cursor: pointer; }
+.review-submit { border: 0; background: #087eae; color: #fff; }
+.review-delete { border: 1px solid #e2a6a6; background: #fff; color: #b42318; }
+.review-error { margin-right: auto; color: #b42318; font-size: 13px; }
+.review-empty { padding: 18px 0 2px; color: #6b7f91; text-align: center; }
+.review-item { display: grid; grid-template-columns: 38px 1fr; gap: 11px; padding: 16px 2px; border-bottom: 1px solid #edf2f6; }
+.review-avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #dff2fa; color: #087eae; font-weight: 800; }
+.review-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.review-stars { color: #f4a825; letter-spacing: 1px; }
+.review-meta em { color: #087eae; font-size: 11px; font-style: normal; background: #e8f7fc; padding: 3px 7px; border-radius: 999px; }
+.review-item p { margin: 7px 0; color: #40586b; white-space: pre-wrap; }
+.review-item small { color: #8999a7; }

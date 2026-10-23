@@ -12,6 +12,12 @@ Thư mục này dành cho thành viên kiểm thử độc lập sau khi nhận 
 6. Tổng hợp kết quả vào `04_BIEN_BAN_NGHIEM_THU.md`.
 7. Đối chiếu phiên bản, tài khoản demo và gate trong `05_THONG_TIN_BAN_GIAO_12D.md`.
 8. Gửi lại lỗi có bước tái hiện rõ ràng cho thành viên code; sau khi nhận bản sửa chỉ chạy lại ca lỗi và nhóm hồi quy liên quan.
+9. Với bản sửa UAT-A, chạy thêm `07_UAT_A_KIEM_THU_LAI.md` trước khi tiếp tục các gói UAT còn lại.
+10. Với bản sửa UAT-B, chạy `08_UAT_B_GIO_MUON_VA_TRA_NHIEU_PHIEU.md` để xác nhận giới hạn mượn, thời hạn giữ và trả sách liên phiếu.
+11. Với bản sửa UAT-C, chạy `09_UAT_C_DANH_GIA_TU_SACH_VA_TIM_KIEM_NOI_DUNG.md` để kiểm tra dữ liệu tương tác sách thật.
+12. Với bản sửa UAT-D, chạy `10_UAT_D_THONG_BAO_TRANG_THAI_VA_THE_THU_VIEN.md` để kiểm tra modal thông báo, cài đặt kênh nhận tin, trạng thái tài khoản và thẻ thư viện điện tử.
+13. Với bản sửa UAT-E, chạy `11_UAT_E_TRANG_CHU_VA_CHONG_SPAM_GIU_CHO.md` để kiểm tra trang chủ không còn dữ liệu giả và quy tắc ba lần không nhận sách.
+14. Với bản chốt UAT-F, chạy `12_UAT_F_DE_XUAT_MUA_SACH_VA_QUY_DINH.md` để kiểm tra hồ sơ đề xuất đầy đủ, duyệt tạo đầu sách 0 bản sao và nội dung quy định cuối cùng.
 
 ## Nguyên tắc
 
@@ -19,6 +25,7 @@ Thư mục này dành cho thành viên kiểm thử độc lập sau khi nhận 
 - Không kiểm thử trên dữ liệu production.
 - Không tự sửa mã nguồn trước khi báo lỗi, ngoại trừ thay đổi cấu hình triển khai/package ID được chỉ định rõ trong `06_CAU_HINH_FIREBASE_VA_KIEM_THU_PUSH.md`; luôn ghi đúng commit đang kiểm thử.
 - Không đánh dấu `FAIL` cho chức năng ngoài phạm vi: đặt phòng, kiosk, triển khai Internet hoặc các mở rộng AI chưa cam kết.
+- Không đánh dấu `FAIL` cho giới hạn mượn theo tiền thế chân hoặc gửi SMS: phạm vi hiện tại dùng giới hạn 3 tài liệu, công nợ và trạng thái thẻ; kênh thông báo là trong ứng dụng, email và Firebase Push.
 - Nếu thiếu dữ liệu hoặc tài khoản khiến không thể test, dùng trạng thái `BLOCKED`, không dùng `FAIL`.
 
 ## Nguồn tham chiếu
@@ -34,4 +41,6 @@ Thư mục này dành cho thành viên kiểm thử độc lập sau khi nhận 
 
 ## Trạng thái trước khi bàn giao
 
-Chức năng tuần 1–11 và các gói 12A–12E đã hoàn thành ở mức mã nguồn. Thành viên kiểm thử/triển khai nhận luôn phần đổi package ID sang `vn.edu.huit.library`, cấu hình Firebase và xác nhận FCM trên thiết bị thật theo tài liệu `06_CAU_HINH_FIREBASE_VA_KIEM_THU_PUSH.md`; lỗi phản hồi sẽ được chuyển lại cho thành viên code.
+Chức năng tuần 1–11, các gói 12A–12E và các bản sửa UAT-A đến UAT-F đã hoàn thành ở mức mã nguồn. Gate cục bộ cuối ngày 24/10/2026 đạt **122/122 Backend unit test**, **82/82 Web test** và **Web production build**. Ba integration test dùng Testcontainers chưa được chạy lại ở lượt cuối vì máy hiện tại không có Docker daemon; thành viên kiểm thử phải chạy full Backend suite sau khi dựng Docker và ghi kết quả vào biên bản.
+
+Thành viên kiểm thử/triển khai nhận luôn phần đổi package ID sang `vn.edu.huit.library`, cấu hình Firebase và xác nhận FCM trên thiết bị thật theo tài liệu `06_CAU_HINH_FIREBASE_VA_KIEM_THU_PUSH.md`; lỗi phản hồi sẽ được chuyển lại cho thành viên code.

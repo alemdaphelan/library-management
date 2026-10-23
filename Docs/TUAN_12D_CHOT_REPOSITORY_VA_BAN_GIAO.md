@@ -107,3 +107,22 @@ Phần kỹ thuật 12D đã hoàn tất ở mức **sẵn sàng tạo commit v�
 ## 10. Phụ lục cập nhật 12E ngày 21/10/2026
 
 Sau bản chốt 12D, repository đã bổ sung cập nhật hồ sơ Mobile, tìm kiếm theo chuyên ngành, loại dữ liệu Mobile cố định và chuỗi Firebase Cloud Messaging tùy chọn. Gate mới nhất đạt **Backend 121/121 test**, **Web 69/69 test và production build**, **Mobile analyze sạch, 5/5 test và APK debug build thành công**. Trạng thái chi tiết và cấu hình kiểm thử thiết bị nằm trong `TUAN_12E_HOAN_THIEN_MOBILE_VA_FIREBASE.md`; gửi FCM end-to-end vẫn chờ Firebase project/service account và thiết bị thật của người kiểm thử.
+
+## 11. Phụ lục chốt sửa lỗi UAT ngày 24/10/2026
+
+Các phản hồi UAT-A đến UAT-F đã được xử lý ở mức mã nguồn, gồm giỏ mượn nhiều tài liệu, trả sách liên phiếu, đánh giá và tủ sách, tìm kiếm theo nội dung, modal thông báo, cài đặt kênh nhận tin, thẻ thư viện, chống spam giữ chỗ, loại dữ liệu trang chủ giả và quy trình đề xuất mua sách đầy đủ. Khi duyệt đề xuất, hệ thống chỉ tạo đầu sách với **0 bản sao**; bản sao chỉ được tạo qua nghiệp vụ phiếu nhập.
+
+Gate cục bộ cuối:
+
+| Gate | Kết quả ngày 24/10/2026 |
+|---|---|
+| Backend unit test | **PASS — 122/122 test** |
+| Backend package | **PASS — tạo `library-0.0.1-SNAPSHOT.jar`** |
+| Backend integration test | **PENDING — 3 test dùng Testcontainers cần Docker daemon** |
+| Web test | **PASS — 82/82 test** |
+| Web production build | **PASS**; chỉ còn cảnh báo `qrcode` CommonJS không chặn build |
+| Web dependency audit | Đã áp dụng toàn bộ bản vá tương thích; còn 5 cảnh báo trong toolchain Angular/Vite chỉ có bản sửa qua nâng major, chưa dùng `--force` để tránh phá vỡ ứng dụng |
+| Kiểm tra diff | **PASS — không có whitespace error** |
+| Rà secret đã track | **PASS — không phát hiện API key/Gemini key trong file được Git theo dõi** |
+
+Người nhận bản bàn giao cần chạy lại toàn bộ Backend suite trong môi trường Docker, sau đó thực hiện lần lượt các checklist `07_UAT_A_KIEM_THU_LAI.md` đến `12_UAT_F_DE_XUAT_MUA_SACH_VA_QUY_DINH.md`. Firebase foreground, background và terminated vẫn là kiểm thử bắt buộc trên thiết bị Android thật.

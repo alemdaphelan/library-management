@@ -40,6 +40,7 @@ describe('Circulation counter', () => {
   const service = {
     getLoan: vi.fn(() => of(reservedTicket)),
     getBookCopyByBarcode: vi.fn(() => of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' })),
+    getActiveLoanItemByBarcode: vi.fn(() => of(reservedTicket.items[0])),
     checkout: vi.fn(() => of(operation)),
     returnBooks: vi.fn(() => of({ ...operation, operationType: 'RETURN' as const, status: 'RETURNED', message: 'Trả thành công 1 tài liệu' })),
   };
@@ -47,6 +48,7 @@ describe('Circulation counter', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     service.getBookCopyByBarcode.mockReturnValue(of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' }));
+    service.getActiveLoanItemByBarcode.mockReturnValue(of(reservedTicket.items[0]));
     await TestBed.configureTestingModule({
       imports: [Circulation],
       providers: [{ provide: CirculationService, useValue: service }],
@@ -105,5 +107,28 @@ describe('Circulation counter', () => {
       'Bìa sách nguyên vẹn',
     );
     expect(component.successMessage).toContain('Trả thành công');
+  });
+
+  it('accepts return barcodes from different active tickets in one operation', () => {
+    component.switchTab('return');
+    service.getBookCopyByBarcode
+      .mockReturnValueOnce(of({ barcode: 'BC-019', bookId: 9, status: 'BORROWING', location: '' }))
+      .mockReturnValueOnce(of({ barcode: 'BC-020', bookId: 10, status: 'BORROWING', location: '' }));
+    service.getActiveLoanItemByBarcode
+      .mockReturnValueOnce(of({ ...reservedTicket.items[0], ticketId: 19, barcode: 'BC-019' }))
+      .mockReturnValueOnce(of({ ...reservedTicket.items[0], ticketId: 20, detailId: 30, barcode: 'BC-020' }));
+
+    component.barcodeInput = 'BC-019';
+    component.scanBookBarcode();
+    component.barcodeInput = 'BC-020';
+    component.scanBookBarcode();
+
+    expect(component.scannedBooks.map(item => item.loanTicketId)).toEqual([19, 20]);
+    component.completeTransaction();
+    expect(service.returnBooks).toHaveBeenCalledWith(
+      ['BC-019', 'BC-020'],
+      expect.any(String),
+      '',
+    );
   });
 });

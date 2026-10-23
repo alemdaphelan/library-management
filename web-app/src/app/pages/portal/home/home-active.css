@@ -1,0 +1,10 @@
+.simplified-intro { align-items: flex-start; }
+.simplified-intro .hero-left { max-width: 850px; }
+.real-actions { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.action-card { text-decoration: none; color: inherit; cursor: pointer; }
+.action-card:hover { transform: translateY(-4px); border-color: #7dd3fc; box-shadow: 0 12px 24px rgba(2, 132, 199, .12); }
+.hashtag { border: 0; background: transparent; color: #0369a1; cursor: pointer; font: inherit; padding: 2px 4px; }
+.hashtag:hover { text-decoration: underline; }
+.btn-search-adv { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; white-space: nowrap; }
+@media (max-width: 1050px) { .real-actions { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 650px) { .real-actions { grid-template-columns: 1fr; } }

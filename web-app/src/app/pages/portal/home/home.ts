@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import {
   HomeService,
   RecommendationItem,
@@ -19,9 +21,9 @@ export interface CarouselSlide {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, CommonModule],
+  imports: [RouterLink, CommonModule, FormsModule],
   templateUrl: './home.html',
-  styleUrls: ['./home.css'],
+  styleUrls: ['./home.css', './home-active.css'],
 })
 export class Home implements OnInit, OnDestroy {
   recommendedBooks: RecommendationItem[] = [];
@@ -29,6 +31,7 @@ export class Home implements OnInit, OnDestroy {
   recommendationDataSufficient = false;
   recommendationLoading = true;
   recommendationError = false;
+  searchQuery = '';
 
   // Carousel 3 ảnh tự động chạy
   currentSlide = 0;
@@ -38,29 +41,29 @@ export class Home implements OnInit, OnDestroy {
       image: '/assets/images/cover_1.jpg',
       badge: 'Cổng Tri thức Số HUIT 4.0',
       title: 'Khơi Nguồn Tri Thức - Phát Triển Sáng Tạo',
-      description: 'Hơn 200.000 đầu sách in, giáo trình và tài liệu số phân quyền chuẩn quốc tế phục vụ học tập, nghiên cứu.',
+      description: 'Tra cứu danh mục sách in, giáo trình và tài liệu số phục vụ học tập, nghiên cứu.',
       ctaText: 'Tra cứu sách ngay',
       ctaLink: '/search'
     },
     {
       image: '/assets/images/cover_2.jpg',
-      badge: 'Không gian Học tập Hiện đại',
-      title: 'Thư viện Thông minh & Phòng Tự học Mở',
-      description: 'Hệ thống phòng đọc đa phương tiện, khu thảo luận nhóm tiện nghi và dịch vụ mượn sách trực tuyến 24/7.',
-      ctaText: 'Xem hướng dẫn thư viện',
-      ctaLink: '/guide'
+      badge: 'Dịch vụ Bạn đọc Trực tuyến',
+      title: 'Mượn, Theo dõi và Gia hạn Tài liệu',
+      description: 'Theo dõi từng tài liệu đang mượn, thời hạn trả và thực hiện gia hạn theo đúng điều kiện thư viện.',
+      ctaText: 'Xem lịch sử mượn',
+      ctaLink: '/history'
     },
     {
       image: '/assets/images/cover_3.jpg',
       badge: 'Cơ sở Dữ liệu Quốc tế',
       title: 'Kết nối Hàng triệu Luận văn & Bài báo Khoa học',
-      description: 'Truy cập không giới hạn các kho tri thức lớn: IEEE Xplore, ScienceDirect, SpringerLink và ProQuest.',
+      description: 'Tra cứu các nguồn học liệu số và thông tin truy cập được thư viện công bố.',
       ctaText: 'Khám phá tài liệu số',
       ctaLink: '/digital'
     }
   ];
 
-  constructor(private homeService: HomeService) {}
+  constructor(private homeService: HomeService, private router: Router) {}
 
   ngOnInit() {
     this.startCarouselAutoPlay();
@@ -136,5 +139,10 @@ export class Home implements OnInit, OnDestroy {
   onCoverError(event: Event): void {
     const image = event.target as HTMLImageElement;
     image.src = '/assets/images/cover_1.jpg';
+  }
+
+  search(term?: string): void {
+    const query = (term ?? this.searchQuery).trim();
+    this.router.navigate(['/search'], query ? { queryParams: { query } } : undefined);
   }
 }

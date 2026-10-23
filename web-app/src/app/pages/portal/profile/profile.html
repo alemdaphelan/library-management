@@ -35,6 +35,15 @@
         <span class="dot-sep">•</span>
         <span>{{ userInfo.faculty }}</span>
       </p>
+      <div class="account-status" [class.locked]="accountStatusLabel() !== 'Đang hoạt động'">
+        <span class="status-dot"></span>
+        <strong>{{ accountStatusLabel() }}</strong>
+        <span *ngIf="userInfo.cardExpiryDate">· Hết hạn {{ userInfo.cardExpiryDate | date:'dd/MM/yyyy' }}</span>
+      </div>
+      <p class="lock-reason" *ngIf="userInfo.circulationLockReason">
+        {{ userInfo.circulationLockReason }}
+        <span *ngIf="userInfo.circulationLockedUntil">(đến {{ userInfo.circulationLockedUntil | date:'dd/MM/yyyy HH:mm' }})</span>
+      </p>
     </div>
   </div>
 
@@ -173,7 +182,7 @@
         <div class="setting-item">
           <div class="si-info">
             <strong>Thông báo qua Email sinh viên</strong>
-            <p>Nhận email nhắc nhở tự động trước khi tài liệu hết hạn 3 ngày.</p>
+            <p>Nhận email nhắc trước hạn 1 ngày, quá hạn, kết quả đề xuất và các thay đổi quan trọng.</p>
           </div>
           <label class="switch">
             <input type="checkbox" [(ngModel)]="settings.emailAlerts">
@@ -183,13 +192,17 @@
 
         <div class="setting-item">
           <div class="si-info">
-            <strong>Thông báo tin nhắn SMS</strong>
-            <p>Nhận tin nhắn SMS khẩn cấp khi sách bị quá hạn trả (Có thể phát sinh cước viễn thông).</p>
+            <strong>Thông báo đẩy trên ứng dụng</strong>
+            <p>Nhận push notification trên thiết bị đã đăng ký qua Firebase.</p>
           </div>
           <label class="switch">
-            <input type="checkbox" [(ngModel)]="settings.smsAlerts">
+            <input type="checkbox" [(ngModel)]="settings.pushAlerts">
             <span class="slider round"></span>
           </label>
+        </div>
+
+        <div class="form-tip">
+          <span>Thông báo trong hệ thống luôn được lưu để bạn không bỏ lỡ thông tin quan trọng. Dự án chưa tích hợp nhà cung cấp SMS nên không hiển thị lựa chọn SMS giả lập.</span>
         </div>
 
         <div class="form-actions" style="margin-top: 25px;">

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +31,7 @@ class WaitlistServiceTest {
     private WalletRepository wallets;
     private LoanDetailRepository details;
     private NotificationService notifications;
+    private ReservationNoShowService noShows;
     private WaitlistService service;
 
     @BeforeEach
@@ -41,8 +43,9 @@ class WaitlistServiceTest {
         wallets = mock(WalletRepository.class);
         details = mock(LoanDetailRepository.class);
         notifications = mock(NotificationService.class);
+        noShows = mock(ReservationNoShowService.class);
         service = new WaitlistService(waitlists, copies, holidays, users, wallets, details,
-                notifications, "07:30", "17:00");
+                notifications, noShows, "07:30", "17:00");
     }
 
     @Test
@@ -77,6 +80,16 @@ class WaitlistServiceTest {
     }
 
     @Test
+    void directReservationIsHeldOnlyUntilClosingTimeOfPickupDay() {
+        LocalDate pickupDate = LocalDate.of(2026, 10, 24);
+        LocalDateTime now = LocalDateTime.of(2026, 10, 23, 10, 0);
+        when(holidays.findById(pickupDate.toString())).thenReturn(Optional.empty());
+
+        assertThat(service.calculateDirectReservationDeadline(pickupDate, now))
+                .isEqualTo(LocalDateTime.of(2026, 10, 24, 17, 0));
+    }
+
+    @Test
     void extendsExpiryToNextOpeningWhenFortyEightHoursEndsOnClosedDay() {
         UUID userId = UUID.randomUUID();
         UserEntity user = new UserEntity();
@@ -104,5 +117,29 @@ class WaitlistServiceTest {
         service.promoteNext(copy, now);
 
         assertThat(entry.getExpiresAt()).isEqualTo(LocalDateTime.of(2026, 10, 22, 7, 30));
+    }
+
+    @Test
+    void recordsNoShowWhenNotifiedWaitlistHoldExpires() {
+        UUID userId = UUID.randomUUID();
+        LocalDateTime now = LocalDateTime.of(2026, 10, 23, 17, 1);
+        WaitlistEntity entry = new WaitlistEntity();
+        entry.setWaitlistId(12L);
+        entry.setBookId(22L);
+        entry.setUserId(userId);
+        entry.setStatus("NOTIFIED");
+        entry.setReservedBarcode("BC-EXPIRED");
+        BookCopyEntity copy = new BookCopyEntity();
+        copy.setBarcode("BC-EXPIRED");
+        copy.setBookId(22L);
+        copy.setStatus("RESERVED");
+        copy.setLockedByUser(userId);
+        when(waitlists.findByStatusAndExpiresAtBefore("NOTIFIED", now)).thenReturn(java.util.List.of(entry));
+        when(copies.findById("BC-EXPIRED")).thenReturn(Optional.of(copy));
+
+        assertThat(service.expireAndPromote(now)).isEqualTo(1);
+
+        verify(noShows).record(userId, now, "WAITLIST", "12");
+        assertThat(copy.getStatus()).isEqualTo("AVAILABLE");
     }
 }

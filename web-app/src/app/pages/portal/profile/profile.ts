@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { NotificationService } from '../../../services/notification.service';
 
 @Component({
   selector: 'app-profile',
@@ -11,7 +12,7 @@ import { AuthService } from '../../../services/auth.service';
   templateUrl: './profile.html',
   styleUrls: ['./profile.css']
 })
-export class Profile {
+export class Profile implements OnInit {
   activeTab: 'info' | 'password' | 'settings' = 'info';
 
   userInfo = {
@@ -20,7 +21,11 @@ export class Profile {
     email: 'Đang tải...',
     phone: 'Đang tải...',
     faculty: 'Đang tải...',
-    avatarUrl: ''
+    avatarUrl: '',
+    cardStatus: 'UNKNOWN',
+    cardExpiryDate: '',
+    circulationLockedUntil: '',
+    circulationLockReason: ''
   };
 
   passwordData = {
@@ -31,7 +36,7 @@ export class Profile {
 
   settings = {
     emailAlerts: true,
-    smsAlerts: false
+    pushAlerts: true
   };
 
   isSaving = false;
@@ -39,14 +44,22 @@ export class Profile {
   successMsg = '';
   errMsg = '';
 
-  constructor(private route: ActivatedRoute, private authService: AuthService) {
+  constructor(
+    private route: ActivatedRoute,
+    private authService: AuthService,
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.route.queryParams.subscribe(params => {
       if (params['tab']) {
         this.activeTab = params['tab'];
       }
     });
+  }
 
+  ngOnInit(): void {
     this.loadProfile();
+    this.loadNotificationPreferences();
   }
 
   loadProfile() {
@@ -58,13 +71,51 @@ export class Profile {
           email: user.email || 'Chưa cập nhật',
           phone: user.phone || '',
           faculty: user.department || user.faculty || 'Khoa Công nghệ thông tin',
-          avatarUrl: user.avatarUrl || ''
+          avatarUrl: user.avatarUrl || '',
+          cardStatus: user.cardStatus || 'UNKNOWN',
+          cardExpiryDate: user.cardExpiryDate || '',
+          circulationLockedUntil: user.circulationLockedUntil || '',
+          circulationLockReason: user.circulationLockReason || ''
         };
+        this.errMsg = '';
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
         console.error('Failed to fetch profile', err);
+        this.errMsg = err?.status === 401 || err?.status === 403
+          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : 'Không thể tải thông tin tài khoản. Vui lòng thử lại.';
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  loadNotificationPreferences(): void {
+    this.notificationService.getPreferences().subscribe({
+      next: preferences => {
+        this.settings = {
+          emailAlerts: preferences.emailEnabled,
+          pushAlerts: preferences.pushEnabled,
+        };
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.errMsg = 'Không thể tải cài đặt thông báo.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  accountStatusLabel(): string {
+    if (this.userInfo.circulationLockedUntil
+        && new Date(this.userInfo.circulationLockedUntil).getTime() > Date.now()) {
+      return 'Tạm khóa quyền mượn';
+    }
+    const status = this.userInfo.cardStatus?.toUpperCase();
+    if (status === 'ACTIVE') return 'Đang hoạt động';
+    if (status === 'LOCKED') return 'Đang bị khóa';
+    if (status === 'EXPIRED') return 'Đã hết hạn';
+    return 'Chưa xác định';
   }
 
   onFileSelected(event: any) {
@@ -183,11 +234,24 @@ export class Profile {
     } else {
       this.isSaving = true;
       this.successMsg = '';
-      setTimeout(() => {
-        this.isSaving = false;
-        this.successMsg = 'Lưu cài đặt thông báo thành công!';
-        setTimeout(() => this.successMsg = '', 3000);
-      }, 500);
+      this.errMsg = '';
+      this.notificationService.updatePreferences({
+        emailEnabled: this.settings.emailAlerts,
+        pushEnabled: this.settings.pushAlerts,
+      }).subscribe({
+        next: preferences => {
+          this.settings.emailAlerts = preferences.emailEnabled;
+          this.settings.pushAlerts = preferences.pushEnabled;
+          this.isSaving = false;
+          this.successMsg = 'Đã lưu cài đặt thông báo.';
+          setTimeout(() => this.successMsg = '', 3000);
+        },
+        error: (error: any) => {
+          this.isSaving = false;
+          this.errMsg = typeof error?.error === 'string'
+            ? error.error : 'Không thể lưu cài đặt thông báo.';
+        },
+      });
     }
   }
 }

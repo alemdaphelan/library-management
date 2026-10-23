@@ -15,6 +15,12 @@ export interface LibraryNotification {
   createdAt?: string;
 }
 
+export interface NotificationPreferences {
+  userId?: string;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly apiUrl = `${environment.apiUrl}/api/v1/notifications`;
@@ -27,5 +33,16 @@ export class NotificationService {
 
   markAsRead(notificationId: string): Observable<LibraryNotification> {
     return this.http.patch<LibraryNotification>(`${this.apiUrl}/${notificationId}/read`, {});
+  }
+
+  getPreferences(): Observable<NotificationPreferences> {
+    return this.http.get<NotificationPreferences>(`${this.apiUrl}/preferences`);
+  }
+
+  updatePreferences(preferences: NotificationPreferences): Observable<NotificationPreferences> {
+    return this.http.patch<NotificationPreferences>(`${this.apiUrl}/preferences`, {
+      emailEnabled: preferences.emailEnabled,
+      pushEnabled: preferences.pushEnabled,
+    });
   }
 }

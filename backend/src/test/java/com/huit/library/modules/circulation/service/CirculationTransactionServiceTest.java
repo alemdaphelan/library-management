@@ -168,6 +168,41 @@ class CirculationTransactionServiceTest {
     }
 
     @Test
+    void oneReturnOperationCanCompleteItemsFromDifferentTickets() {
+        UUID librarianId = UUID.randomUUID();
+        LoanTicketEntity firstTicket = ticket(21L, UUID.randomUUID(), "BORROWING");
+        LoanTicketEntity secondTicket = ticket(22L, UUID.randomUUID(), "BORROWING");
+        LoanDetailEntity firstDetail = detail(21L, "BC-021", "BORROWING");
+        LoanDetailEntity secondDetail = detail(22L, "BC-022", "BORROWING");
+        BookCopyEntity firstCopy = copy("BC-021", "BORROWING", null);
+        BookCopyEntity secondCopy = copy("BC-022", "BORROWING", null);
+        ReturnRequestDTO request = new ReturnRequestDTO();
+        request.setIdempotencyKey("return-multi-ticket");
+        request.setBarcodes(List.of("BC-021", "BC-022"));
+
+        when(operationRepository.findByIdempotencyKey("return-multi-ticket")).thenReturn(Optional.empty());
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-021", "BC-022")))
+                .thenReturn(List.of(firstCopy, secondCopy));
+        when(detailRepository.findActiveByBarcodesForUpdate(List.of("BC-021", "BC-022")))
+                .thenReturn(List.of(firstDetail, secondDetail));
+        when(ticketRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(firstTicket));
+        when(ticketRepository.findByIdForUpdate(22L)).thenReturn(Optional.of(secondTicket));
+        when(detailRepository.findByTicketIdForUpdate(21L)).thenReturn(List.of(firstDetail));
+        when(detailRepository.findByTicketIdForUpdate(22L)).thenReturn(List.of(secondDetail));
+        saveOperationWithTimestamp();
+
+        CirculationOperationResponseDTO response = service.returnBooks(request, librarianId);
+
+        assertThat(response.getTicketIds()).containsExactly(21L, 22L);
+        assertThat(response.getBarcodes()).containsExactly("BC-021", "BC-022");
+        assertThat(firstTicket.getStatus()).isEqualTo("RETURNED");
+        assertThat(secondTicket.getStatus()).isEqualTo("RETURNED");
+        assertThat(firstCopy.getStatus()).isEqualTo("AVAILABLE");
+        assertThat(secondCopy.getStatus()).isEqualTo("AVAILABLE");
+        verify(historyRepository, times(2)).save(any());
+    }
+
+    @Test
     void reservationIsBlockedWhenReaderHasDebtOrThreeOpenItems() {
         UUID readerId = UUID.randomUUID();
         WalletEntity wallet = new WalletEntity();

@@ -34,6 +34,7 @@ public class CirculationMaintenanceService {
     private final LateFineService lateFineService;
     private final NotificationService notificationService;
     private final OverdueViolationService overdueViolationService;
+    private final ReservationNoShowService reservationNoShowService;
     private final WaitlistService waitlistService;
     private final PenaltyCaseRepository penaltyCaseRepository;
     private final int dueSoonDays;
@@ -47,6 +48,7 @@ public class CirculationMaintenanceService {
             LateFineService lateFineService,
             NotificationService notificationService,
             OverdueViolationService overdueViolationService,
+            ReservationNoShowService reservationNoShowService,
             WaitlistService waitlistService,
             PenaltyCaseRepository penaltyCaseRepository,
             @Value("${library.circulation.due-soon-days:2}") int dueSoonDays) {
@@ -58,6 +60,7 @@ public class CirculationMaintenanceService {
         this.lateFineService = lateFineService;
         this.notificationService = notificationService;
         this.overdueViolationService = overdueViolationService;
+        this.reservationNoShowService = reservationNoShowService;
         this.waitlistService = waitlistService;
         this.penaltyCaseRepository = penaltyCaseRepository;
         this.dueSoonDays = dueSoonDays;
@@ -134,6 +137,8 @@ public class CirculationMaintenanceService {
                 "Phiếu #" + ticketId + " đã tự hủy vì quá hạn nhận sách.",
                 "LOAN_TICKET", ticketId.toString(),
                 "RESERVATION_EXPIRED:" + ticketId, now);
+        reservationNoShowService.record(
+                ticket.getUserId(), now, "LOAN_TICKET", ticketId.toString());
         return true;
     }
 

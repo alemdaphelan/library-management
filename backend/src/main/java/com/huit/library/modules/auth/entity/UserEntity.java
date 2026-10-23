@@ -34,6 +34,8 @@ public class UserEntity extends BaseEntity {
     private Integer roomViolationCount = 0;
     private Integer overdueViolationCount = 0;
     private String violationAcademicYear;
+    private Integer reservationNoShowCount = 0;
+    private String reservationViolationAcademicYear;
     private LocalDateTime circulationLockedUntil;
     private String circulationLockReason;
     private String avatarUrl;

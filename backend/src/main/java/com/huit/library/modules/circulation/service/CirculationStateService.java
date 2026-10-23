@@ -103,14 +103,24 @@ public class CirculationStateService {
     }
 
     public void ensureEligibleForReservation(UUID userId) {
+        ensureEligibleForReservation(userId, 1);
+    }
+
+    public void ensureEligibleForReservation(UUID userId, int requestedItems) {
+        if (requestedItems < 1 || requestedItems > 3) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Mỗi phiếu phải có từ 1 đến 3 tài liệu");
+        }
         ensureNoDebtOrOverdue(userId);
         long openItems = loanDetailRepository.countOpenItemsByUserId(
                 userId,
                 List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
-        if (openItems >= 3) {
+        if (openItems + requestedItems > 3) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Bạn đọc đã đạt giới hạn tối đa 3 tài liệu đang đặt giữ hoặc mượn");
+                    "Yêu cầu có " + requestedItems + " tài liệu nhưng bạn đọc hiện đã có "
+                            + openItems + "; mỗi bạn đọc được đặt giữ hoặc mượn tối đa 3 tài liệu");
         }
     }
 

@@ -20,6 +20,7 @@ public class BookResponseDTO {
     private Boolean isDigital;
     private String author;
     private String publisher;
+    private String description;
     private CategoryEntity category;
     private String imageUrlS;
     private String imageUrlM;
@@ -28,4 +29,8 @@ public class BookResponseDTO {
     private long availableCopies;
     private String location;
     private String status;
+    private double rating;
+    private long reviewsCount;
+    private long borrowCount;
+    private long viewCount;
 }

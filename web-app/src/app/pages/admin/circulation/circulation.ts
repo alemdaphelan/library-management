@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
 import {
   BookCopy,
   CirculationOperationResponse,
@@ -12,6 +13,7 @@ import {
 interface CounterBook extends BookCopy {
   displayTitle: string;
   displayAuthor?: string;
+  loanTicketId?: number;
 }
 
 @Component({
@@ -108,15 +110,21 @@ export class Circulation {
     this.isScanningBook = true;
     this.errorMessage = '';
     this.successMessage = '';
-    this.circulationService.getBookCopyByBarcode(barcode).subscribe({
-      next: copy => {
+    const activeItemRequest = this.activeTab === 'return'
+      ? this.circulationService.getActiveLoanItemByBarcode(barcode)
+      : of(expectedItem);
+    forkJoin({
+      copy: this.circulationService.getBookCopyByBarcode(barcode),
+      activeItem: activeItemRequest,
+    }).subscribe({
+      next: ({ copy, activeItem }) => {
         this.isScanningBook = false;
         const validationError = this.validateCopyStatus(copy);
         if (validationError) {
           this.errorMessage = validationError;
           return;
         }
-        this.scannedBooks = [...this.scannedBooks, this.toCounterBook(copy, expectedItem)];
+        this.scannedBooks = [...this.scannedBooks, this.toCounterBook(copy, activeItem)];
         this.barcodeInput = '';
       },
       error: error => {
@@ -200,11 +208,12 @@ export class Circulation {
       ...copy,
       displayTitle: expectedItem?.bookTitle || `Tài liệu #${copy.bookId}`,
       displayAuthor: expectedItem?.author,
+      loanTicketId: expectedItem?.ticketId,
     };
   }
 
   private extractError(error: any, fallback: string): string {
-    const message = error?.error?.message ?? error?.error;
+    const message = error?.error?.detail ?? error?.error?.message ?? error?.error;
     return typeof message === 'string' && message.trim() ? message : fallback;
   }
 }

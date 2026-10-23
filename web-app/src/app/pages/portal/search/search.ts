@@ -6,7 +6,7 @@ import { BookService } from '../../../services/book.service';
 import { CategoryService, Category } from '../../../services/category.service';
 import { Subject, Subscription, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-search',
@@ -43,10 +43,12 @@ export class Search implements OnInit, OnDestroy {
     private bookService: BookService, 
     private categoryService: CategoryService,
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
+    this.searchQuery = this.route.snapshot.queryParamMap.get('query')?.trim() || '';
     this.fetchCategories();
     this.fetchBooks();
 
@@ -187,7 +189,7 @@ export class Search implements OnInit, OnDestroy {
     if (this.filterStatus === 'available') {
       filtered = filtered.filter(b => b.status === 'available');
     } else if (this.filterStatus === 'borrowed') {
-      filtered = filtered.filter(b => b.status === 'borrowed');
+      filtered = filtered.filter(b => b.status === 'out_of_stock');
     }
 
     // Category filter

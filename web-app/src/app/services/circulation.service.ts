@@ -23,6 +23,26 @@ export interface BorrowResponse {
   bookTitle?: string;
 }
 
+export interface BatchBorrowRequest {
+  bookIds: number[];
+  ticketType?: 'BORROW' | 'ONSITE';
+  pickupDate?: string;
+  note?: string;
+}
+
+export interface BatchBorrowResponse {
+  success: boolean;
+  message: string;
+  ticketId: number;
+  ticketType: string;
+  status: string;
+  pickupDeadline: string;
+  dueDate: string;
+  bookIds: number[];
+  bookTitles: string[];
+  barcodes: string[];
+}
+
 export type LoanTicketStatus =
   'PENDING' | 'RESERVED' | 'BORROWING' | 'OVERDUE' | 'RETURNED' | 'CANCELLED' | 'REJECTED';
 
@@ -127,6 +147,10 @@ export class CirculationService {
     return this.http.post<BorrowResponse>(`${this.apiUrl}/reserve`, payload);
   }
 
+  reserveBooks(payload: BatchBorrowRequest): Observable<BatchBorrowResponse> {
+    return this.http.post<BatchBorrowResponse>(`${this.apiUrl}/reserve-batch`, payload);
+  }
+
   /**
    * Lấy danh sách phiếu mượn và đặt giữ của độc giả hiện tại
    */
@@ -144,6 +168,10 @@ export class CirculationService {
    */
   getLoan(ticketId: number): Observable<LoanTicketDetail> {
     return this.http.get<LoanTicketDetail>(`${this.apiUrl}/${ticketId}`);
+  }
+
+  getActiveLoanItemByBarcode(barcode: string): Observable<LoanItem> {
+    return this.http.get<LoanItem>(`${this.apiUrl}/active-item/${encodeURIComponent(barcode)}`);
   }
 
   /**

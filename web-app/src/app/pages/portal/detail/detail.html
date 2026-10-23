@@ -104,10 +104,10 @@
         </div>
 
         <div class="tool-actions">
-          <button class="tool-btn" (click)="bookmarkBook()" title="Lưu vào tủ sách cá nhân">
+          <button class="tool-btn" [class.saved]="isBookSaved" (click)="bookmarkBook()" [disabled]="isWishlistBusy" title="Lưu vào tủ sách cá nhân">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-            </svg> Lưu tủ sách
+            </svg> {{ isBookSaved ? 'Đã lưu' : 'Lưu tủ sách' }}
           </button>
           <button class="tool-btn" (click)="copyLink()" title="Sao chép liên kết chia sẻ">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -150,7 +150,7 @@
             <div class="box-content">
               <span class="box-lbl">Tác giả & Chủ biên</span>
               <strong class="box-val">{{ book.author }}</strong>
-              <span class="box-sub">Đồng chủ biên: {{ book.coAuthor }}</span>
+              <span class="box-sub" *ngIf="book.coAuthor">Đồng chủ biên: {{ book.coAuthor }}</span>
             </div>
           </div>
 
@@ -165,15 +165,15 @@
             <div class="box-content">
               <span class="box-lbl">Nhà xuất bản & Định danh</span>
               <strong class="box-val">{{ book.publisher }}</strong>
-              <span class="box-sub">ISBN: {{ book.isbn }} ({{ book.pages }} trang)</span>
+              <span class="box-sub">ISBN: {{ book.isbn }}<ng-container *ngIf="book.pages"> ({{ book.pages }} trang)</ng-container></span>
             </div>
           </div>
         </div>
 
         <div class="stats-row">
           <div class="stat-item">
-            <span class="stars">★★★★★</span>
-            <strong class="stat-val">{{ book.rating }}</strong>
+            <span class="stars">★</span>
+            <strong class="stat-val">{{ book.rating | number:'1.1-1' }}</strong>
             <span class="stat-lbl">({{ book.reviewsCount }} lượt đánh giá)</span>
           </div>
           <div class="stat-sep"></div>
@@ -191,7 +191,7 @@
               <circle cx="12" cy="12" r="3"></circle>
             </svg>
             <strong class="stat-val">{{ book.viewCount }}</strong>
-            <span class="stat-lbl">lượt xem trích dẫn số</span>
+            <span class="stat-lbl">lượt xem trang sách</span>
           </div>
         </div>
 
@@ -200,13 +200,56 @@
           <p>{{ book.description }}</p>
         </div>
 
+        <section class="reviews-section">
+          <div class="reviews-heading">
+            <div>
+              <h3>ĐÁNH GIÁ TỪ BẠN ĐỌC</h3>
+              <p>{{ book.reviewsCount }} đánh giá đã được ghi nhận từ hệ thống.</p>
+            </div>
+          </div>
+
+          <div class="review-form">
+            <div class="rating-picker" aria-label="Chọn số sao">
+              <button type="button" *ngFor="let star of [1,2,3,4,5]"
+                      [class.active]="star <= reviewRating" (click)="reviewRating = star">★</button>
+            </div>
+            <textarea maxlength="1000" [(ngModel)]="reviewComment"
+                      placeholder="Chia sẻ nhận xét về nội dung tài liệu (không bắt buộc)"></textarea>
+            <div class="review-form-actions">
+              <span class="review-error" *ngIf="reviewErrorMessage">{{ reviewErrorMessage }}</span>
+              <button type="button" class="review-delete" *ngIf="hasMyReview"
+                      (click)="deleteMyReview()" [disabled]="isReviewSubmitting">Xóa đánh giá</button>
+              <button type="button" class="review-submit" (click)="submitReview()" [disabled]="isReviewSubmitting">
+                {{ isReviewSubmitting ? 'Đang lưu...' : 'Gửi đánh giá' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="review-empty" *ngIf="reviews.length === 0">Chưa có đánh giá nào cho tài liệu này.</div>
+          <article class="review-item" *ngFor="let review of reviews">
+            <div class="review-avatar">{{ review.reviewerName.charAt(0) }}</div>
+            <div>
+              <div class="review-meta">
+                <strong>{{ review.reviewerName }}</strong>
+                <span class="review-stars">{{ '★★★★★'.slice(0, review.rating) }}</span>
+                <em *ngIf="review.mine">Đánh giá của bạn</em>
+              </div>
+              <p *ngIf="review.comment">{{ review.comment }}</p>
+              <small>{{ (review.updatedAt || review.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small>
+            </div>
+          </article>
+        </section>
+
         <div class="main-actions">
-          <button class="btn btn-primary" (click)="openBorrowModal()">
+          <button class="btn btn-primary" (click)="addToBorrowCart()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
-            Mượn / Đặt giữ trước ({{ book.availableCopies }} cuốn sẵn)
+            Thêm vào giỏ mượn ({{ book.availableCopies }} cuốn sẵn)
+          </button>
+          <button class="btn btn-secondary" (click)="openBorrowModal()">
+            Mượn ngay / Vào hàng đợi
           </button>
           <button class="btn btn-secondary" (click)="previewEbook()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -305,7 +348,7 @@
                   </svg>
                   Mượn về nhà
                 </div>
-                <span class="type-sub">Thời hạn mượn 14 ngày kể từ ngày nhận</span>
+                <span class="type-sub">Thời hạn mượn 10 ngày kể từ khi nhận tại quầy</span>
               </div>
             </label>
 
@@ -328,7 +371,7 @@
         <div class="form-section">
           <label class="form-label" for="pickupDate">Ngày hẹn đến nhận sách</label>
           <input type="date" id="pickupDate" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" class="form-input">
-          <span class="form-help">Thư viện sẽ giữ chỗ tài liệu tối đa 48 giờ kể từ ngày hẹn.</span>
+          <span class="form-help">Tài liệu có sẵn được giữ đến giờ đóng cửa của ngày hẹn; tài liệu từ hàng đợi được giữ 48 giờ từ lúc thông báo.</span>
         </div>
 
         <div class="form-section">
@@ -421,7 +464,7 @@
           </div>
           <div class="ticket-row">
             <span class="t-lbl">Hình thức:</span>
-            <span class="t-val">{{ borrowSuccessData.ticketType === 'BORROW' ? 'Mượn mang về (14 ngày)' : 'Đọc tại chỗ' }}</span>
+            <span class="t-val">{{ borrowSuccessData.ticketType === 'BORROW' ? 'Mượn mang về (10 ngày)' : 'Đọc tại chỗ' }}</span>
           </div>
           <div class="ticket-row" *ngIf="borrowSuccessData.pickupDate">
             <span class="t-lbl">Hạn đến nhận sách:</span>

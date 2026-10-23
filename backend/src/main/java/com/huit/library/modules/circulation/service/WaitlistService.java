@@ -33,6 +33,7 @@ public class WaitlistService {
     private final WalletRepository walletRepository;
     private final LoanDetailRepository detailRepository;
     private final NotificationService notificationService;
+    private final ReservationNoShowService noShowService;
     private final LocalTime defaultOpenTime;
     private final LocalTime defaultCloseTime;
 
@@ -44,6 +45,7 @@ public class WaitlistService {
             WalletRepository walletRepository,
             LoanDetailRepository detailRepository,
             NotificationService notificationService,
+            ReservationNoShowService noShowService,
             @Value("${library.circulation.default-open-time:07:30}") String defaultOpenTime,
             @Value("${library.circulation.default-close-time:17:00}") String defaultCloseTime) {
         this.waitlistRepository = waitlistRepository;
@@ -53,6 +55,7 @@ public class WaitlistService {
         this.walletRepository = walletRepository;
         this.detailRepository = detailRepository;
         this.notificationService = notificationService;
+        this.noShowService = noShowService;
         this.defaultOpenTime = LocalTime.parse(defaultOpenTime);
         this.defaultCloseTime = LocalTime.parse(defaultCloseTime);
     }
@@ -79,6 +82,22 @@ public class WaitlistService {
     @Transactional(readOnly = true)
     public List<WaitlistEntity> getMine(UUID userId) {
         return waitlistRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public LocalDateTime calculateDirectReservationDeadline(LocalDate pickupDate, LocalDateTime now) {
+        LocalDate selectedDate = pickupDate != null ? pickupDate : now.toLocalDate().plusDays(1);
+        if (selectedDate.isBefore(now.toLocalDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày nhận sách không được nằm trong quá khứ");
+        }
+        if (isClosed(selectedDate)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ngày nhận sách đã chọn là ngày thư viện đóng cửa");
+        }
+        LocalDateTime deadline = selectedDate.atTime(closingTime(selectedDate));
+        if (!deadline.isAfter(now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Thư viện đã hết giờ nhận sách trong ngày đã chọn");
+        }
+        return deadline;
     }
 
     @Transactional
@@ -122,6 +141,8 @@ public class WaitlistService {
             entry.setStatus("EXPIRED");
             waitlistRepository.save(entry);
             expired++;
+            noShowService.record(entry.getUserId(), now,
+                    "WAITLIST", entry.getWaitlistId().toString());
             if (entry.getReservedBarcode() == null) {
                 continue;
             }

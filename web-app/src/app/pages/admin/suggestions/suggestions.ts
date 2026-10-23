@@ -123,13 +123,17 @@ export class AdminSuggestions implements OnInit {
       error: (err) => {
         this.isUpdating = false;
         console.error('Lỗi khi duyệt đề xuất:', err);
-        this.showAlert('error', 'Có lỗi xảy ra khi duyệt đề xuất!');
+        this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi duyệt đề xuất!'));
       }
     });
   }
 
   rejectSuggestion(): void {
     if (!this.selectedSuggestion || !this.selectedSuggestion.proposalId) return;
+    if (!this.adminNoteInput.trim()) {
+      this.showAlert('error', 'Vui lòng nhập lý do từ chối để phản hồi cho sinh viên.');
+      return;
+    }
 
     this.isUpdating = true;
     this.proposalService.updateProposalStatus(
@@ -154,9 +158,19 @@ export class AdminSuggestions implements OnInit {
       error: (err) => {
         this.isUpdating = false;
         console.error('Lỗi khi từ chối đề xuất:', err);
-        this.showAlert('error', 'Có lỗi xảy ra khi từ chối đề xuất!');
+        this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi từ chối đề xuất!'));
       }
     });
+  }
+
+  urgencyLabel(level?: string): string {
+    return ({ LOW: 'Thấp', NORMAL: 'Bình thường', HIGH: 'Cao' } as Record<string, string>)[level || 'NORMAL'] || 'Bình thường';
+  }
+
+  private extractError(error: any, fallback: string): string {
+    const body = error?.error;
+    const message = typeof body === 'string' ? body : body?.detail ?? body?.message ?? body?.error;
+    return typeof message === 'string' && message.trim() ? message : fallback;
   }
 
   private showAlert(type: 'success' | 'error', text: string): void {

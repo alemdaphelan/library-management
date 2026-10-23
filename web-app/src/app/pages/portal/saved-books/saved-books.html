@@ -1,0 +1,36 @@
+<main class="saved-page">
+  <header class="saved-heading">
+    <div>
+      <span>TỦ SÁCH CÁ NHÂN</span>
+      <h1>Tài liệu đã lưu</h1>
+      <p>Các đầu sách bạn đánh dấu để xem lại hoặc đăng ký mượn sau.</p>
+    </div>
+    <a routerLink="/search">Tìm thêm sách</a>
+  </header>
+
+  <p class="state" *ngIf="loading">Đang tải tủ sách...</p>
+  <p class="state error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <div class="empty" *ngIf="!loading && !errorMessage && books.length === 0">
+    <div>🔖</div>
+    <h2>Bạn chưa lưu tài liệu nào</h2>
+    <p>Chọn “Lưu tủ sách” tại trang chi tiết để thêm tài liệu.</p>
+    <a routerLink="/search">Tra cứu sách</a>
+  </div>
+
+  <section class="saved-grid" *ngIf="books.length > 0">
+    <article class="saved-card" *ngFor="let book of books">
+      <a [routerLink]="['/book', book.bookId]" class="cover-link">
+        <img [src]="book.cover || '/assets/images/cover_1.jpg'" [alt]="book.title">
+      </a>
+      <div class="saved-copy">
+        <span class="category">{{ book.category || 'Tài liệu chung' }}</span>
+        <h2><a [routerLink]="['/book', book.bookId]">{{ book.title }}</a></h2>
+        <p>{{ book.author || 'Đang cập nhật tác giả' }}</p>
+        <strong [class.unavailable]="book.availableCopies === 0">
+          {{ book.availableCopies > 0 ? (book.availableCopies + ' bản sẵn sàng') : 'Hiện đã hết bản' }}
+        </strong>
+      </div>
+      <button type="button" (click)="remove(book.bookId)">Bỏ lưu</button>
+    </article>
+  </section>
+</main>

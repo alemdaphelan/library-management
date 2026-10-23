@@ -3,6 +3,7 @@ package com.huit.library.modules.catalog.repository;
 import com.huit.library.modules.catalog.entity.BookEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -21,6 +22,73 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     
     Page<BookEntity> findByCategory_CategoryIdAndTitleContainingIgnoreCaseOrCategory_CategoryIdAndAuthorContainingIgnoreCase(
             Long categoryId1, String title, Long categoryId2, String author, Pageable pageable);
+
+    @Modifying
+    @Query("update BookEntity book set book.viewCount = coalesce(book.viewCount, 0) + 1 where book.bookId = :bookId")
+    int incrementViewCount(@Param("bookId") Long bookId);
+
+    @Query(value = """
+            SELECT DISTINCT b.*
+            FROM books b
+            LEFT JOIN categories c ON c.category_id = b.category_id
+            WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
+              AND (
+                    :query = ''
+                    OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.isbn, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.publisher, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(c.name, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR EXISTS (
+                        SELECT 1
+                        FROM book_subject_assignments assignment
+                        JOIN recommendation_subjects subject
+                          ON subject.subject_id = assignment.subject_id
+                        WHERE assignment.book_id = b.book_id
+                          AND (
+                                LOWER(subject.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                                OR LOWER(COALESCE(subject.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                                OR LOWER(COALESCE(assignment.evidence, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                                OR (:subjectCode <> '' AND subject.code = :subjectCode)
+                              )
+                    )
+                  )
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT b.book_id)
+            FROM books b
+            LEFT JOIN categories c ON c.category_id = b.category_id
+            WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
+              AND (
+                    :query = ''
+                    OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.isbn, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.publisher, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(c.name, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR EXISTS (
+                        SELECT 1
+                        FROM book_subject_assignments assignment
+                        JOIN recommendation_subjects subject
+                          ON subject.subject_id = assignment.subject_id
+                        WHERE assignment.book_id = b.book_id
+                          AND (
+                                LOWER(subject.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                                OR LOWER(COALESCE(subject.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                                OR LOWER(COALESCE(assignment.evidence, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                                OR (:subjectCode <> '' AND subject.code = :subjectCode)
+                              )
+                    )
+                  )
+            """,
+            nativeQuery = true)
+    Page<BookEntity> searchCatalog(
+            @Param("query") String query,
+            @Param("subjectCode") String subjectCode,
+            @Param("categoryId") Long categoryId,
+            Pageable pageable);
 
     @Query(value = """
             SELECT b.* FROM books b
@@ -52,6 +120,8 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             SELECT DISTINCT b.*
             FROM books b
             JOIN book_subject_assignments assignment ON assignment.book_id = b.book_id
+            JOIN recommendation_subjects assigned_subject
+              ON assigned_subject.subject_id = assignment.subject_id
             JOIN department_subject_affinities affinity
               ON affinity.subject_id = assignment.subject_id
              AND affinity.active = TRUE
@@ -62,12 +132,19 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
                     OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.isbn, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.publisher, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(assigned_subject.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(assigned_subject.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR (:subjectCode <> '' AND assigned_subject.code = :subjectCode)
                   )
             """,
             countQuery = """
             SELECT COUNT(DISTINCT b.book_id)
             FROM books b
             JOIN book_subject_assignments assignment ON assignment.book_id = b.book_id
+            JOIN recommendation_subjects assigned_subject
+              ON assigned_subject.subject_id = assignment.subject_id
             JOIN department_subject_affinities affinity
               ON affinity.subject_id = assignment.subject_id
              AND affinity.active = TRUE
@@ -78,12 +155,18 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
                     OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.isbn, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.publisher, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(b.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(assigned_subject.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR LOWER(COALESCE(assigned_subject.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                    OR (:subjectCode <> '' AND assigned_subject.code = :subjectCode)
                   )
             """,
             nativeQuery = true)
     Page<BookEntity> searchByDepartment(
             @Param("departmentKey") String departmentKey,
             @Param("query") String query,
+            @Param("subjectCode") String subjectCode,
             @Param("categoryId") Long categoryId,
             Pageable pageable);
 }

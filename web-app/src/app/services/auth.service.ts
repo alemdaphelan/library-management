@@ -19,6 +19,19 @@ export interface LoginResponse {
   cardStatus?: string;
 }
 
+export interface LibraryCard {
+  cardNumber: string;
+  ownerName: string;
+  department?: string;
+  cardStatus: string;
+  issuedAt?: string;
+  expiryDate?: string;
+  depositBalance: number;
+  totalDebt: number;
+  circulationLockedUntil?: string;
+  circulationLockReason?: string;
+}
+
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -91,6 +104,10 @@ export class AuthService {
     });
   }
 
+  fetchLibraryCard(): Observable<LibraryCard> {
+    return this.http.get<LibraryCard>(`${environment.apiUrl}/api/v1/library-card`);
+  }
+
   updateProfile(data: { fullName?: string; phone?: string; avatarUrl?: string }): Observable<any> {
     const token = this.getToken();
     return this.http.put(`${this.apiUrl}/me`, data, {
@@ -117,7 +134,7 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return !!this.getRole();
+    return !!this.getRole() && !!this.getToken();
   }
 
   forgotPassword(email: string): Observable<any> {

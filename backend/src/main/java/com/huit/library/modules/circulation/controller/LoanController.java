@@ -3,6 +3,8 @@ package com.huit.library.modules.circulation.controller;
 import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.modules.circulation.dto.BorrowRequestDTO;
 import com.huit.library.modules.circulation.dto.BorrowResponseDTO;
+import com.huit.library.modules.circulation.dto.BatchBorrowRequestDTO;
+import com.huit.library.modules.circulation.dto.BatchBorrowResponseDTO;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
 import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
@@ -41,6 +43,15 @@ public class LoanController {
         return ResponseEntity.ok(loanService.reserveOrBorrowBook(request, userId));
     }
 
+    @PostMapping("/reserve-batch")
+    @Operation(summary = "Reserve multiple books in one ticket", description = "Creates one reservation ticket containing up to three available books.")
+    public ResponseEntity<BatchBorrowResponseDTO> reserveBooks(
+            @Valid @RequestBody BatchBorrowRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(loanService.reserveBooks(
+                request, userDetails.getUser().getUserId()));
+    }
+
     @GetMapping("/my-loans")
     @Operation(summary = "Get My Loans", description = "Retrieve list of all active and past loans/reservations for logged-in user.")
     public ResponseEntity<?> getMyLoans(@AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -60,6 +71,13 @@ public class LoanController {
     @Operation(summary = "Get loan ticket detail", description = "Returns reader and copy details required for reservation review at the circulation desk.")
     public ResponseEntity<?> getLoan(@PathVariable Long ticketId) {
         return ResponseEntity.ok(loanService.getLoan(ticketId));
+    }
+
+    @GetMapping("/active-item/{barcode}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Resolve active loan item by barcode", description = "Returns the active ticket and book information before accepting a return.")
+    public ResponseEntity<?> getActiveLoanItem(@PathVariable String barcode) {
+        return ResponseEntity.ok(loanService.getActiveLoanItem(barcode));
     }
 
     @PostMapping("/cancel/{ticketId}")

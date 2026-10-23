@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 23-uat-final-proposal-workflow
+      author: codex
+      changes:
+        - modifyDataType:
+            tableName: book_proposals
+            columnName: reason
+            newDataType: varchar(1000)
+        - addColumn:
+            tableName: book_proposals
+            columns:
+              - column:
+                  name: isbn
+                  type: varchar(32)
+              - column:
+                  name: publication_year
+                  type: int
+              - column:
+                  name: edition
+                  type: varchar(100)
+              - column:
+                  name: estimated_price
+                  type: decimal(15,2)
+              - column:
+                  name: external_url
+                  type: varchar(1000)
+              - column:
+                  name: genre
+                  type: varchar(255)
+              - column:
+                  name: urgency_level
+                  type: varchar(20)
+                  defaultValue: NORMAL
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approved_book_id
+                  type: bigint
+        - sql:
+            dbms: postgresql
+            sql: |
+              UPDATE system_configs
+              SET config_value = '10', description = 'Số ngày mượn sách tối đa', updated_at = NOW()
+              WHERE config_key = 'MAX_LOAN_DAYS';
+              UPDATE system_configs
+              SET config_value = '3', description = 'Số tài liệu đặt giữ hoặc mượn tối đa', updated_at = NOW()
+              WHERE config_key = 'MAX_LOAN_BOOKS';

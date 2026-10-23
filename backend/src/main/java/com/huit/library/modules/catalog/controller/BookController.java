@@ -6,6 +6,9 @@ import com.huit.library.modules.catalog.service.BookService;
 import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.modules.recommendation.service.BookRecommendationService;
 import com.huit.library.modules.recommendation.service.HybridRecommendationService;
+import com.huit.library.modules.interactive.dto.BookReviewRequestDTO;
+import com.huit.library.modules.interactive.service.BookInteractionService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,14 +27,17 @@ public class BookController {
     private final BookService bookService;
     private final BookRecommendationService recommendationService;
     private final HybridRecommendationService hybridRecommendationService;
+    private final BookInteractionService bookInteractionService;
 
     public BookController(
             BookService bookService,
             BookRecommendationService recommendationService,
-            HybridRecommendationService hybridRecommendationService) {
+            HybridRecommendationService hybridRecommendationService,
+            BookInteractionService bookInteractionService) {
         this.bookService = bookService;
         this.recommendationService = recommendationService;
         this.hybridRecommendationService = hybridRecommendationService;
+        this.bookInteractionService = bookInteractionService;
     }
     @GetMapping
     @Operation(summary = "Search Books", description = "Search by text with optional category and HUIT major filters.")
@@ -116,8 +122,32 @@ public class BookController {
     }
 
     @PostMapping("/{id}/reviews")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Add Review", description = "Rate and review a specific book.")
-    public ResponseEntity<?> addReview(@Parameter(description = "Book ID") @PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> addReview(
+            @Parameter(description = "Book ID") @PathVariable Long id,
+            @Valid @RequestBody BookReviewRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(bookInteractionService.saveReview(
+                id, principal.getUser().getUserId(), request));
+    }
+
+    @GetMapping("/{id}/reviews")
+    @Operation(summary = "List book reviews", description = "Returns real rating statistics and reader comments.")
+    public ResponseEntity<?> getReviews(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(bookInteractionService.getReviews(
+                id, principal == null ? null : principal.getUser().getUserId()));
+    }
+
+    @DeleteMapping("/{id}/reviews/me")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Delete my book review")
+    public ResponseEntity<Void> deleteMyReview(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        bookInteractionService.deleteReview(id, principal.getUser().getUserId());
+        return ResponseEntity.noContent().build();
     }
 }

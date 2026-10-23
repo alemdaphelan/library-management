@@ -5,6 +5,9 @@ import com.huit.library.modules.notification.entity.NotificationEntity;
 import com.huit.library.modules.notification.service.NotificationService;
 import com.huit.library.modules.notification.dto.RegisterPushDeviceRequestDTO;
 import com.huit.library.modules.notification.dto.UnregisterPushDeviceRequestDTO;
+import com.huit.library.modules.notification.dto.NotificationPreferenceRequestDTO;
+import com.huit.library.modules.notification.dto.NotificationPreferenceResponseDTO;
+import com.huit.library.modules.notification.service.NotificationPreferenceService;
 import com.huit.library.modules.notification.service.PushDeviceService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -26,11 +29,28 @@ import java.util.UUID;
 public class NotificationController {
     private final NotificationService notificationService;
     private final PushDeviceService pushDeviceService;
+    private final NotificationPreferenceService preferenceService;
 
     public NotificationController(NotificationService notificationService,
-                                  PushDeviceService pushDeviceService) {
+                                  PushDeviceService pushDeviceService,
+                                  NotificationPreferenceService preferenceService) {
         this.notificationService = notificationService;
         this.pushDeviceService = pushDeviceService;
+        this.preferenceService = preferenceService;
+    }
+
+    @GetMapping("/preferences")
+    public ResponseEntity<NotificationPreferenceResponseDTO> getPreferences(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(preferenceService.get(userDetails.getUser().getUserId()));
+    }
+
+    @PatchMapping("/preferences")
+    public ResponseEntity<NotificationPreferenceResponseDTO> updatePreferences(
+            @Valid @RequestBody NotificationPreferenceRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(preferenceService.update(
+                userDetails.getUser().getUserId(), request));
     }
 
     @GetMapping

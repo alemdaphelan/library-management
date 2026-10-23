@@ -33,6 +33,7 @@ class CirculationMaintenanceServiceTest {
     private BookCopyRepository copyRepository;
     private LateFineService lateFineService;
     private NotificationService notificationService;
+    private ReservationNoShowService reservationNoShowService;
     private CirculationMaintenanceService service;
     private LocalDateTime now;
 
@@ -44,6 +45,7 @@ class CirculationMaintenanceServiceTest {
         copyRepository = mock(BookCopyRepository.class);
         lateFineService = mock(LateFineService.class);
         notificationService = mock(NotificationService.class);
+        reservationNoShowService = mock(ReservationNoShowService.class);
         service = new CirculationMaintenanceService(
                 ticketRepository,
                 detailRepository,
@@ -53,6 +55,7 @@ class CirculationMaintenanceServiceTest {
                 lateFineService,
                 notificationService,
                 mock(OverdueViolationService.class),
+                reservationNoShowService,
                 mock(WaitlistService.class),
                 mock(PenaltyCaseRepository.class),
                 2);
@@ -85,6 +88,7 @@ class CirculationMaintenanceServiceTest {
         verify(notificationService).createOnce(
                 eq(readerId), eq("RESERVATION_EXPIRED"), anyString(),
                 eq("LOAN_TICKET"), eq("10"), eq("RESERVATION_EXPIRED:10"), eq(now));
+        verify(reservationNoShowService).record(readerId, now, "LOAN_TICKET", "10");
 
         ArgumentCaptor<LoanStatusHistoryEntity> historyCaptor =
                 ArgumentCaptor.forClass(LoanStatusHistoryEntity.class);

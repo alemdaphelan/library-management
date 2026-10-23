@@ -14,6 +14,8 @@ import { Detail } from './pages/portal/detail/detail';
 import { About } from './pages/portal/about/about';
 import { Digital } from './pages/portal/digital/digital';
 import { Guide } from './pages/portal/guide/guide';
+import { BorrowCart } from './pages/portal/borrow-cart/borrow-cart';
+import { SavedBooks } from './pages/portal/saved-books/saved-books';
 
 // Admin Pages
 import { Dashboard } from './pages/admin/dashboard/dashboard';
@@ -42,14 +44,15 @@ export const routes: Routes = [
     children: [
       { path: '', component: Home, title: 'Trang chủ' },
       { path: 'search', component: Search, title: 'Tra cứu sách' },
-      { path: 'history', component: History, title: 'Lịch sử mượn' },
-      { path: 'notifications', component: Notifications, canActivate: [AuthGuard], title: 'Thông báo & Nhắc hạn' },
-      { path: 'suggest', component: Suggest, title: 'Đề xuất sách' },
+      { path: 'history', component: History, canActivate: [AuthGuard], title: 'Lịch sử mượn' },
+      { path: 'suggest', component: Suggest, canActivate: [AuthGuard], title: 'Đề xuất sách' },
       { path: 'book/:id', component: Detail, title: 'Chi tiết sách' },
       { path: 'about', component: About, title: 'Giới thiệu Thư viện' },
       { path: 'digital', component: Digital, title: 'Tài nguyên số & CSDL' },
       { path: 'guide', component: Guide, title: 'Hướng dẫn độc giả' },
-      { path: 'profile', component: Profile, title: 'Quản lý tài khoản' },
+      { path: 'profile', component: Profile, canActivate: [AuthGuard], title: 'Quản lý tài khoản' },
+      { path: 'borrow-cart', component: BorrowCart, canActivate: [AuthGuard], title: 'Giỏ mượn sách' },
+      { path: 'saved-books', component: SavedBooks, canActivate: [AuthGuard], title: 'Tủ sách cá nhân' },
     ]
   },
   {
