@@ -2,6 +2,23 @@ import { of } from 'rxjs';
 import { AdminSuggestions } from './suggestions';
 
 describe('AdminSuggestions', () => {
+  it('opens the exact proposal referenced by an admin notification', () => {
+    const proposal = { proposalId: 7, title: 'Clean Architecture', status: 'PENDING' };
+    const proposalService = {
+      getAllProposalsForAdmin: vi.fn(() => of([proposal])),
+    };
+    const route = {
+      snapshot: { queryParamMap: { get: (key: string) => key === 'referenceId' ? '7' : null } },
+    };
+    const component = new AdminSuggestions(proposalService as any, route as any);
+
+    component.ngOnInit();
+
+    expect(component.selectedSuggestion?.proposalId).toBe(7);
+    expect(component.isDrawerOpen).toBe(true);
+    expect(component.activeTab).toBe('ALL');
+  });
+
   it('requires a rejection reason before calling the API', () => {
     const proposalService = {
       updateProposalStatus: vi.fn(() => of({})),

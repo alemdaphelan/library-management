@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ImportsService } from '../../../services/imports.service';
+import { forkJoin } from 'rxjs';
+import { ImportLineDraft, ImportsService } from '../../../services/imports.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-imports',
@@ -16,31 +18,44 @@ export class Imports implements OnInit {
   importReceipts: any[] = [];
   suppliers: any[] = [];
   selectedSupplierId?: number;
+  isLoading = false;
+  isSaving = false;
+  errorMessage = '';
+  successMessage = '';
+  highlightedReceiptId?: number;
 
-  newImportLines = [
-    { isbn: '', title: '', qty: 1, price: 0 }
-  ];
+  newImportLines: ImportLineDraft[] = [this.emptyLine()];
 
-  constructor(private importsService: ImportsService) {}
+  constructor(
+    private importsService: ImportsService,
+    @Optional() private route?: ActivatedRoute,
+  ) {}
 
   ngOnInit() {
+    const referenceId = this.route?.snapshot.queryParamMap.get('referenceId');
+    this.highlightedReceiptId = referenceId ? Number(referenceId) : undefined;
     this.fetchData();
   }
 
   fetchData() {
-    this.importsService.getStats().subscribe({
-      next: (data) => this.stats = data,
-      error: (err) => console.error('Error fetching stats', err)
-    });
-
-    this.importsService.getImportReceipts().subscribe({
-      next: (data) => this.importReceipts = data,
-      error: (err) => console.error('Error fetching receipts', err)
-    });
-
-    this.importsService.getSuppliers().subscribe({
-      next: (data) => this.suppliers = data,
-      error: (err) => console.error('Error fetching suppliers', err)
+    this.isLoading = true;
+    this.errorMessage = '';
+    forkJoin({
+      stats: this.importsService.getStats(),
+      receipts: this.importsService.getImportReceipts(),
+      suppliers: this.importsService.getSuppliers(),
+    }).subscribe({
+      next: ({ stats, receipts, suppliers }) => {
+        this.stats = stats || {};
+        this.importReceipts = receipts || [];
+        this.suppliers = suppliers || [];
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error fetching inventory data', err);
+        this.isLoading = false;
+        this.errorMessage = this.extractError(err, 'Không thể tải dữ liệu nhập kho. Vui lòng thử lại.');
+      }
     });
   }
 
@@ -55,7 +70,35 @@ export class Imports implements OnInit {
   }
 
   addLine() {
-    this.newImportLines.push({ isbn: '', title: '', qty: 1, price: 0 });
+    this.newImportLines.push(this.emptyLine());
+  }
+
+  lookupIsbn(line: ImportLineDraft): void {
+    const isbn = line.isbn.trim();
+    line.bookId = undefined;
+    line.title = '';
+    line.lookupMessage = '';
+    if (!isbn) {
+      line.lookupState = 'idle';
+      return;
+    }
+    line.lookupState = 'loading';
+    this.importsService.findBookByIsbn(isbn).subscribe({
+      next: book => {
+        line.bookId = Number(book.bookId);
+        line.title = book.title || '';
+        if (!line.price && book.defaultPrice != null) line.price = Number(book.defaultPrice);
+        line.lookupState = 'found';
+        line.lookupMessage = 'Đã tìm thấy đầu sách trong danh mục.';
+      },
+      error: err => {
+        line.lookupState = 'missing';
+        line.lookupMessage = this.extractError(
+          err,
+          'ISBN chưa có trong danh mục. Hãy thêm đầu sách trước khi lập phiếu nhập.'
+        );
+      }
+    });
   }
 
   removeLine(index: number) {
@@ -65,31 +108,47 @@ export class Imports implements OnInit {
   }
 
   saveImport() {
-    if (!this.selectedSupplierId || this.newImportLines.some(line => !line.isbn.trim() || line.qty < 1 || line.price < 0)) {
-      alert('Vui lòng chọn nhà cung cấp và nhập ISBN, số lượng, đơn giá hợp lệ.');
+    this.errorMessage = '';
+    this.successMessage = '';
+    if (!this.selectedSupplierId || this.newImportLines.some(line =>
+      !line.isbn.trim() || !line.bookId || line.lookupState !== 'found' || line.qty < 1 || line.price < 0)) {
+      this.errorMessage = 'Hãy chọn nhà cung cấp và xác nhận mọi ISBN hợp lệ trước khi lưu phiếu.';
       return;
     }
     const importData = {
       supplierId: this.selectedSupplierId,
       lines: this.newImportLines.map(line => ({
+        bookId: line.bookId,
         isbn: line.isbn.trim(),
         quantity: Number(line.qty),
         unitPrice: Number(line.price)
       }))
     };
+    this.isSaving = true;
     this.importsService.saveImport(importData).subscribe({
       next: () => {
-        alert('Đã lưu phiếu nhập thành công!');
+        this.isSaving = false;
+        this.successMessage = 'Đã lưu phiếu nhập và tạo các bản sao trong kho.';
         this.closeDrawer();
         this.fetchData();
         this.selectedSupplierId = undefined;
-        this.newImportLines = [{ isbn: '', title: '', qty: 1, price: 0 }];
+        this.newImportLines = [this.emptyLine()];
       },
       error: (err) => {
         console.error('Error saving import', err);
-        alert('Lỗi khi lưu phiếu nhập!');
+        this.isSaving = false;
+        this.errorMessage = this.extractError(err, 'Không thể lưu phiếu nhập.');
       }
     });
+  }
+
+  private emptyLine(): ImportLineDraft {
+    return { isbn: '', title: '', qty: 1, price: 0, lookupState: 'idle' };
+  }
+
+  private extractError(error: any, fallback: string): string {
+    const message = error?.error?.message ?? error?.error?.detail ?? error?.error;
+    return typeof message === 'string' && message.trim() ? message : fallback;
   }
 
   get totalQuantity(): number {

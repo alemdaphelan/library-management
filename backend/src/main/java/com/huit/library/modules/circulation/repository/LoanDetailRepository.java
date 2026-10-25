@@ -100,6 +100,23 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             @Param("userId") UUID userId,
             @Param("bookId") Long bookId);
 
+    @Query(value = """
+            SELECT COUNT(ld.detail_id)
+            FROM loan_details ld
+            JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
+            JOIN book_copies bc ON bc.barcode = ld.barcode
+            WHERE lt.user_id = :userId
+              AND bc.book_id = :bookId
+              AND (
+                    ld.return_status IN ('BORROWING', 'OVERDUE', 'RETURNED', 'LOST', 'DAMAGED')
+                    OR ld.return_date IS NOT NULL
+                  )
+              AND COALESCE(lt.status, '') NOT IN ('CANCELLED', 'REJECTED')
+            """, nativeQuery = true)
+    long countBorrowedItemsByUserIdAndBookId(
+            @Param("userId") UUID userId,
+            @Param("bookId") Long bookId);
+
     @Query("""
             select count(detail) from LoanDetailEntity detail, LoanTicketEntity ticket
             where detail.ticketId = ticket.ticketId

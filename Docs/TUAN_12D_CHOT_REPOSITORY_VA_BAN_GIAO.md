@@ -126,3 +126,21 @@ Gate cục bộ cuối:
 | Rà secret đã track | **PASS — không phát hiện API key/Gemini key trong file được Git theo dõi** |
 
 Người nhận bản bàn giao cần chạy lại toàn bộ Backend suite trong môi trường Docker, sau đó thực hiện lần lượt các checklist `07_UAT_A_KIEM_THU_LAI.md` đến `12_UAT_F_DE_XUAT_MUA_SACH_VA_QUY_DINH.md`. Firebase foreground, background và terminated vẫn là kiểm thử bắt buộc trên thiết bị Android thật.
+
+## 12. Phụ lục sửa lỗi G1-G5 ngày 25/10/2026
+
+Vòng phản hồi G1-G5 đã được xử lý ở mức mã nguồn: bảo vệ trang cá nhân và tải hồ sơ/thẻ, đồng bộ khả dụng và đặt giữ trong ngày, chặn đánh giá sai điều kiện và tìm theo nội dung, đọc PDF thật có phân quyền, hiển thị lý do từ chối và cung cấp module công nợ cá nhân. Hai API `/api/v1/transactions/my-ledger` và `/api/v1/penalty-cases/my` yêu cầu xác thực và luôn suy ra người dùng từ JWT, không nhận `userId` do client truyền vào.
+
+Sau G6, quầy mượn/trả hỗ trợ cả phiếu trực tuyến đã duyệt và lập phiếu trực tiếp bằng MSSV + barcode; QR phiếu/thẻ được xác minh chữ ký ở Backend, còn camera trình duyệt chỉ đảm nhiệm đọc chuỗi mã. Gate mới nhất đạt **134/134 Backend unit test**, **100/100 Web test** và **Web production build**. Checklist kiểm thử bổ sung nằm tại `TestChucNang/13_UAT_G1_DANG_NHAP_HO_SO_VA_THE.md` đến `TestChucNang/18_UAT_G6_QUAY_MUON_TRA_VA_CAMERA.md`.
+
+## 13. Phụ lục sửa lỗi G7 ngày 25/10/2026
+
+G7 đã hoàn thiện luồng nhập kho và quản trị danh mục: tra chính xác ISBN trước khi lập phiếu, tự điền metadata, tạo bản sao thật, lọc khả dụng ở Backend và loại bỏ các nút giao diện không có hành vi. Hệ thống đồng thời phát thông báo riêng cho Admin/Thủ thư khi có đề xuất sách, yêu cầu mượn hoặc phiếu nhập; bấm thông báo mở đúng đối tượng nghiệp vụ và đánh dấu đã đọc.
+
+Gate cục bộ mới nhất đạt **136/136 Backend unit test**, **105/105 Web test** và **Web production build**. Cảnh báo `qrcode` CommonJS vẫn là cảnh báo tối ưu hóa đã biết, không chặn build. Checklist kiểm thử bổ sung: `TestChucNang/19_UAT_G7_NHAP_KHO_DANH_MUC_VA_THONG_BAO.md`.
+
+## 14. Phụ lục sửa lỗi G8 ngày 25/10/2026
+
+G8 hoàn thiện màn hình `Hồ sơ Bạn đọc & Thẻ`: Admin và Thủ thư có thể mở hồ sơ tổng hợp của từng sinh viên để đối chiếu thông tin cá nhân, trạng thái tài khoản/thẻ, tiền thế chân, công nợ, vi phạm, phiếu mượn và hồ sơ mất/hỏng. Thủ thư chỉ có quyền xem; các thao tác thêm, sửa và xóa vẫn giới hạn cho Admin. Thông báo tham chiếu người dùng có thể mở đúng hồ sơ tương ứng.
+
+Gate cục bộ mới nhất đạt **137/137 Backend unit test**, **107/107 Web test** và **Web production build**. Ba integration test dùng Testcontainers chưa chạy trong gate này vì cần Docker daemon. Cảnh báo `qrcode` CommonJS vẫn không chặn build. Checklist kiểm thử bổ sung: `TestChucNang/20_UAT_G8_HO_SO_BAN_DOC_VA_THE.md`.

@@ -8,6 +8,7 @@ import com.huit.library.modules.interactive.dto.UpdateProposalStatusDTO;
 import com.huit.library.modules.interactive.entity.BookProposalEntity;
 import com.huit.library.modules.interactive.repository.BookProposalRepository;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.notification.service.StaffNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -36,7 +37,8 @@ class BookProposalServiceTest {
                 mock(UserRepository.class),
                 mock(NotificationService.class),
                 bookRepository,
-                mock(CategoryRepository.class));
+                mock(CategoryRepository.class),
+                mock(StaffNotificationService.class));
     }
 
     @Test

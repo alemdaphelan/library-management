@@ -33,6 +33,19 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             LEFT JOIN categories c ON c.category_id = b.category_id
             WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
               AND (
+                    :availability = ''
+                    OR (:availability = 'AVAILABLE' AND EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                    OR (:availability = 'UNAVAILABLE' AND NOT EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                  )
+              AND (
                     :query = ''
                     OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -61,6 +74,19 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             LEFT JOIN categories c ON c.category_id = b.category_id
             WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
               AND (
+                    :availability = ''
+                    OR (:availability = 'AVAILABLE' AND EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                    OR (:availability = 'UNAVAILABLE' AND NOT EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                  )
+              AND (
                     :query = ''
                     OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -88,6 +114,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             @Param("query") String query,
             @Param("subjectCode") String subjectCode,
             @Param("categoryId") Long categoryId,
+            @Param("availability") String availability,
             Pageable pageable);
 
     @Query(value = """
@@ -128,6 +155,19 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             WHERE affinity.department_key = :departmentKey
               AND (:categoryId IS NULL OR b.category_id = :categoryId)
               AND (
+                    :availability = ''
+                    OR (:availability = 'AVAILABLE' AND EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                    OR (:availability = 'UNAVAILABLE' AND NOT EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                  )
+              AND (
                     :query = ''
                     OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -151,6 +191,19 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             WHERE affinity.department_key = :departmentKey
               AND (:categoryId IS NULL OR b.category_id = :categoryId)
               AND (
+                    :availability = ''
+                    OR (:availability = 'AVAILABLE' AND EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                    OR (:availability = 'UNAVAILABLE' AND NOT EXISTS (
+                        SELECT 1 FROM book_copies available_copy
+                        WHERE available_copy.book_id = b.book_id
+                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
+                    ))
+                  )
+              AND (
                     :query = ''
                     OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -168,5 +221,6 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             @Param("query") String query,
             @Param("subjectCode") String subjectCode,
             @Param("categoryId") Long categoryId,
+            @Param("availability") String availability,
             Pageable pageable);
 }

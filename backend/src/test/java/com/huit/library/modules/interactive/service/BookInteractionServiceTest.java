@@ -5,6 +5,7 @@ import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.BookRepository;
+import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.interactive.dto.BookReviewRequestDTO;
 import com.huit.library.modules.interactive.entity.ReviewEntity;
 import com.huit.library.modules.interactive.entity.WishlistEntity;
@@ -12,6 +13,8 @@ import com.huit.library.modules.interactive.repository.ReviewRepository;
 import com.huit.library.modules.interactive.repository.WishlistRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +23,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class BookInteractionServiceTest {
@@ -28,6 +32,7 @@ class BookInteractionServiceTest {
     private ReviewRepository reviewRepository;
     private WishlistRepository wishlistRepository;
     private UserRepository userRepository;
+    private LoanDetailRepository loanDetailRepository;
     private BookInteractionService service;
 
     @BeforeEach
@@ -37,8 +42,10 @@ class BookInteractionServiceTest {
         reviewRepository = mock(ReviewRepository.class);
         wishlistRepository = mock(WishlistRepository.class);
         userRepository = mock(UserRepository.class);
+        loanDetailRepository = mock(LoanDetailRepository.class);
         service = new BookInteractionService(
-                bookRepository, copyRepository, reviewRepository, wishlistRepository, userRepository);
+                bookRepository, copyRepository, reviewRepository, wishlistRepository, userRepository,
+                loanDetailRepository);
     }
 
     @Test
@@ -57,6 +64,7 @@ class BookInteractionServiceTest {
 
         when(bookRepository.findById(7L)).thenReturn(Optional.of(book));
         when(reviewRepository.findByBookIdAndUserId(7L, userId)).thenReturn(Optional.empty());
+        when(loanDetailRepository.countBorrowedItemsByUserIdAndBookId(userId, 7L)).thenReturn(1L);
         when(reviewRepository.save(any())).thenAnswer(invocation -> {
             ReviewEntity review = invocation.getArgument(0);
             review.setReviewId(11L);
@@ -74,6 +82,51 @@ class BookInteractionServiceTest {
         assertThat(summary.getReviewCount()).isEqualTo(1);
         assertThat(summary.getMyReview().getComment()).isEqualTo("Nội dung hữu ích");
         assertThat(summary.getMyReview().isMine()).isTrue();
+        assertThat(summary.isReviewEligible()).isFalse();
+        assertThat(summary.getReviewEligibilityMessage()).contains("đã đánh giá");
+    }
+
+    @Test
+    void rejectsReviewWhenReaderHasNeverBorrowedBook() {
+        UUID userId = UUID.randomUUID();
+        BookEntity book = new BookEntity();
+        book.setBookId(7L);
+        BookReviewRequestDTO request = new BookReviewRequestDTO();
+        request.setRating(4);
+
+        when(bookRepository.findById(7L)).thenReturn(Optional.of(book));
+        when(reviewRepository.findByBookIdAndUserId(7L, userId)).thenReturn(Optional.empty());
+        when(loanDetailRepository.countBorrowedItemsByUserIdAndBookId(userId, 7L)).thenReturn(0L);
+
+        assertThatThrownBy(() -> service.saveReview(7L, userId, request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(exception.getReason()).contains("sau khi tài liệu đã được thủ thư giao mượn");
+                });
+        verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsSecondReviewWithExplicitConflict() {
+        UUID userId = UUID.randomUUID();
+        BookEntity book = new BookEntity();
+        book.setBookId(7L);
+        ReviewEntity existing = new ReviewEntity();
+        existing.setBookId(7L);
+        existing.setUserId(userId);
+        BookReviewRequestDTO request = new BookReviewRequestDTO();
+        request.setRating(3);
+
+        when(bookRepository.findById(7L)).thenReturn(Optional.of(book));
+        when(reviewRepository.findByBookIdAndUserId(7L, userId)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.saveReview(7L, userId, request))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getReason()).contains("đã đánh giá");
+                });
+        verify(loanDetailRepository, never()).countBorrowedItemsByUserIdAndBookId(any(), any());
+        verify(reviewRepository, never()).save(any());
     }
 
     @Test

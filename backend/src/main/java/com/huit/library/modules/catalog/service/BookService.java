@@ -44,17 +44,19 @@ public class BookService {
 
     @Transactional(readOnly = true)
     public Page<BookResponseDTO> searchBooks(
-            String query, Long categoryId, String department, Pageable pageable) {
+            String query, Long categoryId, String department, String availability, Pageable pageable) {
         boolean hasQuery = query != null && !query.isBlank();
         boolean hasCategory = categoryId != null;
         Page<BookEntity> books;
         String departmentKey = DepartmentKeyNormalizer.normalize(department);
+        String availabilityFilter = normalizeAvailability(availability);
         if (!departmentKey.isBlank()) {
             books = bookRepository.searchByDepartment(
                     departmentKey,
                     hasQuery ? query.trim() : "",
                     resolveSubjectCode(hasQuery ? query.trim() : ""),
                     categoryId,
+                    availabilityFilter,
                     pageable);
         } else {
             String normalizedQuery = hasQuery ? query.trim() : "";
@@ -62,9 +64,25 @@ public class BookService {
                     normalizedQuery,
                     resolveSubjectCode(normalizedQuery),
                     categoryId,
+                    availabilityFilter,
                     pageable);
         }
         return books.map(this::toResponse);
+    }
+
+    private String normalizeAvailability(String availability) {
+        if (availability == null || availability.isBlank() || "ALL".equalsIgnoreCase(availability)) {
+            return "";
+        }
+        if ("AVAILABLE".equalsIgnoreCase(availability)) {
+            return "AVAILABLE";
+        }
+        if ("UNAVAILABLE".equalsIgnoreCase(availability)
+                || "OUT_OF_STOCK".equalsIgnoreCase(availability)
+                || "BORROWED".equalsIgnoreCase(availability)) {
+            return "UNAVAILABLE";
+        }
+        throw new IllegalArgumentException("Trạng thái khả dụng không hợp lệ: " + availability);
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +100,19 @@ public class BookService {
             throw new RuntimeException("Book not found");
         }
         return toResponse(getBookEntity(id));
+    }
+
+    @Transactional(readOnly = true)
+    public BookResponseDTO getBookByIsbn(String isbn) {
+        String normalized = isbn == null ? "" : isbn.trim();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("ISBN không được để trống");
+        }
+        BookEntity book = bookRepository.findFirstByIsbn(normalized)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND,
+                        "Không tìm thấy đầu sách có ISBN " + normalized));
+        return toResponse(book);
     }
 
     @Transactional
@@ -182,7 +213,7 @@ public class BookService {
             return "";
         }
         if (containsAny(normalized, "k nn", "knn", "nearest neighbor", "machine learning",
-                "hoc may", "deep learning", "tri tue nhan tao", "artificial intelligence", "ai")) {
+                "hoc may", "deep learning", "tri tue nhan tao", "ttnt", "artificial intelligence", "ai")) {
             return "IT_DATA_AI";
         }
         if (containsAny(normalized, "an toan thuc pham", "food technology", "food science")) {

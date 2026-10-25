@@ -22,7 +22,9 @@ public class LoanItemDTO {
     private String barcode;
     private String ticketType;
     private String status;
+    private String decisionNote;
     private LocalDateTime createdAt;
+    private LocalDateTime pickupDeadline;
     private LocalDateTime dueDate;
     private LocalDateTime returnDate;
     private Long daysRemaining;

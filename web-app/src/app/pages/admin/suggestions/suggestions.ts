@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProposalService, BookProposal } from '../../../services/proposal.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-admin-suggestions',
@@ -22,9 +23,16 @@ export class AdminSuggestions implements OnInit {
 
   proposals: BookProposal[] = [];
 
-  constructor(private proposalService: ProposalService) {}
+  private requestedProposalId?: number;
+
+  constructor(
+    private proposalService: ProposalService,
+    @Optional() private route?: ActivatedRoute,
+  ) {}
 
   ngOnInit(): void {
+    const referenceId = this.route?.snapshot.queryParamMap.get('referenceId');
+    this.requestedProposalId = referenceId ? Number(referenceId) : undefined;
     this.loadProposals();
   }
 
@@ -34,6 +42,14 @@ export class AdminSuggestions implements OnInit {
       next: (data) => {
         this.proposals = data || [];
         this.isLoading = false;
+        if (this.requestedProposalId) {
+          const requested = this.proposals.find(item => item.proposalId === this.requestedProposalId);
+          if (requested) {
+            this.activeTab = 'ALL';
+            this.openDrawer(requested);
+          }
+          this.requestedProposalId = undefined;
+        }
       },
       error: (err) => {
         console.error('Lỗi khi tải danh sách đề xuất:', err);

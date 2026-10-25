@@ -16,7 +16,9 @@ export interface LoanItem {
   barcode?: string;
   ticketType?: string;
   status: string; // 'PENDING', 'RESERVED', 'BORROWING', 'RETURNED', 'CANCELLED'
+  decisionNote?: string;
   createdAt?: string;
+  pickupDeadline?: string;
   dueDate?: string;
   returnDate?: string;
   daysRemaining?: number;
@@ -40,11 +42,12 @@ export class History implements OnInit {
   private toastTimer?: any;
 
   // Tabs state
-  selectedTab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' = 'BORROWING';
+  selectedTab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' | 'CANCELLED' = 'BORROWING';
 
   borrowingList: LoanItem[] = [];
   pendingList: LoanItem[] = [];
   pastList: LoanItem[] = [];
+  cancelledList: LoanItem[] = [];
   allList: LoanItem[] = [];
 
   // Backward compatibility
@@ -92,7 +95,7 @@ export class History implements OnInit {
     this.penaltyService.getMyCases().subscribe({ next: value => this.penaltyCases = value || [] });
   }
 
-  setTab(tab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST'): void {
+  setTab(tab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' | 'CANCELLED'): void {
     this.selectedTab = tab;
   }
 
@@ -123,6 +126,7 @@ export class History implements OnInit {
     const borrowing: LoanItem[] = [];
     const pending: LoanItem[] = [];
     const past: LoanItem[] = [];
+    const cancelled: LoanItem[] = [];
     const all: LoanItem[] = [];
 
     items.forEach(raw => {
@@ -157,7 +161,9 @@ export class History implements OnInit {
         barcode: raw.barcode,
         ticketType: raw.ticketType || 'BORROW',
         status: statusUpper,
+        decisionNote: raw.decisionNote,
         createdAt: raw.createdAt,
+        pickupDeadline: raw.pickupDeadline,
         dueDate: raw.dueDate,
         returnDate: raw.returnDate,
         daysRemaining: days !== null ? days : undefined,
@@ -168,12 +174,14 @@ export class History implements OnInit {
 
       all.push(item);
 
-      if (statusUpper === 'BORROWING') {
+      if (statusUpper === 'BORROWING' || statusUpper === 'OVERDUE') {
         borrowing.push(item);
       } else if (statusUpper === 'PENDING' || statusUpper === 'RESERVED') {
         pending.push(item);
-      } else {
+      } else if (statusUpper === 'RETURNED') {
         past.push(item);
+      } else if (statusUpper === 'CANCELLED' || statusUpper === 'REJECTED') {
+        cancelled.push(item);
       }
     });
 
@@ -181,6 +189,7 @@ export class History implements OnInit {
     this.borrowingList = borrowing;
     this.pendingList = pending;
     this.pastList = past;
+    this.cancelledList = cancelled;
 
     // Backward compatibility for existing references
     this.activeBorrows = [...borrowing, ...pending];
@@ -190,6 +199,24 @@ export class History implements OnInit {
     if (this.selectedTab === 'BORROWING' && borrowing.length === 0 && pending.length > 0) {
       this.selectedTab = 'PENDING';
     }
+  }
+
+  statusLabel(status: string): string {
+    return ({
+      BORROWING: 'Đang mượn',
+      OVERDUE: 'Quá hạn',
+      PENDING: 'Chờ thủ thư duyệt',
+      RESERVED: 'Chờ nhận sách',
+      RETURNED: 'Đã hoàn trả',
+      CANCELLED: 'Đã hủy',
+      REJECTED: 'Đã từ chối',
+    } as Record<string, string>)[status] || status;
+  }
+
+  statusClass(status: string): string {
+    if (status === 'BORROWING' || status === 'OVERDUE') return 'borrowing';
+    if (status === 'PENDING' || status === 'RESERVED') return 'pending';
+    return 'returned';
   }
 
   openQrModal(item: LoanItem): void {

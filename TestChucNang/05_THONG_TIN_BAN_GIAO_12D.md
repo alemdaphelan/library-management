@@ -41,3 +41,9 @@ Chi tiết và giới hạn: `../Docs/TUAN_12D_CHOT_REPOSITORY_VA_BAN_GIAO.md`.
 5. Chạy `02_CHECKLIST_TEST_TOAN_BO_HE_THONG.md` và ghi đủ PASS/FAIL/BLOCKED/N/A, gồm bằng chứng push foreground/background/terminated.
 6. Dùng `03_MAU_BAO_LOI.md` cho từng lỗi.
 7. Chốt `04_BIEN_BAN_NGHIEM_THU.md` trước khi triển khai Internet.
+
+## Phụ lục cập nhật G1-G8 ngày 25/10/2026
+
+Sau vòng phản hồi tiếp theo, mã nguồn đã bổ sung bảo vệ các trang cá nhân, hồ sơ và thẻ thư viện, tra cứu khả dụng/đặt giữ trong ngày, điều kiện đánh giá và tìm theo nội dung, đọc PDF thật, lý do từ chối và module công nợ riêng cho sinh viên. Sinh viên mở `Công nợ & Khoản phạt` từ menu avatar để xem các dòng ghi nợ, thanh toán một phần, hồ sơ mất/hỏng và lịch sử biên nhận; không có quyền sửa hoặc xóa giao dịch. G8 bổ sung hồ sơ bạn đọc tổng hợp cho nhân viên gồm thẻ, tiền thế chân, công nợ, vi phạm, phiếu mượn và hồ sơ phạt; Thủ thư chỉ xem, Admin giữ quyền quản trị.
+
+Gate cục bộ mới nhất sau G8: **Backend unit test 137/137**, **Web test 107/107**, **Web production build PASS**. Ba integration test Testcontainers vẫn phải chạy lại khi Docker daemon hoạt động. Thực hiện tiếp các checklist `13_UAT_G1_DANG_NHAP_HO_SO_VA_THE.md` đến `20_UAT_G8_HO_SO_BAN_DOC_VA_THE.md` trên đúng commit được bàn giao.

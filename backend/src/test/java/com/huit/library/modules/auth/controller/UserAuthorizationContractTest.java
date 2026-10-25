@@ -21,6 +21,9 @@ class UserAuthorizationContractTest {
         Method method = UserController.class.getMethod("getAllStudents");
         assertThat(method.getAnnotation(PreAuthorize.class).value())
                 .isEqualTo("hasAnyRole('ADMIN', 'LIBRARIAN')");
+        Method profile = UserController.class.getMethod("getReaderProfile", String.class);
+        assertThat(profile.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasAnyRole('ADMIN', 'LIBRARIAN')");
     }
 
     private void assertAdminOnly(String methodName, Class<?>... parameterTypes) throws Exception {

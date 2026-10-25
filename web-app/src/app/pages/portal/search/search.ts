@@ -131,7 +131,16 @@ export class Search implements OnInit, OnDestroy {
   }
 
   fetchBooks() {
-    this.bookService.getBooks(this.searchQuery, this.currentPage, this.pageSize).subscribe({
+    const availability = this.filterStatus === 'available'
+      ? 'AVAILABLE'
+      : this.filterStatus === 'borrowed' ? 'UNAVAILABLE' : undefined;
+    this.bookService.getBooks(
+      this.searchQuery,
+      this.currentPage,
+      this.pageSize,
+      undefined,
+      availability
+    ).subscribe({
       next: (data) => {
         if (data && data.content && data.content.length > 0) {
           this.allBooks = data.content.map((b: any) => ({
@@ -140,7 +149,9 @@ export class Search implements OnInit, OnDestroy {
             author: b.author || 'Đang cập nhật',
             cover: b.imageUrlL || b.imageUrlM || b.imageUrlS || b.cover || '/assets/images/cover_1.jpg',
             category: b.category ? b.category.name : 'Khác',
-            status: b.status || 'available'
+            status: b.status || 'out_of_stock',
+            availableCopies: Number(b.availableCopies || 0),
+            copies: Number(b.copies || 0)
           }));
           this.totalPages = data.totalPages;
           this.totalElements = data.totalElements;
@@ -182,15 +193,13 @@ export class Search implements OnInit, OnDestroy {
     this.fetchBooks();
   }
 
+  onStatusChange(): void {
+    this.currentPage = 0;
+    this.fetchBooks();
+  }
+
   applyFilters() {
     let filtered = [...this.allBooks];
-
-    // Status filter
-    if (this.filterStatus === 'available') {
-      filtered = filtered.filter(b => b.status === 'available');
-    } else if (this.filterStatus === 'borrowed') {
-      filtered = filtered.filter(b => b.status === 'out_of_stock');
-    }
 
     // Category filter
     const activeCategories = Object.keys(this.selectedCategories).filter(c => this.selectedCategories[c]);
@@ -220,7 +229,8 @@ export class Search implements OnInit, OnDestroy {
     this.selectedCategories = clearedCategories;
     
     this.sortOption = 'newest';
-    this.applyFilters();
+    this.currentPage = 0;
+    this.fetchBooks();
     this.cdr.markForCheck();
   }
 

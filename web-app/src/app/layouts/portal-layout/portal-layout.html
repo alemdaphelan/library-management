@@ -11,6 +11,7 @@
           <a routerLink="/guide" class="tb-item tb-link">&#10067; Hướng dẫn độc giả</a>
         </div>
         <div class="topbar-right">
+          <a *ngIf="canAccessAdmin" routerLink="/admin" class="tb-btn-dark"><span class="icon">&#9881;</span> Trang quản trị</a>
           <a *ngIf="!authService.isLoggedIn()" routerLink="/login" class="tb-btn-dark"><span class="icon">&#128274;</span> Đăng nhập</a>
         </div>
       </div>
@@ -52,7 +53,9 @@
             </div>
             
             <div class="user-dropdown" *ngIf="isUserMenuOpen">
+              <a *ngIf="canAccessAdmin" routerLink="/admin" (click)="isUserMenuOpen = false">Trang quản trị</a>
               <a routerLink="/saved-books" (click)="isUserMenuOpen = false">Tủ sách cá nhân</a>
+              <a routerLink="/my-penalties" (click)="isUserMenuOpen = false">Công nợ & Khoản phạt</a>
               <a routerLink="/profile" [queryParams]="{tab: 'settings'}">Cài đặt</a>
               <a routerLink="/history">Lịch sử mượn & Phiếu QR</a>
               <a (click)="openNotifications()" style="cursor: pointer;">Thông báo & Nhắc hạn</a>
@@ -71,8 +74,8 @@
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">TRANG CHỦ</a>
           <a routerLink="/about" routerLinkActive="active" class="nav-link">GIỚI THIỆU</a>
           <a routerLink="/search" routerLinkActive="active" class="nav-link">TÌM KIẾM & TRA CỨU</a>
-          <a routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
-          <a routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
+          <a *ngIf="authService.isLoggedIn()" routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
+          <a *ngIf="authService.isLoggedIn()" routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
           <a routerLink="/digital" routerLinkActive="active" class="nav-link">TÀI NGUYÊN SỐ & CSDL</a>
           <a routerLink="/guide" routerLinkActive="active" class="nav-link">HƯỚNG DẪN BẠN ĐỌC</a>
         </nav>
@@ -190,7 +193,12 @@
       </header>
       <p class="modal-state" *ngIf="cardLoading">Đang tải thông tin thẻ...</p>
       <p class="modal-state error" *ngIf="modalError">{{ modalError }}</p>
-      <div class="library-card-content" *ngIf="libraryCard && !cardLoading">
+      <div class="library-card-empty" *ngIf="libraryCard && !libraryCard.issued && !cardLoading">
+        <span class="empty-card-icon">&#128179;</span>
+        <h3>Bạn chưa được cấp thẻ thư viện</h3>
+        <p>Vui lòng liên hệ quầy thư viện hoặc quản trị viên để hoàn tất hồ sơ và được cấp thẻ.</p>
+      </div>
+      <div class="library-card-content" *ngIf="libraryCard && libraryCard.issued && !cardLoading">
         <div class="card-owner"><span class="card-avatar">{{ libraryCard.ownerName.charAt(0) }}</span><div><small>CHỦ SỞ HỮU</small><strong>{{ libraryCard.ownerName }}</strong><span>{{ libraryCard.department || 'Chưa cập nhật khoa' }}</span></div></div>
         <dl class="card-details">
           <div><dt>Mã thẻ / MSSV</dt><dd>{{ libraryCard.cardNumber || 'Chưa cập nhật' }}</dd></div>

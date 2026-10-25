@@ -42,7 +42,9 @@ describe('Circulation counter', () => {
     getBookCopyByBarcode: vi.fn(() => of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' })),
     getActiveLoanItemByBarcode: vi.fn(() => of(reservedTicket.items[0])),
     checkout: vi.fn(() => of(operation)),
+    manualCheckout: vi.fn(() => of(operation)),
     returnBooks: vi.fn(() => of({ ...operation, operationType: 'RETURN' as const, status: 'RETURNED', message: 'Trả thành công 1 tài liệu' })),
+    resolveQrPayload: vi.fn(() => of({ type: 'LOAN_TICKET', ticketId: 19, allowedActions: ['CHECKOUT'], items: [] })),
   };
 
   beforeEach(async () => {
@@ -62,6 +64,21 @@ describe('Circulation counter', () => {
   it('resolves the existing QR payload to the real ticket id', () => {
     component.ticketInput = 'HUIT-PM-19';
     component.resolveTicket();
+
+    expect(service.getLoan).toHaveBeenCalledWith(19);
+    expect(component.selectedTicket?.ticketId).toBe(19);
+  });
+
+  it('loads the exact ticket referenced by an admin notification', () => {
+    (component as any).route = {
+      snapshot: {
+        queryParamMap: {
+          get: (key: string) => key === 'referenceType' ? 'LOAN_TICKET' : key === 'referenceId' ? '19' : null,
+        },
+      },
+    };
+
+    component.ngOnInit();
 
     expect(service.getLoan).toHaveBeenCalledWith(19);
     expect(component.selectedTicket?.ticketId).toBe(19);
@@ -130,5 +147,33 @@ describe('Circulation counter', () => {
       expect.any(String),
       '',
     );
+  });
+
+  it('creates and checks out a walk-in loan by MSSV', () => {
+    component.switchBorrowMode('manual');
+    component.manualMssv = '2001190019';
+    component.manualTicketType = 'ONSITE';
+    component.manualNote = 'Sách nguyên vẹn';
+    service.getBookCopyByBarcode.mockReturnValue(of({ barcode: 'BC-019', bookId: 9, status: 'AVAILABLE', location: '' }));
+    component.barcodeInput = 'BC-019';
+    component.scanBookBarcode();
+
+    expect(component.canSubmit).toBe(true);
+    component.completeTransaction();
+
+    expect(service.manualCheckout).toHaveBeenCalledWith(
+      '2001190019',
+      'ONSITE',
+      ['BC-019'],
+      'Sách nguyên vẹn',
+    );
+  });
+
+  it('resolves a signed ticket QR before loading the approved ticket', () => {
+    (component as any).handleScannedValue('ticket', 'HUITQR1.claims.signature');
+
+    expect(service.resolveQrPayload).toHaveBeenCalledWith('HUITQR1.claims.signature');
+    expect(service.getLoan).toHaveBeenCalledWith(19);
+    expect(component.selectedTicket?.ticketId).toBe(19);
   });
 });

@@ -2,7 +2,7 @@
   <div class="page-header">
     <div>
       <h1>Thông báo & Nhắc hạn</h1>
-      <p>Thông báo thật của tài khoản hiện tại, được tạo bởi scheduler mượn–trả.</p>
+      <p>Tổng hợp yêu cầu mượn, đề xuất sách, nhập kho, quá hạn và các nghiệp vụ cần xử lý.</p>
     </div>
     <div class="header-actions">
       <button type="button" class="btn secondary" (click)="loadNotifications()" [disabled]="isLoading">Làm mới</button>
@@ -36,6 +36,10 @@
     <article
       class="notification-item"
       [class.unread-item]="!notification.isRead"
+      role="button"
+      tabindex="0"
+      (click)="openNotification(notification)"
+      (keyup.enter)="openNotification(notification)"
       *ngFor="let notification of filteredNotifications">
       <div class="notification-icon" [ngClass]="typeClass(notification.type)">!</div>
       <div class="notification-content">
@@ -53,11 +57,11 @@
         type="button"
         class="mark-read"
         *ngIf="!notification.isRead"
-        (click)="markAsRead(notification)"
+        (click)="$event.stopPropagation(); markAsRead(notification)"
         [disabled]="markingId === notification.notifId">
         {{ markingId === notification.notifId ? 'Đang cập nhật...' : 'Đánh dấu đã đọc' }}
       </button>
-      <span class="read-label" *ngIf="notification.isRead">Đã đọc</span>
+      <span class="read-label">{{ actionLabel(notification) }} →</span>
     </article>
     <div class="empty" *ngIf="!filteredNotifications.length">Không có thông báo nào khớp bộ lọc.</div>
   </section>

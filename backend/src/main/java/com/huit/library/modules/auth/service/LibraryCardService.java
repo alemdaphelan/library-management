@@ -29,13 +29,15 @@ public class LibraryCardService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
         WalletEntity wallet = walletRepository.findByUserId(userId).orElse(null);
+        boolean issued = user.getCardStatus() != null && !user.getCardStatus().isBlank();
         return new LibraryCardResponseDTO(
-                user.getMssv(),
+                issued,
+                issued ? user.getMssv() : null,
                 user.getFullName(),
                 user.getDepartment(),
                 user.getCardStatus(),
-                user.getCreatedAt(),
-                user.getCardExpiryDate(),
+                issued ? user.getCreatedAt() : null,
+                issued ? user.getCardExpiryDate() : null,
                 wallet == null || wallet.getDepositBalance() == null
                         ? BigDecimal.ZERO : wallet.getDepositBalance(),
                 wallet == null || wallet.getTotalDebt() == null

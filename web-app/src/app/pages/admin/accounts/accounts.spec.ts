@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { Accounts } from './accounts';
 import { UserService } from '../../../services/user.service';
 import { AuthService } from '../../../services/auth.service';
+import { provideRouter } from '@angular/router';
 
 describe('Accounts', () => {
   let component: Accounts;
@@ -14,6 +15,11 @@ describe('Accounts', () => {
     createStudent: vi.fn(() => of({})),
     updateStudent: vi.fn(() => of({})),
     deleteStudent: vi.fn(() => of(void 0)),
+    getReaderProfile: vi.fn(() => of({
+      student: { userId: 'user-1', fullName: 'Nguyễn Văn A', mssv: '20012345', email: 'a@huit.edu.vn' },
+      card: { issued: true, cardNumber: '20012345', ownerName: 'Nguyễn Văn A', cardStatus: 'ACTIVE', depositBalance: 50000, totalDebt: 0 },
+      loans: [], ledger: [], penaltyCases: [],
+    })),
   };
 
   beforeEach(async () => {
@@ -29,11 +35,13 @@ describe('Accounts', () => {
           provide: AuthService,
           useValue: { getRole: () => role },
         },
+        provideRouter([]),
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Accounts);
     component = fixture.componentInstance;
+    fixture.detectChanges();
     await fixture.whenStable();
   });
 
@@ -50,7 +58,8 @@ describe('Accounts', () => {
 
     expect(component.isReadOnly).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('Chế độ chỉ xem dành cho Thủ thư');
-    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Thêm sinh viên');
+    expect(fixture.nativeElement.textContent).not.toContain('Sửa');
   });
 
   it('allows admins to create a student through the real service contract', () => {
@@ -63,5 +72,17 @@ describe('Accounts', () => {
     component.saveStudent();
 
     expect(userService.createStudent).toHaveBeenCalledWith(expect.objectContaining({ mssv: '20012345' }));
+  });
+
+  it('loads a complete operational profile for both admin and librarian review', () => {
+    const student = { userId: 'user-1', fullName: 'Nguyễn Văn A', mssv: '20012345', email: 'a@huit.edu.vn' };
+
+    component.openProfile(student);
+    fixture.detectChanges();
+
+    expect(userService.getReaderProfile).toHaveBeenCalledWith('20012345');
+    expect(component.selectedProfile?.card.depositBalance).toBe(50000);
+    expect(fixture.nativeElement.textContent).toContain('Hồ sơ nghiệp vụ bạn đọc');
+    expect(fixture.nativeElement.textContent).toContain('Tiền thế chân');
   });
 });

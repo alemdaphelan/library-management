@@ -83,6 +83,25 @@ class DigitalAssetServiceTest {
     }
 
     @Test
+    void listByBookReturnsOnlyLinkedReadableDocuments() {
+        DigitalDocumentRepository documents = mock(DigitalDocumentRepository.class);
+        DigitalDocumentEntity publicAsset = asset(1L, "AUTHENTICATED");
+        publicAsset.setBookId(7L);
+        DigitalDocumentEntity staffAsset = asset(2L, "STAFF_ONLY");
+        staffAsset.setBookId(7L);
+        when(documents.findByBookIdOrderByCreatedAtDesc(7L))
+                .thenReturn(List.of(publicAsset, staffAsset));
+        DigitalAssetService service = new DigitalAssetService(
+                documents, mock(DigitalUsageLogRepository.class), mock(BookRepository.class),
+                tempDirectory.toString(), 1024);
+
+        assertThat(service.listByBook(7L, false))
+                .extracting(DigitalAssetResponseDTO::id)
+                .containsExactly(1L);
+        assertThat(service.listByBook(7L, true)).hasSize(2);
+    }
+
+    @Test
     void downloadCreatesUsageLog() throws Exception {
         DigitalDocumentRepository documents = mock(DigitalDocumentRepository.class);
         DigitalUsageLogRepository logs = mock(DigitalUsageLogRepository.class);

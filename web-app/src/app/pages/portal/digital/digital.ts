@@ -52,6 +52,35 @@ export class Digital implements OnInit {
     });
   }
 
+  preview(asset: DigitalAsset) {
+    const previewWindow = window.open('', '_blank');
+    if (!previewWindow) {
+      this.errorMessage = 'Trình duyệt đang chặn cửa sổ xem tài liệu. Vui lòng cho phép mở tab mới.';
+      return;
+    }
+    previewWindow.document.title = `Đang mở ${asset.name}`;
+    this.assetService.previewAsset(asset.id).subscribe({
+      next: response => {
+        if (!response.body) {
+          previewWindow.close();
+          this.errorMessage = 'Tệp không có dữ liệu để hiển thị.';
+          return;
+        }
+        const url = URL.createObjectURL(response.body);
+        previewWindow.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+      },
+      error: () => {
+        previewWindow.close();
+        this.errorMessage = 'Không thể xem tài liệu. Vui lòng kiểm tra quyền truy cập.';
+      }
+    });
+  }
+
+  canPreview(asset: DigitalAsset): boolean {
+    return asset.type?.toUpperCase() === 'PDF' || asset.contentType === 'application/pdf';
+  }
+
   formatSize(bytes: number): string {
     if (!bytes) return '0 B';
     const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);

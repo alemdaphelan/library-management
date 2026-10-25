@@ -13,6 +13,7 @@
 .review-submit { border: 0; background: #087eae; color: #fff; }
 .review-delete { border: 1px solid #e2a6a6; background: #fff; color: #b42318; }
 .review-error { margin-right: auto; color: #b42318; font-size: 13px; }
+.review-policy { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; border: 1px solid #cfe2ed; border-radius: 10px; background: #f4f9fc; color: #40586b; font-size: 13px; }
 .review-empty { padding: 18px 0 2px; color: #6b7f91; text-align: center; }
 .review-item { display: grid; grid-template-columns: 38px 1fr; gap: 11px; padding: 16px 2px; border-bottom: 1px solid #edf2f6; }
 .review-avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #dff2fa; color: #087eae; font-weight: 800; }

@@ -60,8 +60,8 @@
       </div>
 
       <label for="cart-pickup-date">Ngày đến nhận</label>
-      <input id="cart-pickup-date" type="date" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate">
-      <small>Sách được giữ đến giờ đóng cửa của ngày nhận đã chọn.</small>
+      <input id="cart-pickup-date" type="date" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" readonly>
+      <small>Phiếu trực tuyến chỉ giữ sách đến giờ đóng cửa hôm nay. Quy tắc 48 giờ chỉ dành cho người được gọi từ hàng đợi.</small>
 
       <label for="cart-note">Ghi chú cho thủ thư</label>
       <textarea id="cart-note" maxlength="500" [(ngModel)]="note" placeholder="Ví dụ: nhận tại quầy tầng 2"></textarea>

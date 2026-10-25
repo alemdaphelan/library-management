@@ -17,6 +17,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     java.util.Optional<UserEntity> findByMssv(String mssv);
     java.util.Optional<UserEntity> findFirstByEmailOrMssv(String email, String mssv);
     java.util.List<UserEntity> findByUserTypeOrderByFullNameAsc(String userType);
+    @Query("select user from UserEntity user where upper(user.roleId) in :roleIds")
+    java.util.List<UserEntity> findStaffByRoleIds(@Param("roleIds") java.util.Collection<String> roleIds);
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByMssvIgnoreCase(String mssv);
 

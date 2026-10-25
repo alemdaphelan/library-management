@@ -21,11 +21,12 @@ Kết quả mong đợi: phiếu `PENDING/RESERVED` không được tính; sau c
 ## C03 - Đánh giá sách
 
 1. Khi chưa đăng nhập, xem danh sách đánh giá và thử gửi đánh giá.
-2. Đăng nhập, chọn từ 1 đến 5 sao, nhập nhận xét rồi gửi.
-3. Sửa lại số sao/nhận xét và gửi lần nữa.
-4. Xóa đánh giá của chính mình.
+2. Đăng nhập bằng sinh viên chưa từng được checkout cuốn sách, thử gửi đánh giá.
+3. Dùng sinh viên đã được thủ thư checkout cuốn sách (đang mượn hoặc đã trả), chọn từ 1 đến 5 sao, nhập nhận xét rồi gửi.
+4. Thử gửi đánh giá lần hai cho cùng đầu sách.
+5. Xóa đánh giá của chính mình.
 
-Kết quả mong đợi: danh sách xem được công khai; gửi yêu cầu đăng nhập; mỗi tài khoản chỉ có một đánh giá trên một đầu sách và lần gửi sau cập nhật dòng cũ; điểm trung bình/số lượt thay đổi đúng; người dùng chỉ xóa được đánh giá của mình.
+Kết quả mong đợi: danh sách xem được công khai; người chưa đăng nhập được nhắc đăng nhập; người chưa từng nhận sách bị chặn bằng thông báo rõ ràng; người đã mượn thật chỉ tạo được một đánh giá trên một đầu sách; lần gửi thứ hai trả thông báo `đã đánh giá` thay vì im lặng; điểm trung bình/số lượt thay đổi đúng; người dùng chỉ xóa được đánh giá của mình.
 
 ## C04 - Lưu sách thật và tủ sách cá nhân
 
@@ -46,7 +47,7 @@ Kết quả mong đợi: giao diện chuyển hoặc yêu cầu đăng nhập; A
 
 ## C06 - Tìm kiếm theo nội dung/chủ đề
 
-Thử các truy vấn không nhất thiết nằm nguyên văn trong tên sách, chẳng hạn `K-NN`, `machine learning`, `trí tuệ nhân tạo`, `chuỗi cung ứng` và `an toàn thực phẩm`.
+Thử các truy vấn không nhất thiết nằm nguyên văn trong tên sách, chẳng hạn `K-NN`, `TTNT`, `machine learning`, `trí tuệ nhân tạo`, `chuỗi cung ứng` và `an toàn thực phẩm`.
 
 Kết quả mong đợi: kết quả có thể khớp tên, tác giả, ISBN, nhà xuất bản, mô tả, thể loại hoặc taxonomy chủ đề tuần 10. Ví dụ `K-NN` phải ánh xạ được tới nhóm `CNTT - Dữ liệu - AI` thay vì chỉ tìm chuỗi trong tên sách.
 

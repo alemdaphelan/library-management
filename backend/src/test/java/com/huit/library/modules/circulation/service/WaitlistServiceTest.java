@@ -81,12 +81,22 @@ class WaitlistServiceTest {
 
     @Test
     void directReservationIsHeldOnlyUntilClosingTimeOfPickupDay() {
-        LocalDate pickupDate = LocalDate.of(2026, 10, 24);
+        LocalDate pickupDate = LocalDate.of(2026, 10, 23);
         LocalDateTime now = LocalDateTime.of(2026, 10, 23, 10, 0);
         when(holidays.findById(pickupDate.toString())).thenReturn(Optional.empty());
 
         assertThat(service.calculateDirectReservationDeadline(pickupDate, now))
-                .isEqualTo(LocalDateTime.of(2026, 10, 24, 17, 0));
+                .isEqualTo(LocalDateTime.of(2026, 10, 23, 17, 0));
+    }
+
+    @Test
+    void directReservationRejectsAnotherPickupDay() {
+        LocalDateTime now = LocalDateTime.of(2026, 10, 23, 10, 0);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                service.calculateDirectReservationDeadline(now.toLocalDate().plusDays(1), now))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("chỉ có hiệu lực trong ngày hiện tại");
     }
 
     @Test

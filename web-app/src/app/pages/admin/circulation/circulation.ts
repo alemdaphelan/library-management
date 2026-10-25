@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, Optional, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import {
   BookCopy,
   CirculationOperationResponse,
@@ -23,10 +24,16 @@ interface CounterBook extends BookCopy {
   templateUrl: './circulation.html',
   styleUrls: ['./circulation.css'],
 })
-export class Circulation {
+export class Circulation implements OnInit, OnDestroy {
+  @ViewChild('cameraVideo') cameraVideo?: ElementRef<HTMLVideoElement>;
+
   activeTab: 'borrow' | 'return' = 'borrow';
+  borrowMode: 'approved' | 'manual' = 'approved';
   ticketInput = '';
   barcodeInput = '';
+  manualMssv = '';
+  manualTicketType: 'BORROW' | 'ONSITE' = 'BORROW';
+  manualNote = '';
   returnConditionNote = '';
   selectedTicket: LoanTicketDetail | null = null;
   scannedBooks: CounterBook[] = [];
@@ -36,12 +43,32 @@ export class Circulation {
   errorMessage = '';
   successMessage = '';
   lastOperation: CirculationOperationResponse | null = null;
+  showCamera = false;
+  cameraTarget: 'ticket' | 'barcode' = 'ticket';
+  cameraError = '';
+  private cameraStream?: MediaStream;
+  private cameraTimer?: number;
+  private detectingFrame = false;
 
-  constructor(private circulationService: CirculationService) {}
+  constructor(
+    private circulationService: CirculationService,
+    @Optional() private route?: ActivatedRoute,
+  ) {}
+
+  ngOnInit(): void {
+    const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
+    const referenceId = this.route?.snapshot.queryParamMap.get('referenceId');
+    if (referenceType === 'LOAN_TICKET' && referenceId) {
+      this.borrowMode = 'approved';
+      this.ticketInput = referenceId;
+      this.resolveTicket();
+    }
+  }
 
   get canSubmit(): boolean {
     if (this.isSubmitting || this.scannedBooks.length === 0) return false;
     if (this.activeTab === 'return') return true;
+    if (this.borrowMode === 'manual') return this.manualMssv.trim().length > 0;
     if (!this.selectedTicket || this.selectedTicket.status !== 'RESERVED') return false;
     const expected = new Set(this.selectedTicket.items.map(item => item.barcode));
     return expected.size === this.scannedBooks.length
@@ -51,6 +78,19 @@ export class Circulation {
   switchTab(tab: 'borrow' | 'return'): void {
     this.activeTab = tab;
     this.resetForm();
+  }
+
+  switchBorrowMode(mode: 'approved' | 'manual'): void {
+    this.borrowMode = mode;
+    this.ticketInput = '';
+    this.manualMssv = '';
+    this.manualTicketType = 'BORROW';
+    this.manualNote = '';
+    this.selectedTicket = null;
+    this.scannedBooks = [];
+    this.barcodeInput = '';
+    this.errorMessage = '';
+    this.successMessage = '';
   }
 
   resolveTicket(): void {
@@ -94,15 +134,15 @@ export class Circulation {
       this.errorMessage = 'Mỗi giao dịch chỉ xử lý tối đa 3 tài liệu.';
       return;
     }
-    if (this.activeTab === 'borrow' && !this.selectedTicket) {
+    if (this.activeTab === 'borrow' && this.borrowMode === 'approved' && !this.selectedTicket) {
       this.errorMessage = 'Hãy tải một phiếu đã duyệt trước khi quét sách.';
       return;
     }
 
-    const expectedItem = this.activeTab === 'borrow'
+    const expectedItem = this.activeTab === 'borrow' && this.borrowMode === 'approved'
       ? this.selectedTicket?.items.find(item => item.barcode === barcode)
       : undefined;
-    if (this.activeTab === 'borrow' && !expectedItem) {
+    if (this.activeTab === 'borrow' && this.borrowMode === 'approved' && !expectedItem) {
       this.errorMessage = `Barcode ${barcode} không thuộc phiếu #${this.selectedTicket?.ticketId}.`;
       return;
     }
@@ -144,7 +184,14 @@ export class Circulation {
     this.isSubmitting = true;
     this.errorMessage = '';
     this.successMessage = '';
-    const request = this.activeTab === 'borrow'
+    const request = this.activeTab === 'borrow' && this.borrowMode === 'manual'
+      ? this.circulationService.manualCheckout(
+          this.manualMssv,
+          this.manualTicketType,
+          barcodes,
+          this.manualNote,
+        )
+      : this.activeTab === 'borrow'
       ? this.circulationService.checkout(this.selectedTicket!.ticketId, barcodes)
       : this.circulationService.returnBooks(barcodes, crypto.randomUUID(), this.returnConditionNote);
 
@@ -158,6 +205,8 @@ export class Circulation {
         this.barcodeInput = '';
         this.scannedBooks = [];
         this.returnConditionNote = '';
+        this.manualMssv = '';
+        this.manualNote = '';
       },
       error: error => {
         this.isSubmitting = false;
@@ -169,6 +218,9 @@ export class Circulation {
   resetForm(): void {
     this.ticketInput = '';
     this.barcodeInput = '';
+    this.manualMssv = '';
+    this.manualTicketType = 'BORROW';
+    this.manualNote = '';
     this.returnConditionNote = '';
     this.selectedTicket = null;
     this.scannedBooks = [];
@@ -178,6 +230,52 @@ export class Circulation {
     this.errorMessage = '';
     this.successMessage = '';
     this.lastOperation = null;
+    this.stopCamera();
+  }
+
+  async startCamera(target: 'ticket' | 'barcode'): Promise<void> {
+    const Detector = (window as any).BarcodeDetector;
+    if (!Detector || !navigator.mediaDevices?.getUserMedia) {
+      this.cameraError = 'Trình duyệt này chưa hỗ trợ quét mã bằng camera. Bạn vẫn có thể dùng máy quét USB hoặc nhập mã thủ công.';
+      this.showCamera = true;
+      return;
+    }
+
+    this.stopCamera();
+    this.cameraTarget = target;
+    this.cameraError = '';
+    this.showCamera = true;
+    try {
+      this.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      window.setTimeout(() => {
+        const video = this.cameraVideo?.nativeElement;
+        if (!video || !this.cameraStream) return;
+        video.srcObject = this.cameraStream;
+        void video.play();
+        const formats = target === 'ticket'
+          ? ['qr_code']
+          : ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'];
+        const detector = new Detector({ formats });
+        this.cameraTimer = window.setInterval(() => void this.detectCameraFrame(detector), 450);
+      });
+    } catch {
+      this.cameraError = 'Không thể mở camera. Hãy cấp quyền camera hoặc nhập mã thủ công.';
+      this.releaseCameraStream();
+    }
+  }
+
+  stopCamera(): void {
+    if (this.cameraTimer) {
+      window.clearInterval(this.cameraTimer);
+      this.cameraTimer = undefined;
+    }
+    this.releaseCameraStream();
+    this.showCamera = false;
+    this.detectingFrame = false;
+  }
+
+  ngOnDestroy(): void {
+    this.stopCamera();
   }
 
   statusLabel(status: string): string {
@@ -194,7 +292,10 @@ export class Circulation {
 
   private validateCopyStatus(copy: BookCopy): string | null {
     const status = copy.status?.toUpperCase();
-    if (this.activeTab === 'borrow' && status !== 'RESERVED') {
+    if (this.activeTab === 'borrow' && this.borrowMode === 'manual' && status !== 'AVAILABLE') {
+      return `Bản sao ${copy.barcode} đang ở trạng thái ${copy.status}, không sẵn sàng để lập phiếu mượn trực tiếp.`;
+    }
+    if (this.activeTab === 'borrow' && this.borrowMode === 'approved' && status !== 'RESERVED') {
       return `Bản sao ${copy.barcode} đang ở trạng thái ${copy.status}, không còn được đặt giữ.`;
     }
     if (this.activeTab === 'return' && status !== 'BORROWING' && status !== 'OVERDUE') {
@@ -215,5 +316,61 @@ export class Circulation {
   private extractError(error: any, fallback: string): string {
     const message = error?.error?.detail ?? error?.error?.message ?? error?.error;
     return typeof message === 'string' && message.trim() ? message : fallback;
+  }
+
+  private async detectCameraFrame(detector: any): Promise<void> {
+    const video = this.cameraVideo?.nativeElement;
+    if (!video || video.readyState < 2 || this.detectingFrame) return;
+    this.detectingFrame = true;
+    try {
+      const results = await detector.detect(video);
+      const value = results?.[0]?.rawValue?.trim();
+      if (value) {
+        const target = this.cameraTarget;
+        this.stopCamera();
+        this.handleScannedValue(target, value);
+      }
+    } catch {
+      this.cameraError = 'Camera chưa đọc được mã. Hãy đưa mã vào giữa khung hoặc nhập thủ công.';
+    } finally {
+      this.detectingFrame = false;
+    }
+  }
+
+  private handleScannedValue(target: 'ticket' | 'barcode', value: string): void {
+    if (target === 'barcode') {
+      this.barcodeInput = value;
+      this.scanBookBarcode();
+      return;
+    }
+    this.isResolvingTicket = true;
+    this.errorMessage = '';
+    this.circulationService.resolveQrPayload(value).subscribe({
+      next: resolved => {
+        this.isResolvingTicket = false;
+        if (resolved.type === 'LOAN_TICKET' && resolved.ticketId) {
+          this.borrowMode = 'approved';
+          this.ticketInput = String(resolved.ticketId);
+          this.resolveTicket();
+          return;
+        }
+        if (resolved.type === 'USER_CARD' && resolved.mssv) {
+          this.borrowMode = 'manual';
+          this.manualMssv = resolved.mssv;
+          this.successMessage = `Đã nhận diện thẻ của ${resolved.readerName || resolved.mssv}. Hãy quét các bản sao cần mượn.`;
+          return;
+        }
+        this.errorMessage = 'QR hợp lệ nhưng không chứa phiếu mượn hoặc MSSV có thể sử dụng.';
+      },
+      error: error => {
+        this.isResolvingTicket = false;
+        this.errorMessage = this.extractError(error, 'QR không hợp lệ, đã hết hạn hoặc không thuộc hệ thống HUIT.');
+      },
+    });
+  }
+
+  private releaseCameraStream(): void {
+    this.cameraStream?.getTracks().forEach(track => track.stop());
+    this.cameraStream = undefined;
   }
 }

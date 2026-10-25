@@ -12,6 +12,7 @@ import com.huit.library.modules.inventory.entity.SupplierEntity;
 import com.huit.library.modules.inventory.repository.GoodsReceiptRepository;
 import com.huit.library.modules.inventory.repository.ReceiptDetailRepository;
 import com.huit.library.modules.inventory.repository.SupplierRepository;
+import com.huit.library.modules.notification.service.StaffNotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,15 +30,18 @@ public class InventoryService {
     private final ReceiptDetailRepository receiptDetailRepository;
     private final BookRepository bookRepository;
     private final BookCopyRepository bookCopyRepository;
+    private final StaffNotificationService staffNotificationService;
 
     public InventoryService(GoodsReceiptRepository goodsReceiptRepository, SupplierRepository supplierRepository,
                             ReceiptDetailRepository receiptDetailRepository, BookRepository bookRepository,
-                            BookCopyRepository bookCopyRepository) {
+                            BookCopyRepository bookCopyRepository,
+                            StaffNotificationService staffNotificationService) {
         this.goodsReceiptRepository = goodsReceiptRepository;
         this.supplierRepository = supplierRepository;
         this.receiptDetailRepository = receiptDetailRepository;
         this.bookRepository = bookRepository;
         this.bookCopyRepository = bookCopyRepository;
+        this.staffNotificationService = staffNotificationService;
     }
 
     public List<SupplierEntity> getAllSuppliers() {
@@ -82,7 +86,14 @@ public class InventoryService {
             }
             quantity += line.getQuantity();
         }
-        return toResponse(receipt, supplier, quantity);
+        GoodsReceiptResponseDTO response = toResponse(receipt, supplier, quantity);
+        staffNotificationService.notifyAll(
+                "IMPORT_COMPLETED",
+                "Phiếu " + receipt.getReceiptCode() + " đã nhập " + quantity
+                        + " bản sao từ " + supplier.getName() + ".",
+                "GOODS_RECEIPT", String.valueOf(receipt.getReceiptId()),
+                "IMPORT_COMPLETED:" + receipt.getReceiptId(), java.time.LocalDateTime.now());
+        return response;
     }
 
     @Transactional(readOnly = true)

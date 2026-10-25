@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record LibraryCardResponseDTO(
+        boolean issued,
         String cardNumber,
         String ownerName,
         String department,

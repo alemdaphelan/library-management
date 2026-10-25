@@ -26,6 +26,10 @@ class DigitalAssetAuthorizationContractTest {
     @Test
     void downloadRequiresAuthentication() throws Exception {
         Method download = DigitalAssetController.class.getMethod("download", Long.class, Authentication.class);
+        Method preview = DigitalAssetController.class.getMethod("preview", Long.class, Authentication.class);
+        Method listByBook = DigitalAssetController.class.getMethod("listByBook", Long.class, Authentication.class);
         assertThat(download.getAnnotation(PreAuthorize.class).value()).isEqualTo("isAuthenticated()");
+        assertThat(preview.getAnnotation(PreAuthorize.class).value()).isEqualTo("isAuthenticated()");
+        assertThat(listByBook.getAnnotation(PreAuthorize.class).value()).isEqualTo("isAuthenticated()");
     }
 }

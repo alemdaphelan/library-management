@@ -4,6 +4,7 @@ import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.BookRepository;
+import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.interactive.dto.BookReviewDTO;
 import com.huit.library.modules.interactive.dto.BookReviewRequestDTO;
 import com.huit.library.modules.interactive.dto.BookReviewSummaryDTO;
@@ -31,18 +32,21 @@ public class BookInteractionService {
     private final ReviewRepository reviewRepository;
     private final WishlistRepository wishlistRepository;
     private final UserRepository userRepository;
+    private final LoanDetailRepository loanDetailRepository;
 
     public BookInteractionService(
             BookRepository bookRepository,
             BookCopyRepository bookCopyRepository,
             ReviewRepository reviewRepository,
             WishlistRepository wishlistRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            LoanDetailRepository loanDetailRepository) {
         this.bookRepository = bookRepository;
         this.bookCopyRepository = bookCopyRepository;
         this.reviewRepository = reviewRepository;
         this.wishlistRepository = wishlistRepository;
         this.userRepository = userRepository;
+        this.loanDetailRepository = loanDetailRepository;
     }
 
     @Transactional(readOnly = true)
@@ -58,11 +62,17 @@ public class BookInteractionService {
         List<BookReviewDTO> reviews = entities.stream()
                 .map(review -> toReview(review, reviewerNames.get(review.getUserId()), currentUserId))
                 .toList();
+        BookReviewDTO myReview = reviews.stream().filter(BookReviewDTO::isMine).findFirst().orElse(null);
+        boolean hasBorrowed = currentUserId != null
+                && loanDetailRepository.countBorrowedItemsByUserIdAndBookId(currentUserId, bookId) > 0;
+        boolean reviewEligible = currentUserId != null && myReview == null && hasBorrowed;
         return BookReviewSummaryDTO.builder()
                 .bookId(bookId)
                 .averageRating(round(reviewRepository.averageRatingByBookId(bookId)))
                 .reviewCount(entities.size())
-                .myReview(reviews.stream().filter(BookReviewDTO::isMine).findFirst().orElse(null))
+                .myReview(myReview)
+                .reviewEligible(reviewEligible)
+                .reviewEligibilityMessage(reviewEligibilityMessage(currentUserId, myReview, hasBorrowed))
                 .reviews(reviews)
                 .build();
     }
@@ -70,8 +80,17 @@ public class BookInteractionService {
     @Transactional
     public BookReviewSummaryDTO saveReview(Long bookId, UUID userId, BookReviewRequestDTO request) {
         requireBook(bookId);
-        ReviewEntity review = reviewRepository.findByBookIdAndUserId(bookId, userId)
-                .orElseGet(ReviewEntity::new);
+        if (reviewRepository.findByBookIdAndUserId(bookId, userId).isPresent()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Bạn đã đánh giá tài liệu này. Mỗi bạn đọc chỉ được gửi một đánh giá cho mỗi đầu sách");
+        }
+        if (loanDetailRepository.countBorrowedItemsByUserIdAndBookId(userId, bookId) == 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Bạn chỉ có thể đánh giá sau khi tài liệu đã được thủ thư giao mượn");
+        }
+        ReviewEntity review = new ReviewEntity();
         review.setBookId(bookId);
         review.setUserId(userId);
         review.setRating(request.getRating());
@@ -177,5 +196,18 @@ public class BookInteractionService {
 
     private double round(Double value) {
         return value == null ? 0.0 : Math.round(value * 10.0) / 10.0;
+    }
+
+    private String reviewEligibilityMessage(UUID currentUserId, BookReviewDTO myReview, boolean hasBorrowed) {
+        if (currentUserId == null) {
+            return "Đăng nhập để đánh giá tài liệu";
+        }
+        if (myReview != null) {
+            return "Bạn đã đánh giá tài liệu này. Mỗi bạn đọc chỉ được gửi một đánh giá";
+        }
+        if (!hasBorrowed) {
+            return "Bạn chỉ có thể đánh giá sau khi tài liệu đã được thủ thư giao mượn";
+        }
+        return null;
     }
 }

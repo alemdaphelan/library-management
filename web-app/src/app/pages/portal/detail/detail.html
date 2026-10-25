@@ -208,7 +208,7 @@
             </div>
           </div>
 
-          <div class="review-form">
+          <div class="review-form" *ngIf="areReviewsLoaded && reviewEligible && !hasMyReview">
             <div class="rating-picker" aria-label="Chọn số sao">
               <button type="button" *ngFor="let star of [1,2,3,4,5]"
                       [class.active]="star <= reviewRating" (click)="reviewRating = star">★</button>
@@ -217,12 +217,16 @@
                       placeholder="Chia sẻ nhận xét về nội dung tài liệu (không bắt buộc)"></textarea>
             <div class="review-form-actions">
               <span class="review-error" *ngIf="reviewErrorMessage">{{ reviewErrorMessage }}</span>
-              <button type="button" class="review-delete" *ngIf="hasMyReview"
-                      (click)="deleteMyReview()" [disabled]="isReviewSubmitting">Xóa đánh giá</button>
               <button type="button" class="review-submit" (click)="submitReview()" [disabled]="isReviewSubmitting">
                 {{ isReviewSubmitting ? 'Đang lưu...' : 'Gửi đánh giá' }}
               </button>
             </div>
+          </div>
+
+          <div class="review-policy" *ngIf="areReviewsLoaded && !reviewEligible">
+            <span>{{ reviewEligibilityMessage }}</span>
+            <button type="button" class="review-delete" *ngIf="hasMyReview"
+                    (click)="deleteMyReview()" [disabled]="isReviewSubmitting">Xóa đánh giá của tôi</button>
           </div>
 
           <div class="review-empty" *ngIf="reviews.length === 0">Chưa có đánh giá nào cho tài liệu này.</div>
@@ -251,7 +255,7 @@
           <button class="btn btn-secondary" (click)="openBorrowModal()">
             Mượn ngay / Vào hàng đợi
           </button>
-          <button class="btn btn-secondary" (click)="previewEbook()">
+          <button class="btn btn-secondary" (click)="previewEbook()" [disabled]="digitalAssetsLoading || isPreviewingEbook">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
@@ -259,7 +263,7 @@
               <line x1="16" y1="17" x2="8" y2="17"></line>
               <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
-            Đọc thử E-book (PDF)
+            {{ digitalAssetsLoading ? 'Đang kiểm tra E-book...' : (isPreviewingEbook ? 'Đang mở E-book...' : 'Đọc E-book (PDF)') }}
           </button>
           <button class="btn btn-secondary" (click)="citeBook()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -370,8 +374,8 @@
 
         <div class="form-section">
           <label class="form-label" for="pickupDate">Ngày hẹn đến nhận sách</label>
-          <input type="date" id="pickupDate" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" class="form-input">
-          <span class="form-help">Tài liệu có sẵn được giữ đến giờ đóng cửa của ngày hẹn; tài liệu từ hàng đợi được giữ 48 giờ từ lúc thông báo.</span>
+          <input type="date" id="pickupDate" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" class="form-input" readonly>
+          <span class="form-help">Tài liệu có sẵn chỉ được giữ đến giờ đóng cửa hôm nay; tài liệu từ hàng đợi được giữ 48 giờ từ lúc thông báo.</span>
         </div>
 
         <div class="form-section">

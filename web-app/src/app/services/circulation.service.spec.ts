@@ -117,4 +117,28 @@ describe('CirculationService', () => {
     expect(request.request.method).toBe('GET');
     request.flush({ payload: 'HUITQR1.claims.signature', expiresAt: '2026-10-18T08:10:00Z' });
   });
+
+  it('creates a manual checkout for a walk-in reader', () => {
+    service.manualCheckout(' 2001234567 ', 'ONSITE', ['BC-001'], 'Nguyên vẹn', 'manual-1').subscribe();
+
+    const request = httpTesting.expectOne(`${apiUrl}/manual-checkout`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      idempotencyKey: 'manual-1',
+      mssv: '2001234567',
+      ticketType: 'ONSITE',
+      barcodes: ['BC-001'],
+      note: 'Nguyên vẹn',
+    });
+    request.flush({ operationId: 'operation-2', status: 'BORROWING' });
+  });
+
+  it('resolves a signed QR at the librarian counter', () => {
+    service.resolveQrPayload('HUITQR1.claims.signature').subscribe();
+
+    const request = httpTesting.expectOne(`${environment.apiUrl}/api/v1/qr/resolve`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ payload: 'HUITQR1.claims.signature' });
+    request.flush({ type: 'LOAN_TICKET', ticketId: 19, allowedActions: ['CHECKOUT'], items: [] });
+  });
 });

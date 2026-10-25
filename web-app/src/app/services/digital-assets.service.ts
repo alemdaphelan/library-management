@@ -15,6 +15,10 @@ export class DigitalAssetsService {
     return this.http.get<DigitalAsset[]>(this.apiUrl);
   }
 
+  getAssetsByBook(bookId: number): Observable<DigitalAsset[]> {
+    return this.http.get<DigitalAsset[]>(`${this.apiUrl}/book/${bookId}`);
+  }
+
   deleteAsset(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
@@ -36,6 +40,13 @@ export class DigitalAssetsService {
 
   downloadAsset(id: number): Observable<HttpResponse<Blob>> {
     return this.http.get(`${this.apiUrl}/${id}/download`, {
+      observe: 'response',
+      responseType: 'blob'
+    });
+  }
+
+  previewAsset(id: number): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.apiUrl}/${id}/preview`, {
       observe: 'response',
       responseType: 'blob'
     });

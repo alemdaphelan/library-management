@@ -77,4 +77,17 @@ class CirculationDtoValidationTest {
                 .extracting(violation -> violation.getPropertyPath().toString())
                 .containsExactly("bookIds");
     }
+
+    @Test
+    void manualCheckoutRequiresMssvAndValidTicketType() {
+        ManualCheckoutRequestDTO request = new ManualCheckoutRequestDTO();
+        request.setIdempotencyKey("manual-1");
+        request.setMssv(" ");
+        request.setTicketType("NORMAL");
+        request.setBarcodes(List.of("BC-1"));
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .containsExactlyInAnyOrder("mssv", "ticketType");
+    }
 }

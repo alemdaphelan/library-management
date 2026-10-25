@@ -16,6 +16,7 @@ import { Digital } from './pages/portal/digital/digital';
 import { Guide } from './pages/portal/guide/guide';
 import { BorrowCart } from './pages/portal/borrow-cart/borrow-cart';
 import { SavedBooks } from './pages/portal/saved-books/saved-books';
+import { MyPenalties } from './pages/portal/my-penalties/my-penalties';
 
 // Admin Pages
 import { Dashboard } from './pages/admin/dashboard/dashboard';
@@ -53,6 +54,7 @@ export const routes: Routes = [
       { path: 'profile', component: Profile, canActivate: [AuthGuard], title: 'Quản lý tài khoản' },
       { path: 'borrow-cart', component: BorrowCart, canActivate: [AuthGuard], title: 'Giỏ mượn sách' },
       { path: 'saved-books', component: SavedBooks, canActivate: [AuthGuard], title: 'Tủ sách cá nhân' },
+      { path: 'my-penalties', component: MyPenalties, canActivate: [AuthGuard], title: 'Công nợ và khoản phạt' },
     ]
   },
   {

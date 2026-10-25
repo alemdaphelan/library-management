@@ -22,6 +22,7 @@ import com.huit.library.modules.circulation.model.LoanTicketType;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
+import com.huit.library.modules.notification.service.StaffNotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,7 @@ public class LoanService {
     private final UserRepository userRepository;
     private final CirculationStateService circulationStateService;
     private final WaitlistService waitlistService;
+    private final StaffNotificationService staffNotificationService;
 
     public LoanService(
             LoanTicketRepository loanTicketRepository,
@@ -56,7 +58,8 @@ public class LoanService {
             BookRepository bookRepository,
             UserRepository userRepository,
             CirculationStateService circulationStateService,
-            WaitlistService waitlistService) {
+            WaitlistService waitlistService,
+            StaffNotificationService staffNotificationService) {
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.waitlistRepository = waitlistRepository;
@@ -65,6 +68,7 @@ public class LoanService {
         this.userRepository = userRepository;
         this.circulationStateService = circulationStateService;
         this.waitlistService = waitlistService;
+        this.staffNotificationService = staffNotificationService;
     }
 
     @Transactional
@@ -138,7 +142,7 @@ public class LoanService {
         BookCopyEntity copy = availableCopy.get();
 
         // Calculate pickup and due dates
-        LocalDate pickupDate = request.getPickupDate() != null ? request.getPickupDate() : LocalDate.now().plusDays(1);
+        LocalDate pickupDate = request.getPickupDate() != null ? request.getPickupDate() : LocalDate.now();
         LocalDateTime pickupDateTime = notifiedEntry != null
                 ? notifiedEntry.getExpiresAt()
                 : waitlistService.calculateDirectReservationDeadline(pickupDate, LocalDateTime.now());
@@ -178,6 +182,13 @@ public class LoanService {
             notifiedEntry.setStatus("FULFILLED");
             waitlistRepository.save(notifiedEntry);
         }
+
+        staffNotificationService.notifyAll(
+                "LOAN_REQUEST_PENDING",
+                "Bạn đọc " + displayReader(user) + " vừa gửi yêu cầu mượn ‘" + book.getTitle()
+                        + "’ (phiếu #" + ticket.getTicketId() + ").",
+                "LOAN_TICKET", ticket.getTicketId().toString(),
+                "LOAN_REQUEST_PENDING:" + ticket.getTicketId(), LocalDateTime.now());
 
         return BorrowResponseDTO.builder()
                 .success(true)
@@ -244,7 +255,7 @@ public class LoanService {
 
         LocalDate pickupDate = request.getPickupDate() != null
                 ? request.getPickupDate()
-                : LocalDate.now().plusDays(1);
+                : LocalDate.now();
         LocalDateTime pickupDeadline = waitlistService.calculateDirectReservationDeadline(
                 pickupDate, LocalDateTime.now());
         LoanTicketType ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
@@ -275,6 +286,13 @@ public class LoanService {
             copy.setLockedUntil(pickupDeadline);
             bookCopyRepository.save(copy);
         }
+
+        staffNotificationService.notifyAll(
+                "LOAN_REQUEST_PENDING",
+                "Bạn đọc " + displayReader(user) + " vừa gửi phiếu #" + ticket.getTicketId()
+                        + " gồm " + books.size() + " tài liệu.",
+                "LOAN_TICKET", ticket.getTicketId().toString(),
+                "LOAN_REQUEST_PENDING:" + ticket.getTicketId(), LocalDateTime.now());
 
         return BatchBorrowResponseDTO.builder()
                 .success(true)
@@ -444,10 +462,12 @@ public class LoanService {
 
     private LoanItemDTO toLoanItem(LoanTicketEntity ticket, LoanDetailEntity detail) {
         BookEntity book = null;
+        LocalDateTime pickupDeadline = null;
         if (detail.getBarcode() != null) {
             var copyOpt = bookCopyRepository.findById(detail.getBarcode());
             if (copyOpt.isPresent() && copyOpt.get().getBookId() != null) {
                 book = bookRepository.findById(copyOpt.get().getBookId()).orElse(null);
+                pickupDeadline = copyOpt.get().getLockedUntil();
             }
         }
 
@@ -466,7 +486,9 @@ public class LoanService {
                 .barcode(detail.getBarcode())
                 .ticketType(LoanTicketType.fromDatabaseValue(ticket.getTicketType()).name())
                 .status(LoanTicketStatus.fromDatabaseValue(ticket.getStatus()).name())
+                .decisionNote(ticket.getDecisionNote())
                 .createdAt(ticket.getCreatedAt())
+                .pickupDeadline(pickupDeadline)
                 .dueDate(detail.getDueDate())
                 .returnDate(detail.getReturnDate())
                 .daysRemaining(daysRemaining)
@@ -513,5 +535,15 @@ public class LoanService {
                 .overdueItemCount(overdueItemCount)
                 .totalLateFine(totalLateFine)
                 .build();
+    }
+
+    private String displayReader(UserEntity user) {
+        if (user.getMssv() != null && !user.getMssv().isBlank()) {
+            return user.getMssv();
+        }
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
+        }
+        return user.getUserId().toString();
     }
 }

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Chatbot } from '../../components/chatbot/chatbot';
 import { AuthService, LibraryCard } from '../../services/auth.service';
@@ -26,8 +26,7 @@ export class PortalLayout {
   constructor(
     public authService: AuthService,
     public borrowCartService: BorrowCartService,
-    private notificationService: NotificationService,
-    private router: Router
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit() {
@@ -42,6 +41,12 @@ export class PortalLayout {
       });
       this.loadNotifications();
     }
+  }
+
+  get canAccessAdmin(): boolean {
+    if (!this.authService.isLoggedIn()) return false;
+    const role = this.authService.getRole();
+    return role === 'ADMIN' || role === 'LIBRARIAN';
   }
 
   toggleUserMenu() {
@@ -62,6 +67,7 @@ export class PortalLayout {
     this.closeOverlays();
     this.isCardModalOpen = true;
     this.cardLoading = true;
+    this.libraryCard = null;
     this.modalError = '';
     this.authService.fetchLibraryCard().subscribe({
       next: card => {
@@ -134,6 +140,7 @@ export class PortalLayout {
   }
 
   cardStatusLabel(status?: string, lockedUntil?: string): string {
+    if (!status) return 'Chưa được cấp thẻ';
     if (this.isCirculationLocked(lockedUntil)) return 'Tạm khóa quyền mượn';
     if (status === 'ACTIVE') return 'Đang hoạt động';
     if (status === 'LOCKED') return 'Đang bị khóa';
@@ -144,7 +151,6 @@ export class PortalLayout {
   logout() {
     this.authService.logout();
     this.isUserMenuOpen = false;
-    this.router.navigate(['/login']);
   }
 }
 

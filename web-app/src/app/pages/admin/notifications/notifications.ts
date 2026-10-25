@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { LibraryNotification, NotificationService } from '../../../services/notification.service';
 
@@ -21,7 +22,7 @@ export class Notifications implements OnInit {
   errorMessage = '';
   successMessage = '';
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private notificationService: NotificationService, private router: Router) {}
 
   ngOnInit(): void {
     this.loadNotifications();
@@ -80,6 +81,29 @@ export class Notifications implements OnInit {
     });
   }
 
+  openNotification(notification: LibraryNotification): void {
+    const target = this.notificationTarget(notification);
+    const navigate = () => this.router.navigate([target.path], {
+      queryParams: target.queryParams,
+    });
+    if (notification.isRead) {
+      void navigate();
+      return;
+    }
+    this.markingId = notification.notifId;
+    this.notificationService.markAsRead(notification.notifId).subscribe({
+      next: updated => {
+        this.notifications = this.notifications.map(item => item.notifId === updated.notifId ? updated : item);
+        this.markingId = null;
+        void navigate();
+      },
+      error: error => {
+        this.markingId = null;
+        this.errorMessage = this.extractError(error, 'Không thể mở thông báo.');
+      },
+    });
+  }
+
   markAllAsRead(): void {
     const unread = this.notifications.filter(notification => !notification.isRead);
     if (!unread.length || this.markingAll) return;
@@ -105,6 +129,18 @@ export class Notifications implements OnInit {
       LOAN_DUE_SOON: 'Sắp đến hạn',
       LOAN_OVERDUE: 'Quá hạn',
       RESERVATION_EXPIRED: 'Hết hạn giữ chỗ',
+      LOAN_REQUEST_PENDING: 'Yêu cầu mượn mới',
+      BOOK_PROPOSAL_PENDING: 'Đề xuất sách mới',
+      IMPORT_COMPLETED: 'Đã nhập kho',
+      PROPOSAL_APPROVED: 'Đề xuất được duyệt',
+      PROPOSAL_REJECTED: 'Đề xuất bị từ chối',
+      PENALTY_CASE_CREATED: 'Hồ sơ phạt mới',
+      PENALTY_CASE_DUE: 'Sắp hết hạn đền bù',
+      DEBT_PAYMENT: 'Đã thu tiền',
+      CIRCULATION_LOCKED: 'Đã khóa quyền mượn',
+      CIRCULATION_UNLOCKED: 'Đã mở quyền mượn',
+      WAITLIST_AVAILABLE: 'Sách trong hàng đợi đã sẵn sàng',
+      WAITLIST_EXPIRED: 'Lượt hàng đợi đã hết hạn',
     } as Record<string, string>)[type] || 'Thông báo hệ thống';
   }
 
@@ -112,6 +148,41 @@ export class Notifications implements OnInit {
     if (type === 'LOAN_OVERDUE') return 'overdue';
     if (type === 'LOAN_DUE_SOON') return 'reminder';
     return 'info';
+  }
+
+  actionLabel(notification: LibraryNotification): string {
+    const referenceType = (notification.referenceType || '').toUpperCase();
+    return ({
+      BOOK_PROPOSAL: 'Mở đề xuất',
+      LOAN_TICKET: 'Mở phiếu mượn',
+      LOAN_DETAIL: 'Mở quản lý mượn',
+      WAITLIST: 'Mở quản lý mượn',
+      GOODS_RECEIPT: 'Mở phiếu nhập',
+      PENALTY_CASE: 'Mở hồ sơ phạt',
+      TRANSACTION: 'Mở thu phạt',
+      BOOK: 'Mở danh mục sách',
+      USER: 'Mở hồ sơ bạn đọc',
+    } as Record<string, string>)[referenceType] || 'Xem chi tiết';
+  }
+
+  private notificationTarget(notification: LibraryNotification): { path: string; queryParams?: Record<string, string> } {
+    const type = (notification.referenceType || '').toUpperCase();
+    const referenceId = notification.referenceId;
+    const target = ({
+      BOOK_PROPOSAL: '/admin/suggestions',
+      LOAN_TICKET: '/admin/circulation',
+      LOAN_DETAIL: '/admin/borrows',
+      WAITLIST: '/admin/circulation',
+      GOODS_RECEIPT: '/admin/imports',
+      PENALTY_CASE: '/admin/penalties',
+      TRANSACTION: '/admin/penalties',
+      BOOK: '/admin/books',
+      USER: '/admin/accounts',
+    } as Record<string, string>)[type] || '/admin';
+    return {
+      path: target,
+      queryParams: referenceId ? { referenceType: type, referenceId } : undefined,
+    };
   }
 
   private extractError(error: any, fallback: string): string {

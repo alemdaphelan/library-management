@@ -31,6 +31,12 @@ public class DigitalAssetController {
         return ResponseEntity.ok(digitalAssetService.list(isStaff(authentication)));
     }
 
+    @GetMapping("/book/{bookId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> listByBook(@PathVariable Long bookId, Authentication authentication) {
+        return ResponseEntity.ok(digitalAssetService.listByBook(bookId, isStaff(authentication)));
+    }
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<?> upload(
@@ -55,6 +61,18 @@ public class DigitalAssetController {
     public ResponseEntity<?> download(@PathVariable Long id, Authentication authentication) {
         DigitalAssetService.DigitalDownload download = digitalAssetService.download(
                 id, currentUserId(authentication), isStaff(authentication));
+        return resourceResponse(download, false);
+    }
+
+    @GetMapping("/{id}/preview")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> preview(@PathVariable Long id, Authentication authentication) {
+        DigitalAssetService.DigitalDownload download = digitalAssetService.download(
+                id, currentUserId(authentication), isStaff(authentication));
+        return resourceResponse(download, true);
+    }
+
+    private ResponseEntity<?> resourceResponse(DigitalAssetService.DigitalDownload download, boolean inline) {
         MediaType contentType;
         try {
             contentType = MediaType.parseMediaType(download.contentType());
@@ -63,7 +81,7 @@ public class DigitalAssetController {
         }
         ResponseEntity.BodyBuilder response = ResponseEntity.ok()
                 .contentType(contentType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                .header(HttpHeaders.CONTENT_DISPOSITION, (inline ? ContentDisposition.inline() : ContentDisposition.attachment())
                         .filename(download.filename(), StandardCharsets.UTF_8)
                         .build().toString());
         if (download.fileSize() != null) {

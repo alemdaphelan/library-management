@@ -41,4 +41,8 @@
 .card-details dd.card-status.active { color: #047857; }
 .card-details dd.debt { color: #b91c1c; }
 .card-lock-note { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: #fef2f2; color: #b91c1c; font-size: .85rem; }
+.library-card-empty { padding: 42px 30px 48px; text-align: center; color: #475569; }
+.library-card-empty .empty-card-icon { display: inline-grid; place-items: center; width: 72px; height: 72px; margin-bottom: 14px; border-radius: 50%; background: #e0f2fe; color: #0369a1; font-size: 32px; }
+.library-card-empty h3 { margin: 0 0 8px; color: #0f172a; font-size: 1.15rem; }
+.library-card-empty p { max-width: 430px; margin: 0 auto; line-height: 1.55; }
 @media (max-width: 600px) { .modal-backdrop { padding: 8px; } .portal-modal { max-height: calc(100vh - 16px); border-radius: 14px; } .modal-header, .notification-row { padding-left: 16px; padding-right: 16px; } .card-details { grid-template-columns: 1fr; } }

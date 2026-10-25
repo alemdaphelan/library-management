@@ -40,13 +40,13 @@ Kết quả mong đợi: Backend từ chối toàn bộ yêu cầu; giao diện 
 
 Kết quả mong đợi: không tạo phiếu và không giữ cuốn còn lại; thông báo liệt kê đầu sách hết bản và hướng dẫn bỏ khỏi giỏ để đăng ký hàng đợi riêng.
 
-## B05 - Giữ sách đến giờ đóng cửa của ngày nhận
+## B05 - Phiếu trực tiếp chỉ giữ sách trong ngày tạo
 
-1. Tạo phiếu trực tiếp cho một ngày thư viện mở cửa.
+1. Tạo phiếu trực tiếp trong giờ thư viện mở cửa.
 2. Kiểm tra `locked_until`/hạn nhận hiển thị trên kết quả.
-3. Thử chọn ngày đã qua, ngày nghỉ hoặc thao tác sau giờ đóng cửa của chính ngày nhận.
+3. Thử gửi API với ngày nhận là ngày mai, ngày đã qua hoặc thao tác sau giờ đóng cửa hôm nay.
 
-Kết quả mong đợi: hạn nhận là giờ đóng cửa của ngày được chọn; ngày không hợp lệ bị từ chối. Quy tắc 48 giờ chỉ áp dụng cho lượt được gọi từ hàng đợi, không áp dụng cho giỏ mượn trực tiếp.
+Kết quả mong đợi: hạn nhận là giờ đóng cửa của chính ngày tạo phiếu; ngày khác hôm nay bị từ chối. Quy tắc 48 giờ chỉ áp dụng cho lượt được gọi từ hàng đợi, không áp dụng cho giỏ mượn trực tiếp.
 
 ## B06 - Checkout cả phiếu nhiều tài liệu
 

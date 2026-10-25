@@ -36,13 +36,9 @@ export class BorrowCart implements OnInit {
   ngOnInit(): void {
     this.refreshItems();
     const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const maxDay = new Date(today);
-    maxDay.setDate(today.getDate() + 3);
     this.minPickupDate = this.formatLocalDate(today);
-    this.pickupDate = this.formatLocalDate(tomorrow);
-    this.maxPickupDate = this.formatLocalDate(maxDay);
+    this.pickupDate = this.formatLocalDate(today);
+    this.maxPickupDate = this.pickupDate;
   }
 
   remove(bookId: number): void {

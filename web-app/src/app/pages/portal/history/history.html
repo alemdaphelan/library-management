@@ -74,6 +74,7 @@
         <h3>{{ outstandingDebt | number:'1.0-0' }} đ còn phải thanh toán</h3>
         <p>Bạn vẫn có thể xem công nợ và hồ sơ đền bù khi quyền mượn đang bị khóa.</p>
       </div>
+      <a class="btn btn-outline" routerLink="/my-penalties">Xem chi tiết công nợ</a>
       <div class="debt-lines">
         <div *ngFor="let entry of debtEntries" [hidden]="entry.amount <= 0">
           <strong>{{ entry.type }}</strong> · {{ entry.reason }}:
@@ -122,6 +123,16 @@
         </svg>
         Lịch sử hoàn trả
         <span class="tab-count">{{ pastList.length }}</span>
+      </button>
+
+      <button class="history-tab" [class.active]="selectedTab === 'CANCELLED'" (click)="setTab('CANCELLED')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        Phiếu đã hủy
+        <span class="tab-count">{{ cancelledList.length }}</span>
       </button>
     </div>
 
@@ -276,9 +287,9 @@
                 <span class="date-lbl">Ngày tạo phiếu:</span>
                 <strong>{{ item.createdAt | date:'dd/MM/yyyy' }}</strong>
               </div>
-              <div class="date-col" *ngIf="item.dueDate">
+              <div class="date-col" *ngIf="item.pickupDeadline">
                 <span class="date-lbl">Hạn đến nhận sách:</span>
-                <strong class="text-warning">{{ item.dueDate | date:'dd/MM/yyyy HH:mm' }}</strong>
+                <strong class="text-warning">{{ item.pickupDeadline | date:'dd/MM/yyyy HH:mm' }}</strong>
               </div>
             </div>
 
@@ -322,9 +333,9 @@
 
           <div class="item-details">
             <div class="item-header-meta">
-              <span class="status-pill" [ngClass]="item.status === 'BORROWING' ? 'borrowing' : (item.status === 'PENDING' ? 'pending' : 'returned')">
+              <span class="status-pill" [ngClass]="statusClass(item.status)">
                 <span class="status-dot"></span>
-                {{ item.status === 'BORROWING' ? 'Đang mượn' : (item.status === 'PENDING' ? 'Chờ nhận sách' : (item.status === 'RETURNED' ? 'Đã hoàn trả' : 'Đã hủy')) }}
+                {{ statusLabel(item.status) }}
               </span>
               <span class="copy-barcode" *ngIf="item.barcode">Mã vạch: <strong>{{ item.barcode }}</strong></span>
             </div>
@@ -337,9 +348,9 @@
                 <span class="date-lbl">Ngày tạo:</span>
                 <strong>{{ item.createdAt | date:'dd/MM/yyyy' }}</strong>
               </div>
-              <div class="date-col" *ngIf="item.dueDate">
-                <span class="date-lbl">{{ item.status === 'PENDING' ? 'Hạn nhận:' : 'Hạn trả:' }}</span>
-                <strong>{{ item.dueDate | date:'dd/MM/yyyy' }}</strong>
+              <div class="date-col" *ngIf="(item.status === 'PENDING' || item.status === 'RESERVED') ? item.pickupDeadline : item.dueDate">
+                <span class="date-lbl">{{ item.status === 'PENDING' || item.status === 'RESERVED' ? 'Hạn nhận:' : 'Hạn trả:' }}</span>
+                <strong>{{ (item.status === 'PENDING' || item.status === 'RESERVED' ? item.pickupDeadline : item.dueDate) | date:'dd/MM/yyyy HH:mm' }}</strong>
               </div>
             </div>
 
@@ -352,7 +363,7 @@
                 Gia hạn (+10 ngày, tối đa 1 lần)
               </button>
 
-              <button class="btn-qr" (click)="openQrModal(item)" *ngIf="item.status === 'BORROWING' || item.status === 'PENDING'">
+              <button class="btn-qr" (click)="openQrModal(item)" *ngIf="item.status === 'BORROWING' || item.status === 'PENDING' || item.status === 'RESERVED'">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="3" width="7" height="7"></rect>
                   <rect x="14" y="3" width="7" height="7"></rect>
@@ -362,7 +373,7 @@
                 Mã QR
               </button>
 
-              <button class="btn-cancel" *ngIf="item.status === 'PENDING'" (click)="cancelReservation(item)" [disabled]="cancellingTicketId === item.ticketId">
+              <button class="btn-cancel" *ngIf="item.status === 'PENDING' || item.status === 'RESERVED'" (click)="cancelReservation(item)" [disabled]="cancellingTicketId === item.ticketId">
                 Hủy đặt trước
               </button>
             </div>
@@ -380,7 +391,7 @@
 
       <div class="timeline" *ngIf="pastList.length > 0">
         <div class="timeline-item" *ngFor="let past of pastList">
-          <div class="tl-dot" [ngClass]="past.status === 'RETURNED' ? 'returned' : 'cancelled'"></div>
+          <div class="tl-dot returned"></div>
           <div class="tl-content">
             <div class="tl-date">
               {{ past.returnDate ? ('Hoàn trả ngày: ' + (past.returnDate | date:'dd/MM/yyyy')) : ('Ngày tạo: ' + (past.createdAt | date:'dd/MM/yyyy')) }}
@@ -391,9 +402,36 @@
                 <span class="tl-ticket-no">Phiếu #{{ past.ticketId }}</span>
                 <h4 class="tl-title">{{ past.bookTitle }}</h4>
                 <div class="tl-meta" *ngIf="past.barcode">Mã vạch: {{ past.barcode }}</div>
-                <span class="badge" [ngClass]="past.status === 'RETURNED' ? 'badge-ok' : 'badge-cancel'">
-                  {{ past.status === 'RETURNED' ? 'Đã hoàn trả' : 'Đã hủy phiếu' }}
-                </span>
+                <span class="badge badge-ok">Đã hoàn trả</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: PHIẾU ĐÃ HỦY / TỪ CHỐI -->
+    <div class="tab-view-container" *ngIf="selectedTab === 'CANCELLED'">
+      <div class="empty-list" *ngIf="cancelledList.length === 0">
+        <h4>Không có phiếu đã hủy</h4>
+        <p>Các yêu cầu đã hủy hoặc bị từ chối sẽ được lưu riêng tại đây.</p>
+      </div>
+
+      <div class="timeline" *ngIf="cancelledList.length > 0">
+        <div class="timeline-item" *ngFor="let item of cancelledList">
+          <div class="tl-dot cancelled"></div>
+          <div class="tl-content">
+            <div class="tl-date">Ngày tạo: {{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+            <div class="tl-card">
+              <img [src]="item.bookCover" alt="Cover" class="tl-cover" (error)="item.bookCover = '/assets/images/cover_1.jpg'">
+              <div class="tl-info">
+                <span class="tl-ticket-no">Phiếu #{{ item.ticketId }}</span>
+                <h4 class="tl-title">{{ item.bookTitle }}</h4>
+                <div class="tl-meta" *ngIf="item.barcode">Mã vạch: {{ item.barcode }}</div>
+                <span class="badge badge-cancel">{{ statusLabel(item.status) }}</span>
+                <p class="rejection-note" *ngIf="item.status === 'REJECTED' && item.decisionNote">
+                  <strong>Lý do từ chối:</strong> {{ item.decisionNote }}
+                </p>
               </div>
             </div>
           </div>

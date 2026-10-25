@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: uat-g3-enrich-searchable-book-content
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              UPDATE books
+              SET description = CASE isbn
+                  WHEN '0201533774' THEN
+                    'Giáo trình trí tuệ nhân tạo (TTNT) trình bày tìm kiếm, biểu diễn tri thức, học máy và thuật toán K-NN (k láng giềng gần nhất).'
+                  WHEN '1558600655' THEN
+                    'Tài liệu về machine learning, phân loại và dự đoán bằng thống kê, mạng nơ-ron, K-NN và hệ chuyên gia.'
+                  WHEN '0471253847' THEN
+                    'Các phương pháp khai phá dữ liệu, data mining, phân loại, gom cụm và nhận dạng mẫu để giải quyết bài toán thực tế.'
+                  ELSE description
+              END
+              WHERE isbn IN ('0201533774', '1558600655', '0471253847')
+                AND (description IS NULL OR BTRIM(description) = '');
+
+              ANALYZE books;

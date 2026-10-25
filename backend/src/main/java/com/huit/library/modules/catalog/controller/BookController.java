@@ -45,11 +45,12 @@ public class BookController {
             @RequestParam(required = false) String query,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String department,
+            @RequestParam(required = false) String availability,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         org.springframework.data.domain.Page<BookResponseDTO> bookPage =
-                bookService.searchBooks(query, categoryId, department, pageable);
+                bookService.searchBooks(query, categoryId, department, availability, pageable);
         
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("content", bookPage.getContent());
@@ -65,6 +66,13 @@ public class BookController {
     @Operation(summary = "List Search Majors", description = "Lists configured HUIT majors available for catalog filtering.")
     public ResponseEntity<?> getSearchDepartments() {
         return ResponseEntity.ok(bookService.getSearchDepartments());
+    }
+
+    @GetMapping("/isbn/{isbn}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Find book by ISBN", description = "Exact ISBN lookup used by the goods receipt form.")
+    public ResponseEntity<?> getBookByIsbn(@PathVariable String isbn) {
+        return ResponseEntity.ok(bookService.getBookByIsbn(isbn));
     }
 
     @GetMapping("/{id}")
@@ -123,7 +131,7 @@ public class BookController {
 
     @PostMapping("/{id}/reviews")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Add Review", description = "Rate and review a specific book.")
+    @Operation(summary = "Add Review", description = "Creates one review after the reader has actually borrowed the book.")
     public ResponseEntity<?> addReview(
             @Parameter(description = "Book ID") @PathVariable Long id,
             @Valid @RequestBody BookReviewRequestDTO request,

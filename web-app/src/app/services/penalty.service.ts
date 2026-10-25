@@ -23,6 +23,10 @@ export interface PenaltyCase {
   reportedAt: string;
   settlementDueAt: string;
   replacementBarcode?: string;
+  waiverAmount?: number;
+  decisionReason?: string;
+  decisionDocumentNo?: string;
+  decisionDate?: string;
 }
 
 export interface PenaltyCaseRequest {
@@ -60,11 +64,18 @@ export interface PaymentReceipt {
 
 export interface DebtEntry {
   transactionId: number;
+  parentTransactionId?: number;
+  ticketId?: number;
+  loanDetailId?: number;
+  penaltyCaseId?: number;
   amount: number;
   paidAmount?: number;
   type: string;
   reason: string;
   status: string;
+  paymentMethod?: string;
+  receiptNumber?: string;
+  paidAt?: string;
   createdAt?: string;
 }
 

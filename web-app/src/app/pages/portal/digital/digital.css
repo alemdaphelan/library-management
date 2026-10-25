@@ -77,3 +77,7 @@
 .asset-body h3 { margin: 0; color: #0f172a; }
 .asset-body p, .asset-body small { margin: 0; color: #64748b; }
 .asset-body .btn-access { border: 0; cursor: pointer; margin-top: 8px; }
+.asset-actions { display: flex; gap: 8px; margin-top: 8px; }
+.asset-actions .btn-access { flex: 1; margin-top: 0; }
+.btn-download { flex: 1; padding: 10px 16px; border: 1px solid #7dd3fc; border-radius: 8px; background: #fff; color: #0369a1; font-weight: 700; cursor: pointer; }
+.btn-download:hover { background: #f0f9ff; }

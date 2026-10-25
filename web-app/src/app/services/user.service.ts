@@ -13,6 +13,62 @@ export interface Student {
   phone?: string;
   cardStatus?: string;
   cardExpiryDate?: string;
+  createdAt?: string;
+  disciplineFlag?: boolean;
+  overdueViolationCount?: number;
+  violationAcademicYear?: string;
+  reservationNoShowCount?: number;
+  reservationViolationAcademicYear?: string;
+  circulationLockedUntil?: string;
+  circulationLockReason?: string;
+}
+
+export interface ReaderProfile {
+  student: Student;
+  card: {
+    issued: boolean;
+    cardNumber?: string;
+    ownerName: string;
+    department?: string;
+    cardStatus?: string;
+    issuedAt?: string;
+    expiryDate?: string;
+    depositBalance: number;
+    totalDebt: number;
+    circulationLockedUntil?: string;
+    circulationLockReason?: string;
+  };
+  loans: Array<{
+    ticketId: number;
+    ticketType: string;
+    status: string;
+    createdAt?: string;
+    nearestDueDate?: string;
+    itemCount: number;
+    overdueItemCount: number;
+    totalLateFine: number;
+  }>;
+  ledger: Array<{
+    transactionId: number;
+    amount: number;
+    paidAmount?: number;
+    type: string;
+    reason: string;
+    status: string;
+    receiptNumber?: string;
+    createdAt?: string;
+  }>;
+  penaltyCases: Array<{
+    caseId: number;
+    barcode?: string;
+    incidentType: string;
+    description: string;
+    totalAmount: number;
+    paidAmount?: number;
+    status: string;
+    reportedAt?: string;
+    settlementDueAt?: string;
+  }>;
 }
 
 export interface StudentUpsert {
@@ -39,6 +95,12 @@ export class UserService {
 
   getStudentById(id: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/students/${id}`);
+  }
+
+  getReaderProfile(mssv: string): Observable<ReaderProfile> {
+    return this.http.get<ReaderProfile>(
+      `${this.apiUrl}/students/${encodeURIComponent(mssv)}/profile`
+    );
   }
 
   createStudent(student: StudentUpsert): Observable<Student> {

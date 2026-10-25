@@ -20,7 +20,8 @@ export interface LoginResponse {
 }
 
 export interface LibraryCard {
-  cardNumber: string;
+  issued: boolean;
+  cardNumber?: string;
   ownerName: string;
   department?: string;
   cardStatus: string;
@@ -60,15 +61,14 @@ export class AuthService {
   logout() {
     const token = this.getToken();
     const refreshToken = this.getUserProfile()?.refreshToken;
+    this.clearLocalData();
     if (token) {
       this.http.post(`${this.apiUrl}/logout`, { refreshToken }, {
         headers: { 'Authorization': `Bearer ${token}` }
       }).subscribe({
-        next: () => this.clearLocalData(),
-        error: () => this.clearLocalData()
+        next: () => {},
+        error: () => {}
       });
-    } else {
-      this.clearLocalData();
     }
   }
 
@@ -77,7 +77,7 @@ export class AuthService {
     localStorage.removeItem(this.userKey);
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.profileKey);
-    this.router.navigate(['/login']);
+    this.router.navigate(['/login'], { replaceUrl: true });
   }
 
   getRole(): Role {
@@ -90,7 +90,13 @@ export class AuthService {
 
   getUserProfile(): LoginResponse | null {
     const raw = localStorage.getItem(this.profileKey);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      localStorage.removeItem(this.profileKey);
+      return null;
+    }
   }
 
   getToken(): string | null {
@@ -134,7 +140,20 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return !!this.getRole() && !!this.getToken();
+    const role = this.getRole();
+    const token = this.getToken();
+    if (!role || !token) return false;
+
+    try {
+      const payloadPart = token.split('.')[1];
+      if (!payloadPart) return false;
+      const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const payload = JSON.parse(atob(padded));
+      return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
   }
 
   forgotPassword(email: string): Observable<any> {

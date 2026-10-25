@@ -26,5 +26,6 @@ describe('Digital portal', () => {
   it('shows authenticated digital documents from the API', () => {
     expect(fixture.nativeElement.textContent).toContain('Tài liệu.pdf');
     expect(fixture.nativeElement.textContent).toContain('2.0 KB');
+    expect(fixture.nativeElement.textContent).toContain('Đọc trực tuyến');
   });
 });

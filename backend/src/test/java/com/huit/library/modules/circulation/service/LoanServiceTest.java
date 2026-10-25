@@ -14,6 +14,7 @@ import com.huit.library.modules.circulation.entity.LoanTicketEntity;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
+import com.huit.library.modules.notification.service.StaffNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
@@ -62,7 +63,8 @@ class LoanServiceTest {
                 bookRepository,
                 userRepository,
                 circulationStateService,
-                waitlistService);
+                waitlistService,
+                mock(StaffNotificationService.class));
     }
 
     @Test
@@ -152,6 +154,7 @@ class LoanServiceTest {
         ticket.setUserId(userId);
         ticket.setTicketType("NORMAL");
         ticket.setStatus("PENDING");
+        ticket.setDecisionNote("Độc giả cần bổ sung giấy xác nhận");
 
         UserEntity reader = new UserEntity();
         reader.setUserId(userId);
@@ -166,6 +169,7 @@ class LoanServiceTest {
         BookCopyEntity copy = new BookCopyEntity();
         copy.setBarcode("BC-021");
         copy.setBookId(41L);
+        copy.setLockedUntil(LocalDateTime.of(2026, 10, 25, 17, 0));
 
         BookEntity book = new BookEntity();
         book.setBookId(41L);
@@ -188,6 +192,8 @@ class LoanServiceTest {
             assertThat(item.getTicketType()).isEqualTo("BORROW");
             assertThat(item.getBookTitle()).isEqualTo("Clean Architecture");
             assertThat(item.getBarcode()).isEqualTo("BC-021");
+            assertThat(item.getPickupDeadline()).isEqualTo(LocalDateTime.of(2026, 10, 25, 17, 0));
+            assertThat(item.getDecisionNote()).isEqualTo("Độc giả cần bổ sung giấy xác nhận");
         });
     }
 

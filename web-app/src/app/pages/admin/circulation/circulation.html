@@ -15,8 +15,14 @@
 
   <div class="pos-grid" [class.return-mode]="activeTab === 'return'">
     <div class="pos-panel student-panel" *ngIf="activeTab === 'borrow'">
-      <div class="panel-title">1. Tải phiếu đã duyệt</div>
-      <div class="scanner-input-wrapper">
+      <div class="panel-title">1. Chọn cách tiếp nhận bạn đọc</div>
+      <div class="borrow-mode-tabs">
+        <button type="button" [class.active]="borrowMode === 'approved'" (click)="switchBorrowMode('approved')">Phiếu trực tuyến đã duyệt</button>
+        <button type="button" [class.active]="borrowMode === 'manual'" (click)="switchBorrowMode('manual')">Lập phiếu trực tiếp tại quầy</button>
+      </div>
+
+      <ng-container *ngIf="borrowMode === 'approved'">
+      <div class="scanner-input-wrapper scanner-with-camera">
         <input
           type="text"
           class="scanner-input no-icon"
@@ -26,6 +32,7 @@
         <button class="btn-scan" type="button" (click)="resolveTicket()" [disabled]="isResolvingTicket">
           {{ isResolvingTicket ? 'Đang tải...' : 'Tải phiếu' }}
         </button>
+        <button class="btn-camera" type="button" (click)="startCamera('ticket')" title="Quét QR phiếu mượn">Quét QR</button>
       </div>
 
       <div class="empty-state" *ngIf="!selectedTicket">
@@ -52,11 +59,30 @@
           </div>
         </div>
       </div>
+      </ng-container>
+
+      <div class="manual-reader-form" *ngIf="borrowMode === 'manual'">
+        <div class="manual-hint">
+          Dùng cho sinh viên đến mượn trực tiếp tại quầy. Hệ thống kiểm tra trạng thái thẻ, công nợ, quá hạn và giới hạn ba tài liệu trước khi lập phiếu.
+        </div>
+        <label for="manual-mssv">MSSV / Mã bạn đọc</label>
+        <div class="scanner-input-wrapper scanner-with-camera">
+          <input id="manual-mssv" type="text" class="scanner-input no-icon" maxlength="30" [(ngModel)]="manualMssv" placeholder="Ví dụ: 2001234567">
+          <button class="btn-camera" type="button" (click)="startCamera('ticket')" title="Quét QR thẻ thư viện">Quét thẻ QR</button>
+        </div>
+        <label for="manual-ticket-type">Hình thức mượn</label>
+        <select id="manual-ticket-type" [(ngModel)]="manualTicketType">
+          <option value="BORROW">Mượn về nhà — 10 ngày</option>
+          <option value="ONSITE">Đọc tại chỗ — trả trong ngày</option>
+        </select>
+        <label for="manual-note">Tình trạng khi giao sách</label>
+        <textarea id="manual-note" maxlength="500" [(ngModel)]="manualNote" placeholder="Ví dụ: Bìa và trang sách nguyên vẹn"></textarea>
+      </div>
     </div>
 
     <div class="pos-panel cart-panel">
       <div class="panel-title">{{ activeTab === 'borrow' ? '2. Quét barcode các bản sao trong phiếu' : '1. Quét barcode sách trả' }}</div>
-      <div class="scanner-input-wrapper">
+      <div class="scanner-input-wrapper scanner-with-camera">
         <input
           type="text"
           class="scanner-input book-scanner no-icon"
@@ -66,6 +92,7 @@
         <button class="btn-scan" type="button" (click)="scanBookBarcode()" [disabled]="isScanningBook">
           {{ isScanningBook ? 'Đang kiểm tra...' : 'Thêm' }}
         </button>
+        <button class="btn-camera" type="button" (click)="startCamera('barcode')" title="Quét barcode bằng camera">Camera</button>
       </div>
 
       <div class="cart-container">
@@ -95,10 +122,25 @@
         <div class="pos-actions">
           <button class="btn-cancel" type="button" (click)="resetForm()">Hủy bỏ</button>
           <button class="btn-checkout" type="button" [disabled]="!canSubmit" (click)="completeTransaction()">
-            {{ isSubmitting ? 'ĐANG XỬ LÝ...' : (activeTab === 'borrow' ? 'HOÀN TẤT MƯỢN SÁCH' : 'HOÀN TẤT TRẢ SÁCH') }}
+            {{ isSubmitting ? 'ĐANG XỬ LÝ...' : (activeTab === 'return' ? 'HOÀN TẤT TRẢ SÁCH' : (borrowMode === 'manual' ? 'LẬP PHIẾU & CHO MƯỢN' : 'HOÀN TẤT MƯỢN SÁCH')) }}
           </button>
         </div>
       </div>
     </div>
+  </div>
+
+  <div class="camera-backdrop" *ngIf="showCamera" (click)="stopCamera()">
+    <section class="camera-dialog" (click)="$event.stopPropagation()">
+      <div class="camera-heading">
+        <div><h3>{{ cameraTarget === 'ticket' ? 'Quét QR HUIT' : 'Quét barcode bản sao' }}</h3><p>Đưa mã vào giữa khung hình và giữ thiết bị ổn định.</p></div>
+        <button type="button" (click)="stopCamera()" aria-label="Đóng camera">×</button>
+      </div>
+      <div class="camera-error" *ngIf="cameraError">{{ cameraError }}</div>
+      <div class="camera-frame" *ngIf="!cameraError">
+        <video #cameraVideo playsinline muted></video>
+        <span class="scan-line"></span>
+      </div>
+      <p class="camera-fallback">Nếu camera không nhận diện được, hãy đóng cửa sổ này và dùng máy quét USB hoặc nhập mã bằng bàn phím.</p>
+    </section>
   </div>
 </div>

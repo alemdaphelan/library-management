@@ -37,9 +37,9 @@
       
       <div class="filter-group">
         <h4>Trạng thái</h4>
-        <label class="checkbox-label"><input type="radio" name="status" value="all" [(ngModel)]="filterStatus" (change)="applyFilters()"> Tất cả</label>
-        <label class="checkbox-label"><input type="radio" name="status" value="available" [(ngModel)]="filterStatus" (change)="applyFilters()"> Có sẵn</label>
-        <label class="checkbox-label"><input type="radio" name="status" value="borrowed" [(ngModel)]="filterStatus" (change)="applyFilters()"> Đang mượn</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="all" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Tất cả</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="available" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Có sẵn</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="borrowed" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Hết bản sẵn sàng</label>
       </div>
 
       <div class="filter-group">
@@ -55,7 +55,7 @@
     <!-- Search Results -->
     <main class="search-results">
       <div class="results-meta">
-        <span>Tìm thấy <strong>{{ books.length }}</strong> kết quả phù hợp</span>
+        <span>Tìm thấy <strong>{{ totalElements }}</strong> kết quả phù hợp</span>
         
         <div class="meta-actions">
           <!-- View Toggle -->
@@ -92,14 +92,20 @@
             </div>
           </div>
           <div class="book-info">
-            <span class="badge-available" *ngIf="book.status === 'available'">Có sẵn</span>
-            <span class="badge-pending" *ngIf="book.status === 'borrowed'">Đã mượn hết</span>
+            <span class="badge-available" *ngIf="book.status === 'available'">Có sẵn {{ book.availableCopies }}/{{ book.copies }}</span>
+            <span class="badge-pending" *ngIf="book.status === 'out_of_stock'">Hết bản sẵn sàng</span>
             <div class="book-cat">{{ book.category }}</div>
             <h3 class="book-name" [routerLink]="['/book', book.id]" style="cursor: pointer;">{{ book.title }}</h3>
             <p class="book-author">{{ book.author }}</p>
           </div>
         </div>
 
+      </div>
+
+      <div class="empty-search" *ngIf="books.length === 0">
+        <h3>Không có tài liệu phù hợp</h3>
+        <p *ngIf="filterStatus === 'available'">Hiện không có bản sao sẵn sàng theo điều kiện đã chọn. Hãy bỏ bộ lọc hoặc kiểm tra lại sau.</p>
+        <p *ngIf="filterStatus !== 'available'">Hãy thử từ khóa khác hoặc xóa bớt bộ lọc.</p>
       </div>
       
       <!-- Pagination -->

@@ -71,8 +71,15 @@ public class DigitalAssetService {
     @Transactional(readOnly = true)
     public List<DigitalAssetResponseDTO> list(boolean staff) {
         return documentRepository.findAllByOrderByCreatedAtDesc().stream()
-                .filter(document -> StringUtils.hasText(document.getStorageKey()))
-                .filter(document -> staff || !"STAFF_ONLY".equals(normalizeAccess(document.getAccessLevel())))
+                .filter(document -> canRead(document, staff))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DigitalAssetResponseDTO> listByBook(Long bookId, boolean staff) {
+        return documentRepository.findByBookIdOrderByCreatedAtDesc(bookId).stream()
+                .filter(document -> canRead(document, staff))
                 .map(this::toResponse)
                 .toList();
     }
@@ -225,6 +232,11 @@ public class DigitalAssetService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mức truy cập không hợp lệ");
         }
         return normalized;
+    }
+
+    private boolean canRead(DigitalDocumentEntity document, boolean staff) {
+        return StringUtils.hasText(document.getStorageKey())
+                && (staff || !"STAFF_ONLY".equals(normalizeAccess(document.getAccessLevel())));
     }
 
     private Path resolveStorageKey(String storageKey) {

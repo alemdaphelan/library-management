@@ -65,6 +65,7 @@ export interface LoanItem {
   ticketType: string;
   status: LoanTicketStatus;
   createdAt?: string;
+  pickupDeadline?: string;
   dueDate?: string;
   returnDate?: string;
   daysRemaining?: number;
@@ -127,6 +128,22 @@ export interface CirculationOperationResponse {
 
 export interface QrPayloadResponse {
   payload: string;
+  expiresAt: string;
+}
+
+export interface QrResolveResponse {
+  type: 'LOAN_TICKET' | 'USER_CARD';
+  subjectId: string;
+  userId: string;
+  readerName?: string;
+  mssv?: string;
+  cardStatus?: string;
+  ticketId?: number;
+  ticketStatus?: LoanTicketStatus;
+  allowedActions: string[];
+  items: LoanItem[];
+  activeLoanCount?: number;
+  totalDebt?: number;
   expiresAt: string;
 }
 
@@ -210,6 +227,22 @@ export class CirculationService {
     return this.http.post<CirculationOperationResponse>(`${this.apiUrl}/checkout`, { idempotencyKey, ticketId, barcodes });
   }
 
+  manualCheckout(
+    mssv: string,
+    ticketType: 'BORROW' | 'ONSITE',
+    barcodes: string[],
+    note?: string,
+    idempotencyKey: string = crypto.randomUUID(),
+  ): Observable<CirculationOperationResponse> {
+    return this.http.post<CirculationOperationResponse>(`${this.apiUrl}/manual-checkout`, {
+      idempotencyKey,
+      mssv: mssv.trim(),
+      ticketType,
+      barcodes,
+      note: note?.trim() || undefined,
+    });
+  }
+
   /**
    * Thủ thư thực hiện trả sách tại quầy
    */
@@ -235,5 +268,9 @@ export class CirculationService {
   /** Tạo QR phiếu mượn có chữ ký và thời hạn từ Backend. */
   getTicketQrPayload(ticketId: number): Observable<QrPayloadResponse> {
     return this.http.get<QrPayloadResponse>(`${this.qrApiUrl}/tickets/${ticketId}`);
+  }
+
+  resolveQrPayload(payload: string): Observable<QrResolveResponse> {
+    return this.http.post<QrResolveResponse>(`${this.qrApiUrl}/resolve`, { payload });
   }
 }

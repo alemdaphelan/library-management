@@ -37,9 +37,30 @@ class LibraryCardServiceTest {
 
         var result = new LibraryCardService(userRepository, walletRepository).get(userId);
 
+        assertThat(result.issued()).isTrue();
         assertThat(result.cardNumber()).isEqualTo("20012345");
         assertThat(result.cardStatus()).isEqualTo("ACTIVE");
         assertThat(result.depositBalance()).isEqualByComparingTo("50000");
         assertThat(result.totalDebt()).isEqualByComparingTo("1000");
+    }
+
+    @Test
+    void reportsThatAReaderWithoutCardStatusHasNotBeenIssuedACard() {
+        UserRepository userRepository = mock(UserRepository.class);
+        WalletRepository walletRepository = mock(WalletRepository.class);
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setUserId(userId);
+        user.setMssv("20019999");
+        user.setFullName("Sinh viên chưa có thẻ");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        var result = new LibraryCardService(userRepository, walletRepository).get(userId);
+
+        assertThat(result.issued()).isFalse();
+        assertThat(result.cardNumber()).isNull();
+        assertThat(result.issuedAt()).isNull();
+        assertThat(result.expiryDate()).isNull();
     }
 }

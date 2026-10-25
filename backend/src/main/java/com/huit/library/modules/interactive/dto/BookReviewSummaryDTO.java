@@ -12,6 +12,8 @@ public class BookReviewSummaryDTO {
     private double averageRating;
     private long reviewCount;
     private BookReviewDTO myReview;
+    private boolean reviewEligible;
+    private String reviewEligibilityMessage;
     private List<BookReviewDTO> reviews;
 }
 

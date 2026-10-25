@@ -8,6 +8,7 @@ describe('PortalLayout', () => {
   let fixture: ComponentFixture<PortalLayout>;
 
   beforeEach(async () => {
+    localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [PortalLayout],
       providers: [provideRouter([])],
@@ -18,7 +19,29 @@ describe('PortalLayout', () => {
     await fixture.whenStable();
   });
 
+  afterEach(() => localStorage.clear());
+
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('shows the admin switch only for staff roles', () => {
+    const isLoggedIn = vi.spyOn(component.authService, 'isLoggedIn').mockReturnValue(true);
+    const getRole = vi.spyOn(component.authService, 'getRole').mockReturnValue('ADMIN');
+    expect(component.canAccessAdmin).toBe(true);
+
+    getRole.mockReturnValue('LIBRARIAN');
+    expect(component.canAccessAdmin).toBe(true);
+
+    getRole.mockReturnValue('STUDENT');
+    expect(component.canAccessAdmin).toBe(false);
+
+    getRole.mockReturnValue('ADMIN');
+    isLoggedIn.mockReturnValue(false);
+    expect(component.canAccessAdmin).toBe(false);
+  });
+
+  it('labels a missing card instead of showing an unknown status', () => {
+    expect(component.cardStatusLabel(undefined)).toBe('Chưa được cấp thẻ');
   });
 });

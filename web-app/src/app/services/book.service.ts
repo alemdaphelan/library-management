@@ -19,6 +19,8 @@ export interface BookReviewSummary {
   averageRating: number;
   reviewCount: number;
   myReview?: BookReview;
+  reviewEligible: boolean;
+  reviewEligibilityMessage?: string;
   reviews: BookReview[];
 }
 
@@ -41,18 +43,29 @@ export class BookService {
 
   constructor(private http: HttpClient) { }
 
-  getBooks(query?: string, page: number = 0, size: number = 10, categoryId?: number): Observable<any> {
+  getBooks(
+    query?: string,
+    page: number = 0,
+    size: number = 10,
+    categoryId?: number,
+    availability?: 'AVAILABLE' | 'UNAVAILABLE'
+  ): Observable<any> {
     const params: Record<string, string> = {
       page: page.toString(),
       size: size.toString()
     };
     if (query?.trim()) params['query'] = query.trim();
     if (categoryId) params['categoryId'] = categoryId.toString();
+    if (availability) params['availability'] = availability;
     return this.http.get<any>(this.apiUrl, { params });
   }
 
   getBookById(id: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
+  }
+
+  getBookByIsbn(isbn: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/isbn/${encodeURIComponent(isbn.trim())}`);
   }
 
   createBook(book: any): Observable<any> {

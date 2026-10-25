@@ -20,6 +20,10 @@ export class Books implements OnInit {
   categories: Category[] = [];
   searchQuery = '';
   selectedCategoryId?: number;
+  selectedAvailability: '' | 'AVAILABLE' | 'UNAVAILABLE' = '';
+  isLoading = false;
+  errorMessage = '';
+  successMessage = '';
   
   // Pagination State
   currentPage: number = 0;
@@ -38,13 +42,26 @@ export class Books implements OnInit {
   }
 
   loadBooks() {
-    this.bookService.getBooks(this.searchQuery, this.currentPage, this.pageSize, this.selectedCategoryId).subscribe({
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.bookService.getBooks(
+      this.searchQuery,
+      this.currentPage,
+      this.pageSize,
+      this.selectedCategoryId,
+      this.selectedAvailability || undefined
+    ).subscribe({
       next: (data) => {
         this.books = data.content;
         this.totalPages = data.totalPages;
         this.totalElements = data.totalElements;
+        this.isLoading = false;
       },
-      error: (err) => console.error('Failed to load books', err)
+      error: (err) => {
+        console.error('Failed to load books', err);
+        this.isLoading = false;
+        this.errorMessage = this.extractError(err, 'Không thể tải danh mục sách.');
+      }
     });
   }
 
@@ -87,6 +104,8 @@ export class Books implements OnInit {
   }
 
   saveBook() {
+    this.errorMessage = '';
+    this.successMessage = '';
     if (!this.currentBook.title?.trim() || !this.currentBook.author?.trim()) {
       alert('Vui lòng nhập tên sách và tác giả');
       return;
@@ -99,23 +118,25 @@ export class Books implements OnInit {
     if (this.drawerMode === 'add') {
       this.bookService.createBook(payload).subscribe({
         next: () => {
+          this.successMessage = 'Đã thêm đầu sách vào danh mục.';
           this.loadBooks();
           this.closeDrawer();
         },
         error: (err) => {
           console.error('Failed to create book', err);
-          alert('Thêm sách thất bại');
+          this.errorMessage = this.extractError(err, 'Thêm sách thất bại.');
         }
       });
     } else if (this.drawerMode === 'edit') {
       this.bookService.updateBook(String(bookId), payload).subscribe({
         next: () => {
+          this.successMessage = 'Đã cập nhật thông tin đầu sách.';
           this.loadBooks();
           this.closeDrawer();
         },
         error: (err) => {
           console.error('Failed to update book', err);
-          alert('Cập nhật sách thất bại');
+          this.errorMessage = this.extractError(err, 'Cập nhật sách thất bại.');
         }
       });
     }
@@ -125,12 +146,16 @@ export class Books implements OnInit {
     if (!confirm(`Bạn có chắc muốn xóa “${book.title}”?`)) return;
     this.bookService.deleteBook(String(book.bookId)).subscribe({
       next: () => {
+        this.successMessage = 'Đã xóa đầu sách khỏi danh mục.';
         if (this.books.length === 1 && this.currentPage > 0) this.currentPage--;
         this.loadBooks();
       },
       error: err => {
         console.error('Failed to delete book', err);
-        alert('Không thể xóa sách. Hãy kiểm tra các bản sao hoặc giao dịch đang liên kết.');
+        this.errorMessage = this.extractError(
+          err,
+          'Không thể xóa sách. Hãy kiểm tra các bản sao hoặc giao dịch đang liên kết.'
+        );
       }
     });
   }
@@ -176,5 +201,10 @@ export class Books implements OnInit {
     if (typeof p === 'number') {
       this.goToPage(p - 1);
     }
+  }
+
+  private extractError(error: any, fallback: string): string {
+    const message = error?.error?.message ?? error?.error?.detail ?? error?.error;
+    return typeof message === 'string' && message.trim() ? message : fallback;
   }
 }

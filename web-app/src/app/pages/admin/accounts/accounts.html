@@ -18,27 +18,120 @@
       <input class="form-control search" type="search" [(ngModel)]="searchTerm" placeholder="Tìm tên, MSSV, email hoặc khoa…">
       <select class="form-control" [(ngModel)]="statusFilter">
         <option value="">Tất cả trạng thái</option>
-        <option value="ACTIVE">Hoạt động</option><option value="LOCKED">Bị khóa</option><option value="EXPIRED">Hết hạn</option>
+        <option value="ACTIVE">Hoạt động</option><option value="LOCKED">Bị khóa</option><option value="EXPIRED">Hết hạn</option><option value="UNISSUED">Chưa cấp thẻ</option>
       </select>
     </div>
 
     <div class="table-responsive">
       <table class="admin-table">
-        <thead><tr><th>Thông tin sinh viên</th><th>MSSV</th><th>Khoa/Đơn vị</th><th>Trạng thái thẻ</th><th *ngIf="!isReadOnly">Thao tác</th></tr></thead>
+        <thead><tr><th>Thông tin sinh viên</th><th>MSSV</th><th>Khoa/Đơn vị</th><th>Trạng thái thẻ</th><th>Thao tác</th></tr></thead>
         <tbody>
           <tr *ngFor="let st of filteredStudents">
             <td><div class="user-cell"><div class="user-avatar">{{ st.fullName.charAt(0) }}</div><div class="user-details"><div class="user-name">{{ st.fullName }}</div><div class="user-email">{{ st.email }}<span *ngIf="st.phone"> · {{ st.phone }}</span></div></div></div></td>
             <td><strong>{{ st.mssv }}</strong></td>
             <td>{{ st.department || '—' }}</td>
-            <td><span class="badge" [ngClass]="{'badge-available': st.cardStatus === 'ACTIVE','badge-danger': st.cardStatus === 'LOCKED','badge-warning': st.cardStatus === 'EXPIRED'}">{{ st.cardStatus === 'ACTIVE' ? 'Hoạt động' : st.cardStatus === 'LOCKED' ? 'Bị khóa' : st.cardStatus === 'EXPIRED' ? 'Hết hạn' : 'Chưa xác định' }}</span></td>
-            <td *ngIf="!isReadOnly"><button class="action-text" type="button" (click)="openEdit(st)">Sửa</button><button class="action-text danger" type="button" (click)="deleteStudent(st)">Xóa</button></td>
+            <td><span class="badge" [ngClass]="{'badge-available': st.cardStatus === 'ACTIVE','badge-danger': st.cardStatus === 'LOCKED','badge-warning': st.cardStatus === 'EXPIRED'}">{{ cardStatusLabel(st.cardStatus) }}</span></td>
+            <td class="actions-cell">
+              <button class="action-text view" type="button" (click)="openProfile(st)">Xem hồ sơ</button>
+              <button *ngIf="!isReadOnly" class="action-text" type="button" (click)="openEdit(st)">Sửa</button>
+              <button *ngIf="!isReadOnly" class="action-text danger" type="button" (click)="deleteStudent(st)">Xóa</button>
+            </td>
           </tr>
-          <tr *ngIf="!loading && filteredStudents.length === 0"><td [attr.colspan]="isReadOnly ? 4 : 5" class="text-center empty">Không có sinh viên phù hợp.</td></tr>
-          <tr *ngIf="loading"><td [attr.colspan]="isReadOnly ? 4 : 5" class="text-center empty">Đang tải dữ liệu…</td></tr>
+          <tr *ngIf="!loading && filteredStudents.length === 0"><td colspan="5" class="text-center empty">Không có sinh viên phù hợp.</td></tr>
+          <tr *ngIf="loading"><td colspan="5" class="text-center empty">Đang tải dữ liệu…</td></tr>
         </tbody>
       </table>
     </div>
     <div class="result-count">Hiển thị {{ filteredStudents.length }} / {{ students.length }} sinh viên.</div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showProfile" (click)="closeProfile()">
+    <section class="profile-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div><h3>Hồ sơ nghiệp vụ bạn đọc</h3><p>Thông tin thẻ, mượn trả, công nợ và vi phạm từ dữ liệu thật.</p></div>
+        <button type="button" class="close-btn" (click)="closeProfile()">×</button>
+      </div>
+      <div class="profile-loading" *ngIf="profileLoading">Đang tổng hợp hồ sơ bạn đọc…</div>
+      <div class="profile-body" *ngIf="selectedProfile as profile">
+        <div class="reader-hero">
+          <div class="profile-avatar">{{ profile.student.fullName.charAt(0) }}</div>
+          <div class="profile-identity">
+            <h2>{{ profile.student.fullName }}</h2>
+            <p>{{ profile.student.mssv }} · {{ profile.student.department || 'Chưa cập nhật khoa' }}</p>
+            <span class="badge" [ngClass]="{'badge-available': profile.card.cardStatus === 'ACTIVE','badge-danger': profile.card.cardStatus === 'LOCKED','badge-warning': profile.card.cardStatus === 'EXPIRED'}">
+              {{ cardStatusLabel(profile.card.cardStatus) }}
+            </span>
+          </div>
+          <button *ngIf="!isReadOnly" type="button" class="btn-outline" (click)="closeProfile(); openEdit(profile.student)">Sửa hồ sơ/thẻ</button>
+        </div>
+
+        <div class="profile-alert" *ngIf="profile.card.circulationLockReason || profile.student.disciplineFlag">
+          <strong>Quyền mượn đang bị hạn chế.</strong>
+          <span>{{ profile.card.circulationLockReason || 'Tài khoản có cờ kỷ luật.' }}</span>
+          <span *ngIf="profile.card.circulationLockedUntil">Đến {{ profile.card.circulationLockedUntil | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card"><span>Tiền thế chân</span><strong>{{ profile.card.depositBalance | number:'1.0-0' }} đ</strong></div>
+          <div class="summary-card debt"><span>Công nợ hiện tại</span><strong>{{ profile.card.totalDebt | number:'1.0-0' }} đ</strong><small>{{ outstandingLedgerCount }} khoản chưa tất toán</small></div>
+          <div class="summary-card"><span>Phiếu đang hoạt động</span><strong>{{ activeLoanCount }}</strong><small>{{ overdueLoanCount }} phiếu quá hạn</small></div>
+          <div class="summary-card warning"><span>Vi phạm năm học</span><strong>{{ profile.student.overdueViolationCount || 0 }} quá hạn</strong><small>{{ profile.student.reservationNoShowCount || 0 }} lần không nhận sách</small></div>
+        </div>
+
+        <section class="detail-section">
+          <h4>Thông tin thẻ thư viện</h4>
+          <div class="detail-grid">
+            <div><span>Mã thẻ</span><strong>{{ profile.card.issued ? profile.card.cardNumber : 'Chưa cấp thẻ' }}</strong></div>
+            <div><span>Ngày lập</span><strong>{{ profile.card.issuedAt ? (profile.card.issuedAt | date:'dd/MM/yyyy') : '—' }}</strong></div>
+            <div><span>Ngày hết hạn</span><strong>{{ profile.card.expiryDate ? (profile.card.expiryDate | date:'dd/MM/yyyy') : 'Chưa có dữ liệu' }}</strong></div>
+            <div><span>Email / điện thoại</span><strong>{{ profile.student.email }}<br>{{ profile.student.phone || 'Chưa cập nhật' }}</strong></div>
+          </div>
+        </section>
+
+        <section class="detail-section">
+          <div class="section-heading"><h4>Phiếu mượn gần đây</h4><span>{{ profile.loans.length }} phiếu</span></div>
+          <div class="compact-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>Phiếu</th><th>Loại</th><th>Trạng thái</th><th>Tài liệu</th><th>Hạn gần nhất</th><th></th></tr></thead>
+              <tbody>
+                <tr *ngFor="let loan of profile.loans | slice:0:8">
+                  <td>#{{ loan.ticketId }}</td><td>{{ loan.ticketType === 'ONSITE' ? 'Tại chỗ' : 'Mượn về' }}</td>
+                  <td><span class="status-text" [class.danger]="loan.status === 'OVERDUE'">{{ loanStatusLabel(loan.status) }}</span></td>
+                  <td>{{ loan.itemCount }}</td><td>{{ loan.nearestDueDate ? (loan.nearestDueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+                  <td><button type="button" class="link-button" (click)="openWorkflow('/admin/circulation','LOAN_TICKET',loan.ticketId)">Mở phiếu</button></td>
+                </tr>
+                <tr *ngIf="!profile.loans.length"><td colspan="6" class="empty">Chưa có lịch sử mượn.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="detail-section split-section">
+          <div>
+            <div class="section-heading"><h4>Công nợ và giao dịch</h4><span>{{ profile.ledger.length }} dòng</span></div>
+            <div class="record-list">
+              <div class="record" *ngFor="let entry of profile.ledger | slice:0:6">
+                <div><strong>{{ entry.reason || entry.type }}</strong><small>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm' }} · {{ entry.status }}</small></div>
+                <b [class.negative]="entry.amount < 0">{{ entry.amount | number:'1.0-0' }} đ</b>
+              </div>
+              <p class="empty" *ngIf="!profile.ledger.length">Không có giao dịch công nợ.</p>
+            </div>
+            <button type="button" class="btn-outline section-action" (click)="openWorkflow('/admin/penalties','USER',profile.student.userId)">Mở quản lý thu phạt</button>
+          </div>
+          <div>
+            <div class="section-heading"><h4>Hồ sơ mất/hỏng</h4><span>{{ profile.penaltyCases.length }} hồ sơ</span></div>
+            <div class="record-list">
+              <div class="record" *ngFor="let item of profile.penaltyCases | slice:0:6">
+                <div><strong>#{{ item.caseId }} · {{ item.incidentType === 'LOST' ? 'Mất' : 'Hư hỏng' }}</strong><small>{{ item.barcode || 'Không có barcode' }} · {{ item.status }}</small></div>
+                <b>{{ item.totalAmount | number:'1.0-0' }} đ</b>
+              </div>
+              <p class="empty" *ngIf="!profile.penaltyCases.length">Không có hồ sơ mất/hỏng.</p>
+            </div>
+            <button type="button" class="btn-outline section-action" (click)="openWorkflow('/admin/penalties','USER',profile.student.userId)">Mở hồ sơ phạt</button>
+          </div>
+        </section>
+      </div>
+    </section>
   </div>
 
   <div class="modal-overlay" *ngIf="showForm" (click)="showForm = false">

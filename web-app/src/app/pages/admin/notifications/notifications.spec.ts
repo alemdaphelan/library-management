@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { provideRouter, Router } from '@angular/router';
 import { LibraryNotification, NotificationService } from '../../../services/notification.service';
 import { Notifications } from './notifications';
 
@@ -26,7 +27,7 @@ describe('Notifications', () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [Notifications],
-      providers: [{ provide: NotificationService, useValue: service }],
+      providers: [{ provide: NotificationService, useValue: service }, provideRouter([])],
     }).compileComponents();
     fixture = TestBed.createComponent(Notifications);
     component = fixture.componentInstance;
@@ -58,5 +59,17 @@ describe('Notifications', () => {
 
     component.searchTerm = 'không tồn tại';
     expect(component.filteredNotifications).toHaveLength(0);
+  });
+
+  it('marks a notification as read and navigates to its related workflow', () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    component.openNotification(unread);
+
+    expect(service.markAsRead).toHaveBeenCalledWith('notif-1');
+    expect(navigate).toHaveBeenCalledWith(['/admin/borrows'], {
+      queryParams: { referenceType: 'LOAN_DETAIL', referenceId: '29' },
+    });
   });
 });

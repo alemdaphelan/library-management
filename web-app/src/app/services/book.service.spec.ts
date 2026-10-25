@@ -54,4 +54,12 @@ describe('BookService interactions', () => {
     expect(deleteRequest.request.method).toBe('DELETE');
     deleteRequest.flush(null);
   });
+
+  it('looks up one exact ISBN for inventory workflows', () => {
+    service.getBookByIsbn('9780132350884').subscribe();
+
+    const request = http.expectOne(`${environment.apiUrl}/books/isbn/9780132350884`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ bookId: 1, title: 'Clean Code' });
+  });
 });

@@ -16,11 +16,11 @@ export class Profile implements OnInit {
   activeTab: 'info' | 'password' | 'settings' = 'info';
 
   userInfo = {
-    fullName: 'Đang tải...',
-    studentId: 'Đang tải...',
-    email: 'Đang tải...',
-    phone: 'Đang tải...',
-    faculty: 'Đang tải...',
+    fullName: '',
+    studentId: '',
+    email: '',
+    phone: '',
+    faculty: '',
     avatarUrl: '',
     cardStatus: 'UNKNOWN',
     cardExpiryDate: '',
@@ -41,8 +41,14 @@ export class Profile implements OnInit {
 
   isSaving = false;
   isUploadingAvatar = false;
+  isProfileLoading = true;
+  isPreferencesLoading = false;
+  preferencesLoaded = false;
   successMsg = '';
   errMsg = '';
+  profileError = '';
+  preferencesError = '';
+  private initialized = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -51,18 +57,42 @@ export class Profile implements OnInit {
     private cdr: ChangeDetectorRef
   ) {
     this.route.queryParams.subscribe(params => {
-      if (params['tab']) {
-        this.activeTab = params['tab'];
+      const tab = params['tab'];
+      if (tab === 'info' || tab === 'password' || tab === 'settings') {
+        this.setActiveTab(tab);
       }
     });
   }
 
   ngOnInit(): void {
+    this.initialized = true;
     this.loadProfile();
-    this.loadNotificationPreferences();
+    if (this.activeTab === 'settings') {
+      this.loadNotificationPreferences();
+    }
   }
 
-  loadProfile() {
+  setActiveTab(tab: 'info' | 'password' | 'settings'): void {
+    this.activeTab = tab;
+    if (this.initialized && tab === 'settings' && !this.preferencesLoaded) {
+      this.loadNotificationPreferences();
+    }
+  }
+
+  get roleLabel(): string {
+    const role = this.authService.getRole();
+    if (role === 'ADMIN') return 'Quản trị viên';
+    if (role === 'LIBRARIAN') return 'Thủ thư';
+    return 'Sinh viên';
+  }
+
+  get isStudentProfile(): boolean {
+    return this.authService.getRole() === 'STUDENT';
+  }
+
+  loadProfile(): void {
+    this.isProfileLoading = true;
+    this.profileError = '';
     this.authService.fetchMyProfile().subscribe({
       next: (user: any) => {
         this.userInfo = {
@@ -77,30 +107,51 @@ export class Profile implements OnInit {
           circulationLockedUntil: user.circulationLockedUntil || '',
           circulationLockReason: user.circulationLockReason || ''
         };
-        this.errMsg = '';
+        this.isProfileLoading = false;
         this.cdr.detectChanges();
       },
       error: (err: any) => {
         console.error('Failed to fetch profile', err);
-        this.errMsg = err?.status === 401 || err?.status === 403
-          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
-          : 'Không thể tải thông tin tài khoản. Vui lòng thử lại.';
+        this.isProfileLoading = false;
+        if (err?.status === 401 || err?.status === 403) {
+          this.authService.logout();
+          return;
+        }
+        const cached = this.authService.getUserProfile();
+        if (cached) {
+          this.userInfo.fullName = cached.fullName || '';
+          this.userInfo.studentId = cached.mssv || '';
+          this.userInfo.email = cached.email || '';
+          this.userInfo.avatarUrl = cached.avatarUrl || '';
+          this.userInfo.cardStatus = cached.cardStatus || 'UNKNOWN';
+        }
+        this.profileError = 'Không thể đồng bộ thông tin mới nhất. Dữ liệu đang hiển thị có thể là dữ liệu đăng nhập gần nhất.';
         this.cdr.detectChanges();
       }
     });
   }
 
   loadNotificationPreferences(): void {
+    if (this.isPreferencesLoading || this.preferencesLoaded) return;
+    this.isPreferencesLoading = true;
+    this.preferencesError = '';
     this.notificationService.getPreferences().subscribe({
       next: preferences => {
         this.settings = {
           emailAlerts: preferences.emailEnabled,
           pushAlerts: preferences.pushEnabled,
         };
+        this.isPreferencesLoading = false;
+        this.preferencesLoaded = true;
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.errMsg = 'Không thể tải cài đặt thông báo.';
+      error: (error: any) => {
+        this.isPreferencesLoading = false;
+        if (error?.status === 401 || error?.status === 403) {
+          this.authService.logout();
+          return;
+        }
+        this.preferencesError = 'Không thể tải cài đặt thông báo. Hãy thử lại sau khi hệ thống kết nối ổn định.';
         this.cdr.detectChanges();
       },
     });
@@ -115,7 +166,7 @@ export class Profile implements OnInit {
     if (status === 'ACTIVE') return 'Đang hoạt động';
     if (status === 'LOCKED') return 'Đang bị khóa';
     if (status === 'EXPIRED') return 'Đã hết hạn';
-    return 'Chưa xác định';
+    return 'Chưa được cấp thẻ';
   }
 
   onFileSelected(event: any) {
@@ -232,9 +283,14 @@ export class Profile implements OnInit {
         }
       });
     } else {
+      if (!this.preferencesLoaded) {
+        this.preferencesError = 'Cần tải thành công cài đặt hiện tại trước khi lưu.';
+        return;
+      }
       this.isSaving = true;
       this.successMsg = '';
       this.errMsg = '';
+      this.preferencesError = '';
       this.notificationService.updatePreferences({
         emailEnabled: this.settings.emailAlerts,
         pushEnabled: this.settings.pushAlerts,
@@ -248,7 +304,7 @@ export class Profile implements OnInit {
         },
         error: (error: any) => {
           this.isSaving = false;
-          this.errMsg = typeof error?.error === 'string'
+          this.preferencesError = typeof error?.error === 'string'
             ? error.error : 'Không thể lưu cài đặt thông báo.';
         },
       });

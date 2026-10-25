@@ -20,7 +20,10 @@
           <h3>{{ asset.name }}</h3>
           <p>{{ asset.bookTitle ? ('Liên kết: ' + asset.bookTitle) : 'Tài liệu độc lập' }}</p>
           <small>{{ formatSize(asset.size) }} · {{ asset.createdAt | date:'dd/MM/yyyy' }}</small>
-          <button type="button" class="btn-access" (click)="download(asset)">Tải tài liệu</button>
+          <div class="asset-actions">
+            <button type="button" class="btn-access" *ngIf="canPreview(asset)" (click)="preview(asset)">Đọc trực tuyến</button>
+            <button type="button" class="btn-download" (click)="download(asset)">Tải tài liệu</button>
+          </div>
         </div>
       </article>
     </div>

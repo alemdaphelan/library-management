@@ -42,4 +42,17 @@ describe('DigitalAssetsService', () => {
     expect(download.request.responseType).toBe('blob');
     download.flush(new Blob(['file']));
   });
+
+  it('loads linked assets and uses the inline preview endpoint', () => {
+    service.getAssetsByBook(7).subscribe();
+    service.previewAsset(4).subscribe();
+
+    const linked = http.expectOne(`${url}/book/7`);
+    expect(linked.request.method).toBe('GET');
+    linked.flush([]);
+    const preview = http.expectOne(`${url}/4/preview`);
+    expect(preview.request.method).toBe('GET');
+    expect(preview.request.responseType).toBe('blob');
+    preview.flush(new Blob(['%PDF-preview'], { type: 'application/pdf' }));
+  });
 });

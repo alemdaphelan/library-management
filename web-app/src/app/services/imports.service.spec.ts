@@ -39,4 +39,12 @@ describe('ImportsService', () => {
     expect(request.request.body).toEqual(payload);
     request.flush({ receiptCode: 'PN-001' });
   });
+
+  it('looks up an exact catalog item by ISBN before adding a receipt line', () => {
+    service.findBookByIsbn('978 1/2').subscribe();
+
+    const request = httpTesting.expectOne(`${environment.apiUrl}/books/isbn/978%201%2F2`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ bookId: 3, title: 'Clean Code' });
+  });
 });

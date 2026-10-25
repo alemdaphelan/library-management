@@ -18,6 +18,14 @@ Thư mục này dành cho thành viên kiểm thử độc lập sau khi nhận 
 12. Với bản sửa UAT-D, chạy `10_UAT_D_THONG_BAO_TRANG_THAI_VA_THE_THU_VIEN.md` để kiểm tra modal thông báo, cài đặt kênh nhận tin, trạng thái tài khoản và thẻ thư viện điện tử.
 13. Với bản sửa UAT-E, chạy `11_UAT_E_TRANG_CHU_VA_CHONG_SPAM_GIU_CHO.md` để kiểm tra trang chủ không còn dữ liệu giả và quy tắc ba lần không nhận sách.
 14. Với bản chốt UAT-F, chạy `12_UAT_F_DE_XUAT_MUA_SACH_VA_QUY_DINH.md` để kiểm tra hồ sơ đề xuất đầy đủ, duyệt tạo đầu sách 0 bản sao và nội dung quy định cuối cùng.
+15. Với bản sửa G1, chạy `13_UAT_G1_DANG_NHAP_HO_SO_VA_THE.md` để kiểm tra bảo vệ trang riêng tư, tải hồ sơ, cài đặt thông báo, thẻ thư viện và điều hướng Portal/Admin.
+16. Với bản sửa G2, chạy `14_UAT_G2_TRA_CUU_VA_DAT_GIU.md` để kiểm tra bộ lọc khả dụng, hủy đặt giữ, hạn nhận trong ngày và lịch sử phiếu đã hủy.
+17. Với bản sửa G3, chạy `15_UAT_G3_DANH_GIA_VA_TIM_KIEM_NOI_DUNG.md` để kiểm tra điều kiện đánh giá, lỗi đánh giá lần hai và tìm kiếm theo K-NN/TTNT.
+18. Với bản sửa G4, chạy `16_UAT_G4_EBOOK_VA_DIEU_HUONG_PORTAL_ADMIN.md` để kiểm tra PDF thật, quyền tài liệu số và điều hướng hai chiều Portal/Admin.
+19. Với bản sửa G5, chạy `17_UAT_G5_TU_CHOI_VA_CONG_NO_SINH_VIEN.md` để kiểm tra lý do từ chối, công nợ, hồ sơ mất/hỏng và lịch sử biên nhận của sinh viên.
+20. Với bản sửa G6, chạy `18_UAT_G6_QUAY_MUON_TRA_VA_CAMERA.md` để kiểm tra lập phiếu trực tiếp, QR có chữ ký, camera và trả sách liên phiếu.
+21. Với bản sửa G7, chạy `19_UAT_G7_NHAP_KHO_DANH_MUC_VA_THONG_BAO.md` để kiểm tra tra ISBN, nhập kho, danh mục sách và thông báo nghiệp vụ quản trị.
+22. Với bản sửa G8, chạy `20_UAT_G8_HO_SO_BAN_DOC_VA_THE.md` để kiểm tra hồ sơ tổng hợp, thẻ thư viện, công nợ, vi phạm và phân quyền Admin/Thủ thư.
 
 ## Nguyên tắc
 
@@ -41,6 +49,6 @@ Thư mục này dành cho thành viên kiểm thử độc lập sau khi nhận 
 
 ## Trạng thái trước khi bàn giao
 
-Chức năng tuần 1–11, các gói 12A–12E và các bản sửa UAT-A đến UAT-F đã hoàn thành ở mức mã nguồn. Gate cục bộ cuối ngày 24/10/2026 đạt **122/122 Backend unit test**, **82/82 Web test** và **Web production build**. Ba integration test dùng Testcontainers chưa được chạy lại ở lượt cuối vì máy hiện tại không có Docker daemon; thành viên kiểm thử phải chạy full Backend suite sau khi dựng Docker và ghi kết quả vào biên bản.
+Chức năng tuần 1–11, các gói 12A–12E, các bản sửa UAT-A đến UAT-F và các gói G1–G8 đã hoàn thành ở mức mã nguồn. Gate cục bộ ngày 25/10/2026 đạt **137/137 Backend unit test**, **107/107 Web test** và **Web production build**. Thành viên kiểm thử vẫn phải chạy lại toàn bộ test trên đúng commit nhận bàn giao và ghi kết quả vào biên bản. Ba integration test dùng Testcontainers cần Docker daemon hoạt động; nếu môi trường nhận bàn giao chưa có Docker thì ghi `BLOCKED`, không ghi `FAIL`.
 
 Thành viên kiểm thử/triển khai nhận luôn phần đổi package ID sang `vn.edu.huit.library`, cấu hình Firebase và xác nhận FCM trên thiết bị thật theo tài liệu `06_CAU_HINH_FIREBASE_VA_KIEM_THU_PUSH.md`; lỗi phản hồi sẽ được chuyển lại cho thành viên code.

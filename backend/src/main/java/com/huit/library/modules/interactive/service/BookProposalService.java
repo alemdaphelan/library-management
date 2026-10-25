@@ -12,6 +12,7 @@ import com.huit.library.modules.interactive.dto.UpdateProposalStatusDTO;
 import com.huit.library.modules.interactive.entity.BookProposalEntity;
 import com.huit.library.modules.interactive.repository.BookProposalRepository;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.notification.service.StaffNotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,17 +27,20 @@ public class BookProposalService {
     private final NotificationService notificationService;
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
+    private final StaffNotificationService staffNotificationService;
 
     public BookProposalService(BookProposalRepository proposalRepository,
                                UserRepository userRepository,
                                NotificationService notificationService,
                                BookRepository bookRepository,
-                               CategoryRepository categoryRepository) {
+                               CategoryRepository categoryRepository,
+                               StaffNotificationService staffNotificationService) {
         this.proposalRepository = proposalRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.bookRepository = bookRepository;
         this.categoryRepository = categoryRepository;
+        this.staffNotificationService = staffNotificationService;
     }
 
     @Transactional
@@ -63,6 +67,12 @@ public class BookProposalService {
         entity.setStatus("PENDING");
 
         BookProposalEntity saved = proposalRepository.save(entity);
+
+        staffNotificationService.notifyAll(
+                "BOOK_PROPOSAL_PENDING",
+                "Có đề xuất mua sách mới: ‘" + saved.getTitle() + "’. Vui lòng kiểm tra và phản hồi.",
+                "BOOK_PROPOSAL", String.valueOf(saved.getProposalId()),
+                "BOOK_PROPOSAL_PENDING:" + saved.getProposalId(), java.time.LocalDateTime.now());
 
         UserEntity user = null;
         if (userId != null) {

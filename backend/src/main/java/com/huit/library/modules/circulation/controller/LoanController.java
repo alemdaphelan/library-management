@@ -9,6 +9,7 @@ import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
 import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
 import com.huit.library.modules.circulation.dto.RejectLoanRequestDTO;
+import com.huit.library.modules.circulation.dto.ManualCheckoutRequestDTO;
 import com.huit.library.modules.circulation.service.CirculationStateService;
 import com.huit.library.modules.circulation.service.LoanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -137,6 +138,16 @@ public class LoanController {
             @Valid @RequestBody CheckoutRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(circulationStateService.checkout(
+                request, userDetails.getUser().getUserId()));
+    }
+
+    @PostMapping("/manual-checkout")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Manual counter checkout", description = "Creates and checks out a walk-in loan by MSSV and physical-copy barcodes.")
+    public ResponseEntity<?> manualCheckout(
+            @Valid @RequestBody ManualCheckoutRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(circulationStateService.manualCheckout(
                 request, userDetails.getUser().getUserId()));
     }
 

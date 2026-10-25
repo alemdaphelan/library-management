@@ -9,8 +9,11 @@ import { CategoryService } from '../../../services/category.service';
 describe('Search', () => {
   let component: Search;
   let fixture: ComponentFixture<Search>;
+  const getBooks = vi.fn();
 
   beforeEach(async () => {
+    getBooks.mockReset();
+    getBooks.mockReturnValue(of({ content: [], totalPages: 0, totalElements: 0 }));
     await TestBed.configureTestingModule({
       imports: [Search],
       providers: [
@@ -18,7 +21,7 @@ describe('Search', () => {
         {
           provide: BookService,
           useValue: {
-            getBooks: () => of({ content: [], totalPages: 0, totalElements: 0 }),
+            getBooks,
           },
         },
         {
@@ -36,5 +39,15 @@ describe('Search', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('requests availability from the backend before pagination', () => {
+    getBooks.mockClear();
+    component.filterStatus = 'available';
+
+    component.onStatusChange();
+
+    expect(component.currentPage).toBe(0);
+    expect(getBooks).toHaveBeenCalledWith('', 0, 12, undefined, 'AVAILABLE');
   });
 });

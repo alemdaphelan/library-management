@@ -9,6 +9,9 @@
     </button>
   </div>
 
+  <div class="page-message error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="page-message success" *ngIf="successMessage">{{ successMessage }}</div>
+
   <div class="card">
     <div class="table-toolbar">
       <div class="search-box">
@@ -22,14 +25,11 @@
                 (click)="selectedCategoryId = category.categoryId; applyFilters()">{{ category.name }}</button>
       </div>
       <div class="filter-actions" style="margin-left: auto; display: flex; gap: 10px;">
-        <select class="form-control" style="width: 150px;">
-          <option>Trạng thái</option>
-          <option>Có sẵn</option>
-          <option>Hết sách</option>
+        <select class="form-control" style="width: 150px;" [(ngModel)]="selectedAvailability" (change)="applyFilters()">
+          <option value="">Tất cả trạng thái</option>
+          <option value="AVAILABLE">Có sẵn</option>
+          <option value="UNAVAILABLE">Hết sách</option>
         </select>
-        <button class="btn-outline">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Cột hiển thị
-        </button>
       </div>
     </div>
 
@@ -46,7 +46,7 @@
             <th class="text-right">Thao tác</th>
           </tr>
         </thead>
-        <tbody>
+      <tbody *ngIf="!isLoading">
           <tr *ngFor="let book of books">
             <td>
               <div class="book-info-cell">
@@ -89,6 +89,8 @@
           </tr>
         </tbody>
       </table>
+      <div class="table-state" *ngIf="isLoading">Đang tải danh mục sách...</div>
+      <div class="table-state" *ngIf="!isLoading && !books.length">Không có đầu sách nào khớp bộ lọc.</div>
     </div>
     
     <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
@@ -132,9 +134,11 @@
           <div class="cover-preview-fallback" *ngIf="currentBook.imgError || !(currentBook.imageUrlL || currentBook.imageUrlM || currentBook.imageUrlS || currentBook.coverUrl)">
             <span>{{ (currentBook.title || 'B') | slice:0:1 }}</span>
           </div>
-          <div class="upload-actions">
-            <button type="button" class="btn-outline btn-sm">Tải ảnh lên</button>
-            <p class="upload-hint">Định dạng .jpg, .png. Tối đa 2MB.</p>
+          <div class="upload-actions flex-1">
+            <label>Đường dẫn ảnh bìa</label>
+            <input type="url" class="form-control" name="imageUrlL" [(ngModel)]="currentBook.imageUrlL"
+                   (ngModelChange)="currentBook.imgError = false" placeholder="https://.../cover.jpg">
+            <p class="upload-hint">Nhập URL ảnh hợp lệ; hệ thống sẽ hiển thị bản xem trước.</p>
           </div>
         </div>
       </div>
@@ -178,7 +182,8 @@
       
       <div class="form-group">
         <label>Tóm tắt nội dung</label>
-        <textarea class="form-control" rows="4" placeholder="Nhập mô tả hoặc tóm tắt nội dung tài liệu..."></textarea>
+        <textarea class="form-control" rows="4" name="description" [(ngModel)]="currentBook.description"
+                  placeholder="Nhập mô tả hoặc tóm tắt nội dung tài liệu..."></textarea>
       </div>
     </form>
   </div>

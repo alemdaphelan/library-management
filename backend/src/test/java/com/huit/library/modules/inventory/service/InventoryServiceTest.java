@@ -10,6 +10,7 @@ import com.huit.library.modules.inventory.entity.SupplierEntity;
 import com.huit.library.modules.inventory.repository.GoodsReceiptRepository;
 import com.huit.library.modules.inventory.repository.ReceiptDetailRepository;
 import com.huit.library.modules.inventory.repository.SupplierRepository;
+import com.huit.library.modules.notification.service.StaffNotificationService;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -29,7 +30,7 @@ class InventoryServiceTest {
         BookRepository bookRepository = mock(BookRepository.class);
         BookCopyRepository copyRepository = mock(BookCopyRepository.class);
         InventoryService service = new InventoryService(receiptRepository, supplierRepository,
-                detailRepository, bookRepository, copyRepository);
+                detailRepository, bookRepository, copyRepository, mock(StaffNotificationService.class));
 
         SupplierEntity supplier = new SupplierEntity();
         supplier.setSupplierId(7L);

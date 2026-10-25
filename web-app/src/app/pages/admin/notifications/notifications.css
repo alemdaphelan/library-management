@@ -19,6 +19,9 @@
 .filters span { color: #64748b; white-space: nowrap; }
 .notification-list { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; background: white; }
 .notification-item { display: flex; align-items: center; gap: 14px; padding: 18px; border-bottom: 1px solid #e2e8f0; }
+.notification-item { cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.notification-item:hover { background: #f0f9ff; }
+.notification-item:focus-visible { outline: 3px solid rgba(2, 132, 199, .25); outline-offset: -3px; }
 .notification-item:last-child { border-bottom: 0; }
 .notification-item.unread-item { background: #f8fbff; }
 .notification-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; font-weight: 800; }
@@ -31,7 +34,7 @@
 .meta { display: flex; flex-wrap: wrap; gap: 12px; color: #94a3b8; font-size: 0.82rem; }
 .unread-dot { width: 8px; height: 8px; border-radius: 50%; background: #0284c7; }
 .mark-read { padding: 8px 12px; border: 1px solid #bfdbfe; border-radius: 7px; color: #0369a1; background: #eff6ff; cursor: pointer; }
-.read-label { color: #94a3b8; font-size: 0.85rem; }
+.read-label { color: #0369a1; font-size: 0.85rem; font-weight: 700; white-space: nowrap; }
 .loading, .empty, .message { padding: 28px; text-align: center; border-radius: 12px; background: white; color: #64748b; }
 .message.error { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; }
 .message.success { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }

@@ -3,6 +3,7 @@ package com.huit.library.modules.auth.controller;
 import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.dto.StudentUpsertRequestDTO;
 import com.huit.library.modules.auth.service.UserService;
+import com.huit.library.modules.auth.service.ReaderProfileService;
 import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.modules.interactive.dto.WishlistRequestDTO;
 import com.huit.library.modules.interactive.service.BookInteractionService;
@@ -24,10 +25,13 @@ public class UserController {
 
     private final UserService userService;
     private final BookInteractionService bookInteractionService;
+    private final ReaderProfileService readerProfileService;
 
-    public UserController(UserService userService, BookInteractionService bookInteractionService) {
+    public UserController(UserService userService, BookInteractionService bookInteractionService,
+                          ReaderProfileService readerProfileService) {
         this.userService = userService;
         this.bookInteractionService = bookInteractionService;
+        this.readerProfileService = readerProfileService;
     }
 
     @GetMapping("/students")
@@ -42,6 +46,13 @@ public class UserController {
     @Operation(summary = "Get student by MSSV")
     public ResponseEntity<?> getStudentByMssv(@PathVariable String mssv) {
         return ResponseEntity.ok(userService.getStudentByMssv(mssv));
+    }
+
+    @GetMapping("/students/{mssv}/profile")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Get complete reader profile", description = "Returns card, circulation, debt and penalty data for one student.")
+    public ResponseEntity<?> getReaderProfile(@PathVariable String mssv) {
+        return ResponseEntity.ok(readerProfileService.getByMssv(mssv));
     }
 
     @PostMapping("/students")

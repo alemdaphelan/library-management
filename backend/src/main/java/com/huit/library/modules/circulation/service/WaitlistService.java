@@ -86,9 +86,11 @@ public class WaitlistService {
 
     @Transactional(readOnly = true)
     public LocalDateTime calculateDirectReservationDeadline(LocalDate pickupDate, LocalDateTime now) {
-        LocalDate selectedDate = pickupDate != null ? pickupDate : now.toLocalDate().plusDays(1);
-        if (selectedDate.isBefore(now.toLocalDate())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày nhận sách không được nằm trong quá khứ");
+        LocalDate selectedDate = pickupDate != null ? pickupDate : now.toLocalDate();
+        if (!selectedDate.equals(now.toLocalDate())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Phiếu đặt giữ trực tiếp chỉ có hiệu lực trong ngày hiện tại");
         }
         if (isClosed(selectedDate)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ngày nhận sách đã chọn là ngày thư viện đóng cửa");

@@ -6,6 +6,7 @@ import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.CirculationOperationResponseDTO;
 import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
+import com.huit.library.modules.circulation.dto.ManualCheckoutRequestDTO;
 import com.huit.library.modules.circulation.entity.CirculationOperationEntity;
 import com.huit.library.modules.circulation.entity.LoanDetailEntity;
 import com.huit.library.modules.circulation.entity.LoanStatusHistoryEntity;
@@ -90,7 +91,7 @@ public class CirculationStateService {
     public LoanStateResponseDTO rejectReservation(Long ticketId, UUID operatorId, String reason) {
         LoanTicketEntity ticket = findTicket(ticketId);
         LoanStateResponseDTO response = transition(ticket, LoanTicketStatus.REJECTED, operatorId, reason.trim());
-        releaseReservedCopies(ticketId, LoanDetailStatus.CANCELLED);
+        releaseReservedCopies(ticket, LoanDetailStatus.CANCELLED);
         return response;
     }
 
@@ -98,7 +99,7 @@ public class CirculationStateService {
     public LoanStateResponseDTO cancelReservation(LoanTicketEntity ticket, UUID actorId) {
         LoanStateResponseDTO response = transition(
                 ticket, LoanTicketStatus.CANCELLED, actorId, "Độc giả hủy yêu cầu đặt giữ");
-        releaseReservedCopies(ticket.getTicketId(), LoanDetailStatus.CANCELLED);
+        releaseReservedCopies(ticket, LoanDetailStatus.CANCELLED);
         return response;
     }
 
@@ -209,6 +210,92 @@ public class CirculationStateService {
                 request.getIdempotencyKey(), requestHash, "CHECKOUT",
                 List.of(ticket.getTicketId()), barcodes, "BORROWING",
                 "Checkout thành công " + barcodes.size() + " tài liệu; hạn trả " + dueAt.toLocalDate());
+    }
+
+    @Transactional
+    public CirculationOperationResponseDTO manualCheckout(ManualCheckoutRequestDTO request, UUID operatorId) {
+        List<String> barcodes = normalizeBarcodes(request.getBarcodes());
+        LoanTicketType ticketType;
+        try {
+            ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại phiếu không hợp lệ");
+        }
+        String mssv = request.getMssv().trim();
+        String requestHash = requestHash(
+                "MANUAL_CHECKOUT", mssv, ticketType.name(), String.join(",", barcodes));
+        CirculationOperationResponseDTO replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
+        if (replay != null) {
+            return replay;
+        }
+
+        var reader = userRepository.findByMssv(mssv)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc có MSSV " + mssv));
+        ensureEligibleForReservation(reader.getUserId(), barcodes.size());
+
+        List<com.huit.library.modules.catalog.entity.BookCopyEntity> copies =
+                bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
+        if (copies.size() != barcodes.size()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ bản sao cần mượn");
+        }
+        for (var copy : copies) {
+            if (!"AVAILABLE".equalsIgnoreCase(copy.getStatus())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Bản sao " + copy.getBarcode() + " hiện không sẵn sàng để mượn");
+            }
+            if (loanDetailRepository.countOpenItemsByUserIdAndBookId(reader.getUserId(), copy.getBookId()) > 0) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Bạn đọc đã có đầu sách của bản sao " + copy.getBarcode() + " trong phiếu đang hoạt động");
+            }
+        }
+        if (copies.stream().map(com.huit.library.modules.catalog.entity.BookCopyEntity::getBookId).distinct().count()
+                != copies.size()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Một phiếu không được mượn nhiều bản sao của cùng một đầu sách");
+        }
+
+        LoanTicketEntity ticket = new LoanTicketEntity();
+        ticket.setUserId(reader.getUserId());
+        ticket.setTicketType(ticketType.name());
+        ticket.setStatus(LoanTicketStatus.RESERVED.name());
+        ticket.setProcessedBy(operatorId);
+        ticket.setDecisionNote("Lập phiếu mượn trực tiếp tại quầy");
+        ticket = loanTicketRepository.save(ticket);
+
+        LocalDateTime checkoutAt = LocalDateTime.now();
+        LocalDateTime dueAt = ticketType == LoanTicketType.ONSITE
+                ? checkoutAt.toLocalDate().atTime(LocalTime.of(21, 0))
+                : checkoutAt.plusDays(10);
+        if (dueAt.isBefore(checkoutAt)) {
+            dueAt = checkoutAt.plusHours(1);
+        }
+        String conditionNote = request.getNote() == null || request.getNote().isBlank()
+                ? "Mượn trực tiếp tại quầy"
+                : request.getNote().trim();
+        for (var copy : copies) {
+            LoanDetailEntity detail = new LoanDetailEntity();
+            detail.setTicketId(ticket.getTicketId());
+            detail.setBarcode(copy.getBarcode());
+            detail.setCheckoutConditionNote(conditionNote);
+            detail.setReturnStatus(LoanDetailStatus.BORROWING.name());
+            detail.setDueDate(dueAt);
+            loanDetailRepository.save(detail);
+
+            copy.setStatus("BORROWING");
+            copy.setLockedByUser(null);
+            copy.setLockedUntil(null);
+            bookCopyRepository.save(copy);
+        }
+        transition(ticket, LoanTicketStatus.BORROWING, operatorId, "Đã lập phiếu và giao sách tại quầy");
+
+        return recordOperation(
+                request.getIdempotencyKey(), requestHash, "CHECKOUT",
+                List.of(ticket.getTicketId()), barcodes, "BORROWING",
+                "Đã lập phiếu #" + ticket.getTicketId() + " và cho mượn " + barcodes.size()
+                        + " tài liệu; hạn trả " + dueAt);
     }
 
     @Transactional
@@ -345,6 +432,14 @@ public class CirculationStateService {
                     HttpStatus.CONFLICT, "Thẻ thư viện đang bị khóa");
         }
         LocalDateTime now = LocalDateTime.now();
+        if (user.getCardStatus() != null && !"ACTIVE".equalsIgnoreCase(user.getCardStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Thẻ thư viện không ở trạng thái hoạt động");
+        }
+        if (user.getCardExpiryDate() != null && user.getCardExpiryDate().isBefore(now)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Thẻ thư viện đã hết hạn");
+        }
         boolean hasDebt = walletRepository.findByUserId(userId)
                 .map(wallet -> wallet.getTotalDebt() != null && wallet.getTotalDebt().signum() > 0)
                 .orElse(false);
@@ -461,20 +556,36 @@ public class CirculationStateService {
         }
     }
 
-    private void releaseReservedCopies(Long ticketId, LoanDetailStatus detailStatus) {
-        List<LoanDetailEntity> details = loanDetailRepository.findByTicketId(ticketId);
+    private void releaseReservedCopies(LoanTicketEntity ticket, LoanDetailStatus detailStatus) {
+        List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId());
+        List<String> barcodes = details.stream()
+                .map(LoanDetailEntity::getBarcode)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<String, com.huit.library.modules.catalog.entity.BookCopyEntity> copies = barcodes.isEmpty()
+                ? Map.of()
+                : bookCopyRepository.findAllByBarcodeInForUpdate(barcodes).stream()
+                        .collect(Collectors.toMap(
+                                com.huit.library.modules.catalog.entity.BookCopyEntity::getBarcode,
+                                Function.identity()));
         for (LoanDetailEntity detail : details) {
             detail.setReturnStatus(detailStatus.name());
             loanDetailRepository.save(detail);
             if (detail.getBarcode() == null) {
                 continue;
             }
-            bookCopyRepository.findById(detail.getBarcode()).ifPresent(copy -> {
-                copy.setStatus("AVAILABLE");
-                copy.setLockedByUser(null);
-                copy.setLockedUntil(null);
-                bookCopyRepository.save(copy);
-            });
+            var copy = copies.get(detail.getBarcode());
+            if (copy == null
+                    || !"RESERVED".equalsIgnoreCase(copy.getStatus())
+                    || !Objects.equals(copy.getLockedByUser(), ticket.getUserId())) {
+                continue;
+            }
+            copy.setStatus("AVAILABLE");
+            copy.setLockedByUser(null);
+            copy.setLockedUntil(null);
+            bookCopyRepository.save(copy);
+            waitlistService.promoteNext(copy, LocalDateTime.now());
         }
     }
 }
