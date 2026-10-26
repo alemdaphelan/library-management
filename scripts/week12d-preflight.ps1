@@ -93,7 +93,9 @@ try {
         if ($relativePath -ne ".env.example" -and $extension -notin $textExtensions) {
             continue
         }
-        $fileInfo = Get-Item -LiteralPath $relativePath
+        # Dotfiles (for example .env.example) are hidden on Linux and require
+        # -Force when the same script runs in GitHub Actions.
+        $fileInfo = Get-Item -LiteralPath $relativePath -Force
         if ($fileInfo.Length -gt 5MB) {
             Add-Warning "Bỏ qua quét nội dung file văn bản trên 5 MB: $relativePath"
             continue
@@ -116,7 +118,7 @@ try {
 
     $largeTrackedFiles = foreach ($relativePath in $trackedPaths) {
         if (Test-Path -LiteralPath $relativePath -PathType Leaf) {
-            $fileInfo = Get-Item -LiteralPath $relativePath
+            $fileInfo = Get-Item -LiteralPath $relativePath -Force
             if ($fileInfo.Length -gt 50MB) {
                 [PSCustomObject]@{ Path = $relativePath; SizeMB = [math]::Round($fileInfo.Length / 1MB, 1) }
             }
