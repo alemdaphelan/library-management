@@ -38,6 +38,9 @@ describe('Circulation counter', () => {
     replayed: false,
   };
   const service = {
+    getStaffLoans: vi.fn(() => of([])),
+    approveReservation: vi.fn(() => of({ ticketId: 1, status: 'RESERVED', message: 'Đã duyệt' })),
+    rejectReservation: vi.fn(() => of({ ticketId: 1, status: 'REJECTED', message: 'Đã từ chối' })),
     getLoan: vi.fn(() => of(reservedTicket)),
     getBookCopyByBarcode: vi.fn(() => of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' })),
     getActiveLoanItemByBarcode: vi.fn(() => of(reservedTicket.items[0])),
@@ -110,13 +113,12 @@ describe('Circulation counter', () => {
     expect(component.errorMessage).toContain('không thuộc phiếu #19');
   });
 
-  it('submits a real return with its condition note', () => {
+  it('automatically records a real return immediately after a valid scan', () => {
     component.switchTab('return');
     service.getBookCopyByBarcode.mockReturnValue(of({ barcode: 'BC-019', bookId: 9, status: 'BORROWING', location: '' }));
+    component.returnConditionNote = 'Bìa sách nguyên vẹn';
     component.barcodeInput = 'BC-019';
     component.scanBookBarcode();
-    component.returnConditionNote = 'Bìa sách nguyên vẹn';
-    component.completeTransaction();
 
     expect(service.returnBooks).toHaveBeenCalledWith(
       ['BC-019'],
@@ -124,9 +126,10 @@ describe('Circulation counter', () => {
       'Bìa sách nguyên vẹn',
     );
     expect(component.successMessage).toContain('Trả thành công');
+    expect(component.scannedBooks).toHaveLength(0);
   });
 
-  it('accepts return barcodes from different active tickets in one operation', () => {
+  it('accepts return barcodes from different active tickets without selecting their tickets', () => {
     component.switchTab('return');
     service.getBookCopyByBarcode
       .mockReturnValueOnce(of({ barcode: 'BC-019', bookId: 9, status: 'BORROWING', location: '' }))
@@ -140,13 +143,9 @@ describe('Circulation counter', () => {
     component.barcodeInput = 'BC-020';
     component.scanBookBarcode();
 
-    expect(component.scannedBooks.map(item => item.loanTicketId)).toEqual([19, 20]);
-    component.completeTransaction();
-    expect(service.returnBooks).toHaveBeenCalledWith(
-      ['BC-019', 'BC-020'],
-      expect.any(String),
-      '',
-    );
+    expect(service.returnBooks).toHaveBeenNthCalledWith(1, ['BC-019'], expect.any(String), '');
+    expect(service.returnBooks).toHaveBeenNthCalledWith(2, ['BC-020'], expect.any(String), '');
+    expect(component.scannedBooks).toHaveLength(0);
   });
 
   it('creates and checks out a walk-in loan by MSSV', () => {

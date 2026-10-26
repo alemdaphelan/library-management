@@ -52,6 +52,8 @@ public class EmailNotificationService {
         return switch (type.toUpperCase()) {
             case "PROPOSAL_APPROVED" -> "Đề xuất tài liệu đã được chấp nhận";
             case "PROPOSAL_REJECTED" -> "Kết quả đề xuất tài liệu";
+            case "LOAN_APPROVED" -> "Yêu cầu mượn tài liệu đã được duyệt";
+            case "LOAN_REJECTED" -> "Kết quả yêu cầu mượn tài liệu";
             case "DUE_SOON", "LOAN_DUE_SOON" -> "Sắp đến hạn trả sách";
             case "DUE_TODAY" -> "Đến hạn trả sách";
             case "OVERDUE", "LOAN_OVERDUE" -> "Sách đang quá hạn";

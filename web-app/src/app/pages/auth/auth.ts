@@ -58,7 +58,7 @@ export class Auth implements OnInit {
   private extractErrorMessage(err: any, fallback: string): string {
     if (!err) return fallback;
     if (err.status === 0) {
-      return 'Không thể kết nối đến máy chủ Backend (Port 8080). Vui lòng khởi động máy chủ!';
+      return 'Không thể kết nối đến hệ thống thư viện. Vui lòng thử lại hoặc liên hệ người quản trị.';
     }
     if (typeof err.error === 'string' && err.error.trim()) {
       return err.error;
@@ -94,7 +94,7 @@ export class Auth implements OnInit {
         console.error('Login error:', err);
         this.isSubmitting = false;
         if (err.status === 0) {
-          this.errorMessage = 'Không thể kết nối đến máy chủ Backend (Port 8080). Vui lòng kiểm tra lại dịch vụ Backend!';
+          this.errorMessage = 'Không thể kết nối đến hệ thống thư viện. Vui lòng thử lại hoặc liên hệ người quản trị.';
         } else {
           this.errorMessage = this.extractErrorMessage(err, 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!');
         }

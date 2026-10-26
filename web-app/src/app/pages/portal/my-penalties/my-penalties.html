@@ -23,17 +23,17 @@
     <section class="summary-grid">
       <article class="summary-card debt-card">
         <span>Còn phải thanh toán</span>
-        <strong>{{ outstandingDebt | number:'1.0-0' }} đ</strong>
+        <strong>{{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ</strong>
         <small>{{ openDebtEntries.length }} khoản đang mở</small>
       </article>
       <article class="summary-card">
         <span>Tổng khoản đã ghi nhận</span>
-        <strong>{{ totalAssessed | number:'1.0-0' }} đ</strong>
+        <strong>{{ totalAssessed | number:'1.0-0':'en-US' }} VNĐ</strong>
         <small>Không tính giao dịch thanh toán ngược</small>
       </article>
       <article class="summary-card paid-card">
         <span>Đã thanh toán / cấn trừ</span>
-        <strong>{{ totalPaid | number:'1.0-0' }} đ</strong>
+        <strong>{{ totalPaid | number:'1.0-0':'en-US' }} VNĐ</strong>
         <small>Đối chiếu theo từng khoản thu</small>
       </article>
       <article class="summary-card">
@@ -61,9 +61,9 @@
             <tr *ngFor="let entry of debtEntries">
               <td>#{{ entry.transactionId }}</td>
               <td><strong>{{ feeTypeLabel(entry.type) }}</strong><small>{{ entry.reason || 'Không có ghi chú' }}</small></td>
-              <td>{{ entry.amount | number:'1.0-0' }} đ</td>
-              <td>{{ (entry.paidAmount || 0) | number:'1.0-0' }} đ</td>
-              <td class="remaining">{{ remainingAmount(entry) | number:'1.0-0' }} đ</td>
+              <td>{{ entry.amount | number:'1.0-0':'en-US' }} VNĐ</td>
+              <td>{{ (entry.paidAmount || 0) | number:'1.0-0':'en-US' }} VNĐ</td>
+              <td class="remaining">{{ remainingAmount(entry) | number:'1.0-0':'en-US' }} VNĐ</td>
               <td><span class="status" [class.open]="remainingAmount(entry) > 0">{{ statusLabel(entry.status) }}</span></td>
               <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
             </tr>
@@ -81,11 +81,11 @@
           <p>{{ item.description || 'Không có mô tả bổ sung.' }}</p>
           <dl>
             <div><dt>Mã vạch</dt><dd>{{ item.barcode }}</dd></div>
-            <div><dt>Phạt quá hạn</dt><dd>{{ item.overdueFineSnapshot | number:'1.0-0' }} đ</dd></div>
-            <div><dt>Sửa chữa</dt><dd>{{ item.repairFee | number:'1.0-0' }} đ</dd></div>
-            <div><dt>Đền bù</dt><dd>{{ item.compensationAmount | number:'1.0-0' }} đ</dd></div>
-            <div><dt>Phí kỹ thuật</dt><dd>{{ item.technicalFee | number:'1.0-0' }} đ</dd></div>
-            <div class="case-total"><dt>Tổng / còn lại</dt><dd>{{ item.totalAmount | number:'1.0-0' }} đ / {{ (item.totalAmount - (item.paidAmount || 0)) | number:'1.0-0' }} đ</dd></div>
+            <div><dt>Phạt quá hạn</dt><dd>{{ item.overdueFineSnapshot | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div><dt>Sửa chữa</dt><dd>{{ item.repairFee | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div><dt>Đền bù</dt><dd>{{ item.compensationAmount | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div><dt>Phí kỹ thuật</dt><dd>{{ item.technicalFee | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div class="case-total"><dt>Tổng / còn lại</dt><dd>{{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ / {{ (item.totalAmount - (item.paidAmount || 0)) | number:'1.0-0':'en-US' }} VNĐ</dd></div>
           </dl>
           <div class="case-deadline">Hạn xử lý: <strong>{{ item.settlementDueAt | date:'dd/MM/yyyy HH:mm' }}</strong></div>
           <div class="decision" *ngIf="item.decisionReason"><strong>Kết quả miễn giảm:</strong> {{ item.decisionReason }}</div>
@@ -99,7 +99,7 @@
       <div class="payment-list" *ngIf="paymentEntries.length > 0">
         <article *ngFor="let payment of paymentEntries">
           <div><strong>{{ payment.receiptNumber || ('Giao dịch #' + payment.transactionId) }}</strong><small>{{ payment.reason }}</small></div>
-          <div><strong>{{ (payment.amount < 0 ? -payment.amount : payment.amount) | number:'1.0-0' }} đ</strong><small>{{ payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : payment.paymentMethod === 'CASH' ? 'Tiền mặt' : payment.paymentMethod || 'Đã ghi nhận' }} · {{ (payment.paidAt || payment.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small></div>
+          <div><strong>{{ (payment.amount < 0 ? -payment.amount : payment.amount) | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : payment.paymentMethod === 'CASH' ? 'Tiền mặt' : payment.paymentMethod || 'Đã ghi nhận' }} · {{ (payment.paidAt || payment.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small></div>
         </article>
       </div>
     </section>

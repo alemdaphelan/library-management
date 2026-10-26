@@ -34,7 +34,6 @@ class ReaderProfileServiceTest {
         student.setUserType("STUDENT");
         student.setMssv("2001231849");
         LoanTicketSummaryDTO ownLoan = LoanTicketSummaryDTO.builder().ticketId(1L).userId(userId).build();
-        LoanTicketSummaryDTO otherLoan = LoanTicketSummaryDTO.builder().ticketId(2L).userId(UUID.randomUUID()).build();
         TransactionEntity debt = new TransactionEntity();
         debt.setTransactionId(3L);
         PenaltyCaseEntity penaltyCase = new PenaltyCaseEntity();
@@ -44,7 +43,7 @@ class ReaderProfileServiceTest {
                 null, null, BigDecimal.ZERO, BigDecimal.ZERO, null, null);
         when(userService.getStudentByMssv(student.getMssv())).thenReturn(student);
         when(cardService.get(userId)).thenReturn(card);
-        when(loanService.getStaffLoans()).thenReturn(List.of(ownLoan, otherLoan));
+        when(loanService.getUserLoanSummaries(userId)).thenReturn(List.of(ownLoan));
         when(debtService.getUserLedger(userId)).thenReturn(List.of(debt));
         when(penaltyService.listMyCases(userId)).thenReturn(List.of(penaltyCase));
 

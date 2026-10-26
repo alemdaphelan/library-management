@@ -371,6 +371,13 @@ public class LoanService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<LoanTicketSummaryDTO> getUserLoanSummaries(UUID userId) {
+        return loanTicketRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(this::toLoanTicketSummary)
+                .toList();
+    }
+
     @Transactional
     public LoanItemDTO renewLoan(Long ticketId, UUID userId) {
         return renewLoan(ticketId, null, userId);

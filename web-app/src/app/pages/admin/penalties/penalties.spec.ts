@@ -54,4 +54,16 @@ describe('Penalties', () => {
     component.submitReview(9);
     expect(service.submitReview).toHaveBeenCalledWith(9);
   });
+
+  it('highlights the exact penalty case referenced by a notification', () => {
+    (component as any).route = {
+      snapshot: { queryParamMap: { get: (key: string) => key === 'referenceType' ? 'PENALTY_CASE' : key === 'referenceId' ? '9' : null } },
+    };
+
+    component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.highlightedCaseId).toBe(9);
+    expect(fixture.nativeElement.querySelector('#penalty-case-9')?.classList).toContain('highlighted-row');
+  });
 });

@@ -9,6 +9,7 @@ import {
   CirculationService,
   LoanItem,
   LoanTicketDetail,
+  LoanTicketSummary,
 } from '../../../services/circulation.service';
 
 interface CounterBook extends BookCopy {
@@ -49,6 +50,10 @@ export class Circulation implements OnInit, OnDestroy {
   private cameraStream?: MediaStream;
   private cameraTimer?: number;
   private detectingFrame = false;
+  pendingRequests: LoanTicketSummary[] = [];
+  decisionLoan: LoanTicketSummary | null = null;
+  rejectionReason = '';
+  decisionInProgress = false;
 
   constructor(
     private circulationService: CirculationService,
@@ -56,6 +61,7 @@ export class Circulation implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.loadPendingRequests();
     const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
     const referenceId = this.route?.snapshot.queryParamMap.get('referenceId');
     if (referenceType === 'LOAN_TICKET' && referenceId) {
@@ -65,9 +71,67 @@ export class Circulation implements OnInit, OnDestroy {
     }
   }
 
+  loadPendingRequests(): void {
+    this.circulationService.getStaffLoans().subscribe({
+      next: loans => this.pendingRequests = (loans || []).filter(loan => loan.status === 'PENDING'),
+      error: error => this.errorMessage = this.extractError(error, 'Không thể tải danh sách yêu cầu chờ duyệt.'),
+    });
+  }
+
+  openDecision(loan: LoanTicketSummary): void {
+    this.decisionLoan = loan;
+    this.rejectionReason = '';
+  }
+
+  closeDecision(): void {
+    this.decisionLoan = null;
+    this.rejectionReason = '';
+  }
+
+  approveDecision(): void {
+    if (!this.decisionLoan || this.decisionInProgress) return;
+    const ticketId = this.decisionLoan.ticketId;
+    this.decisionInProgress = true;
+    this.circulationService.approveReservation(ticketId).subscribe({
+      next: result => {
+        this.decisionInProgress = false;
+        this.successMessage = result.message || `Đã duyệt phiếu #${ticketId}.`;
+        this.closeDecision();
+        this.loadPendingRequests();
+      },
+      error: error => {
+        this.decisionInProgress = false;
+        this.errorMessage = this.extractError(error, `Không thể duyệt phiếu #${ticketId}.`);
+      },
+    });
+  }
+
+  rejectDecision(): void {
+    const reason = this.rejectionReason.trim();
+    if (!this.decisionLoan || this.decisionInProgress) return;
+    if (!reason) {
+      this.errorMessage = 'Cần nhập lý do trước khi xác nhận từ chối.';
+      return;
+    }
+    const ticketId = this.decisionLoan.ticketId;
+    this.decisionInProgress = true;
+    this.circulationService.rejectReservation(ticketId, reason).subscribe({
+      next: result => {
+        this.decisionInProgress = false;
+        this.successMessage = result.message || `Đã từ chối phiếu #${ticketId}.`;
+        this.closeDecision();
+        this.loadPendingRequests();
+      },
+      error: error => {
+        this.decisionInProgress = false;
+        this.errorMessage = this.extractError(error, `Không thể từ chối phiếu #${ticketId}.`);
+      },
+    });
+  }
+
   get canSubmit(): boolean {
     if (this.isSubmitting || this.scannedBooks.length === 0) return false;
-    if (this.activeTab === 'return') return true;
+    if (this.activeTab === 'return') return false;
     if (this.borrowMode === 'manual') return this.manualMssv.trim().length > 0;
     if (!this.selectedTicket || this.selectedTicket.status !== 'RESERVED') return false;
     const expected = new Set(this.selectedTicket.items.map(item => item.barcode));
@@ -126,6 +190,10 @@ export class Circulation implements OnInit, OnDestroy {
   scanBookBarcode(): void {
     const barcode = this.barcodeInput.trim();
     if (!barcode) return;
+    if (this.isSubmitting) {
+      this.errorMessage = 'Hệ thống đang ghi nhận lần quét trước. Vui lòng chờ trong giây lát.';
+      return;
+    }
     if (this.scannedBooks.some(book => book.barcode === barcode)) {
       this.errorMessage = `Barcode ${barcode} đã được quét trong giao dịch này.`;
       return;
@@ -164,8 +232,13 @@ export class Circulation implements OnInit, OnDestroy {
           this.errorMessage = validationError;
           return;
         }
-        this.scannedBooks = [...this.scannedBooks, this.toCounterBook(copy, activeItem)];
+        const counterBook = this.toCounterBook(copy, activeItem);
         this.barcodeInput = '';
+        if (this.activeTab === 'return') {
+          this.completeAutomaticReturn(counterBook);
+          return;
+        }
+        this.scannedBooks = [...this.scannedBooks, counterBook];
       },
       error: error => {
         this.isScanningBook = false;
@@ -179,7 +252,7 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   completeTransaction(): void {
-    if (!this.canSubmit) return;
+    if (!this.canSubmit || this.activeTab === 'return') return;
     const barcodes = this.scannedBooks.map(book => book.barcode);
     this.isSubmitting = true;
     this.errorMessage = '';
@@ -191,9 +264,7 @@ export class Circulation implements OnInit, OnDestroy {
           barcodes,
           this.manualNote,
         )
-      : this.activeTab === 'borrow'
-      ? this.circulationService.checkout(this.selectedTicket!.ticketId, barcodes)
-      : this.circulationService.returnBooks(barcodes, crypto.randomUUID(), this.returnConditionNote);
+      : this.circulationService.checkout(this.selectedTicket!.ticketId, barcodes);
 
     request.subscribe({
       next: operation => {
@@ -211,6 +282,32 @@ export class Circulation implements OnInit, OnDestroy {
       error: error => {
         this.isSubmitting = false;
         this.errorMessage = this.extractError(error, 'Không thể hoàn tất giao dịch.');
+      },
+    });
+  }
+
+  private completeAutomaticReturn(book: CounterBook): void {
+    this.isSubmitting = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.lastOperation = null;
+    this.circulationService.returnBooks(
+      [book.barcode],
+      crypto.randomUUID(),
+      this.returnConditionNote.trim(),
+    ).subscribe({
+      next: operation => {
+        this.isSubmitting = false;
+        this.lastOperation = operation;
+        this.successMessage = `${operation.message || 'Trả sách thành công.'} Barcode ${book.barcode} đã được cập nhật về kho.`;
+        this.returnConditionNote = '';
+      },
+      error: error => {
+        this.isSubmitting = false;
+        this.errorMessage = this.extractError(
+          error,
+          `Không thể ghi nhận trả sách cho barcode ${book.barcode}.`,
+        );
       },
     });
   }

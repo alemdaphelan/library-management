@@ -96,9 +96,14 @@ export class BorrowCart implements OnInit {
     }
     const body = error?.error;
     if (typeof body === 'string' && body.trim()) return body;
-    const message = body?.detail ?? body?.message ?? body?.error;
-    return typeof message === 'string' && message.trim()
-      ? message
+    const message = body?.detail ?? body?.message;
+    if (typeof message === 'string' && message.trim()) return message;
+    if (error?.status === 409) {
+      return 'Không thể tạo phiếu mượn vì tài liệu hoặc tài khoản hiện không còn đáp ứng điều kiện mượn. Vui lòng tải lại trang và kiểm tra các phiếu đang hoạt động.';
+    }
+    const generic = body?.error;
+    return typeof generic === 'string' && generic.trim() && generic.toLowerCase() !== 'conflict'
+      ? generic
       : 'Không thể tạo phiếu mượn. Vui lòng thử lại.';
   }
 }

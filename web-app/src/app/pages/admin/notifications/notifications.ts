@@ -128,7 +128,10 @@ export class Notifications implements OnInit {
     return ({
       LOAN_DUE_SOON: 'Sắp đến hạn',
       LOAN_OVERDUE: 'Quá hạn',
+      LOAN_APPROVED: 'Yêu cầu mượn đã được duyệt',
+      LOAN_REJECTED: 'Yêu cầu mượn bị từ chối',
       RESERVATION_EXPIRED: 'Hết hạn giữ chỗ',
+      RESERVATION_NO_SHOW: 'Không đến nhận sách',
       LOAN_REQUEST_PENDING: 'Yêu cầu mượn mới',
       BOOK_PROPOSAL_PENDING: 'Đề xuất sách mới',
       IMPORT_COMPLETED: 'Đã nhập kho',
@@ -139,6 +142,7 @@ export class Notifications implements OnInit {
       DEBT_PAYMENT: 'Đã thu tiền',
       CIRCULATION_LOCKED: 'Đã khóa quyền mượn',
       CIRCULATION_UNLOCKED: 'Đã mở quyền mượn',
+      WAIVER_DECISION: 'Đã có quyết định miễn giảm',
       WAITLIST_AVAILABLE: 'Sách trong hàng đợi đã sẵn sàng',
       WAITLIST_EXPIRED: 'Lượt hàng đợi đã hết hạn',
     } as Record<string, string>)[type] || 'Thông báo hệ thống';

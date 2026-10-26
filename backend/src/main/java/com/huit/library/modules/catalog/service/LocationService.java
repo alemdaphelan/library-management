@@ -8,6 +8,8 @@ import com.huit.library.modules.catalog.entity.ShelfEntity;
 import com.huit.library.modules.catalog.repository.BookshelfRepository;
 import com.huit.library.modules.catalog.repository.FloorRepository;
 import com.huit.library.modules.catalog.repository.ShelfRepository;
+import com.huit.library.modules.catalog.repository.BookCopyRepository;
+import com.huit.library.modules.catalog.dto.ShelfBookDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,12 +20,14 @@ public class LocationService {
     private final FloorRepository floorRepository;
     private final BookshelfRepository bookshelfRepository;
     private final ShelfRepository shelfRepository;
+    private final BookCopyRepository bookCopyRepository;
 
     public LocationService(FloorRepository floorRepository, BookshelfRepository bookshelfRepository,
-                           ShelfRepository shelfRepository) {
+                           ShelfRepository shelfRepository, BookCopyRepository bookCopyRepository) {
         this.floorRepository = floorRepository;
         this.bookshelfRepository = bookshelfRepository;
         this.shelfRepository = shelfRepository;
+        this.bookCopyRepository = bookCopyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +79,15 @@ public class LocationService {
     @Transactional(readOnly = true)
     public List<LocationNodeDTO> getShelves(Long bookshelfId) {
         return shelfRepository.findByBookshelf_BookshelfId(bookshelfId).stream().map(this::toShelf).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShelfBookDTO> getShelfBooks(Long shelfId) {
+        if (!shelfRepository.existsById(shelfId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy ngăn kệ");
+        }
+        return bookCopyRepository.findShelfBooks(shelfId);
     }
 
     @Transactional

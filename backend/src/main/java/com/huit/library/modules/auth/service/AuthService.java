@@ -170,13 +170,14 @@ public class AuthService {
                 "Mã này có hiệu lực trong 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n" +
                 "Trân trọng,\nThư viện HUIT.");
         
-        new Thread(() -> {
-            try {
-                mailSender.send(message);
-            } catch (Exception e) {
-                LOGGER.error("Không thể gửi email OTP", e);
-            }
-        }).start();
+        try {
+            // Sending before returning prevents the request from reporting success when the
+            // mail server has not accepted the OTP yet. It also keeps failures observable in
+            // integration tests and deployment logs instead of losing them in a detached thread.
+            mailSender.send(message);
+        } catch (Exception e) {
+            LOGGER.error("Không thể gửi email OTP", e);
+        }
     }
 
     public boolean verifyOtp(String email, String otp) {

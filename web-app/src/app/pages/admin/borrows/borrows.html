@@ -3,7 +3,7 @@
     <div class="ph-left">
       <span class="ph-branch">Quản lý lưu thông</span>
       <span class="ph-divider">/</span>
-      <span class="ph-title">Phiếu mượn, quá hạn và nợ phạt</span>
+      <span class="ph-title">Theo dõi đang mượn, quá hạn và lịch sử phiếu</span>
     </div>
     <button class="btn btn-outline-gray" type="button" (click)="loadLoans()" [disabled]="isLoading">
       {{ isLoading ? 'Đang tải...' : 'Làm mới' }}
@@ -14,7 +14,7 @@
     <div class="stat-card">
       <div class="st-label">TỔNG PHIẾU</div>
       <div class="st-value">{{ loans.length | number }}</div>
-      <div class="st-desc">Dữ liệu trực tiếp từ Backend</div>
+      <div class="st-desc">Tổng số phiếu trong hệ thống</div>
     </div>
     <div class="stat-card">
       <div class="st-label">ĐANG MƯỢN</div>
@@ -28,7 +28,7 @@
     </div>
     <div class="stat-card">
       <div class="st-label">NỢ PHẠT ĐÃ GHI NHẬN</div>
-      <div class="st-value">{{ outstandingFine | number:'1.0-0' }} <span class="st-unit">đ</span></div>
+      <div class="st-value">{{ outstandingFine | number:'1.0-0':'en-US' }} <span class="st-unit">VNĐ</span></div>
       <div class="st-desc">Chưa bao gồm bồi thường mất/hỏng</div>
     </div>
   </div>
@@ -40,8 +40,6 @@
       </div>
       <select class="form-select" [(ngModel)]="statusFilter" aria-label="Lọc trạng thái phiếu">
         <option value="ALL">Tất cả trạng thái</option>
-        <option value="PENDING">Chờ duyệt</option>
-        <option value="RESERVED">Đã duyệt</option>
         <option value="BORROWING">Đang mượn</option>
         <option value="OVERDUE">Quá hạn</option>
         <option value="RETURNED">Đã trả</option>
@@ -71,7 +69,7 @@
           <td>{{ loan.department || '—' }}</td>
           <td><strong>{{ loan.itemCount }}</strong> cuốn<div class="overdue-danger" *ngIf="loan.overdueItemCount">{{ loan.overdueItemCount }} cuốn quá hạn</div></td>
           <td>{{ loan.nearestDueDate ? (loan.nearestDueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
-          <td [class.fee-danger]="loan.totalLateFine > 0">{{ loan.totalLateFine | number:'1.0-0' }} đ</td>
+          <td [class.fee-danger]="loan.totalLateFine > 0">{{ loan.totalLateFine | number:'1.0-0':'en-US' }} VNĐ</td>
           <td><span class="badge" [ngClass]="statusClass(loan.status)">{{ statusLabel(loan.status) }}</span></td>
           <td><button class="btn btn-action-sub" type="button" (click)="viewDetails(loan.ticketId)">Xem chi tiết</button></td>
         </tr>
@@ -102,20 +100,10 @@
             <div><strong>{{ item.bookTitle }}</strong><p>{{ item.author || 'Chưa có tác giả' }} · Barcode {{ item.barcode }}</p></div>
             <div class="detail-item-right">
               <span>Hạn: {{ item.dueDate ? (item.dueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</span>
-              <strong [class.fee-danger]="item.lateFineAccrued > 0">Phạt: {{ item.lateFineAccrued | number:'1.0-0' }} đ</strong>
+              <strong [class.fee-danger]="item.lateFineAccrued > 0">Phạt: {{ item.lateFineAccrued | number:'1.0-0':'en-US' }} VNĐ</strong>
             </div>
           </article>
           <div class="empty-list" *ngIf="!selectedLoan.items.length">Phiếu chưa có tài liệu.</div>
-        </div>
-        <div class="decision-box" *ngIf="selectedLoan.status === 'PENDING' || selectedLoan.status === 'RESERVED'">
-          <label for="rejection-reason">Lý do từ chối</label>
-          <textarea id="rejection-reason" maxlength="500" [(ngModel)]="rejectionReason" placeholder="Bắt buộc khi từ chối phiếu"></textarea>
-          <div class="decision-actions">
-            <button class="btn btn-outline-danger" type="button" (click)="rejectSelected()" [disabled]="actionInProgress">Từ chối</button>
-            <button class="btn btn-primary" type="button" *ngIf="selectedLoan.status === 'PENDING'" (click)="approveSelected()" [disabled]="actionInProgress">
-              {{ actionInProgress ? 'Đang xử lý...' : 'Duyệt phiếu' }}
-            </button>
-          </div>
         </div>
       </ng-container>
     </section>

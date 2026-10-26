@@ -8,17 +8,27 @@
   <p class="alert success" *ngIf="successMessage">{{ successMessage }}</p>
 
   <section class="panel">
-    <h2>Hồ sơ đang quản lý</h2>
+    <div class="panel-heading">
+      <h2>Hồ sơ đang quản lý</h2>
+      <label class="status-filter">Thanh toán
+        <select [(ngModel)]="caseStatusFilter">
+          <option value="ALL">Tất cả</option>
+          <option value="UNPAID">Chưa thanh toán</option>
+          <option value="PARTIAL">Thanh toán một phần</option>
+          <option value="PAID">Đã thanh toán</option>
+        </select>
+      </label>
+    </div>
     <div class="table-wrap">
-      <table *ngIf="cases.length; else emptyCases">
+      <table *ngIf="filteredCases.length; else emptyCases">
         <thead><tr><th>Hồ sơ</th><th>Bạn đọc / Phiếu</th><th>Sự cố</th><th>Các khoản</th><th>Đã xử lý</th><th>Hạn / Trạng thái</th><th></th></tr></thead>
         <tbody>
-          <tr *ngFor="let item of cases">
+          <tr *ngFor="let item of filteredCases" [id]="'penalty-case-' + item.caseId" [class.highlighted-row]="item.caseId === highlightedCaseId">
             <td><strong>#{{ item.caseId }}</strong><br><small>{{ item.barcode }}</small></td>
             <td><small>{{ item.userId }}</small><br>Phiếu #{{ item.ticketId }} · Chi tiết #{{ item.loanDetailId }}</td>
             <td>{{ item.incidentType === 'LOST' ? 'Mất' : 'Hỏng ' + (item.damageSeverity || '') }}<br><small>{{ item.description }}</small></td>
-            <td>Sửa: {{ item.repairFee | number }}đ<br>Đền: {{ item.compensationAmount | number }}đ<br>Kỹ thuật: {{ item.technicalFee | number }}đ</td>
-            <td><strong>{{ item.paidAmount | number }} / {{ item.totalAmount | number }}đ</strong><br><small>Phạt trễ trước báo mất: {{ item.overdueFineSnapshot | number }}đ</small></td>
+            <td>Sửa: {{ item.repairFee | number:'1.0-0':'en-US' }} VNĐ<br>Đền: {{ item.compensationAmount | number:'1.0-0':'en-US' }} VNĐ<br>Kỹ thuật: {{ item.technicalFee | number:'1.0-0':'en-US' }} VNĐ</td>
+            <td><strong>{{ item.paidAmount | number:'1.0-0':'en-US' }} / {{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ</strong><br><span class="payment-status">{{ paymentStatusLabel(item) }}</span><br><small>Phạt trễ trước báo mất: {{ item.overdueFineSnapshot | number:'1.0-0':'en-US' }} VNĐ</small></td>
             <td>{{ item.settlementDueAt | date:'dd/MM/yyyy' }}<br><span class="status" [attr.data-status]="item.status">{{ statusLabel(item.status) }}</span></td>
             <td><button type="button" *ngIf="item.status === 'OUTSTANDING'" (click)="submitReview(item.caseId)">Xin miễn giảm</button></td>
           </tr>
@@ -52,7 +62,7 @@
       <label>Phương thức<select name="paymentMethod" [(ngModel)]="paymentForm.method"><option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option></select></label>
       <label>Ghi chú<textarea name="paymentNote" [(ngModel)]="paymentForm.note"></textarea></label>
       <button class="primary" type="submit" [disabled]="submitting">Ghi nhận thanh toán</button>
-      <article class="receipt" *ngIf="receipt"><strong>Biên nhận {{ receipt.receiptNumber }}</strong><p>Tổng thu: {{ receipt.totalAmount | number }}đ · Còn nợ: {{ receipt.remainingDebt | number }}đ</p><ul><li *ngFor="let line of receipt.allocations">{{ line.feeType }}: {{ line.amount | number }}đ — {{ line.reason }}</li></ul></article>
+      <article class="receipt" *ngIf="receipt"><strong>Biên nhận {{ receipt.receiptNumber }}</strong><p>Tổng thu: {{ receipt.totalAmount | number:'1.0-0':'en-US' }} VNĐ · Còn nợ: {{ receipt.remainingDebt | number:'1.0-0':'en-US' }} VNĐ</p><ul><li *ngFor="let line of receipt.allocations">{{ line.feeType }}: {{ line.amount | number:'1.0-0':'en-US' }} VNĐ — {{ line.reason }}</li></ul></article>
     </form>
 
     <form class="panel" (ngSubmit)="acceptReplacement()">
@@ -93,6 +103,6 @@
 
   <section class="panel admin-only" *ngIf="isAdmin">
     <h2>Yêu cầu điều chỉnh chờ Admin</h2>
-    <div class="adjustment" *ngFor="let item of adjustments"><span>#{{ item.adjustmentId }} · Giao dịch {{ item.transactionId }} · {{ item.requestedAmount | number }}đ · {{ item.reason }} · {{ item.status }}</span><span *ngIf="item.status === 'PENDING'"><button type="button" (click)="reviewAdjustment(item.adjustmentId, 'REJECT')">Từ chối</button><button class="primary" type="button" (click)="reviewAdjustment(item.adjustmentId, 'APPROVE')">Duyệt</button></span></div>
+    <div class="adjustment" *ngFor="let item of adjustments"><span>#{{ item.adjustmentId }} · Giao dịch {{ item.transactionId }} · {{ item.requestedAmount | number:'1.0-0':'en-US' }} VNĐ · {{ item.reason }} · {{ item.status }}</span><span *ngIf="item.status === 'PENDING'"><button type="button" (click)="reviewAdjustment(item.adjustmentId, 'REJECT')">Từ chối</button><button class="primary" type="button" (click)="reviewAdjustment(item.adjustmentId, 'APPROVE')">Duyệt</button></span></div>
   </section>
 </div>

@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: uat-default-student-wallets
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              INSERT INTO wallets (user_id, deposit_balance, total_debt, created_at, updated_at)
+              SELECT u.user_id, 50000, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+              FROM users u
+              WHERE u.user_type = 'STUDENT'
+                AND NOT EXISTS (
+                  SELECT 1 FROM wallets w WHERE w.user_id = u.user_id
+                );
+
+              UPDATE wallets
+              SET deposit_balance = 50000,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE (deposit_balance IS NULL OR deposit_balance = 0)
+                AND COALESCE(total_debt, 0) = 0
+                AND NOT EXISTS (
+                  SELECT 1 FROM transactions t WHERE t.user_id = wallets.user_id
+                );

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpEventType } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DigitalAsset, DigitalAssetsService } from '../../../services/digital-assets.service';
+import { BookService } from '../../../services/book.service';
 
 @Component({
   selector: 'app-digital-assets',
@@ -19,13 +20,26 @@ export class DigitalAssets implements OnInit {
   searchTerm = '';
   typeFilter = '';
   uploadBookId: number | null = null;
+  uploadBookIsbn = '';
+  linkedBookLabel = '';
+  isResolvingBook = false;
   uploadAccessLevel: 'AUTHENTICATED' | 'STAFF_ONLY' = 'AUTHENTICATED';
   editingAsset: DigitalAsset | null = null;
-  editForm = { displayName: '', bookId: null as number | null, accessLevel: 'AUTHENTICATED' as 'AUTHENTICATED' | 'STAFF_ONLY' };
+  editForm = {
+    displayName: '',
+    bookId: null as number | null,
+    bookIsbn: '',
+    bookLabel: '',
+    accessLevel: 'AUTHENTICATED' as 'AUTHENTICATED' | 'STAFF_ONLY'
+  };
+  isResolvingEditBook = false;
   errorMessage = '';
   successMessage = '';
 
-  constructor(private digitalAssetsService: DigitalAssetsService) {}
+  constructor(
+    private digitalAssetsService: DigitalAssetsService,
+    private bookService: BookService,
+  ) {}
 
   ngOnInit() {
     this.fetchAssets();
@@ -73,6 +87,53 @@ export class DigitalAssets implements OnInit {
 
   uploadFile(file: File) {
     this.clearMessages();
+    const isbn = this.uploadBookIsbn.trim();
+    if (isbn && !this.uploadBookId) {
+      this.isResolvingBook = true;
+      this.bookService.getBookByIsbn(isbn).subscribe({
+        next: book => {
+          this.isResolvingBook = false;
+          this.uploadBookId = Number(book.bookId);
+          this.linkedBookLabel = `${book.title || 'Sách'} · ISBN ${book.isbn || isbn}`;
+          this.performUpload(file);
+        },
+        error: err => {
+          this.isResolvingBook = false;
+          this.errorMessage = this.errorText(
+            err, 'Không tìm thấy sách theo ISBN. Hãy kiểm tra ISBN hoặc thêm sách vào danh mục trước.');
+        }
+      });
+      return;
+    }
+    this.performUpload(file);
+  }
+
+  resolveBook(): void {
+    const isbn = this.uploadBookIsbn.trim();
+    this.uploadBookId = null;
+    this.linkedBookLabel = '';
+    if (!isbn) return;
+    this.isResolvingBook = true;
+    this.bookService.getBookByIsbn(isbn).subscribe({
+      next: book => {
+        this.isResolvingBook = false;
+        this.uploadBookId = Number(book.bookId);
+        this.linkedBookLabel = `${book.title || 'Sách'} · ISBN ${book.isbn || isbn}`;
+      },
+      error: err => {
+        this.isResolvingBook = false;
+        this.errorMessage = this.errorText(
+          err, 'Không tìm thấy sách theo ISBN. Hãy kiểm tra ISBN hoặc thêm sách vào danh mục trước.');
+      }
+    });
+  }
+
+  onUploadIsbnChange(): void {
+    this.uploadBookId = null;
+    this.linkedBookLabel = '';
+  }
+
+  private performUpload(file: File) {
     this.isUploading = true;
     this.uploadProgress = 0;
     
@@ -83,6 +144,9 @@ export class DigitalAssets implements OnInit {
         } else if (event.type === HttpEventType.Response) {
           this.isUploading = false;
           this.successMessage = `Đã tải lên ${event.body?.name || file.name}.`;
+          this.uploadBookIsbn = '';
+          this.uploadBookId = null;
+          this.linkedBookLabel = '';
           this.fetchAssets();
         }
       },
@@ -119,12 +183,41 @@ export class DigitalAssets implements OnInit {
     this.editForm = {
       displayName: asset.name,
       bookId: asset.bookId || null,
+      bookIsbn: '',
+      bookLabel: asset.bookId ? (asset.bookTitle || 'Sách đang liên kết') : '',
       accessLevel: asset.accessLevel
     };
   }
 
+  onEditIsbnChange(): void {
+    this.editForm.bookId = null;
+    this.editForm.bookLabel = '';
+  }
+
+  resolveEditBook(): void {
+    const isbn = this.editForm.bookIsbn.trim();
+    if (!isbn) return;
+    this.isResolvingEditBook = true;
+    this.bookService.getBookByIsbn(isbn).subscribe({
+      next: book => {
+        this.isResolvingEditBook = false;
+        this.editForm.bookId = Number(book.bookId);
+        this.editForm.bookLabel = `${book.title || 'Sách'} · ISBN ${book.isbn || isbn}`;
+      },
+      error: err => {
+        this.isResolvingEditBook = false;
+        this.errorMessage = this.errorText(
+          err, 'Không tìm thấy sách theo ISBN. Liên kết hiện tại chưa được thay đổi.');
+      }
+    });
+  }
+
   saveEdit() {
     if (!this.editingAsset || !this.editForm.displayName.trim()) return;
+    if (this.editForm.bookIsbn.trim() && !this.editForm.bookId) {
+      this.errorMessage = 'Hãy tra cứu ISBN hợp lệ trước khi lưu liên kết.';
+      return;
+    }
     this.clearMessages();
     this.digitalAssetsService.updateAsset(this.editingAsset.id, {
       displayName: this.editForm.displayName.trim(),

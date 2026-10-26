@@ -3,6 +3,7 @@ import { HttpEventType } from '@angular/common/http';
 import { of } from 'rxjs';
 import { DigitalAssets } from './digital-assets';
 import { DigitalAsset, DigitalAssetsService } from '../../../services/digital-assets.service';
+import { BookService } from '../../../services/book.service';
 
 describe('DigitalAssets', () => {
   let fixture: ComponentFixture<DigitalAssets>;
@@ -19,12 +20,18 @@ describe('DigitalAssets', () => {
     deleteAsset: vi.fn(() => of(void 0)),
     downloadAsset: vi.fn()
   };
+  const bookService = {
+    getBookByIsbn: vi.fn(() => of({ bookId: 2, title: 'Lập trình Java', isbn: '9786040000012' }))
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [DigitalAssets],
-      providers: [{ provide: DigitalAssetsService, useValue: service }]
+      providers: [
+        { provide: DigitalAssetsService, useValue: service },
+        { provide: BookService, useValue: bookService }
+      ]
     }).compileComponents();
     fixture = TestBed.createComponent(DigitalAssets);
     component = fixture.componentInstance;
@@ -48,5 +55,16 @@ describe('DigitalAssets', () => {
     expect(service.updateAsset).toHaveBeenCalledWith(7, {
       displayName: 'Giáo trình mới', bookId: 2, accessLevel: 'AUTHENTICATED'
     });
+  });
+
+  it('resolves an edited book link by ISBN instead of asking for an internal id', () => {
+    component.openEdit(asset);
+    component.editForm.bookIsbn = '9786040000012';
+    component.onEditIsbnChange();
+    component.resolveEditBook();
+
+    expect(bookService.getBookByIsbn).toHaveBeenCalledWith('9786040000012');
+    expect(component.editForm.bookId).toBe(2);
+    expect(component.editForm.bookLabel).toContain('Lập trình Java');
   });
 });

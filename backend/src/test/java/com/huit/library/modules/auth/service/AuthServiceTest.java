@@ -89,7 +89,7 @@ class AuthServiceTest {
 
         verify(valueOperations, times(1)).set(startsWith("auth:otp:user@huit.edu.vn"),
                 matches("\\d{6}"), eq(10L), eq(TimeUnit.MINUTES));
-        verify(mailSender, timeout(1000).times(1)).send(any(org.springframework.mail.SimpleMailMessage.class));
+        verify(mailSender, times(1)).send(any(org.springframework.mail.SimpleMailMessage.class));
     }
 
     @Test

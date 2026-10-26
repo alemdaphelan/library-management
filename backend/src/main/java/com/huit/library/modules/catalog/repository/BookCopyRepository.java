@@ -11,6 +11,7 @@ import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import com.huit.library.modules.catalog.dto.ShelfBookDTO;
 
 @Repository
 public interface BookCopyRepository extends JpaRepository<BookCopyEntity, String> {
@@ -19,6 +20,15 @@ public interface BookCopyRepository extends JpaRepository<BookCopyEntity, String
     Optional<BookCopyEntity> findFirstByBookIdAndStatus(Long bookId, String status);
     long countByBookIdAndStatus(Long bookId, String status);
     long countByStatus(String status);
+
+    @Query("""
+            select new com.huit.library.modules.catalog.dto.ShelfBookDTO(
+                copy.barcode, book.bookId, book.title, book.isbn, copy.status)
+            from BookCopyEntity copy, BookEntity book
+            where copy.bookId = book.bookId and copy.shelf.shelfId = :shelfId
+            order by lower(book.title), copy.barcode
+            """)
+    List<ShelfBookDTO> findShelfBooks(@Param("shelfId") Long shelfId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

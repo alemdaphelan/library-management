@@ -72,8 +72,8 @@
         </div>
 
         <div class="summary-grid">
-          <div class="summary-card"><span>Tiền thế chân</span><strong>{{ profile.card.depositBalance | number:'1.0-0' }} đ</strong></div>
-          <div class="summary-card debt"><span>Công nợ hiện tại</span><strong>{{ profile.card.totalDebt | number:'1.0-0' }} đ</strong><small>{{ outstandingLedgerCount }} khoản chưa tất toán</small></div>
+          <div class="summary-card"><span>Tiền thế chân</span><strong>{{ profile.card.depositBalance | number:'1.0-0':'en-US' }} VNĐ</strong></div>
+          <div class="summary-card debt"><span>Công nợ hiện tại</span><strong>{{ profile.card.totalDebt | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ outstandingLedgerCount }} khoản chưa tất toán</small></div>
           <div class="summary-card"><span>Phiếu đang hoạt động</span><strong>{{ activeLoanCount }}</strong><small>{{ overdueLoanCount }} phiếu quá hạn</small></div>
           <div class="summary-card warning"><span>Vi phạm năm học</span><strong>{{ profile.student.overdueViolationCount || 0 }} quá hạn</strong><small>{{ profile.student.reservationNoShowCount || 0 }} lần không nhận sách</small></div>
         </div>
@@ -112,7 +112,7 @@
             <div class="record-list">
               <div class="record" *ngFor="let entry of profile.ledger | slice:0:6">
                 <div><strong>{{ entry.reason || entry.type }}</strong><small>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm' }} · {{ entry.status }}</small></div>
-                <b [class.negative]="entry.amount < 0">{{ entry.amount | number:'1.0-0' }} đ</b>
+                <b [class.negative]="entry.amount < 0">{{ entry.amount | number:'1.0-0':'en-US' }} VNĐ</b>
               </div>
               <p class="empty" *ngIf="!profile.ledger.length">Không có giao dịch công nợ.</p>
             </div>
@@ -123,7 +123,7 @@
             <div class="record-list">
               <div class="record" *ngFor="let item of profile.penaltyCases | slice:0:6">
                 <div><strong>#{{ item.caseId }} · {{ item.incidentType === 'LOST' ? 'Mất' : 'Hư hỏng' }}</strong><small>{{ item.barcode || 'Không có barcode' }} · {{ item.status }}</small></div>
-                <b>{{ item.totalAmount | number:'1.0-0' }} đ</b>
+                <b>{{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ</b>
               </div>
               <p class="empty" *ngIf="!profile.penaltyCases.length">Không có hồ sơ mất/hỏng.</p>
             </div>

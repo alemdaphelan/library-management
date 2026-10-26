@@ -10,8 +10,11 @@
   <p class="message success" *ngIf="successMessage">{{ successMessage }}</p>
 
   <div class="upload-options">
-    <label>Sách liên kết (ID, không bắt buộc)
-      <input type="number" min="1" [(ngModel)]="uploadBookId" placeholder="Ví dụ: 125">
+    <label>Sách liên kết theo ISBN (không bắt buộc)
+      <input type="text" [(ngModel)]="uploadBookIsbn" (ngModelChange)="onUploadIsbnChange()"
+             (blur)="resolveBook()" (keyup.enter)="resolveBook()" placeholder="Nhập hoặc quét ISBN trên sách">
+      <small *ngIf="isResolvingBook">Đang tra cứu sách…</small>
+      <small class="message success" *ngIf="linkedBookLabel">Đã chọn: {{ linkedBookLabel }}</small>
     </label>
     <label>Quyền truy cập
       <select [(ngModel)]="uploadAccessLevel">
@@ -55,7 +58,7 @@
         <div class="asset-name" [title]="asset.name">{{ asset.name }}</div>
         <div class="asset-meta">{{ formatSize(asset.size) }} · {{ asset.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
         <div class="book-link" [class.unlinked]="!asset.bookId">
-          {{ asset.bookId ? ('#' + asset.bookId + ' · ' + (asset.bookTitle || 'Sách đã liên kết')) : 'Chưa liên kết sách' }}
+          {{ asset.bookId ? ('Đã liên kết: ' + (asset.bookTitle || 'sách trong danh mục')) : 'Chưa liên kết sách' }}
         </div>
         <span class="access-badge">{{ asset.accessLevel === 'STAFF_ONLY' ? 'Chỉ nhân viên' : 'Bạn đọc đã đăng nhập' }}</span>
       </div>
@@ -72,7 +75,14 @@
     <form class="edit-dialog" (ngSubmit)="saveEdit()" (click)="$event.stopPropagation()">
       <h2>Chỉnh sửa tài liệu</h2>
       <label>Tên hiển thị<input name="displayName" [(ngModel)]="editForm.displayName" maxlength="255" required></label>
-      <label>Sách liên kết (ID)<input name="bookId" type="number" min="1" [(ngModel)]="editForm.bookId"></label>
+      <label>Sách liên kết theo ISBN
+        <input name="bookIsbn" [(ngModel)]="editForm.bookIsbn" (ngModelChange)="onEditIsbnChange()"
+               (blur)="resolveEditBook()" (keyup.enter)="resolveEditBook()"
+               placeholder="Nhập hoặc quét ISBN để thay đổi liên kết">
+        <small *ngIf="isResolvingEditBook">Đang tra cứu sách…</small>
+        <small class="message success" *ngIf="editForm.bookLabel">{{ editForm.bookLabel }}</small>
+        <small *ngIf="editForm.bookId && !editForm.bookIsbn">Giữ nguyên sách đang liên kết nếu để trống.</small>
+      </label>
       <label>Quyền truy cập<select name="accessLevel" [(ngModel)]="editForm.accessLevel"><option value="AUTHENTICATED">Bạn đọc đã đăng nhập</option><option value="STAFF_ONLY">Chỉ nhân viên thư viện</option></select></label>
       <div class="dialog-actions"><button type="button" (click)="editingAsset = null">Hủy</button><button class="primary" type="submit">Lưu thay đổi</button></div>
     </form>

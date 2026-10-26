@@ -50,7 +50,7 @@ describe('Dashboard', () => {
     const text = fixture.nativeElement.textContent;
 
     expect(text).toContain('20');
-    expect(text).toMatch(/15[,.]000 đ/);
+    expect(text).toMatch(/15[,.]000 VNĐ/);
     expect(text).toContain('Clean Code');
     expect(text).not.toContain('Tháng 9, 2026');
   });

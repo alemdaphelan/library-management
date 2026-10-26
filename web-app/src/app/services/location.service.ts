@@ -13,6 +13,14 @@ export interface LocationNode {
   parentName?: string | null;
 }
 
+export interface ShelfBook {
+  barcode: string;
+  bookId: number;
+  title: string;
+  isbn?: string;
+  status: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LocationService {
   private readonly apiUrl = `${environment.apiUrl}/locations`;
@@ -55,6 +63,10 @@ export class LocationService {
   getShelves(bookshelfId: number): Observable<LocationNode[]> {
     const params = new HttpParams().set('bookshelfId', bookshelfId);
     return this.http.get<LocationNode[]>(`${this.apiUrl}/shelves`, { params });
+  }
+
+  getShelfBooks(shelfId: number): Observable<ShelfBook[]> {
+    return this.http.get<ShelfBook[]>(`${this.apiUrl}/shelves/${shelfId}/books`);
   }
 
   createShelf(name: string, bookshelfId: number): Observable<LocationNode> {

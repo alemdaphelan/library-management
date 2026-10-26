@@ -31,6 +31,7 @@ import { Notifications } from './pages/admin/notifications/notifications';
 import { ShelfMap } from './pages/admin/shelf-map/shelf-map';
 import { InventoryAudit } from './pages/admin/inventory-audit/inventory-audit';
 import { Penalties } from './pages/admin/penalties/penalties';
+import { Orientation } from './pages/admin/orientation/orientation';
 
 // Auth Pages
 import { Auth } from './pages/auth/auth';
@@ -76,7 +77,8 @@ export const routes: Routes = [
       { path: 'digital-assets', component: DigitalAssets, title: 'Quản trị Tài liệu số' },
       { path: 'suggestions', component: AdminSuggestions, title: 'Duyệt Đề xuất sách' },
       { path: 'notifications', component: Notifications, title: 'Thông báo của tôi' },
-      { path: 'shelf-map', component: ShelfMap, title: 'Sơ đồ Kệ Sách' }
+      { path: 'shelf-map', component: ShelfMap, title: 'Sơ đồ Kệ Sách' },
+      { path: 'orientation', component: Orientation, title: 'Lớp hướng dẫn thư viện' }
     ]
   },
   { path: '**', redirectTo: '' }

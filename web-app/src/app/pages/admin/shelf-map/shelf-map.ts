@@ -1,12 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LocationNode, LocationService } from '../../../services/location.service';
+import { RouterLink } from '@angular/router';
+import { LocationNode, LocationService, ShelfBook } from '../../../services/location.service';
 
 @Component({
   selector: 'app-shelf-map',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './shelf-map.html',
   styleUrls: ['./shelf-map.css']
 })
@@ -17,6 +18,9 @@ export class ShelfMap implements OnInit {
 
   selectedFloor?: LocationNode;
   selectedBookshelf?: LocationNode;
+  selectedShelf?: LocationNode;
+  shelfBooks: ShelfBook[] = [];
+  isLoadingShelfBooks = false;
 
   newFloorName = '';
   newBookshelfName = '';
@@ -55,6 +59,8 @@ export class ShelfMap implements OnInit {
     if (this.selectedFloor?.id === floor.id) return;
     this.selectedFloor = floor;
     this.selectedBookshelf = undefined;
+    this.selectedShelf = undefined;
+    this.shelfBooks = [];
     this.shelves = [];
     this.loadBookshelves(floor.id);
   }
@@ -87,10 +93,33 @@ export class ShelfMap implements OnInit {
     this.locationService.getShelves(bookshelfId).subscribe({
       next: shelves => {
         this.shelves = shelves;
+        this.selectedShelf = undefined;
+        this.shelfBooks = [];
         this.isLoading = false;
       },
       error: error => this.handleError('Không thể tải danh sách ngăn kệ.', error)
     });
+  }
+
+  selectShelf(shelf: LocationNode): void {
+    this.selectedShelf = shelf;
+    this.isLoadingShelfBooks = true;
+    this.locationService.getShelfBooks(shelf.id).subscribe({
+      next: books => {
+        this.shelfBooks = books || [];
+        this.isLoadingShelfBooks = false;
+      },
+      error: error => {
+        this.isLoadingShelfBooks = false;
+        this.shelfBooks = [];
+        this.handleError('Không thể tải danh sách tài liệu trong ngăn kệ.', error);
+      }
+    });
+  }
+
+  copyStatusLabel(status: string): string {
+    return ({ AVAILABLE: 'Có sẵn', RESERVED: 'Đang giữ chỗ', BORROWING: 'Đang mượn',
+      OVERDUE: 'Quá hạn', LOST: 'Bị mất', DAMAGED: 'Hư hỏng', MAINTENANCE: 'Đang xử lý' } as Record<string, string>)[status] || status;
   }
 
   createFloor(): void {

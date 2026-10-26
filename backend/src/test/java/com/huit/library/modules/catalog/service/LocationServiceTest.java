@@ -21,7 +21,8 @@ class LocationServiceTest {
         FloorRepository floorRepository = mock(FloorRepository.class);
         BookshelfRepository bookshelfRepository = mock(BookshelfRepository.class);
         LocationService service = new LocationService(floorRepository, bookshelfRepository,
-                mock(ShelfRepository.class));
+                mock(ShelfRepository.class),
+                mock(com.huit.library.modules.catalog.repository.BookCopyRepository.class));
         FloorEntity floor = new FloorEntity();
         floor.setFloorId(2L);
         floor.setName("Tầng 2");

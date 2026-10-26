@@ -3,6 +3,8 @@ package com.huit.library.modules.auth.service;
 import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.dto.StudentUpsertRequestDTO;
 import com.huit.library.modules.auth.repository.UserRepository;
+import com.huit.library.modules.finance.entity.WalletEntity;
+import com.huit.library.modules.finance.repository.WalletRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -18,10 +21,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final WalletRepository walletRepository;
+    private final BigDecimal defaultDeposit;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            WalletRepository walletRepository,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${library.circulation.default-security-deposit:50000}") BigDecimal defaultDeposit) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.walletRepository = walletRepository;
+        this.defaultDeposit = defaultDeposit;
     }
 
     public List<UserEntity> getAllStudents() {
@@ -42,7 +54,9 @@ public class UserService {
         student.setPasswordHash(passwordEncoder.encode(student.getMssv()));
         student.setIsFirstLogin(true);
         student.setDisciplineFlag(false);
-        return userRepository.save(student);
+        student = userRepository.save(student);
+        ensureWallet(student);
+        return student;
     }
 
     @Transactional
@@ -66,6 +80,7 @@ public class UserService {
     }
 
 
+    @Transactional
     public void syncWithUniversity(List<UserEntity> universityData) {
         for (UserEntity uniUser : universityData) {
             if (uniUser.getMssv() == null || uniUser.getMssv().isEmpty()) continue;
@@ -79,15 +94,28 @@ public class UserService {
                 existing.setEmail(uniUser.getEmail());
                 existing.setPhone(uniUser.getPhone());
                 userRepository.save(existing);
+                ensureWallet(existing);
             } else {
                 // Create new
                 uniUser.setUserType("STUDENT");
                 uniUser.setRoleId("STUDENT");
                 uniUser.setPasswordHash(passwordEncoder.encode(uniUser.getMssv()));
                 uniUser.setIsFirstLogin(true);
-                userRepository.save(uniUser);
+                uniUser = userRepository.save(uniUser);
+                ensureWallet(uniUser);
             }
         }
+    }
+
+    private void ensureWallet(UserEntity student) {
+        if (student.getUserId() == null || walletRepository.findByUserId(student.getUserId()).isPresent()) {
+            return;
+        }
+        WalletEntity wallet = new WalletEntity();
+        wallet.setUserId(student.getUserId());
+        wallet.setDepositBalance(defaultDeposit.max(BigDecimal.ZERO));
+        wallet.setTotalDebt(BigDecimal.ZERO);
+        walletRepository.save(wallet);
     }
 
     private void apply(UserEntity student, StudentUpsertRequestDTO request, boolean creating) {

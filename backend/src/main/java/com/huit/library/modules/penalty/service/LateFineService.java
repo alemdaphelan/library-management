@@ -82,8 +82,11 @@ public class LateFineService {
 
         WalletEntity wallet = walletRepository.findByUserIdForUpdate(ticket.getUserId())
                 .orElseGet(() -> newWallet(ticket));
-        BigDecimal existingDebt = wallet.getTotalDebt() == null ? BigDecimal.ZERO : wallet.getTotalDebt();
-        wallet.setTotalDebt(existingDebt.add(additionalFine));
+        BigDecimal availableDeposit = zero(wallet.getDepositBalance());
+        BigDecimal depositApplied = availableDeposit.min(additionalFine);
+        BigDecimal debtAdded = additionalFine.subtract(depositApplied);
+        wallet.setDepositBalance(availableDeposit.subtract(depositApplied));
+        wallet.setTotalDebt(zero(wallet.getTotalDebt()).add(debtAdded));
         walletRepository.save(wallet);
 
         String dedupKey = "LATE_FINE:" + detail.getDetailId() + ":" + effectiveAt.toLocalDate();
@@ -93,9 +96,15 @@ public class LateFineService {
             transaction.setTicketId(ticket.getTicketId());
             transaction.setLoanDetailId(detail.getDetailId());
             transaction.setAmount(additionalFine);
+            transaction.setPaidAmount(depositApplied);
             transaction.setType("FINE");
             transaction.setReason("Phạt trả trễ " + chargeableDays + " ngày cho bản sao " + detail.getBarcode());
-            transaction.setStatus("OUTSTANDING");
+            transaction.setStatus(debtAdded.signum() == 0 ? "PAID" :
+                    (depositApplied.signum() > 0 ? "PARTIALLY_PAID" : "OUTSTANDING"));
+            if (depositApplied.signum() > 0) {
+                transaction.setPaymentMethod("SECURITY_DEPOSIT");
+                transaction.setPaidAt(calculatedAt);
+            }
             transaction.setDedupKey(dedupKey);
             transactionRepository.save(transaction);
         }
@@ -109,5 +118,9 @@ public class LateFineService {
         wallet.setDepositBalance(BigDecimal.ZERO);
         wallet.setTotalDebt(BigDecimal.ZERO);
         return wallet;
+    }
+
+    private BigDecimal zero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 }

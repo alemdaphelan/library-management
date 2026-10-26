@@ -27,6 +27,10 @@ export interface LoanItem {
   renewalCount?: number;
 }
 
+export interface LoanTicketGroup extends LoanItem {
+  items: LoanItem[];
+}
+
 @Component({
   selector: 'app-history',
   standalone: true,
@@ -44,15 +48,15 @@ export class History implements OnInit {
   // Tabs state
   selectedTab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' | 'CANCELLED' = 'BORROWING';
 
-  borrowingList: LoanItem[] = [];
-  pendingList: LoanItem[] = [];
-  pastList: LoanItem[] = [];
-  cancelledList: LoanItem[] = [];
-  allList: LoanItem[] = [];
+  borrowingList: LoanTicketGroup[] = [];
+  pendingList: LoanTicketGroup[] = [];
+  pastList: LoanTicketGroup[] = [];
+  cancelledList: LoanTicketGroup[] = [];
+  allList: LoanTicketGroup[] = [];
 
   // Backward compatibility
-  activeBorrows: LoanItem[] = [];
-  pastBorrows: LoanItem[] = [];
+  activeBorrows: LoanTicketGroup[] = [];
+  pastBorrows: LoanTicketGroup[] = [];
 
   // QR Code Modal State
   showQrModal = false;
@@ -185,20 +189,30 @@ export class History implements OnInit {
       }
     });
 
-    this.allList = all;
-    this.borrowingList = borrowing;
-    this.pendingList = pending;
-    this.pastList = past;
-    this.cancelledList = cancelled;
+    this.allList = this.groupLoans(all);
+    this.borrowingList = this.groupLoans(borrowing);
+    this.pendingList = this.groupLoans(pending);
+    this.pastList = this.groupLoans(past);
+    this.cancelledList = this.groupLoans(cancelled);
 
     // Backward compatibility for existing references
-    this.activeBorrows = [...borrowing, ...pending];
-    this.pastBorrows = past;
+    this.activeBorrows = [...this.borrowingList, ...this.pendingList];
+    this.pastBorrows = this.pastList;
 
     // Tự động chuyển tab nếu tab hiện tại trống nhưng tab khác có dữ liệu
     if (this.selectedTab === 'BORROWING' && borrowing.length === 0 && pending.length > 0) {
       this.selectedTab = 'PENDING';
     }
+  }
+
+  private groupLoans(items: LoanItem[]): LoanTicketGroup[] {
+    const byTicket = new Map<number, LoanItem[]>();
+    items.forEach(item => byTicket.set(item.ticketId, [...(byTicket.get(item.ticketId) || []), item]));
+    return [...byTicket.values()].map(ticketItems => ({
+      ...ticketItems[0],
+      bookTitle: ticketItems.length === 1 ? ticketItems[0].bookTitle : `${ticketItems.length} tài liệu trong phiếu`,
+      items: ticketItems,
+    }));
   }
 
   statusLabel(status: string): string {
@@ -216,6 +230,7 @@ export class History implements OnInit {
   statusClass(status: string): string {
     if (status === 'BORROWING' || status === 'OVERDUE') return 'borrowing';
     if (status === 'PENDING' || status === 'RESERVED') return 'pending';
+    if (status === 'CANCELLED' || status === 'REJECTED') return 'cancelled';
     return 'returned';
   }
 

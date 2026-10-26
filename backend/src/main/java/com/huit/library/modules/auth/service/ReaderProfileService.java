@@ -39,9 +39,7 @@ public class ReaderProfileService {
         return ReaderProfileResponseDTO.builder()
                 .student(student)
                 .card(libraryCardService.get(userId))
-                .loans(loanService.getStaffLoans().stream()
-                        .filter(ticket -> userId.equals(ticket.getUserId()))
-                        .toList())
+                .loans(loanService.getUserLoanSummaries(userId))
                 .ledger(debtLedgerService.getUserLedger(userId))
                 .penaltyCases(penaltyCaseService.listMyCases(userId))
                 .build();

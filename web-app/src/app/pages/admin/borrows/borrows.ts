@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Optional } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import {
   CirculationService,
   LoanTicketDetail,
@@ -26,16 +27,25 @@ export class Borrows implements OnInit {
   errorMessage = '';
   successMessage = '';
   rejectionReason = '';
+  requestedTicketId?: number;
 
-  constructor(private circulationService: CirculationService) {}
+  constructor(
+    private circulationService: CirculationService,
+    @Optional() private route?: ActivatedRoute,
+  ) {}
 
   ngOnInit(): void {
+    const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
+    const referenceId = Number(this.route?.snapshot.queryParamMap.get('referenceId'));
+    if (referenceType === 'LOAN_TICKET' && Number.isSafeInteger(referenceId) && referenceId > 0) {
+      this.requestedTicketId = referenceId;
+    }
     this.loadLoans();
   }
 
   get filteredLoans(): LoanTicketSummary[] {
     const query = this.searchTerm.trim().toLocaleLowerCase('vi');
-    return this.loans.filter(loan => {
+    return this.loans.filter(loan => !['PENDING', 'RESERVED'].includes(loan.status)).filter(loan => {
       const matchesStatus = this.statusFilter === 'ALL' || loan.status === this.statusFilter;
       const searchable = [loan.ticketId, loan.mssv, loan.readerName, loan.department]
         .filter(value => value !== null && value !== undefined)
@@ -64,6 +74,11 @@ export class Borrows implements OnInit {
       next: loans => {
         this.loans = loans || [];
         this.isLoading = false;
+        if (this.requestedTicketId) {
+          const ticketId = this.requestedTicketId;
+          this.requestedTicketId = undefined;
+          this.viewDetails(ticketId);
+        }
       },
       error: error => {
         this.isLoading = false;

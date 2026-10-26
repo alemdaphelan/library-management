@@ -84,7 +84,18 @@ public class CirculationStateService {
     @Transactional
     public LoanStateResponseDTO approveReservation(Long ticketId, UUID operatorId) {
         LoanTicketEntity ticket = findTicket(ticketId);
-        return transition(ticket, LoanTicketStatus.RESERVED, operatorId, "Đã duyệt yêu cầu đặt giữ");
+        LoanStateResponseDTO response = transition(
+                ticket, LoanTicketStatus.RESERVED, operatorId, "Đã duyệt yêu cầu đặt giữ");
+        notificationService.createOnce(
+                ticket.getUserId(),
+                "LOAN_APPROVED",
+                "Yêu cầu mượn #" + ticket.getTicketId()
+                        + " đã được duyệt. Vui lòng đến quầy nhận tài liệu trong thời hạn giữ chỗ.",
+                "LOAN_TICKET",
+                ticket.getTicketId().toString(),
+                "LOAN_APPROVED:" + ticket.getTicketId(),
+                LocalDateTime.now());
+        return response;
     }
 
     @Transactional
@@ -92,6 +103,14 @@ public class CirculationStateService {
         LoanTicketEntity ticket = findTicket(ticketId);
         LoanStateResponseDTO response = transition(ticket, LoanTicketStatus.REJECTED, operatorId, reason.trim());
         releaseReservedCopies(ticket, LoanDetailStatus.CANCELLED);
+        notificationService.createOnce(
+                ticket.getUserId(),
+                "LOAN_REJECTED",
+                "Yêu cầu mượn #" + ticket.getTicketId() + " bị từ chối. Lý do: " + reason.trim(),
+                "LOAN_TICKET",
+                ticket.getTicketId().toString(),
+                "LOAN_REJECTED:" + ticket.getTicketId(),
+                LocalDateTime.now());
         return response;
     }
 

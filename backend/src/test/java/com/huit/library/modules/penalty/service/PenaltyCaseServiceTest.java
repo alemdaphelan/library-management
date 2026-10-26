@@ -116,6 +116,35 @@ class PenaltyCaseServiceTest {
                 && "AVAILABLE".equals(value.getStatus()) && value.getBookId().equals(31L)));
     }
 
+    @Test
+    void securityDepositIsAppliedBeforePenaltyBecomesDebt() {
+        UUID userId = UUID.randomUUID();
+        LoanDetailEntity detail = detail(12L, 22L, "BC-DEPOSIT");
+        LoanTicketEntity ticket = ticket(22L, userId);
+        BookCopyEntity copy = copy("BC-DEPOSIT", 32L);
+        WalletEntity wallet = wallet(userId);
+        wallet.setDepositBalance(new BigDecimal("50000"));
+        when(details.findByIdForUpdate(12L)).thenReturn(Optional.of(detail));
+        when(cases.existsByLoanDetailIdAndStatusNotIn(eq(12L), anyList())).thenReturn(false);
+        when(tickets.findById(22L)).thenReturn(Optional.of(ticket));
+        when(copies.findById("BC-DEPOSIT")).thenReturn(Optional.of(copy));
+        when(wallets.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+
+        PenaltyCaseRequestDTO request = baseRequest(12L, "REPAIR");
+        request.setIncidentType("DAMAGED");
+        request.setDamageSeverity("LIGHT");
+        request.setPagesAffected(3);
+        request.setRepairFee(new BigDecimal("70000"));
+        PenaltyCaseEntity result = service.createCase(request, UUID.randomUUID());
+
+        assertThat(wallet.getDepositBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(wallet.getTotalDebt()).isEqualByComparingTo("20000");
+        assertThat(result.getPaidAmount()).isEqualByComparingTo("50000");
+        verify(transactions).save(argThat(transaction ->
+                transaction.getPaidAmount().compareTo(new BigDecimal("50000")) == 0
+                        && "PARTIALLY_PAID".equals(transaction.getStatus())));
+    }
+
     private PenaltyCaseRequestDTO baseRequest(Long detailId, String settlement) {
         PenaltyCaseRequestDTO request = new PenaltyCaseRequestDTO();
         request.setLoanDetailId(detailId);

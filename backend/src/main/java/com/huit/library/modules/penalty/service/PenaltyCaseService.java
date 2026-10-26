@@ -174,6 +174,11 @@ public class PenaltyCaseService {
         createDebtLine(penaltyCase, "REPAIR_FEE", repair, "Chi phí sửa chữa: " + penaltyCase.getDescription());
         createDebtLine(penaltyCase, "COMPENSATION", compensation, "Đền bù tài liệu " + detail.getBarcode());
         createDebtLine(penaltyCase, "TECHNICAL_FEE", processing, "Phí xử lý kỹ thuật tài liệu " + detail.getBarcode());
+        if (zero(penaltyCase.getPaidAmount()).compareTo(penaltyCase.getTotalAmount()) >= 0) {
+            penaltyCase.setStatus("REPLACEMENT".equals(penaltyCase.getSettlementMethod())
+                    ? "WAITING_REPLACEMENT" : "PAID");
+            penaltyCase = caseRepository.save(penaltyCase);
+        }
         notificationService.createOnce(
                 ticket.getUserId(), "PENALTY_CASE_CREATED",
                 "Hồ sơ #" + penaltyCase.getCaseId() + " đã được lập; hạn xử lý "
@@ -315,17 +320,28 @@ public class PenaltyCaseService {
         transaction.setLoanDetailId(penaltyCase.getLoanDetailId());
         transaction.setPenaltyCaseId(penaltyCase.getCaseId());
         transaction.setAmount(amount);
-        transaction.setPaidAmount(BigDecimal.ZERO);
+        WalletEntity wallet = walletRepository.findByUserIdForUpdate(penaltyCase.getUserId())
+                .orElseGet(() -> newWallet(penaltyCase.getUserId()));
+        BigDecimal availableDeposit = zero(wallet.getDepositBalance());
+        BigDecimal depositApplied = availableDeposit.min(amount);
+        BigDecimal debtAdded = amount.subtract(depositApplied);
+        transaction.setPaidAmount(depositApplied);
         transaction.setType(type);
         transaction.setReason(reason);
-        transaction.setStatus("OUTSTANDING");
+        transaction.setStatus(debtAdded.signum() == 0 ? "PAID" :
+                (depositApplied.signum() > 0 ? "PARTIALLY_PAID" : "OUTSTANDING"));
+        if (depositApplied.signum() > 0) {
+            transaction.setPaymentMethod("SECURITY_DEPOSIT");
+            transaction.setPaidAt(LocalDateTime.now());
+        }
         transaction.setDedupKey("PENALTY_CASE:" + penaltyCase.getCaseId() + ":" + type);
         transactionRepository.save(transaction);
 
-        WalletEntity wallet = walletRepository.findByUserIdForUpdate(penaltyCase.getUserId())
-                .orElseGet(() -> newWallet(penaltyCase.getUserId()));
-        wallet.setTotalDebt(zero(wallet.getTotalDebt()).add(amount));
+        wallet.setDepositBalance(availableDeposit.subtract(depositApplied));
+        wallet.setTotalDebt(zero(wallet.getTotalDebt()).add(debtAdded));
         walletRepository.save(wallet);
+        penaltyCase.setPaidAmount(zero(penaltyCase.getPaidAmount()).add(depositApplied));
+        caseRepository.save(penaltyCase);
     }
 
     private void applyWaiverToDebtLines(PenaltyCaseEntity penaltyCase, BigDecimal waiver, UUID adminId) {

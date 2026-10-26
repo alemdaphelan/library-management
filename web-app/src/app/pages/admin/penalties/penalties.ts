@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Optional } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { PaymentReceipt, PenaltyCase, PenaltyCaseRequest, PenaltyService } from '../../../services/penalty.service';
 
@@ -19,6 +20,8 @@ export class Penalties implements OnInit {
   errorMessage = '';
   successMessage = '';
   receipt: PaymentReceipt | null = null;
+  caseStatusFilter: 'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID' = 'ALL';
+  highlightedCaseId?: number;
 
   caseForm: PenaltyCaseRequest = {
     loanDetailId: 0,
@@ -45,14 +48,45 @@ export class Penalties implements OnInit {
   constructor(
     private penaltyService: PenaltyService,
     public authService: AuthService,
+    @Optional() private route?: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
+    const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
+    const referenceId = this.route?.snapshot.queryParamMap.get('referenceId') || '';
+    const numericReferenceId = Number(referenceId);
+    if (referenceType === 'PENALTY_CASE' && Number.isSafeInteger(numericReferenceId) && numericReferenceId > 0) {
+      this.highlightedCaseId = numericReferenceId;
+      this.caseStatusFilter = 'ALL';
+    } else if (referenceType === 'TRANSACTION' && Number.isSafeInteger(numericReferenceId) && numericReferenceId > 0) {
+      this.adjustmentForm.transactionId = numericReferenceId;
+    } else if (referenceType === 'USER' && referenceId) {
+      this.paymentForm.userId = referenceId;
+    }
     this.load();
   }
 
   get isAdmin(): boolean {
     return this.authService.getRole() === 'ADMIN';
+  }
+
+  get filteredCases(): PenaltyCase[] {
+    return this.cases.filter(item => {
+      const total = Number(item.totalAmount || 0);
+      const paid = Number(item.paidAmount || 0);
+      if (this.caseStatusFilter === 'UNPAID') return total > 0 && paid <= 0;
+      if (this.caseStatusFilter === 'PARTIAL') return paid > 0 && paid < total;
+      if (this.caseStatusFilter === 'PAID') return total <= 0 || paid >= total || ['PAID', 'WAIVED'].includes(item.status);
+      return true;
+    });
+  }
+
+  paymentStatusLabel(item: PenaltyCase): string {
+    const total = Number(item.totalAmount || 0);
+    const paid = Number(item.paidAmount || 0);
+    if (total <= 0 || paid >= total || ['PAID', 'WAIVED'].includes(item.status)) return 'Đã thanh toán';
+    if (paid > 0) return 'Đã thanh toán một phần';
+    return 'Chưa thanh toán';
   }
 
   load(): void {
@@ -62,6 +96,7 @@ export class Penalties implements OnInit {
       next: cases => {
         this.cases = cases || [];
         this.loading = false;
+        this.focusReferencedCase();
       },
       error: error => this.fail(error, 'Không thể tải hồ sơ mất/hỏng.'),
     });
@@ -151,6 +186,14 @@ export class Penalties implements OnInit {
       OUTSTANDING: 'Còn nợ', PENDING_REVIEW: 'Chờ miễn giảm', WAITING_REPLACEMENT: 'Chờ sách thay thế',
       PAID: 'Đã hoàn tất', WAIVED: 'Đã miễn giảm', CANCELLED: 'Đã hủy', REJECTED: 'Từ chối',
     } as Record<string, string>)[status] || status;
+  }
+
+  private focusReferencedCase(): void {
+    if (!this.highlightedCaseId) return;
+    const elementId = `penalty-case-${this.highlightedCaseId}`;
+    globalThis.setTimeout(() => {
+      document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   }
 
   private run(observable: any, message: string): void {

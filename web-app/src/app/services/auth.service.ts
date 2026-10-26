@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
 
 export type Role = 'ADMIN' | 'LIBRARIAN' | 'STUDENT' | 'ACCOUNTANT' | 'TREASURER' | null;
 
@@ -44,6 +44,8 @@ export class AuthService {
   private tokenKey = 'huit_lib_token';
   private profileKey = 'huit_lib_profile';
   private apiUrl = `${environment.apiUrl}/api/v1/auth`;
+  private profileSubject = new BehaviorSubject<LoginResponse | null>(this.readStoredProfile());
+  readonly profile$ = this.profileSubject.asObservable();
 
   constructor(private http: HttpClient, private router: Router) { }
 
@@ -54,6 +56,7 @@ export class AuthService {
         localStorage.setItem(this.userKey, response.fullName || response.email || email);
         localStorage.setItem(this.tokenKey, response.accessToken);
         localStorage.setItem(this.profileKey, JSON.stringify(response));
+        this.profileSubject.next(response);
       })
     );
   }
@@ -77,6 +80,7 @@ export class AuthService {
     localStorage.removeItem(this.userKey);
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.profileKey);
+    this.profileSubject.next(null);
     this.router.navigate(['/login'], { replaceUrl: true });
   }
 
@@ -89,6 +93,10 @@ export class AuthService {
   }
 
   getUserProfile(): LoginResponse | null {
+    return this.readStoredProfile();
+  }
+
+  private readStoredProfile(): LoginResponse | null {
     const raw = localStorage.getItem(this.profileKey);
     if (!raw) return null;
     try {
@@ -107,7 +115,7 @@ export class AuthService {
     const token = this.getToken();
     return this.http.get(`${this.apiUrl}/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
-    });
+    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
   }
 
   fetchLibraryCard(): Observable<LibraryCard> {
@@ -118,7 +126,7 @@ export class AuthService {
     const token = this.getToken();
     return this.http.put(`${this.apiUrl}/me`, data, {
       headers: { 'Authorization': `Bearer ${token}` }
-    });
+    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
   }
 
   uploadAvatar(file: File): Observable<any> {
@@ -127,7 +135,15 @@ export class AuthService {
     formData.append('file', file);
     return this.http.post(`${this.apiUrl}/avatar`, formData, {
       headers: { 'Authorization': `Bearer ${token}` }
-    });
+    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
+  }
+
+  private mergeStoredProfile(profile: any): void {
+    if (!profile || typeof profile !== 'object') return;
+    const merged = { ...(this.readStoredProfile() || {}), ...profile } as LoginResponse;
+    localStorage.setItem(this.profileKey, JSON.stringify(merged));
+    if (merged.fullName) localStorage.setItem(this.userKey, merged.fullName);
+    this.profileSubject.next(merged);
   }
 
   changePassword(oldPassword: string, newPassword: string): Observable<any> {

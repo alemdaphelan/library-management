@@ -399,6 +399,17 @@
 .camera-error { margin: 0 20px; padding: 16px; border-radius: 10px; background: #fef2f2; color: #991b1b; }
 .camera-fallback { margin: 0; padding: 16px 20px 20px; color: #64748b; font-size: .86rem; line-height: 1.45; }
 
+.pending-requests { margin-top: 20px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
+.pending-heading, .pending-card { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.pending-heading h2 { margin: 0 0 4px; }.pending-heading p, .pending-card p { margin: 0; color: #64748b; }
+.pending-list { display: grid; gap: 10px; margin-top: 16px; }
+.pending-card { padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; }
+.decision-dialog { padding-bottom: 20px; }
+.decision-dialog > label, .decision-dialog > textarea { display: block; width: calc(100% - 40px); margin: 0 20px; }
+.decision-dialog > label { margin-bottom: 8px; font-weight: 700; color: #334155; }
+.decision-dialog > textarea { min-height: 100px; box-sizing: border-box; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; resize: vertical; }
+.decision-dialog .pos-actions { padding: 18px 20px 0; }
+
 @media (max-width: 980px) {
   .pos-grid { grid-template-columns: 1fr; }
   .pos-footer { align-items: stretch; flex-direction: column; gap: 16px; }

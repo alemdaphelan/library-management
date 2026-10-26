@@ -46,7 +46,7 @@ describe('Borrows', () => {
     expect(text).toContain('Trần Thị B');
     expect(text).toContain('2001240001');
     expect(text).toContain('Quá hạn');
-    expect(text).toMatch(/3[,.]000 đ/);
+    expect(text).toMatch(/3[,.]000 VNĐ/);
     expect(text).not.toContain('28,450');
   });
 
@@ -65,6 +65,17 @@ describe('Borrows', () => {
     fixture.detectChanges();
     expect(service.getLoan).toHaveBeenCalledWith(24);
     expect(fixture.nativeElement.textContent).toContain('Clean Architecture');
+  });
+
+  it('opens the exact ticket referenced by a notification', () => {
+    (component as any).route = {
+      snapshot: { queryParamMap: { get: (key: string) => key === 'referenceType' ? 'LOAN_TICKET' : key === 'referenceId' ? '24' : null } },
+    };
+
+    component.ngOnInit();
+
+    expect(service.getLoan).toHaveBeenCalledWith(24);
+    expect(component.selectedLoan?.ticketId).toBe(24);
   });
 
   it('approves a pending ticket using its real transition endpoint', () => {

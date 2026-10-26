@@ -80,6 +80,29 @@ class LateFineServiceTest {
         verify(detailRepository, never()).save(any());
     }
 
+    @Test
+    void usesSecurityDepositBeforeCreatingRemainingDebt() {
+        LocalDateTime calculatedAt = LocalDateTime.of(2026, 10, 17, 12, 0);
+        UUID readerId = UUID.randomUUID();
+        LoanTicketEntity ticket = ticket(12L, readerId);
+        LoanDetailEntity detail = detail(22L, calculatedAt.minusDays(2));
+        WalletEntity wallet = new WalletEntity();
+        wallet.setUserId(readerId);
+        wallet.setDepositBalance(new BigDecimal("1500"));
+        wallet.setTotalDebt(BigDecimal.ZERO);
+        when(walletRepository.findByUserIdForUpdate(readerId)).thenReturn(Optional.of(wallet));
+        when(transactionRepository.existsByDedupKey("LATE_FINE:22:2026-10-17")).thenReturn(false);
+
+        service.accrueLateFine(ticket, detail, calculatedAt);
+
+        assertThat(wallet.getDepositBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(wallet.getTotalDebt()).isEqualByComparingTo("500");
+        verify(transactionRepository).save(argThat(transaction ->
+                transaction.getPaidAmount().compareTo(new BigDecimal("1500")) == 0
+                        && "PARTIALLY_PAID".equals(transaction.getStatus())
+                        && "SECURITY_DEPOSIT".equals(transaction.getPaymentMethod())));
+    }
+
     private LoanTicketEntity ticket(Long ticketId, UUID userId) {
         LoanTicketEntity ticket = new LoanTicketEntity();
         ticket.setTicketId(ticketId);

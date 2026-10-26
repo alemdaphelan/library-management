@@ -30,13 +30,12 @@ export class PortalLayout {
   ) {}
 
   ngOnInit() {
+    this.authService.profile$.subscribe(profile => {
+      this.userAvatar = profile?.avatarUrl || null;
+    });
     if (this.authService.isLoggedIn()) {
       this.authService.fetchMyProfile().subscribe({
-        next: (user: any) => {
-          if (user && user.avatarUrl) {
-            this.userAvatar = user.avatarUrl;
-          }
-        },
+        next: () => {},
         error: () => {}
       });
       this.loadNotifications();
@@ -126,6 +125,8 @@ export class PortalLayout {
       OVERDUE: 'Quá hạn',
       PROPOSAL_APPROVED: 'Đề xuất được duyệt',
       PROPOSAL_REJECTED: 'Đề xuất bị từ chối',
+      LOAN_APPROVED: 'Yêu cầu mượn được duyệt',
+      LOAN_REJECTED: 'Yêu cầu mượn bị từ chối',
       WAITLIST_READY: 'Sách sẵn sàng',
       ACCOUNT_LOCKED: 'Tài khoản bị khóa',
       ACCOUNT_UNLOCKED: 'Tài khoản mở lại',

@@ -89,11 +89,11 @@
       </form>
 
       <div class="node-list">
-        <div class="node-row" *ngFor="let shelf of shelves">
-          <div class="node-select static">
+        <div class="node-row" *ngFor="let shelf of shelves" [class.selected]="selectedShelf?.id === shelf.id">
+          <button type="button" class="node-select" (click)="selectShelf(shelf)">
             <span class="node-icon">🗄️</span>
             <span>{{ shelf.name }}</span>
-          </div>
+          </button>
           <div class="node-actions">
             <button type="button" title="Đổi tên ngăn kệ" (click)="renameShelf(shelf)">Sửa</button>
             <button type="button" class="danger" title="Xóa ngăn kệ" (click)="deleteShelf(shelf)">Xóa</button>
@@ -104,6 +104,29 @@
       </div>
     </section>
   </div>
+
+  <section class="shelf-books" *ngIf="selectedShelf">
+    <div class="page-heading">
+      <div>
+        <h2>Tài liệu trong {{ selectedShelf.name }}</h2>
+        <p>Danh sách từng bản sao đang được xếp tại ngăn kệ này.</p>
+      </div>
+      <span class="count">{{ shelfBooks.length }} bản sao</span>
+    </div>
+    <div class="loading" *ngIf="isLoadingShelfBooks">Đang tải danh sách tài liệu…</div>
+    <div class="table-wrap" *ngIf="!isLoadingShelfBooks && shelfBooks.length">
+      <table>
+        <thead><tr><th>Tên sách</th><th>ISBN</th><th>Mã vạch</th><th>Trạng thái</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let book of shelfBooks">
+            <td><a [routerLink]="['/book', book.bookId]">{{ book.title }}</a></td>
+            <td>{{ book.isbn || '—' }}</td><td>{{ book.barcode }}</td><td>{{ copyStatusLabel(book.status) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="empty" *ngIf="!isLoadingShelfBooks && shelfBooks.length === 0">Ngăn kệ này chưa có tài liệu.</p>
+  </section>
 
   <div class="scope-note">
     Sơ đồ hiện biểu diễn cấu trúc vị trí thực tế trong cơ sở dữ liệu. Tọa độ mặt bằng và chỉ đường không được hiển thị vì mô hình dữ liệu hiện chưa lưu tọa độ kệ.

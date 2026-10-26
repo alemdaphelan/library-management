@@ -29,6 +29,10 @@ import com.huit.library.modules.penalty.entity.PenaltyCaseEntity;
 import com.huit.library.modules.penalty.repository.PenaltyCaseRepository;
 import com.huit.library.modules.penalty.service.PenaltyCaseService;
 import com.huit.library.modules.notification.repository.NotificationRepository;
+import com.huit.library.modules.notification.dto.NotificationPreferenceRequestDTO;
+import com.huit.library.modules.notification.repository.NotificationPreferenceRepository;
+import com.huit.library.modules.notification.service.NotificationPreferenceService;
+import com.huit.library.modules.notification.service.NotificationService;
 import com.huit.library.modules.inventory.dto.GoodsReceiptResponseDTO;
 import com.huit.library.modules.inventory.dto.ImportReceiptRequestDTO;
 import com.huit.library.modules.inventory.dto.InventoryAuditResponseDTO;
@@ -180,6 +184,12 @@ class Week6IntegrationTest {
     private TransactionRepository transactionRepository;
     @Autowired
     private NotificationRepository notificationRepository;
+    @Autowired
+    private NotificationPreferenceRepository notificationPreferenceRepository;
+    @Autowired
+    private NotificationPreferenceService notificationPreferenceService;
+    @Autowired
+    private NotificationService notificationService;
     @Autowired
     private PenaltyCaseService penaltyCaseService;
     @Autowired
@@ -428,9 +438,8 @@ class Week6IntegrationTest {
             assertThat(redisTemplate.opsForValue().get("auth:otp:" + email)).matches("\\d{6}");
             assertThat(redisTemplate.getExpire("auth:otp:resend:" + email, TimeUnit.SECONDS))
                     .isBetween(1L, 60L);
-            String mailpitResponse = waitForCapturedMail();
+            String mailpitResponse = waitForCapturedMail(email);
             assertThat(mailpitResponse)
-                    .contains("\"total\":1")
                     .contains("Mã xác nhận khôi phục mật khẩu")
                     .contains(email);
 
@@ -446,6 +455,39 @@ class Week6IntegrationTest {
             assertThat(redisTemplate.hasKey("auth:otp:" + email)).isFalse();
         } finally {
             userRepository.deleteById(user.getUserId());
+        }
+    }
+
+    @Test
+    void optedInLibraryNotificationIsStoredAndDeliveredByEmail() throws Exception {
+        UserEntity reader = createUser("email-notification");
+        String dedupKey = "LOAN_APPROVED:INTEGRATION:" + UUID.randomUUID();
+        try {
+            notificationPreferenceService.update(reader.getUserId(),
+                    new NotificationPreferenceRequestDTO(true, true));
+
+            assertThat(notificationService.createOnce(
+                    reader.getUserId(),
+                    "LOAN_APPROVED",
+                    "Yêu cầu mượn tài liệu của bạn đã được duyệt.",
+                    "LOAN_TICKET",
+                    "integration-test",
+                    dedupKey,
+                    LocalDateTime.now()))
+                    .isTrue();
+
+            String mailpitResponse = waitForCapturedMail(reader.getEmail());
+            assertThat(mailpitResponse)
+                    .contains("Yêu cầu mượn tài liệu đã được duyệt")
+                    .contains(reader.getEmail());
+            assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(reader.getUserId()))
+                    .extracting("type")
+                    .contains("LOAN_APPROVED");
+        } finally {
+            notificationRepository.deleteAll(
+                    notificationRepository.findByUserIdOrderByCreatedAtDesc(reader.getUserId()));
+            notificationPreferenceRepository.deleteById(reader.getUserId());
+            userRepository.deleteById(reader.getUserId());
         }
     }
 
@@ -655,9 +697,8 @@ class Week6IntegrationTest {
             assertThat(releasedCopy.getLockedByUser()).isNull();
             assertThat(releasedCopy.getLockedUntil()).isNull();
             assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(reader.getUserId()))
-                    .singleElement()
                     .extracting("type")
-                    .isEqualTo("RESERVATION_EXPIRED");
+                    .containsExactlyInAnyOrder("RESERVATION_EXPIRED", "RESERVATION_NO_SHOW");
         } finally {
             notificationRepository.deleteAll(
                     notificationRepository.findByUserIdOrderByCreatedAtDesc(reader.getUserId()));
@@ -919,14 +960,17 @@ class Week6IntegrationTest {
         return line;
     }
 
-    private String waitForCapturedMail() throws Exception {
+    private String waitForCapturedMail(String recipient) throws Exception {
         HttpClient client = HttpClient.newHttpClient();
         URI uri = URI.create("http://" + MAILPIT.getHost() + ":" + MAILPIT.getMappedPort(8025)
                 + "/api/v1/messages");
         for (int attempt = 0; attempt < 20; attempt++) {
             HttpResponse<String> response = client.send(HttpRequest.newBuilder(uri).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200 && response.body().contains("\"total\":1")) {
+            // Other integration scenarios can legitimately send their own notifications to
+            // the same Mailpit container. Wait for this test's unique recipient instead of
+            // assuming that the mailbox contains exactly one message.
+            if (response.statusCode() == 200 && response.body().contains(recipient)) {
                 return response.body();
             }
             Thread.sleep(100L);

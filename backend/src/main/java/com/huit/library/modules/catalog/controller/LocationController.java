@@ -62,6 +62,11 @@ public class LocationController {
         return ResponseEntity.ok(locationService.getShelves(bookshelfId));
     }
 
+    @GetMapping("/shelves/{id}/books")
+    public ResponseEntity<?> getShelfBooks(@PathVariable Long id) {
+        return ResponseEntity.ok(locationService.getShelfBooks(id));
+    }
+
     @PostMapping("/shelves")
     public ResponseEntity<?> createShelf(@Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.createShelf(request));
