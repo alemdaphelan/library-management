@@ -138,6 +138,9 @@ class Week6IntegrationTest {
         registry.add("spring.mail.properties.mail.smtp.auth", () -> false);
         registry.add("spring.mail.properties.mail.smtp.ssl.enable", () -> false);
         registry.add("library.digital.storage-path", DIGITAL_TEST_STORAGE::toString);
+        // Keep reservation scenarios deterministic regardless of the CI runner's clock.
+        registry.add("library.circulation.default-open-time", () -> "00:00");
+        registry.add("library.circulation.default-close-time", () -> "23:59:59.999999999");
     }
 
     @Autowired

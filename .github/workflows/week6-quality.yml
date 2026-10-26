@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check secrets, generated files and Compose manifest
         shell: pwsh
-        run: ./scripts/week12d-preflight.ps1
+        run: pwsh -File ./scripts/week12d-preflight.ps1
 
   backend:
     name: Backend unit and integration tests
@@ -29,9 +29,9 @@ jobs:
           java-version: "17"
           cache: maven
       - name: Run tests (PostgreSQL and Redis use Testcontainers)
-        run: ./mvnw --batch-mode test
+        run: bash ./mvnw --batch-mode test
       - name: Package backend
-        run: ./mvnw --batch-mode -DskipTests package
+        run: bash ./mvnw --batch-mode -DskipTests package
 
   web:
     name: Web build and tests

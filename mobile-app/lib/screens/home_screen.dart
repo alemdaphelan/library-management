@@ -484,8 +484,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget buildBorrowedBookCard(dynamic book) {
-    // Assuming backend returns: title, author, remainingDays, progress
-    double progress = book['progress']?.toDouble() ?? 0.5;
+    // LoanService derives these values from the authenticated /loans/my-loans response.
+    double progress = book['progress']?.toDouble() ?? 0.0;
     int remainingDays = book['remainingDays'] ?? 0;
     Color statusColor = remainingDays <= 3 ? Colors.red : Colors.green;
     IconData statusIcon = remainingDays <= 3
