@@ -3,6 +3,20 @@ import { of, throwError } from 'rxjs';
 import { Detail } from './detail';
 
 describe('Detail review policy', () => {
+  const circulationService = {
+    getMyBorrowEligibility: vi.fn(() => of({
+      maximumItems: 3,
+      openItems: 3,
+      remainingSlots: 0,
+      eligible: false,
+      message: 'Bạn đã đủ 3 tài liệu đang hoạt động.',
+    })),
+  };
+  const borrowCartService = {
+    count: 0,
+    add: vi.fn(() => 'ADDED'),
+  };
+
   const createComponent = (saveReview: ReturnType<typeof vi.fn>) => new Detail(
     {} as any,
     {} as any,
@@ -14,10 +28,15 @@ describe('Detail review policy', () => {
     } as any,
     {} as any,
     { isLoggedIn: () => true } as any,
-    {} as any,
-    {} as any,
+    circulationService as any,
+    borrowCartService as any,
     { detectChanges: vi.fn() } as any,
   );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    borrowCartService.count = 0;
+  });
 
   it('does not send a review when backend eligibility says the reader has not borrowed the book', () => {
     const saveReview = vi.fn();
@@ -55,5 +74,22 @@ describe('Detail review policy', () => {
     component.previewEbook();
 
     expect(component.toastMessage).toContain('chưa có bản PDF');
+  });
+
+  it('does not add another book when the backend reports all three slots are occupied', () => {
+    const component = createComponent(vi.fn());
+    component.book = {
+      id: 7,
+      title: 'Clean Code',
+      author: 'Robert C. Martin',
+      cover: '',
+      availableCopies: 1,
+    };
+
+    component.addToBorrowCart();
+
+    expect(circulationService.getMyBorrowEligibility).toHaveBeenCalled();
+    expect(borrowCartService.add).not.toHaveBeenCalled();
+    expect(component.toastMessage).toContain('đủ 3 tài liệu');
   });
 });

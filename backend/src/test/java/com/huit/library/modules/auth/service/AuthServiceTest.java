@@ -3,12 +3,14 @@ package com.huit.library.modules.auth.service;
 import com.huit.library.core.security.JwtUtils;
 import com.huit.library.core.security.TokenService;
 import com.huit.library.modules.auth.entity.UserEntity;
+import com.huit.library.modules.auth.exception.OtpDeliveryException;
 import com.huit.library.modules.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.MailSendException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -90,6 +92,26 @@ class AuthServiceTest {
         verify(valueOperations, times(1)).set(startsWith("auth:otp:user@huit.edu.vn"),
                 matches("\\d{6}"), eq(10L), eq(TimeUnit.MINUTES));
         verify(mailSender, times(1)).send(any(org.springframework.mail.SimpleMailMessage.class));
+    }
+
+    @Test
+    void forgotPasswordReportsMailFailureAndClearsOtpStateForRetry() {
+        UserEntity user = new UserEntity();
+        user.setEmail("user@huit.edu.vn");
+        user.setFullName("Nguyen Van A");
+        when(userRepository.findFirstByEmailOrMssv("user@huit.edu.vn", "user@huit.edu.vn"))
+                .thenReturn(Optional.of(user));
+        when(valueOperations.setIfAbsent("auth:otp:resend:user@huit.edu.vn", "1", 60, TimeUnit.SECONDS))
+                .thenReturn(true);
+        doThrow(new MailSendException("SMTP unavailable"))
+                .when(mailSender).send(any(org.springframework.mail.SimpleMailMessage.class));
+
+        assertThatThrownBy(() -> authService.forgotPassword("user@huit.edu.vn"))
+                .isInstanceOf(OtpDeliveryException.class)
+                .hasMessageContaining("Không thể gửi mã OTP");
+
+        verify(redisTemplate).delete("auth:otp:user@huit.edu.vn");
+        verify(redisTemplate).delete("auth:otp:resend:user@huit.edu.vn");
     }
 
     @Test

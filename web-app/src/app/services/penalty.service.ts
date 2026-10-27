@@ -79,10 +79,23 @@ export interface DebtEntry {
   createdAt?: string;
 }
 
+export interface OnlinePaymentSession {
+  reference: string;
+  provider: 'VNPAY';
+  purpose: 'DEBT' | 'DEPOSIT';
+  amount: number;
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'EXPIRED';
+  paymentUrl?: string;
+  paymentTransactionId?: number;
+  expiresAt: string;
+  completedAt?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PenaltyService {
   private penaltyUrl = `${environment.apiUrl}/api/v1/penalty-cases`;
   private transactionUrl = `${environment.apiUrl}/api/v1/transactions`;
+  private onlinePaymentUrl = `${environment.apiUrl}/api/v1/online-payments`;
 
   constructor(private http: HttpClient) {}
 
@@ -96,6 +109,14 @@ export class PenaltyService {
 
   getMyLedger(): Observable<DebtEntry[]> {
     return this.http.get<DebtEntry[]>(`${this.transactionUrl}/my-ledger`);
+  }
+
+  createOnlinePayment(amount: number, purpose: 'DEBT' | 'DEPOSIT'): Observable<OnlinePaymentSession> {
+    return this.http.post<OnlinePaymentSession>(`${this.onlinePaymentUrl}/sessions`, { amount, purpose });
+  }
+
+  getOnlinePayment(reference: string): Observable<OnlinePaymentSession> {
+    return this.http.get<OnlinePaymentSession>(`${this.onlinePaymentUrl}/sessions/${encodeURIComponent(reference)}`);
   }
 
   createCase(payload: PenaltyCaseRequest): Observable<PenaltyCase> {

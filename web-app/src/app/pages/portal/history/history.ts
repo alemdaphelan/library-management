@@ -5,6 +5,7 @@ import * as QRCode from 'qrcode';
 import { AuthService } from '../../../services/auth.service';
 import { CirculationService } from '../../../services/circulation.service';
 import { DebtEntry, PenaltyCase, PenaltyService } from '../../../services/penalty.service';
+import { DialogService } from '../../../services/dialog.service';
 
 export interface LoanItem {
   ticketId: number;
@@ -75,7 +76,8 @@ export class History implements OnInit {
     private circulationService: CirculationService,
     private penaltyService: PenaltyService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private dialog: DialogService,
   ) {}
 
   ngOnInit(): void {
@@ -282,13 +284,24 @@ export class History implements OnInit {
     this.showToast('Đã tải hình ảnh mã QR phiếu mượn về máy!');
   }
 
-  renewBook(item: LoanItem): void {
+  async renewBook(item: LoanItem): Promise<void> {
     if (item.renewalCount !== undefined && item.renewalCount >= 1) {
-      alert('Tài liệu này đã đạt số lần gia hạn tối đa (1/1 lần). Vui lòng hoàn trả đúng hạn tại quầy!');
+      this.dialog.show({
+        title: 'Không thể gia hạn',
+        message: 'Tài liệu này đã đạt số lần gia hạn tối đa (1/1 lần). Vui lòng hoàn trả đúng hạn tại quầy!',
+        type: 'warning',
+        confirmText: 'Đã hiểu',
+      });
       return;
     }
 
-    if (!confirm(`Bạn có chắc chắn muốn gia hạn thêm 10 ngày cho cuốn sách "${item.bookTitle}" (Phiếu #${item.ticketId}) không?`)) {
+    const accepted = await this.dialog.confirm({
+      title: 'Xác nhận gia hạn',
+      message: `Gia hạn thêm 10 ngày cho cuốn sách “${item.bookTitle}” (Phiếu #${item.ticketId})?`,
+      type: 'info',
+      confirmText: 'Gia hạn',
+    });
+    if (!accepted) {
       return;
     }
 
@@ -309,13 +322,19 @@ export class History implements OnInit {
         } else if (err.error?.message) {
           msg = err.error.message;
         }
-        alert(msg);
+        this.dialog.show({ title: 'Không thể gia hạn', message: msg, type: 'error', confirmText: 'Đóng' });
       }
     });
   }
 
-  cancelReservation(item: LoanItem): void {
-    if (!confirm(`Bạn có chắc muốn hủy phiếu đặt giữ #${item.ticketId} cho cuốn sách "${item.bookTitle}" không?`)) {
+  async cancelReservation(item: LoanItem): Promise<void> {
+    const accepted = await this.dialog.confirm({
+      title: 'Hủy phiếu đặt giữ',
+      message: `Bạn có chắc muốn hủy phiếu #${item.ticketId} cho cuốn sách “${item.bookTitle}”?`,
+      type: 'warning',
+      confirmText: 'Hủy phiếu',
+    });
+    if (!accepted) {
       return;
     }
 
@@ -329,8 +348,14 @@ export class History implements OnInit {
       error: (err) => {
         this.cancellingTicketId = null;
         console.error('Error cancelling reservation:', err);
-        const msg = (err.error && typeof err.error === 'string') ? err.error : 'Không thể hủy phiếu mượn vào lúc này!';
-        alert(msg);
+        const rawMessage = typeof err?.error === 'string'
+          ? err.error
+          : (err?.error?.detail ?? err?.error?.message);
+        const msg = typeof rawMessage === 'string' && rawMessage.trim()
+          ? rawMessage
+          : 'Không thể hủy phiếu mượn vào lúc này!';
+        this.dialog.show({ title: 'Không thể hủy phiếu', message: msg, type: 'error', confirmText: 'Đóng' });
+        this.loadLoans();
       }
     });
   }

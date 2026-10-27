@@ -43,6 +43,14 @@ export interface BatchBorrowResponse {
   barcodes: string[];
 }
 
+export interface BorrowEligibility {
+  maximumItems: number;
+  openItems: number;
+  remainingSlots: number;
+  eligible: boolean;
+  message: string;
+}
+
 export type LoanTicketStatus =
   'PENDING' | 'RESERVED' | 'BORROWING' | 'OVERDUE' | 'RETURNED' | 'CANCELLED' | 'REJECTED';
 
@@ -175,6 +183,10 @@ export class CirculationService {
     return this.http.get<LoanItem[]>(`${this.apiUrl}/my-loans`);
   }
 
+  getMyBorrowEligibility(): Observable<BorrowEligibility> {
+    return this.http.get<BorrowEligibility>(`${this.apiUrl}/my-eligibility`);
+  }
+
   /** Danh sách phiếu thật dành cho Admin/Librarian. */
   getStaffLoans(): Observable<LoanTicketSummary[]> {
     return this.http.get<LoanTicketSummary[]>(`${this.apiUrl}/staff`);
@@ -194,8 +206,8 @@ export class CirculationService {
   /**
    * Hủy yêu cầu đặt giữ trước khi chưa nhận sách
    */
-  cancelReservation(ticketId: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/cancel/${ticketId}`, {});
+  cancelReservation(ticketId: number): Observable<string> {
+    return this.http.post(`${this.apiUrl}/cancel/${ticketId}`, {}, { responseType: 'text' });
   }
 
   /**

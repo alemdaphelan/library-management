@@ -88,6 +88,9 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST, "/feedback/complaints", "/api/v1/feedback/complaints").permitAll()
                                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                                .requestMatchers(HttpMethod.GET,
+                                        "/api/v1/online-payments/vnpay-return",
+                                        "/api/v1/online-payments/vnpay-ipn").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/v1/chatbot/query").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/books", "/books/**", "/categories", "/categories/**").permitAll()
                                 .anyRequest().authenticated()

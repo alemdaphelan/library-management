@@ -28,6 +28,7 @@ class PushNotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static final ValueNotifier<int> notificationRevision = ValueNotifier<int>(0);
 
   static Future<bool> initialize() async {
     if (_initialized) return true;
@@ -119,6 +120,8 @@ class PushNotificationService {
   }
 
   static Future<void> _showForegroundMessage(RemoteMessage message) async {
+    // Báo cho các màn hình đang mở tải lại dữ liệu thông báo thật từ backend.
+    notificationRevision.value++;
     final notification = message.notification;
     if (notification == null) return;
     await _localNotifications.show(

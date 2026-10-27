@@ -6,6 +6,7 @@ import {
   InventoryAuditService,
   InventoryScanStatus,
 } from '../../../services/inventory-audit.service';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-inventory-audit',
@@ -26,7 +27,10 @@ export class InventoryAudit implements OnInit {
   successMessage = '';
   errorMessage = '';
 
-  constructor(private readonly inventoryAuditService: InventoryAuditService) {}
+  constructor(
+    private readonly inventoryAuditService: InventoryAuditService,
+    private readonly dialog: DialogService,
+  ) {}
 
   ngOnInit(): void {
     this.loadAudits();
@@ -109,9 +113,15 @@ export class InventoryAudit implements OnInit {
     });
   }
 
-  completeAudit(): void {
+  async completeAudit(): Promise<void> {
     if (!this.selectedAudit || this.selectedAudit.status !== 'IN_PROGRESS') return;
-    if (!window.confirm(`Hoàn tất phiên kiểm kê #${this.selectedAudit.auditId}? Sau đó sẽ không thể quét thêm.`)) return;
+    const confirmed = await this.dialog.confirm({
+      title: 'Hoàn tất kiểm kê',
+      message: `Hoàn tất phiên kiểm kê #${this.selectedAudit.auditId}? Sau đó sẽ không thể quét thêm.`,
+      type: 'warning',
+      confirmText: 'Hoàn tất',
+    });
+    if (!confirmed) return;
 
     this.isSubmitting = true;
     this.clearMessages();

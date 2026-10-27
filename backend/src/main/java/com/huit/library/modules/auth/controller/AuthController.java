@@ -8,6 +8,7 @@ import com.huit.library.modules.auth.dto.ForgotPasswordRequestDTO;
 import com.huit.library.modules.auth.dto.RefreshTokenRequestDTO;
 import com.huit.library.modules.auth.dto.ResetPasswordRequestDTO;
 import com.huit.library.modules.auth.dto.VerifyOtpRequestDTO;
+import com.huit.library.modules.auth.exception.OtpDeliveryException;
 import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.service.AuthService;
 import com.huit.library.core.security.CustomUserDetails;
@@ -87,8 +88,12 @@ public class AuthController {
     @PostMapping("/forgot-password")
     @Operation(summary = "Forgot Password", description = "Send OTP to user email")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
-        authService.forgotPassword(request.getEmail().trim());
-        return ResponseEntity.ok().body("Nếu tài khoản tồn tại, mã OTP sẽ được gửi đến email đã đăng ký.");
+        try {
+            authService.forgotPassword(request.getEmail().trim());
+            return ResponseEntity.ok().body("Nếu tài khoản tồn tại, mã OTP sẽ được gửi đến email đã đăng ký.");
+        } catch (OtpDeliveryException e) {
+            return ResponseEntity.status(503).body(e.getMessage());
+        }
     }
 
     @PostMapping("/verify-otp")

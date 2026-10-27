@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { LocationNode, LocationService, ShelfBook } from '../../../services/location.service';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-shelf-map',
@@ -30,7 +31,10 @@ export class ShelfMap implements OnInit {
   errorMessage = '';
   successMessage = '';
 
-  constructor(private locationService: LocationService) {}
+  constructor(
+    private locationService: LocationService,
+    private dialog: DialogService,
+  ) {}
 
   ngOnInit(): void {
     this.loadFloors();
@@ -161,8 +165,14 @@ export class ShelfMap implements OnInit {
     });
   }
 
-  renameFloor(floor: LocationNode): void {
-    const name = window.prompt('Tên tầng mới:', floor.name)?.trim();
+  async renameFloor(floor: LocationNode): Promise<void> {
+    const name = (await this.dialog.prompt({
+      title: 'Đổi tên tầng',
+      message: `Nhập tên mới cho “${floor.name}”.`,
+      inputLabel: 'Tên tầng mới',
+      inputValue: floor.name,
+      confirmText: 'Lưu thay đổi',
+    }))?.trim();
     if (!name || name === floor.name) return;
     this.locationService.updateFloor(floor.id, name).subscribe({
       next: () => {
@@ -173,9 +183,15 @@ export class ShelfMap implements OnInit {
     });
   }
 
-  renameBookshelf(bookshelf: LocationNode): void {
+  async renameBookshelf(bookshelf: LocationNode): Promise<void> {
     if (!this.selectedFloor) return;
-    const name = window.prompt('Tên dãy kệ mới:', bookshelf.name)?.trim();
+    const name = (await this.dialog.prompt({
+      title: 'Đổi tên dãy kệ',
+      message: `Nhập tên mới cho “${bookshelf.name}”.`,
+      inputLabel: 'Tên dãy kệ mới',
+      inputValue: bookshelf.name,
+      confirmText: 'Lưu thay đổi',
+    }))?.trim();
     if (!name || name === bookshelf.name) return;
     this.locationService.updateBookshelf(bookshelf.id, name, this.selectedFloor.id).subscribe({
       next: () => {
@@ -186,9 +202,15 @@ export class ShelfMap implements OnInit {
     });
   }
 
-  renameShelf(shelf: LocationNode): void {
+  async renameShelf(shelf: LocationNode): Promise<void> {
     if (!this.selectedBookshelf) return;
-    const name = window.prompt('Tên ngăn kệ mới:', shelf.name)?.trim();
+    const name = (await this.dialog.prompt({
+      title: 'Đổi tên ngăn kệ',
+      message: `Nhập tên mới cho “${shelf.name}”.`,
+      inputLabel: 'Tên ngăn kệ mới',
+      inputValue: shelf.name,
+      confirmText: 'Lưu thay đổi',
+    }))?.trim();
     if (!name || name === shelf.name) return;
     this.locationService.updateShelf(shelf.id, name, this.selectedBookshelf.id).subscribe({
       next: () => {
@@ -199,8 +221,14 @@ export class ShelfMap implements OnInit {
     });
   }
 
-  deleteFloor(floor: LocationNode): void {
-    if (!window.confirm(`Xóa tầng “${floor.name}”? Tầng chỉ có thể xóa khi không còn dãy kệ.`)) return;
+  async deleteFloor(floor: LocationNode): Promise<void> {
+    const confirmed = await this.dialog.confirm({
+      title: 'Xóa tầng',
+      message: `Xóa tầng “${floor.name}”? Tầng chỉ có thể xóa khi không còn dãy kệ.`,
+      type: 'warning',
+      confirmText: 'Xóa tầng',
+    });
+    if (!confirmed) return;
     this.locationService.deleteFloor(floor.id).subscribe({
       next: () => {
         this.showSuccess('Đã xóa tầng.');
@@ -210,8 +238,15 @@ export class ShelfMap implements OnInit {
     });
   }
 
-  deleteBookshelf(bookshelf: LocationNode): void {
-    if (!this.selectedFloor || !window.confirm(`Xóa dãy kệ “${bookshelf.name}”? Dãy kệ chỉ có thể xóa khi không còn ngăn.`)) return;
+  async deleteBookshelf(bookshelf: LocationNode): Promise<void> {
+    if (!this.selectedFloor) return;
+    const confirmed = await this.dialog.confirm({
+      title: 'Xóa dãy kệ',
+      message: `Xóa dãy kệ “${bookshelf.name}”? Dãy kệ chỉ có thể xóa khi không còn ngăn.`,
+      type: 'warning',
+      confirmText: 'Xóa dãy kệ',
+    });
+    if (!confirmed) return;
     this.locationService.deleteBookshelf(bookshelf.id).subscribe({
       next: () => {
         this.showSuccess('Đã xóa dãy kệ.');
@@ -221,8 +256,15 @@ export class ShelfMap implements OnInit {
     });
   }
 
-  deleteShelf(shelf: LocationNode): void {
-    if (!this.selectedBookshelf || !window.confirm(`Xóa ngăn kệ “${shelf.name}”?`)) return;
+  async deleteShelf(shelf: LocationNode): Promise<void> {
+    if (!this.selectedBookshelf) return;
+    const confirmed = await this.dialog.confirm({
+      title: 'Xóa ngăn kệ',
+      message: `Xóa ngăn kệ “${shelf.name}”?`,
+      type: 'warning',
+      confirmText: 'Xóa ngăn kệ',
+    });
+    if (!confirmed) return;
     this.locationService.deleteShelf(shelf.id).subscribe({
       next: () => {
         this.showSuccess('Đã xóa ngăn kệ.');

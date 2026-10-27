@@ -70,8 +70,14 @@ class CirculationStateServiceTest {
     @Test
     void approveMovesPendingReservationAndWritesAuditHistory() {
         UUID librarianId = UUID.randomUUID();
+        UUID readerId = UUID.randomUUID();
         LoanTicketEntity ticket = ticket(10L, "PENDING");
+        ticket.setUserId(readerId);
+        UserEntity reader = new UserEntity();
+        reader.setUserId(readerId);
         when(ticketRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(ticket));
+        when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
+        when(detailRepository.countOpenItemsByUserId(eq(readerId), any())).thenReturn(1L);
 
         LoanStateResponseDTO result = service.approveReservation(10L, librarianId);
 
@@ -87,6 +93,37 @@ class CirculationStateServiceTest {
         assertThat(historyCaptor.getValue().getFromStatus()).isEqualTo(LoanTicketStatus.PENDING);
         assertThat(historyCaptor.getValue().getToStatus()).isEqualTo(LoanTicketStatus.RESERVED);
         assertThat(historyCaptor.getValue().getChangedBy()).isEqualTo(librarianId);
+    }
+
+    @Test
+    void eligibilityCountsAllOpenItemsAndExplainsWhenLimitIsReached() {
+        UUID readerId = UUID.randomUUID();
+        when(detailRepository.countOpenItemsByUserId(eq(readerId), any())).thenReturn(3L);
+
+        var result = service.getBorrowEligibility(readerId);
+
+        assertThat(result.getOpenItems()).isEqualTo(3);
+        assertThat(result.getRemainingSlots()).isZero();
+        assertThat(result.isEligible()).isFalse();
+        assertThat(result.getMessage()).contains("đủ 3 tài liệu");
+    }
+
+    @Test
+    void approvalIsRejectedWhenReaderAlreadyHasMoreThanThreeOpenItems() {
+        UUID readerId = UUID.randomUUID();
+        LoanTicketEntity ticket = ticket(13L, "PENDING");
+        ticket.setUserId(readerId);
+        UserEntity reader = new UserEntity();
+        reader.setUserId(readerId);
+        when(ticketRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(ticket));
+        when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
+        when(detailRepository.countOpenItemsByUserId(eq(readerId), any())).thenReturn(4L);
+
+        assertThatThrownBy(() -> service.approveReservation(13L, UUID.randomUUID()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("vượt giới hạn 3 tài liệu");
+        verify(ticketRepository, never()).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
     @Test

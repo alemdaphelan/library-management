@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { PenaltyService } from '../../../services/penalty.service';
+import { AuthService } from '../../../services/auth.service';
+import { DialogService } from '../../../services/dialog.service';
 import { MyPenalties } from './my-penalties';
 
 describe('MyPenalties', () => {
@@ -11,7 +13,10 @@ describe('MyPenalties', () => {
   const penaltyService = {
     getMyLedger: vi.fn(),
     getMyCases: vi.fn(),
+    createOnlinePayment: vi.fn(),
   };
+  const authService = { fetchLibraryCard: vi.fn() };
+  const dialogService = { show: vi.fn() };
 
   beforeEach(async () => {
     penaltyService.getMyLedger.mockReturnValue(of([
@@ -20,10 +25,18 @@ describe('MyPenalties', () => {
       { transactionId: 3, type: 'PAYMENT', amount: -4000, status: 'COMPLETED', reason: 'Thu tiền mặt' },
     ]));
     penaltyService.getMyCases.mockReturnValue(of([]));
+    authService.fetchLibraryCard.mockReturnValue(of({
+      issued: true, ownerName: 'Sinh viên', cardStatus: 'ACTIVE', depositBalance: 50000, totalDebt: 56000,
+    }));
 
     await TestBed.configureTestingModule({
       imports: [MyPenalties],
-      providers: [provideRouter([]), { provide: PenaltyService, useValue: penaltyService }],
+      providers: [
+        provideRouter([]),
+        { provide: PenaltyService, useValue: penaltyService },
+        { provide: AuthService, useValue: authService },
+        { provide: DialogService, useValue: dialogService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MyPenalties);
@@ -41,5 +54,13 @@ describe('MyPenalties', () => {
   it('maps finance labels to Vietnamese', () => {
     expect(component.feeTypeLabel('TECHNICAL_FEE')).toBe('Phí xử lý kỹ thuật');
     expect(component.statusLabel('PARTIALLY_PAID')).toBe('Đã thanh toán một phần');
+  });
+
+  it('prepares real online debt and deposit amounts', () => {
+    expect(component.paymentAmount).toBe(56000);
+    component.selectPaymentPurpose('DEPOSIT');
+    expect(component.paymentAmount).toBe(50000);
+    component.selectPaymentPurpose('DEBT');
+    expect(component.paymentAmount).toBe(56000);
   });
 });

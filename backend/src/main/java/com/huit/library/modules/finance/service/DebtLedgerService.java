@@ -69,8 +69,8 @@ public class DebtLedgerService {
     @Transactional
     public PaymentReceiptDTO recordPayment(DebtPaymentRequestDTO request, UUID operatorId) {
         String method = request.getMethod().trim().toUpperCase(Locale.ROOT);
-        if (!List.of("CASH", "BANK_TRANSFER").contains(method)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ hỗ trợ tiền mặt hoặc chuyển khoản");
+        if (!List.of("CASH", "BANK_TRANSFER", "VNPAY").contains(method)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phương thức thanh toán không được hỗ trợ");
         }
         String dedupKey = "PAYMENT:" + request.getIdempotencyKey().trim();
         TransactionEntity replay = transactionRepository.findByDedupKey(dedupKey).orElse(null);
@@ -160,6 +160,47 @@ public class DebtLedgerService {
                 .remainingDebt(wallet.getTotalDebt())
                 .allocations(allocatedLines)
                 .build();
+    }
+
+    @Transactional
+    public PaymentReceiptDTO recordDepositTopUp(
+            UUID userId, BigDecimal amount, String gatewayReference) {
+        String dedupKey = "DEPOSIT_TOPUP:" + gatewayReference;
+        TransactionEntity replay = transactionRepository.findByDedupKey(dedupKey).orElse(null);
+        if (replay != null) {
+            return buildReceipt(replay, userId);
+        }
+
+        WalletEntity wallet = walletRepository.findByUserIdForUpdate(userId).orElseGet(() -> {
+            WalletEntity created = new WalletEntity();
+            created.setUserId(userId);
+            created.setDepositBalance(BigDecimal.ZERO);
+            created.setTotalDebt(BigDecimal.ZERO);
+            return walletRepository.save(created);
+        });
+        wallet.setDepositBalance(zero(wallet.getDepositBalance()).add(amount));
+        walletRepository.save(wallet);
+
+        TransactionEntity topUp = new TransactionEntity();
+        topUp.setUserId(userId);
+        topUp.setAmount(amount.negate());
+        topUp.setType("DEPOSIT_TOPUP");
+        topUp.setReason("Nạp tiền thế chân trực tuyến qua VNPAY");
+        topUp.setStatus("COMPLETED");
+        topUp.setPaymentMethod("VNPAY");
+        topUp.setReceiptNumber("VNP-" + gatewayReference);
+        topUp.setConfirmedBy(userId);
+        topUp.setPaidAt(LocalDateTime.now());
+        topUp.setDedupKey(dedupKey);
+        topUp = transactionRepository.save(topUp);
+
+        notificationService.createOnce(
+                userId, "DEPOSIT_TOPUP",
+                "Đã nạp " + amount.toPlainString() + " đồng tiền thế chân. Số dư hiện tại: "
+                        + wallet.getDepositBalance().toPlainString() + " đồng.",
+                "TRANSACTION", topUp.getTransactionId().toString(),
+                "DEPOSIT_TOPUP:" + topUp.getTransactionId(), LocalDateTime.now());
+        return buildReceipt(topUp, userId);
     }
 
     @Transactional

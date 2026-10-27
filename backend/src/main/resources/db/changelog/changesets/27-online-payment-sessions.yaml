@@ -1,0 +1,99 @@
+databaseChangeLog:
+  - changeSet:
+      id: h5-online-payment-sessions
+      author: codex
+      changes:
+        - createTable:
+            tableName: online_payment_sessions
+            columns:
+              - column:
+                  name: payment_session_id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: reference
+                  type: VARCHAR(80)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: purpose
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: DECIMAL(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: gateway_transaction_no
+                  type: VARCHAR(100)
+              - column:
+                  name: response_code
+                  type: VARCHAR(20)
+              - column:
+                  name: payment_transaction_id
+                  type: BIGINT
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: TIMESTAMP
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: online_payment_sessions
+            indexName: idx_online_payment_user_created
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: created_at
+        - addForeignKeyConstraint:
+            baseTableName: online_payment_sessions
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_online_payment_user
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: online_payment_sessions
+            baseColumnNames: payment_transaction_id
+            referencedTableName: transactions
+            referencedColumnNames: transaction_id
+            constraintName: fk_online_payment_transaction
+            onDelete: SET NULL
+      rollback:
+        - dropTable:
+            tableName: online_payment_sessions

@@ -26,6 +26,9 @@ Thư mục này dành cho thành viên kiểm thử độc lập sau khi nhận 
 20. Với bản sửa G6, chạy `18_UAT_G6_QUAY_MUON_TRA_VA_CAMERA.md` để kiểm tra lập phiếu trực tiếp, QR có chữ ký, camera và trả sách liên phiếu.
 21. Với bản sửa G7, chạy `19_UAT_G7_NHAP_KHO_DANH_MUC_VA_THONG_BAO.md` để kiểm tra tra ISBN, nhập kho, danh mục sách và thông báo nghiệp vụ quản trị.
 22. Với bản sửa G8, chạy `20_UAT_G8_HO_SO_BAN_DOC_VA_THE.md` để kiểm tra hồ sơ tổng hợp, thẻ thư viện, công nợ, vi phạm và phân quyền Admin/Thủ thư.
+23. Với gói H6, chạy `21_UAT_H6_THANH_TOAN_TRUC_TUYEN_VNPAY.md` để kiểm tra VNPAY sandbox, thanh toán công nợ, nạp tiền thế chân và callback chống ghi nhận lặp.
+24. Với phần bổ sung H6B, chạy `22_UAT_H6B_CAMERA_QR_BARCODE_DA_TRINH_DUYET.md` để kiểm tra quét camera trên trình duyệt có/không có `BarcodeDetector`, giải phóng camera và chặn xử lý lại phiếu.
+25. Đọc `23_UAT_H7_KET_QUA_HOI_QUY_VA_BAN_GIAO.md` để đối chiếu toàn bộ gate cuối, các cảnh báo không chặn và phạm vi cần kiểm tra trên dịch vụ/thiết bị thật.
 
 ## Nguyên tắc
 
@@ -49,6 +52,6 @@ Thư mục này dành cho thành viên kiểm thử độc lập sau khi nhận 
 
 ## Trạng thái trước khi bàn giao
 
-Chức năng tuần 1–11, các gói 12A–12E, các bản sửa UAT-A đến UAT-F và các gói G1–G8 đã hoàn thành ở mức mã nguồn. Gate cục bộ ngày 25/10/2026 đạt **137/137 Backend unit test**, **107/107 Web test** và **Web production build**. Thành viên kiểm thử vẫn phải chạy lại toàn bộ test trên đúng commit nhận bàn giao và ghi kết quả vào biên bản. Ba integration test dùng Testcontainers cần Docker daemon hoạt động; nếu môi trường nhận bàn giao chưa có Docker thì ghi `BLOCKED`, không ghi `FAIL`.
+Chức năng tuần 1–11, các gói 12A–12E, các bản sửa UAT-A đến UAT-F, các gói G1–G8, gói H6 thanh toán trực tuyến và phần bổ sung H6B camera đa trình duyệt đã hoàn thành ở mức mã nguồn. H7 đã chạy hồi quy cục bộ ngày 27/10/2026 với **176/176 Backend test**, **122/122 Web test**, **7/7 Mobile test**, Web production build, Mobile debug APK và preflight đều đạt. Thành viên kiểm thử vẫn phải chạy lại toàn bộ test trên đúng commit nhận bàn giao và ghi kết quả vào biên bản. Các integration test dùng Testcontainers cần Docker daemon hoạt động; nếu môi trường nhận bàn giao chưa có Docker thì ghi `BLOCKED`, không ghi `FAIL`. Luồng VNPAY thật chỉ chạy khi môi trường kiểm thử đã cấp `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET` và bật `VNPAY_ENABLED=true`; khi chưa cấu hình, hệ thống chủ động báo chưa sẵn sàng và không dùng dữ liệu thanh toán giả.
 
 Thành viên kiểm thử/triển khai nhận luôn phần đổi package ID sang `vn.edu.huit.library`, cấu hình Firebase và xác nhận FCM trên thiết bị thật theo tài liệu `06_CAU_HINH_FIREBASE_VA_KIEM_THU_PUSH.md`; lỗi phản hồi sẽ được chuyển lại cho thành viên code.

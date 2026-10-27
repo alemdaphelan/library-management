@@ -3,6 +3,7 @@ package com.huit.library.modules.circulation.service;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
+import com.huit.library.modules.circulation.dto.BorrowEligibilityDTO;
 import com.huit.library.modules.circulation.dto.CirculationOperationResponseDTO;
 import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class CirculationStateService {
+    private static final int MAX_OPEN_ITEMS = 3;
     private final LoanTicketRepository loanTicketRepository;
     private final LoanDetailRepository loanDetailRepository;
     private final LoanStatusHistoryRepository historyRepository;
@@ -84,6 +86,15 @@ public class CirculationStateService {
     @Transactional
     public LoanStateResponseDTO approveReservation(Long ticketId, UUID operatorId) {
         LoanTicketEntity ticket = findTicket(ticketId);
+        LoanTicketStatus currentStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
+        if (!stateMachine.canTransition(currentStatus, LoanTicketStatus.RESERVED)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Không thể chuyển phiếu mượn từ " + currentStatus + " sang " + LoanTicketStatus.RESERVED);
+        }
+        userRepository.findByIdForUpdate(ticket.getUserId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
+        ensureCurrentOpenItemsWithinLimit(ticket.getUserId());
         LoanStateResponseDTO response = transition(
                 ticket, LoanTicketStatus.RESERVED, operatorId, "Đã duyệt yêu cầu đặt giữ");
         notificationService.createOnce(
@@ -127,7 +138,7 @@ public class CirculationStateService {
     }
 
     public void ensureEligibleForReservation(UUID userId, int requestedItems) {
-        if (requestedItems < 1 || requestedItems > 3) {
+        if (requestedItems < 1 || requestedItems > MAX_OPEN_ITEMS) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Mỗi phiếu phải có từ 1 đến 3 tài liệu");
@@ -136,12 +147,44 @@ public class CirculationStateService {
         long openItems = loanDetailRepository.countOpenItemsByUserId(
                 userId,
                 List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
-        if (openItems + requestedItems > 3) {
+        if (openItems + requestedItems > MAX_OPEN_ITEMS) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Yêu cầu có " + requestedItems + " tài liệu nhưng bạn đọc hiện đã có "
                             + openItems + "; mỗi bạn đọc được đặt giữ hoặc mượn tối đa 3 tài liệu");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public BorrowEligibilityDTO getBorrowEligibility(UUID userId) {
+        long openItems = countOpenItems(userId);
+        long remainingSlots = Math.max(0, MAX_OPEN_ITEMS - openItems);
+        String message = remainingSlots > 0
+                ? "Bạn còn có thể đăng ký " + remainingSlots + " tài liệu."
+                : "Bạn đã đủ 3 tài liệu đang chờ duyệt, chờ nhận hoặc đang mượn. Hãy trả hoặc hủy một tài liệu trước khi đăng ký tiếp.";
+        return BorrowEligibilityDTO.builder()
+                .maximumItems(MAX_OPEN_ITEMS)
+                .openItems(openItems)
+                .remainingSlots(remainingSlots)
+                .eligible(remainingSlots > 0)
+                .message(message)
+                .build();
+    }
+
+    private void ensureCurrentOpenItemsWithinLimit(UUID userId) {
+        long openItems = countOpenItems(userId);
+        if (openItems > MAX_OPEN_ITEMS) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Bạn đọc hiện có " + openItems
+                            + " tài liệu trong các phiếu đang hoạt động, vượt giới hạn 3 tài liệu; không thể duyệt thêm");
+        }
+    }
+
+    private long countOpenItems(UUID userId) {
+        return loanDetailRepository.countOpenItemsByUserId(
+                userId,
+                List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
     }
 
     public void ensureEligibleForRenewal(UUID userId) {
@@ -184,7 +227,7 @@ public class CirculationStateService {
         ensureNoDebtOrOverdue(ticket.getUserId());
         long borrowedItems = loanDetailRepository.countOpenItemsByUserId(
                 ticket.getUserId(), List.of("BORROWING", "OVERDUE"));
-        if (borrowedItems + barcodes.size() > 3) {
+        if (borrowedItems + barcodes.size() > MAX_OPEN_ITEMS) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Checkout vượt giới hạn tối đa 3 tài liệu đang mượn");

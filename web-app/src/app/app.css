@@ -97,10 +97,13 @@
 
 .center-dialog-actions {
   width: 100%;
+  display: flex;
+  gap: 12px;
 }
 
-.btn-center-dialog-confirm {
-  width: 100%;
+.btn-center-dialog-confirm,
+.btn-center-dialog-cancel {
+  flex: 1;
   padding: 12px 20px;
   border-radius: 12px;
   font-size: 1rem;
@@ -111,6 +114,44 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+}
+
+.btn-center-dialog-cancel {
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
+}
+
+.btn-center-dialog-cancel:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.center-dialog-input-label {
+  width: 100%;
+  margin: 0 0 7px;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.center-dialog-input {
+  width: 100%;
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  color: #0f172a;
+  background: #ffffff;
+  font: inherit;
+  outline: none;
+}
+
+.center-dialog-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14);
 }
 
 .btn-center-dialog-confirm:hover {

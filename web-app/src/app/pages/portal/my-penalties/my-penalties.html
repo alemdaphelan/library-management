@@ -36,11 +36,40 @@
         <strong>{{ totalPaid | number:'1.0-0':'en-US' }} VNĐ</strong>
         <small>Đối chiếu theo từng khoản thu</small>
       </article>
+      <article class="summary-card deposit-card">
+        <span>Tiền thế chân hiện có</span>
+        <strong>{{ (libraryCard?.depositBalance || 0) | number:'1.0-0':'en-US' }} VNĐ</strong>
+        <small>Trạng thái thẻ: {{ libraryCard?.cardStatus || 'Chưa cấp thẻ' }}</small>
+      </article>
       <article class="summary-card">
         <span>Hồ sơ mất / hỏng</span>
         <strong>{{ penaltyCases.length }}</strong>
         <small>Gồm hồ sơ đang xử lý và đã quyết toán</small>
       </article>
+    </section>
+
+    <section class="payment-panel">
+      <div class="payment-copy">
+        <span class="eyebrow">THANH TOÁN TRỰC TUYẾN</span>
+        <h2>Thanh toán an toàn qua VNPAY</h2>
+        <p>Chọn thanh toán công nợ hoặc nạp tiền thế chân. Giao dịch chỉ được ghi nhận sau khi chữ ký phản hồi từ VNPAY hợp lệ.</p>
+        <div class="payment-purpose">
+          <button type="button" [class.active]="paymentPurpose === 'DEBT'" (click)="selectPaymentPurpose('DEBT')">Thanh toán công nợ</button>
+          <button type="button" [class.active]="paymentPurpose === 'DEPOSIT'" (click)="selectPaymentPurpose('DEPOSIT')">Nạp tiền thế chân</button>
+        </div>
+      </div>
+      <div class="payment-form">
+        <label for="payment-amount">Số tiền (VNĐ)</label>
+        <input id="payment-amount" type="number" min="1000" step="1000" [(ngModel)]="paymentAmount"
+               [max]="paymentPurpose === 'DEBT' ? outstandingDebt : 100000000">
+        <small *ngIf="paymentPurpose === 'DEBT'">Công nợ hiện tại: {{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ</small>
+        <small *ngIf="paymentPurpose === 'DEPOSIT'">Số tiền này được cộng vào tiền thế chân, không tự cấn trừ công nợ.</small>
+        <button type="button" (click)="startOnlinePayment()"
+                [disabled]="paymentSubmitting || (paymentPurpose === 'DEBT' && outstandingDebt === 0)">
+          {{ paymentSubmitting ? 'Đang tạo giao dịch...' : 'Thanh toán với VNPAY' }}
+        </button>
+        <p class="gateway-note">Bạn sẽ được chuyển sang cổng VNPAY và quay lại trang này sau khi hoàn tất.</p>
+      </div>
     </section>
 
     <div class="clear-banner" *ngIf="outstandingDebt === 0">
@@ -99,7 +128,7 @@
       <div class="payment-list" *ngIf="paymentEntries.length > 0">
         <article *ngFor="let payment of paymentEntries">
           <div><strong>{{ payment.receiptNumber || ('Giao dịch #' + payment.transactionId) }}</strong><small>{{ payment.reason }}</small></div>
-          <div><strong>{{ (payment.amount < 0 ? -payment.amount : payment.amount) | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : payment.paymentMethod === 'CASH' ? 'Tiền mặt' : payment.paymentMethod || 'Đã ghi nhận' }} · {{ (payment.paidAt || payment.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small></div>
+          <div><strong>{{ (payment.amount < 0 ? -payment.amount : payment.amount) | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : payment.paymentMethod === 'CASH' ? 'Tiền mặt' : payment.paymentMethod === 'VNPAY' ? 'VNPAY trực tuyến' : payment.paymentMethod || 'Đã ghi nhận' }} · {{ (payment.paidAt || payment.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small></div>
         </article>
       </div>
     </section>

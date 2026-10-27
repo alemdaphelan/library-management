@@ -24,7 +24,7 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     } else {
-      throw ApiException(response.statusCode, _message(response));
+      throw ApiException(response.statusCode, extractErrorMessage(response));
     }
   }
 
@@ -36,7 +36,7 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }
-    throw ApiException(response.statusCode, _message(response));
+    throw ApiException(response.statusCode, extractErrorMessage(response));
   }
 
   static Future<dynamic> post(
@@ -52,7 +52,7 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     } else {
-      throw ApiException(response.statusCode, _message(response));
+      throw ApiException(response.statusCode, extractErrorMessage(response));
     }
   }
 
@@ -69,7 +69,7 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }
-    throw ApiException(response.statusCode, _message(response));
+    throw ApiException(response.statusCode, extractErrorMessage(response));
   }
 
   static Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
@@ -82,7 +82,7 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }
-    throw ApiException(response.statusCode, _message(response));
+    throw ApiException(response.statusCode, extractErrorMessage(response));
   }
 
   static Future<dynamic> delete(
@@ -98,23 +98,56 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }
-    throw ApiException(response.statusCode, _message(response));
+    throw ApiException(response.statusCode, extractErrorMessage(response));
   }
 
-  static String _message(http.Response response) {
+  static String extractErrorMessage(http.Response response) {
     final body = utf8.decode(response.bodyBytes).trim();
-    if (body.isEmpty) return 'Yêu cầu thất bại (${response.statusCode})';
     try {
       final decoded = json.decode(body);
       if (decoded is Map) {
-        return (decoded['detail'] ??
-                decoded['message'] ??
-                decoded['error'] ??
-                body)
-            .toString();
+        for (final key in const ['detail', 'message', 'reason']) {
+          final value = decoded[key]?.toString().trim();
+          if (value != null && value.isNotEmpty && value != 'null') {
+            return value;
+          }
+        }
+        final errors = decoded['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final value = errors.values.first;
+          if (value is List && value.isNotEmpty) return value.first.toString();
+          if (value != null) return value.toString();
+        }
+        final error = decoded['error']?.toString().trim();
+        const genericHttpLabels = {
+          'bad request',
+          'unauthorized',
+          'forbidden',
+          'not found',
+          'conflict',
+          'internal server error',
+          'service unavailable',
+        };
+        if (error != null &&
+            error.isNotEmpty &&
+            !genericHttpLabels.contains(error.toLowerCase())) {
+          return error;
+        }
       }
     } catch (_) {}
-    return body;
+    if (body.isNotEmpty && !body.startsWith('{') && !body.startsWith('[')) {
+      return body;
+    }
+    return switch (response.statusCode) {
+      400 => 'Dữ liệu gửi lên chưa hợp lệ. Vui lòng kiểm tra lại.',
+      401 => 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+      403 => 'Bạn không có quyền thực hiện thao tác này.',
+      404 => 'Không tìm thấy dữ liệu yêu cầu.',
+      409 =>
+        'Yêu cầu không thể thực hiện do trạng thái dữ liệu đã thay đổi. Vui lòng làm mới và thử lại.',
+      503 => 'Dịch vụ đang tạm thời gián đoạn. Vui lòng thử lại sau.',
+      _ => 'Yêu cầu thất bại (${response.statusCode}). Vui lòng thử lại.',
+    };
   }
 
   /// Backend endpoints may legitimately return JSON, plain text, or an empty

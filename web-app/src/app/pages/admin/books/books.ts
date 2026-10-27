@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BookService } from '../../../services/book.service';
 import { Category, CategoryService } from '../../../services/category.service';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-books',
@@ -31,7 +32,11 @@ export class Books implements OnInit {
   totalPages: number = 0;
   totalElements: number = 0;
 
-  constructor(private bookService: BookService, private categoryService: CategoryService) {}
+  constructor(
+    private bookService: BookService,
+    private categoryService: CategoryService,
+    private dialog: DialogService,
+  ) {}
 
   ngOnInit() {
     this.categoryService.getCategories().subscribe({
@@ -107,7 +112,11 @@ export class Books implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
     if (!this.currentBook.title?.trim() || !this.currentBook.author?.trim()) {
-      alert('Vui lòng nhập tên sách và tác giả');
+      this.dialog.show({
+        title: 'Thiếu thông tin',
+        message: 'Vui lòng nhập tên sách và tác giả.',
+        type: 'warning',
+      });
       return;
     }
     const { bookId, categoryId, copies, availableCopies, location, status, imgError, ...editableFields } = this.currentBook;
@@ -142,8 +151,14 @@ export class Books implements OnInit {
     }
   }
 
-  deleteBook(book: any) {
-    if (!confirm(`Bạn có chắc muốn xóa “${book.title}”?`)) return;
+  async deleteBook(book: any) {
+    const confirmed = await this.dialog.confirm({
+      title: 'Xóa đầu sách',
+      message: `Bạn có chắc muốn xóa “${book.title}”?`,
+      type: 'warning',
+      confirmText: 'Xóa sách',
+    });
+    if (!confirmed) return;
     this.bookService.deleteBook(String(book.bookId)).subscribe({
       next: () => {
         this.successMessage = 'Đã xóa đầu sách khỏi danh mục.';

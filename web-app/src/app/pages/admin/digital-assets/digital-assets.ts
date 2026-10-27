@@ -4,6 +4,7 @@ import { HttpEventType } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DigitalAsset, DigitalAssetsService } from '../../../services/digital-assets.service';
 import { BookService } from '../../../services/book.service';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-digital-assets',
@@ -39,6 +40,7 @@ export class DigitalAssets implements OnInit {
   constructor(
     private digitalAssetsService: DigitalAssetsService,
     private bookService: BookService,
+    private dialog: DialogService,
   ) {}
 
   ngOnInit() {
@@ -157,8 +159,14 @@ export class DigitalAssets implements OnInit {
     });
   }
 
-  deleteAsset(id: number) {
-    if (!window.confirm('Xóa tài liệu số này? Thao tác sẽ xóa cả tệp đã lưu.')) return;
+  async deleteAsset(id: number) {
+    const confirmed = await this.dialog.confirm({
+      title: 'Xóa tài liệu số',
+      message: 'Xóa tài liệu số này? Thao tác sẽ xóa cả tệp đã lưu.',
+      type: 'warning',
+      confirmText: 'Xóa tài liệu',
+    });
+    if (!confirmed) return;
     this.clearMessages();
     this.digitalAssetsService.deleteAsset(id).subscribe({
       next: () => {

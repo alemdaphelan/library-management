@@ -175,4 +175,24 @@ describe('Circulation counter', () => {
     expect(service.getLoan).toHaveBeenCalledWith(19);
     expect(component.selectedTicket?.ticketId).toBe(19);
   });
+
+  it('loads complete ticket items before opening the pending decision modal', () => {
+    const summary = {
+      ticketId: 19,
+      userId: 'user-19',
+      mssv: '2001190019',
+      readerName: 'Nguyễn Văn A',
+      ticketType: 'BORROW' as const,
+      status: 'PENDING' as const,
+      itemCount: 1,
+      overdueItemCount: 0,
+      totalLateFine: 0,
+    };
+
+    component.openDecision(summary);
+
+    expect(service.getLoan).toHaveBeenCalledWith(19);
+    expect(component.decisionLoan?.items[0].bookTitle).toBe('Clean Code');
+    expect(component.decisionLoadingTicketId).toBeNull();
+  });
 });

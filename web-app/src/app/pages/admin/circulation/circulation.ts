@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, OnInit, Optional, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, Optional, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
+import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import {
   BookCopy,
   CirculationOperationResponse,
@@ -29,7 +30,7 @@ export class Circulation implements OnInit, OnDestroy {
   @ViewChild('cameraVideo') cameraVideo?: ElementRef<HTMLVideoElement>;
 
   activeTab: 'borrow' | 'return' = 'borrow';
-  borrowMode: 'approved' | 'manual' = 'approved';
+  borrowMode: 'approved' | 'manual' | 'pending' = 'approved';
   ticketInput = '';
   barcodeInput = '';
   manualMssv = '';
@@ -49,14 +50,17 @@ export class Circulation implements OnInit, OnDestroy {
   cameraError = '';
   private cameraStream?: MediaStream;
   private cameraTimer?: number;
+  private scannerControls?: IScannerControls;
   private detectingFrame = false;
   pendingRequests: LoanTicketSummary[] = [];
-  decisionLoan: LoanTicketSummary | null = null;
+  decisionLoan: LoanTicketDetail | null = null;
+  decisionLoadingTicketId: number | null = null;
   rejectionReason = '';
   decisionInProgress = false;
 
   constructor(
     private circulationService: CirculationService,
+    private cdr: ChangeDetectorRef,
     @Optional() private route?: ActivatedRoute,
   ) {}
 
@@ -73,18 +77,38 @@ export class Circulation implements OnInit, OnDestroy {
 
   loadPendingRequests(): void {
     this.circulationService.getStaffLoans().subscribe({
-      next: loans => this.pendingRequests = (loans || []).filter(loan => loan.status === 'PENDING'),
-      error: error => this.errorMessage = this.extractError(error, 'Không thể tải danh sách yêu cầu chờ duyệt.'),
+      next: loans => {
+        this.pendingRequests = (loans || []).filter(loan => loan.status === 'PENDING');
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.errorMessage = this.extractError(error, 'Không thể tải danh sách yêu cầu chờ duyệt.');
+        this.cdr.detectChanges();
+      },
     });
   }
 
   openDecision(loan: LoanTicketSummary): void {
-    this.decisionLoan = loan;
+    this.decisionLoadingTicketId = loan.ticketId;
+    this.errorMessage = '';
     this.rejectionReason = '';
+    this.circulationService.getLoan(loan.ticketId).subscribe({
+      next: detail => {
+        this.decisionLoadingTicketId = null;
+        this.decisionLoan = detail;
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.decisionLoadingTicketId = null;
+        this.errorMessage = this.extractError(error, `Không thể tải chi tiết phiếu #${loan.ticketId}.`);
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   closeDecision(): void {
     this.decisionLoan = null;
+    this.decisionLoadingTicketId = null;
     this.rejectionReason = '';
   }
 
@@ -98,10 +122,12 @@ export class Circulation implements OnInit, OnDestroy {
         this.successMessage = result.message || `Đã duyệt phiếu #${ticketId}.`;
         this.closeDecision();
         this.loadPendingRequests();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.decisionInProgress = false;
         this.errorMessage = this.extractError(error, `Không thể duyệt phiếu #${ticketId}.`);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -121,10 +147,12 @@ export class Circulation implements OnInit, OnDestroy {
         this.successMessage = result.message || `Đã từ chối phiếu #${ticketId}.`;
         this.closeDecision();
         this.loadPendingRequests();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.decisionInProgress = false;
         this.errorMessage = this.extractError(error, `Không thể từ chối phiếu #${ticketId}.`);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -144,7 +172,7 @@ export class Circulation implements OnInit, OnDestroy {
     this.resetForm();
   }
 
-  switchBorrowMode(mode: 'approved' | 'manual'): void {
+  switchBorrowMode(mode: 'approved' | 'manual' | 'pending'): void {
     this.borrowMode = mode;
     this.ticketInput = '';
     this.manualMssv = '';
@@ -155,6 +183,7 @@ export class Circulation implements OnInit, OnDestroy {
     this.barcodeInput = '';
     this.errorMessage = '';
     this.successMessage = '';
+    if (mode === 'pending') this.loadPendingRequests();
   }
 
   resolveTicket(): void {
@@ -175,14 +204,17 @@ export class Circulation implements OnInit, OnDestroy {
         this.isResolvingTicket = false;
         if (ticket.status !== 'RESERVED') {
           this.errorMessage = `Phiếu #${ticket.ticketId} đang ở trạng thái ${this.statusLabel(ticket.status)}; chỉ phiếu đã duyệt mới được giao sách.`;
+          this.cdr.detectChanges();
           return;
         }
         this.selectedTicket = ticket;
         this.ticketInput = String(ticket.ticketId);
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isResolvingTicket = false;
         this.errorMessage = this.extractError(error, `Không thể tải phiếu #${ticketId}.`);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -230,6 +262,7 @@ export class Circulation implements OnInit, OnDestroy {
         const validationError = this.validateCopyStatus(copy);
         if (validationError) {
           this.errorMessage = validationError;
+          this.cdr.detectChanges();
           return;
         }
         const counterBook = this.toCounterBook(copy, activeItem);
@@ -239,10 +272,12 @@ export class Circulation implements OnInit, OnDestroy {
           return;
         }
         this.scannedBooks = [...this.scannedBooks, counterBook];
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isScanningBook = false;
         this.errorMessage = this.extractError(error, `Không tìm thấy bản sao có barcode ${barcode}.`);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -278,10 +313,13 @@ export class Circulation implements OnInit, OnDestroy {
         this.returnConditionNote = '';
         this.manualMssv = '';
         this.manualNote = '';
+        this.loadPendingRequests();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isSubmitting = false;
         this.errorMessage = this.extractError(error, 'Không thể hoàn tất giao dịch.');
+        this.cdr.detectChanges();
       },
     });
   }
@@ -301,6 +339,7 @@ export class Circulation implements OnInit, OnDestroy {
         this.lastOperation = operation;
         this.successMessage = `${operation.message || 'Trả sách thành công.'} Barcode ${book.barcode} đã được cập nhật về kho.`;
         this.returnConditionNote = '';
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isSubmitting = false;
@@ -308,6 +347,7 @@ export class Circulation implements OnInit, OnDestroy {
           error,
           `Không thể ghi nhận trả sách cho barcode ${book.barcode}.`,
         );
+        this.cdr.detectChanges();
       },
     });
   }
@@ -331,9 +371,8 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   async startCamera(target: 'ticket' | 'barcode'): Promise<void> {
-    const Detector = (window as any).BarcodeDetector;
-    if (!Detector || !navigator.mediaDevices?.getUserMedia) {
-      this.cameraError = 'Trình duyệt này chưa hỗ trợ quét mã bằng camera. Bạn vẫn có thể dùng máy quét USB hoặc nhập mã thủ công.';
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.cameraError = 'Thiết bị hoặc trình duyệt không cho phép truy cập camera. Bạn vẫn có thể dùng máy quét USB hoặc nhập mã thủ công.';
       this.showCamera = true;
       return;
     }
@@ -342,22 +381,32 @@ export class Circulation implements OnInit, OnDestroy {
     this.cameraTarget = target;
     this.cameraError = '';
     this.showCamera = true;
+    this.cdr.detectChanges();
     try {
+      await new Promise(resolve => window.setTimeout(resolve));
+      const video = this.cameraVideo?.nativeElement;
+      if (!video) {
+        throw new Error('Không tìm thấy vùng hiển thị camera.');
+      }
+
+      const Detector = (window as any).BarcodeDetector;
+      if (!Detector) {
+        await this.startZxingCamera(video);
+        return;
+      }
+
       this.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-      window.setTimeout(() => {
-        const video = this.cameraVideo?.nativeElement;
-        if (!video || !this.cameraStream) return;
-        video.srcObject = this.cameraStream;
-        void video.play();
-        const formats = target === 'ticket'
-          ? ['qr_code']
-          : ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'];
-        const detector = new Detector({ formats });
-        this.cameraTimer = window.setInterval(() => void this.detectCameraFrame(detector), 450);
-      });
+      video.srcObject = this.cameraStream;
+      await video.play();
+      const formats = target === 'ticket'
+        ? ['qr_code']
+        : ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'];
+      const detector = new Detector({ formats });
+      this.cameraTimer = window.setInterval(() => void this.detectCameraFrame(detector), 450);
     } catch {
       this.cameraError = 'Không thể mở camera. Hãy cấp quyền camera hoặc nhập mã thủ công.';
-      this.releaseCameraStream();
+      this.releaseCameraResources();
+      this.cdr.detectChanges();
     }
   }
 
@@ -366,7 +415,7 @@ export class Circulation implements OnInit, OnDestroy {
       window.clearInterval(this.cameraTimer);
       this.cameraTimer = undefined;
     }
-    this.releaseCameraStream();
+    this.releaseCameraResources();
     this.showCamera = false;
     this.detectingFrame = false;
   }
@@ -434,6 +483,24 @@ export class Circulation implements OnInit, OnDestroy {
     }
   }
 
+  private async startZxingCamera(video: HTMLVideoElement): Promise<void> {
+    const reader = new BrowserMultiFormatReader(undefined, {
+      delayBetweenScanAttempts: 120,
+      delayBetweenScanSuccess: 500,
+    });
+    this.scannerControls = await reader.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' } }, audio: false },
+      video,
+      result => {
+        const value = result?.getText().trim();
+        if (!value || !this.showCamera) return;
+        const target = this.cameraTarget;
+        this.stopCamera();
+        this.handleScannedValue(target, value);
+      },
+    );
+  }
+
   private handleScannedValue(target: 'ticket' | 'barcode', value: string): void {
     if (target === 'barcode') {
       this.barcodeInput = value;
@@ -455,18 +522,23 @@ export class Circulation implements OnInit, OnDestroy {
           this.borrowMode = 'manual';
           this.manualMssv = resolved.mssv;
           this.successMessage = `Đã nhận diện thẻ của ${resolved.readerName || resolved.mssv}. Hãy quét các bản sao cần mượn.`;
+          this.cdr.detectChanges();
           return;
         }
         this.errorMessage = 'QR hợp lệ nhưng không chứa phiếu mượn hoặc MSSV có thể sử dụng.';
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isResolvingTicket = false;
         this.errorMessage = this.extractError(error, 'QR không hợp lệ, đã hết hạn hoặc không thuộc hệ thống HUIT.');
+        this.cdr.detectChanges();
       },
     });
   }
 
-  private releaseCameraStream(): void {
+  private releaseCameraResources(): void {
+    this.scannerControls?.stop();
+    this.scannerControls = undefined;
     this.cameraStream?.getTracks().forEach(track => track.stop());
     this.cameraStream = undefined;
   }

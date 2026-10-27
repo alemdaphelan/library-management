@@ -105,3 +105,12 @@ library:
     enabled: ${FIREBASE_PUSH_ENABLED:false}
     project-id: ${FIREBASE_PROJECT_ID:}
     service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
+  payment:
+    vnpay:
+      enabled: ${VNPAY_ENABLED:false}
+      payment-url: ${VNPAY_PAYMENT_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      tmn-code: ${VNPAY_TMN_CODE:}
+      hash-secret: ${VNPAY_HASH_SECRET:}
+      return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/online-payments/vnpay-return}
+      frontend-result-url: ${VNPAY_FRONTEND_RESULT_URL:http://localhost:4200/my-penalties}
+      expire-minutes: ${VNPAY_EXPIRE_MINUTES:15}

@@ -5,6 +5,7 @@ import com.huit.library.core.security.JwtUtils;
 import com.huit.library.modules.auth.dto.JwtResponseDTO;
 import com.huit.library.modules.auth.dto.LoginRequestDTO;
 import com.huit.library.modules.auth.entity.UserEntity;
+import com.huit.library.modules.auth.exception.OtpDeliveryException;
 import com.huit.library.modules.auth.repository.UserRepository;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -177,6 +178,17 @@ public class AuthService {
             mailSender.send(message);
         } catch (Exception e) {
             LOGGER.error("Không thể gửi email OTP", e);
+            // Không giữ OTP/resend lock khi máy chủ email chưa nhận thư. Người dùng
+            // có thể thử lại ngay sau khi cấu hình SMTP được khắc phục, và API cũng
+            // không báo thành công giả.
+            for (String identifier : identifiers(input, primaryEmail)) {
+                redisTemplate.delete(OTP_PREFIX + identifier);
+                redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier);
+                redisTemplate.delete(OTP_LOCK_PREFIX + identifier);
+                redisTemplate.delete(OTP_RESEND_PREFIX + identifier);
+            }
+            throw new OtpDeliveryException(
+                    "Không thể gửi mã OTP lúc này. Vui lòng thử lại sau.", e);
         }
     }
 

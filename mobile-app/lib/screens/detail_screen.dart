@@ -1,12 +1,74 @@
 import 'package:flutter/material.dart';
 import '../widgets/book_cover.dart';
 import '../services/loan_service.dart';
+import '../services/wishlist_service.dart';
 import 'borrowed_screen.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final Map<String, dynamic>? book;
 
   const DetailScreen({super.key, this.book});
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  bool _isSaved = false;
+  bool _saving = false;
+
+  int? get _bookId {
+    final raw = widget.book?['bookId'] ?? widget.book?['id'];
+    return raw is num ? raw.toInt() : int.tryParse(raw?.toString() ?? '');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedStatus();
+  }
+
+  Future<void> _loadSavedStatus() async {
+    final id = _bookId;
+    if (id == null) return;
+    try {
+      final saved = await WishlistService.isSaved(id);
+      if (mounted) setState(() => _isSaved = saved);
+    } catch (_) {
+      // The detail page remains usable when wishlist status cannot be loaded.
+    }
+  }
+
+  Future<void> _toggleSaved() async {
+    final id = _bookId;
+    if (id == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      if (_isSaved) {
+        await WishlistService.remove(id);
+      } else {
+        await WishlistService.save(id);
+      }
+      if (!mounted) return;
+      setState(() => _isSaved = !_isSaved);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isSaved
+                ? 'Đã lưu vào danh sách quan tâm.'
+                : 'Đã bỏ khỏi danh sách quan tâm.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   void _showBorrowModal(
     BuildContext context,
@@ -196,11 +258,11 @@ class DetailScreen extends StatelessWidget {
 
     Map<String, dynamic> newLoan;
     try {
-      final bookId = (book?['bookId'] ?? book?['id']) as num?;
+      final bookId = _bookId;
       if (bookId == null) {
         throw Exception('Không xác định được mã sách.');
       }
-      newLoan = await LoanService.reserveBook(bookId.toInt());
+      newLoan = await LoanService.reserveBook(bookId);
     } catch (error) {
       if (!context.mounted) return;
       Navigator.pop(context);
@@ -310,10 +372,11 @@ class DetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = book?['title'] ?? 'Giáo trình Lập trình Flutter Cơ bản';
-    final author = book?['author'] ?? 'PGS. TS. Nguyễn Văn B';
-    final publisher = book?['publisher'] ?? 'NXB Đại học Quốc gia TP.HCM';
-    final year = book?['publishYear']?.toString() ?? '2023';
+    final book = widget.book;
+    final title = book?['title'] ?? 'Tài liệu thư viện';
+    final author = book?['author'] ?? 'Chưa rõ tác giả';
+    final publisher = book?['publisher'] ?? 'Chưa cập nhật nhà xuất bản';
+    final year = book?['publishYear']?.toString() ?? 'Chưa cập nhật';
     final categoryObj = book?['category'];
     final category = categoryObj is Map
         ? (categoryObj['name'] ?? 'Công nghệ thông tin')
@@ -338,12 +401,18 @@ class DetailScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bookmark_outline),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã lưu vào danh sách quan tâm!')),
-              );
-            },
+            tooltip: _isSaved ? 'Bỏ lưu' : 'Lưu sách',
+            icon: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    _isSaved ? Icons.bookmark : Icons.bookmark_outline,
+                    color: _isSaved ? const Color(0xFF0284c7) : null,
+                  ),
+            onPressed: _bookId == null || _saving ? null : _toggleSaved,
           ),
         ],
       ),
@@ -498,8 +567,11 @@ class DetailScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    'Tài liệu học tập và nghiên cứu chính thức được lưu trữ tại Thư viện Trường Đại học Công Thương TP. Hồ Chí Minh (HUIT). Sinh viên có thể mượn sách trực tiếp tại quầy hoặc đọc tại các khu vực tự học của Thư viện.',
+                  Text(
+                    (book?['description'] ??
+                            book?['summary'] ??
+                            'Tài liệu học tập và nghiên cứu được lưu trữ tại Thư viện Trường Đại học Công Thương TP. Hồ Chí Minh (HUIT).')
+                        .toString(),
                     style: TextStyle(
                       fontSize: 15,
                       height: 1.6,

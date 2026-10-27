@@ -2,7 +2,7 @@
 
 <!-- Center Screen Modal Notification -->
 @if (dialogService.isOpen()) {
-  <div class="center-dialog-backdrop" (click)="dialogService.close()">
+  <div class="center-dialog-backdrop" (click)="dialogService.dismiss()">
     <div class="center-dialog-card" (click)="$event.stopPropagation()">
       <div class="center-dialog-icon-wrapper" [ngClass]="dialogService.type()">
         @if (dialogService.type() === 'success') {
@@ -33,8 +33,28 @@
       <h3 class="center-dialog-title">{{ dialogService.title() }}</h3>
       <p class="center-dialog-message">{{ dialogService.message() }}</p>
 
+      @if (dialogService.mode() === 'prompt') {
+        <label class="center-dialog-input-label" for="global-dialog-input">
+          {{ dialogService.inputLabel() }}
+        </label>
+        <input
+          id="global-dialog-input"
+          class="center-dialog-input"
+          type="text"
+          [value]="dialogService.promptValue()"
+          (input)="dialogService.promptValue.set($any($event.target).value)"
+          (keydown.enter)="dialogService.accept()"
+          autocomplete="off"
+        />
+      }
+
       <div class="center-dialog-actions">
-        <button class="btn-center-dialog-confirm" (click)="dialogService.close()">
+        @if (dialogService.mode() !== 'alert') {
+          <button class="btn-center-dialog-cancel" (click)="dialogService.cancel()">
+            {{ dialogService.cancelText() }}
+          </button>
+        }
+        <button class="btn-center-dialog-confirm" (click)="dialogService.accept()">
           {{ dialogService.confirmText() }}
         </button>
       </div>

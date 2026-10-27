@@ -121,6 +121,12 @@ public class LibrarianQrService {
         }
 
         LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
+        if (status != LoanTicketStatus.PENDING && status != LoanTicketStatus.RESERVED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Phiếu #" + ticket.getTicketId() + " đã ở trạng thái " + status.name()
+                            + " nên QR nhận sách không còn hiệu lực");
+        }
         return QrResolveResponseDTO.builder()
                 .type(claims.type())
                 .subjectId(claims.id())

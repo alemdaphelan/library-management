@@ -4,6 +4,7 @@ import 'package:mobile_app/screens/login_screen.dart';
 import 'package:mobile_app/screens/borrowed_screen.dart';
 import 'package:mobile_app/screens/change_password_screen.dart';
 import 'package:mobile_app/screens/suggest_book_screen.dart';
+import 'package:mobile_app/screens/saved_books_screen.dart';
 import 'package:mobile_app/services/librarian_qr_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile_app/config/api_config.dart';
@@ -395,6 +396,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: _showLibraryCardQr,
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.bookmark, color: Color(0xFF0284c7)),
+              title: const Text('Sách đã lưu'),
+              subtitle: const Text('Danh sách quan tâm của bạn'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SavedBooksScreen(),
+                  ),
+                );
+              },
             ),
             const Divider(height: 1),
             ListTile(

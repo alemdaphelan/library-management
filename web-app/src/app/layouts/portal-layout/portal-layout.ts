@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Chatbot } from '../../components/chatbot/chatbot';
@@ -12,7 +12,7 @@ import { LibraryNotification, NotificationService } from '../../services/notific
   templateUrl: './portal-layout.html',
   styleUrls: ['./portal-layout.css', './portal-modals.css'],
 })
-export class PortalLayout {
+export class PortalLayout implements OnInit, OnDestroy {
   isUserMenuOpen = false;
   isNotificationModalOpen = false;
   isCardModalOpen = false;
@@ -22,14 +22,16 @@ export class PortalLayout {
   notificationLoading = false;
   cardLoading = false;
   modalError = '';
+  private notificationRefreshTimer?: ReturnType<typeof setInterval>;
 
   constructor(
     public authService: AuthService,
     public borrowCartService: BorrowCartService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.authService.profile$.subscribe(profile => {
       this.userAvatar = profile?.avatarUrl || null;
     });
@@ -39,6 +41,17 @@ export class PortalLayout {
         error: () => {}
       });
       this.loadNotifications();
+      this.notificationRefreshTimer = setInterval(() => {
+        if (this.authService.isLoggedIn() && !this.notificationLoading) {
+          this.loadNotifications(false);
+        }
+      }, 30_000);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.notificationRefreshTimer) {
+      clearInterval(this.notificationRefreshTimer);
     }
   }
 
@@ -72,10 +85,12 @@ export class PortalLayout {
       next: card => {
         this.libraryCard = card;
         this.cardLoading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.cardLoading = false;
         this.modalError = 'Không thể tải thông tin thẻ thư viện.';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -87,16 +102,19 @@ export class PortalLayout {
     this.modalError = '';
   }
 
-  loadNotifications(): void {
-    this.notificationLoading = true;
+  loadNotifications(showLoading = true): void {
+    if (showLoading) this.notificationLoading = true;
     this.notificationService.getMyNotifications().subscribe({
       next: notifications => {
         this.notifications = notifications || [];
         this.notificationLoading = false;
+        this.modalError = '';
+        this.cdr.detectChanges();
       },
       error: () => {
         this.notificationLoading = false;
         this.modalError = 'Không thể tải thông báo.';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -107,8 +125,12 @@ export class PortalLayout {
       next: updated => {
         this.notifications = this.notifications.map(item =>
           item.notifId === updated.notifId ? updated : item);
+        this.cdr.detectChanges();
       },
-      error: () => this.modalError = 'Không thể cập nhật thông báo.',
+      error: () => {
+        this.modalError = 'Không thể cập nhật thông báo.';
+        this.cdr.detectChanges();
+      },
     });
   }
 

@@ -6,6 +6,7 @@ import { finalize } from 'rxjs/operators';
 import { BorrowCartItem, BorrowCartService } from '../../../services/borrow-cart.service';
 import {
   BatchBorrowResponse,
+  BorrowEligibility,
   CirculationService,
 } from '../../../services/circulation.service';
 
@@ -26,6 +27,8 @@ export class BorrowCart implements OnInit {
   isSubmitting = false;
   errorMessage = '';
   result: BatchBorrowResponse | null = null;
+  eligibility: BorrowEligibility | null = null;
+  isCheckingEligibility = false;
 
   constructor(
     private borrowCartService: BorrowCartService,
@@ -35,6 +38,7 @@ export class BorrowCart implements OnInit {
 
   ngOnInit(): void {
     this.refreshItems();
+    this.loadEligibility();
     const today = new Date();
     this.minPickupDate = this.formatLocalDate(today);
     this.pickupDate = this.formatLocalDate(today);
@@ -51,6 +55,10 @@ export class BorrowCart implements OnInit {
     if (this.isSubmitting || this.items.length === 0) return;
     if (!this.pickupDate) {
       this.errorMessage = 'Vui lòng chọn ngày đến nhận sách.';
+      return;
+    }
+    if (this.eligibility && this.items.length > this.eligibility.remainingSlots) {
+      this.errorMessage = this.eligibility.message;
       return;
     }
     this.isSubmitting = true;
@@ -72,6 +80,7 @@ export class BorrowCart implements OnInit {
         this.result = result;
         this.borrowCartService.clear();
         this.refreshItems();
+        this.loadEligibility();
       },
       error: error => {
         this.errorMessage = this.extractError(error);
@@ -81,6 +90,25 @@ export class BorrowCart implements OnInit {
 
   private refreshItems(): void {
     this.items = this.borrowCartService.allItems;
+  }
+
+  private loadEligibility(): void {
+    this.isCheckingEligibility = true;
+    this.circulationService.getMyBorrowEligibility().subscribe({
+      next: eligibility => {
+        this.eligibility = eligibility;
+        this.isCheckingEligibility = false;
+        if (this.items.length > eligibility.remainingSlots) {
+          this.errorMessage = eligibility.message;
+        }
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.isCheckingEligibility = false;
+        this.errorMessage = this.extractError(error);
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private formatLocalDate(date: Date): string {

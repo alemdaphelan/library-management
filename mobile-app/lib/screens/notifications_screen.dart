@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/notification_service.dart';
+import '../services/push_notification_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -9,7 +10,8 @@ class NotificationsScreen extends StatefulWidget {
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen>
+    with WidgetsBindingObserver {
   List<Map<String, dynamic>> _items = [];
   bool _loading = true;
   String? _error;
@@ -17,23 +19,52 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    PushNotificationService.notificationRevision.addListener(
+      _handlePushNotification,
+    );
     _load();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void dispose() {
+    PushNotificationService.notificationRevision.removeListener(
+      _handlePushNotification,
+    );
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load(showLoading: false);
+    }
+  }
+
+  void _handlePushNotification() {
+    _load(showLoading: false);
+  }
+
+  Future<void> _load({bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final items = await NotificationService.getMyNotifications();
       if (!mounted) return;
-      setState(() => _items = items);
+      setState(() {
+        _items = items;
+        _error = null;
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && showLoading) setState(() => _loading = false);
     }
   }
 
@@ -88,9 +119,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final unread = item['isRead'] != true;
     final type = item['type']?.toString().toUpperCase() ?? '';
     final (icon, color) = switch (type) {
-      'OVERDUE' => (Icons.warning_rounded, Colors.red),
-      'DUE_SOON' => (Icons.access_time_filled, Colors.orange),
+      'OVERDUE' || 'LOAN_OVERDUE' => (Icons.warning_rounded, Colors.red),
+      'DUE_SOON' ||
+      'LOAN_DUE_SOON' => (Icons.access_time_filled, Colors.orange),
       'RESERVATION_EXPIRED' => (Icons.event_busy, Colors.deepOrange),
+      'LOAN_APPROVED' => (Icons.check_circle, Colors.green),
+      'LOAN_REJECTED' => (Icons.cancel, Colors.red),
       _ => (Icons.notifications, Colors.blue),
     };
     final sentAt = DateTime.tryParse(item['sentAt']?.toString() ?? '');
@@ -161,9 +195,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   String _titleFor(String type) => switch (type) {
-    'OVERDUE' => 'Sách quá hạn',
-    'DUE_SOON' => 'Sắp đến hạn trả',
+    'OVERDUE' || 'LOAN_OVERDUE' => 'Sách quá hạn',
+    'DUE_SOON' || 'LOAN_DUE_SOON' => 'Sắp đến hạn trả',
     'RESERVATION_EXPIRED' => 'Phiếu đặt giữ đã hết hạn',
+    'LOAN_APPROVED' => 'Yêu cầu mượn đã được duyệt',
+    'LOAN_REJECTED' => 'Yêu cầu mượn bị từ chối',
+    'PROPOSAL_APPROVED' => 'Đề xuất sách đã được duyệt',
+    'PROPOSAL_REJECTED' => 'Đề xuất sách bị từ chối',
+    'CIRCULATION_LOCKED' => 'Quyền mượn đã bị khóa',
+    'CIRCULATION_UNLOCKED' => 'Quyền mượn đã được mở lại',
     _ => 'Thông báo thư viện',
   };
 }

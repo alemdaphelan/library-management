@@ -35,6 +35,27 @@ describe('CirculationService', () => {
     request.flush([{ ticketId: 19, status: 'OVERDUE', itemCount: 1, overdueItemCount: 1, totalLateFine: 3000 }]);
   });
 
+  it('loads the current reader borrowing limit from the backend', () => {
+    service.getMyBorrowEligibility().subscribe(response => {
+      expect(response.remainingSlots).toBe(1);
+    });
+
+    const request = httpTesting.expectOne(`${apiUrl}/my-eligibility`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ maximumItems: 3, openItems: 2, remainingSlots: 1, eligible: true, message: 'Còn 1' });
+  });
+
+  it('treats the plain-text cancellation response as a successful request', () => {
+    service.cancelReservation(19).subscribe(response => {
+      expect(response).toContain('thành công');
+    });
+
+    const request = httpTesting.expectOne(`${apiUrl}/cancel/19`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.responseType).toBe('text');
+    request.flush('Đã hủy phiếu mượn/đặt giữ thành công');
+  });
+
   it('creates one reservation ticket for all books in the borrow cart', () => {
     service.reserveBooks({
       bookIds: [1, 2, 3],

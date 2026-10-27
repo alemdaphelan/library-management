@@ -49,6 +49,11 @@
     <section class="checkout-panel">
       <h2>Thông tin phiếu mượn</h2>
 
+      <div class="eligibility-note" *ngIf="eligibility" [class.blocked]="!eligibility.eligible || items.length > eligibility.remainingSlots">
+        <strong>Hạn mức: {{ eligibility.openItems }}/{{ eligibility.maximumItems }} tài liệu đang hoạt động</strong>
+        <span>{{ eligibility.message }}</span>
+      </div>
+
       <label>Hình thức sử dụng</label>
       <div class="type-options">
         <button type="button" [class.active]="ticketType === 'BORROW'" (click)="ticketType = 'BORROW'">
@@ -68,8 +73,8 @@
 
       <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
 
-      <button type="button" class="submit-button" (click)="submit()" [disabled]="isSubmitting">
-        {{ isSubmitting ? 'Đang tạo phiếu...' : 'Tạo một phiếu cho ' + items.length + ' tài liệu' }}
+      <button type="button" class="submit-button" (click)="submit()" [disabled]="isSubmitting || isCheckingEligibility || (eligibility !== null && items.length > eligibility.remainingSlots)">
+        {{ isSubmitting ? 'Đang tạo phiếu...' : (isCheckingEligibility ? 'Đang kiểm tra hạn mức...' : 'Tạo một phiếu cho ' + items.length + ' tài liệu') }}
       </button>
     </section>
   </div>

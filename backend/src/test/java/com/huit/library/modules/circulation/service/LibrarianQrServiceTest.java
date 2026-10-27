@@ -109,6 +109,27 @@ class LibrarianQrServiceTest {
                         .isEqualTo(HttpStatus.FORBIDDEN));
     }
 
+    @Test
+    void rejectsTicketQrAfterBooksWereHandedToReader() {
+        UUID userId = UUID.randomUUID();
+        UserEntity reader = user(userId, "READER");
+        when(loanTicketRepository.findById(92L)).thenReturn(Optional.of(ticket(92L, userId, "BORROWING")));
+        when(loanService.getLoan(92L)).thenReturn(LoanTicketDetailDTO.builder()
+                .ticketId(92L)
+                .userId(userId)
+                .status("BORROWING")
+                .items(List.of())
+                .build());
+
+        String payload = service.issueTicketPayload(92L, reader).getPayload();
+
+        assertThatThrownBy(() -> service.resolve(payload))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.CONFLICT))
+                .hasMessageContaining("không còn hiệu lực");
+    }
+
     private LibrarianQrService createService(Clock clock) {
         return new LibrarianQrService(new ObjectMapper(), loanService, loanTicketRepository,
                 userRepository, walletRepository, SECRET, 10, clock);

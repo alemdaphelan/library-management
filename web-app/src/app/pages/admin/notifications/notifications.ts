@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -22,7 +22,11 @@ export class Notifications implements OnInit {
   errorMessage = '';
   successMessage = '';
 
-  constructor(private notificationService: NotificationService, private router: Router) {}
+  constructor(
+    private notificationService: NotificationService,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     this.loadNotifications();
@@ -57,10 +61,12 @@ export class Notifications implements OnInit {
       next: notifications => {
         this.notifications = notifications || [];
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isLoading = false;
         this.errorMessage = this.extractError(error, 'Không thể tải thông báo.');
+        this.cdr.detectChanges();
       },
     });
   }
@@ -73,10 +79,12 @@ export class Notifications implements OnInit {
       next: updated => {
         this.notifications = this.notifications.map(item => item.notifId === updated.notifId ? updated : item);
         this.markingId = null;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.markingId = null;
         this.errorMessage = this.extractError(error, 'Không thể đánh dấu thông báo đã đọc.');
+        this.cdr.detectChanges();
       },
     });
   }
@@ -95,11 +103,13 @@ export class Notifications implements OnInit {
       next: updated => {
         this.notifications = this.notifications.map(item => item.notifId === updated.notifId ? updated : item);
         this.markingId = null;
+        this.cdr.detectChanges();
         void navigate();
       },
       error: error => {
         this.markingId = null;
         this.errorMessage = this.extractError(error, 'Không thể mở thông báo.');
+        this.cdr.detectChanges();
       },
     });
   }
@@ -115,10 +125,12 @@ export class Notifications implements OnInit {
         this.notifications = this.notifications.map(notification => updatedById.get(notification.notifId) || notification);
         this.markingAll = false;
         this.successMessage = `Đã đánh dấu ${updatedNotifications.length} thông báo là đã đọc.`;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.markingAll = false;
         this.errorMessage = this.extractError(error, 'Không thể đánh dấu tất cả thông báo.');
+        this.cdr.detectChanges();
         this.loadNotifications();
       },
     });

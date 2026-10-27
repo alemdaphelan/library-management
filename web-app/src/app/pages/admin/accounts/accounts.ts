@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ReaderProfile, Student, StudentUpsert, UserService } from '../../../services/user.service';
 import { AuthService } from '../../../services/auth.service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-accounts',
@@ -32,6 +33,7 @@ export class Accounts implements OnInit {
     private userService: UserService,
     public authService: AuthService,
     private router: Router,
+    private dialog: DialogService,
     @Optional() private route?: ActivatedRoute,
   ) {}
 
@@ -169,8 +171,15 @@ export class Accounts implements OnInit {
     });
   }
 
-  deleteStudent(student: Student) {
-    if (this.isReadOnly || !window.confirm(`Xóa tài khoản ${student.mssv}?`)) return;
+  async deleteStudent(student: Student) {
+    if (this.isReadOnly) return;
+    const accepted = await this.dialog.confirm({
+      title: 'Xóa tài khoản sinh viên',
+      message: `Bạn có chắc muốn xóa tài khoản ${student.mssv}? Tài khoản đã có lịch sử nghiệp vụ có thể không xóa được.`,
+      type: 'warning',
+      confirmText: 'Xóa tài khoản',
+    });
+    if (!accepted) return;
     this.clearMessages();
     this.userService.deleteStudent(student.mssv).subscribe({
       next: () => {

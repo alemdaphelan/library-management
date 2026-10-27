@@ -5,6 +5,7 @@ import com.huit.library.modules.circulation.dto.BorrowRequestDTO;
 import com.huit.library.modules.circulation.dto.BorrowResponseDTO;
 import com.huit.library.modules.circulation.dto.BatchBorrowRequestDTO;
 import com.huit.library.modules.circulation.dto.BatchBorrowResponseDTO;
+import com.huit.library.modules.circulation.dto.BorrowEligibilityDTO;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
 import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
@@ -58,6 +59,14 @@ public class LoanController {
     public ResponseEntity<?> getMyLoans(@AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getUserId();
         return ResponseEntity.ok(loanService.getMyLoans(userId));
+    }
+
+    @GetMapping("/my-eligibility")
+    @Operation(summary = "Get my borrow eligibility", description = "Returns the number of open documents and remaining slots within the three-document limit.")
+    public ResponseEntity<BorrowEligibilityDTO> getMyBorrowEligibility(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(circulationStateService.getBorrowEligibility(
+                userDetails.getUser().getUserId()));
     }
 
     @GetMapping("/staff")

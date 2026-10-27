@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../services/loan_service.dart';
 import '../services/notification_service.dart';
+import '../services/push_notification_service.dart';
 import '../services/recommendation_service.dart';
 import '../widgets/book_cover.dart';
 
@@ -16,7 +17,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Map<String, dynamic> userInfo = {};
   List<dynamic> borrowedBooks = [];
   List<RecommendationItem> recommendations = [];
@@ -30,7 +31,41 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    PushNotificationService.notificationRevision.addListener(
+      _refreshNotificationCount,
+    );
     fetchHomeData();
+  }
+
+  @override
+  void dispose() {
+    PushNotificationService.notificationRevision.removeListener(
+      _refreshNotificationCount,
+    );
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshNotificationCount();
+    }
+  }
+
+  Future<void> _refreshNotificationCount() async {
+    try {
+      final notifications = await NotificationService.getMyNotifications();
+      if (!mounted) return;
+      setState(() {
+        unreadNotificationCount = notifications
+            .where((item) => item['isRead'] != true)
+            .length;
+      });
+    } catch (error) {
+      debugPrint('Error refreshing notification count: $error');
+    }
   }
 
   Future<void> fetchHomeData() async {
@@ -46,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final catalog = results[1] as Map<String, dynamic>;
       final notifications = results[2] as List<Map<String, dynamic>>;
       final recommendationResult = results[3] as RecommendationResult?;
+      if (!mounted) return;
       setState(() {
         userInfo = user ?? {};
         borrowedBooks = loans;
@@ -62,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       debugPrint('Error fetching home data: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
@@ -142,13 +179,14 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const NotificationsScreen(),
                     ),
                   );
+                  if (mounted) await _refreshNotificationCount();
                 },
               ),
               if (unreadNotificationCount > 0)

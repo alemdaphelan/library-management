@@ -37,6 +37,7 @@ export class Detail implements OnInit, OnDestroy {
   digitalAssets: DigitalAsset[] = [];
   digitalAssetsLoading = false;
   isPreviewingEbook = false;
+  isCheckingBorrowEligibility = false;
 
   // Reservation / Borrow Modal State
   showBorrowModal = false;
@@ -210,20 +211,40 @@ export class Detail implements OnInit, OnDestroy {
       this.showToast('Tài liệu hiện hết bản sẵn sàng. Hãy dùng Mượn ngay để đăng ký hàng đợi.');
       return;
     }
-    const result = this.borrowCartService.add({
-      bookId: Number(this.book.id),
-      title: this.book.title,
-      author: this.book.author,
-      cover: this.book.cover,
-      availableCopies: this.book.availableCopies,
+    if (this.isCheckingBorrowEligibility) return;
+    this.isCheckingBorrowEligibility = true;
+    this.circulationService.getMyBorrowEligibility().subscribe({
+      next: eligibility => {
+        this.isCheckingBorrowEligibility = false;
+        if (!eligibility.eligible || this.borrowCartService.count >= eligibility.remainingSlots) {
+          this.showToast(eligibility.message || 'Bạn đã đạt giới hạn 3 tài liệu đang hoạt động.');
+          return;
+        }
+        const result = this.borrowCartService.add({
+          bookId: Number(this.book.id),
+          title: this.book.title,
+          author: this.book.author,
+          cover: this.book.cover,
+          availableCopies: this.book.availableCopies,
+        });
+        if (result === 'FULL') {
+          this.showToast('Giỏ mượn đã đủ 3 tài liệu. Vui lòng hoàn tất phiếu hiện tại.');
+        } else if (result === 'DUPLICATE') {
+          this.showToast('Đầu sách này đã có trong giỏ mượn.');
+        } else {
+          const slotsAfterAdd = Math.max(0, eligibility.remainingSlots - this.borrowCartService.count);
+          this.showToast(slotsAfterAdd > 0
+            ? `Đã thêm vào giỏ. Bạn còn có thể chọn ${slotsAfterAdd} tài liệu.`
+            : 'Đã thêm vào giỏ. Bạn đã dùng hết giới hạn 3 tài liệu đang hoạt động.');
+        }
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.isCheckingBorrowEligibility = false;
+        this.showToast(this.extractBorrowError(error, 'Không thể kiểm tra hạn mức mượn. Vui lòng thử lại.'));
+        this.cdr.detectChanges();
+      },
     });
-    if (result === 'FULL') {
-      this.showToast('Giỏ mượn đã đủ 3 tài liệu. Vui lòng hoàn tất phiếu hiện tại.');
-    } else if (result === 'DUPLICATE') {
-      this.showToast('Đầu sách này đã có trong giỏ mượn.');
-    } else {
-      this.showToast('Đã thêm vào giỏ mượn. Bạn có thể chọn thêm tối đa 3 tài liệu.');
-    }
   }
 
   openBorrowModal() {
@@ -313,7 +334,7 @@ export class Detail implements OnInit, OnDestroy {
     });
   }
 
-  private extractBorrowError(err: any): string {
+  private extractBorrowError(err: any, fallback = 'Không thể gửi yêu cầu đặt sách. Vui lòng thử lại!'): string {
     if (err?.status === 401 || err?.status === 403) {
       return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại tài khoản sinh viên/bạn đọc.';
     }
@@ -328,7 +349,7 @@ export class Detail implements OnInit, OnDestroy {
     if (err?.status === 409) {
       return 'Yêu cầu mượn không đáp ứng quy định hiện tại. Vui lòng kiểm tra số sách đang mượn, công nợ và trạng thái thẻ.';
     }
-    return 'Không thể gửi yêu cầu đặt sách. Vui lòng thử lại!';
+    return fallback;
   }
 
   generateQrCode(ticketId: number | string) {
