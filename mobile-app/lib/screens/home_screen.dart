@@ -607,7 +607,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildRecommendCard(RecommendationItem item) {
-    final percent = (item.score * 100).round().clamp(0, 100);
     return InkWell(
       onTap: () => _openRecommendation(item),
       child: Container(
@@ -637,26 +636,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
-            const SizedBox(height: 5),
-            Row(
-              children: [
-                const Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 13,
-                  color: Color(0xFF0284c7),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '$percent% phù hợp',
-                  style: const TextStyle(
-                    color: Color(0xFF0284c7),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 6),
             Text(
               item.reason,
               maxLines: 2,

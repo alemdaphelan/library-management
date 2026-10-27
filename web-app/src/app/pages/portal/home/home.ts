@@ -132,10 +132,6 @@ export class Home implements OnInit, OnDestroy {
     }
   }
 
-  recommendationPercent(book: RecommendationItem): number {
-    return Math.max(0, Math.min(100, Math.round((book.score ?? 0) * 100)));
-  }
-
   onCoverError(event: Event): void {
     const image = event.target as HTMLImageElement;
     image.src = '/assets/images/cover_1.jpg';

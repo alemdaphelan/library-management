@@ -1,4 +1,4 @@
-import { Component, OnInit, Optional } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReaderProfile, Student, StudentUpsert, UserService } from '../../../services/user.service';
@@ -34,6 +34,7 @@ export class Accounts implements OnInit {
     public authService: AuthService,
     private router: Router,
     private dialog: DialogService,
+    private cdr: ChangeDetectorRef,
     @Optional() private route?: ActivatedRoute,
   ) {}
 
@@ -53,10 +54,12 @@ export class Accounts implements OnInit {
           if (requested) this.openProfile(requested);
           this.requestedUserId = undefined;
         }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.loading = false;
         this.errorMessage = this.errorText(err, 'Không thể tải danh sách sinh viên.');
+        this.cdr.detectChanges();
       }
     });
   }
@@ -70,11 +73,13 @@ export class Accounts implements OnInit {
       next: profile => {
         this.selectedProfile = profile;
         this.profileLoading = false;
+        this.cdr.detectChanges();
       },
       error: err => {
         this.profileLoading = false;
         this.showProfile = false;
         this.errorMessage = this.errorText(err, 'Không thể tải hồ sơ nghiệp vụ của bạn đọc.');
+        this.cdr.detectChanges();
       },
     });
   }

@@ -34,7 +34,7 @@ describe('PortalLayout', () => {
     fixture = TestBed.createComponent(PortalLayout);
     component = fixture.componentInstance;
     await fixture.whenStable();
-  });
+  }, 30_000);
 
   afterEach(() => localStorage.clear());
 

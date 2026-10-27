@@ -12,6 +12,9 @@ public record RecommendationItemDTO(
         double departmentScore,
         double popularityScore,
         long borrowCount,
-        String reason
+        String reason,
+        long availableCopies,
+        long copies,
+        String status
 ) {
 }

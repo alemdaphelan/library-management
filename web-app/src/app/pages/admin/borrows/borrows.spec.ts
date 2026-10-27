@@ -7,15 +7,16 @@ describe('Borrows', () => {
   let component: Borrows;
   let fixture: ComponentFixture<Borrows>;
 
+  const today = new Date().toISOString().slice(0, 10);
   const summary: LoanTicketSummary = {
     ticketId: 24, userId: 'user-1', mssv: '2001240001', readerName: 'Trần Thị B',
     department: 'Công nghệ thông tin', cardStatus: 'ACTIVE', ticketType: 'BORROW', status: 'OVERDUE',
-    createdAt: '2026-10-17T09:00:00', nearestDueDate: '2026-10-14T09:00:00',
+    createdAt: `${today}T09:00:00`, nearestDueDate: '2026-10-14T09:00:00',
     itemCount: 1, overdueItemCount: 1, totalLateFine: 3000,
   };
   const detail: LoanTicketDetail = {
     ticketId: 24, userId: 'user-1', mssv: '2001240001', readerName: 'Trần Thị B',
-    ticketType: 'BORROW', status: 'OVERDUE', createdAt: '2026-10-17T09:00:00',
+    ticketType: 'BORROW', status: 'OVERDUE', createdAt: `${today}T09:00:00`,
     items: [{ ticketId: 24, detailId: 31, bookTitle: 'Clean Architecture', barcode: 'BC-024',
       ticketType: 'BORROW', status: 'OVERDUE', renewalCount: 0, lateFineAccrued: 3000 }],
   };
@@ -37,6 +38,9 @@ describe('Borrows', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
     await fixture.whenStable();
+    component.fromDate = '';
+    component.toDate = '';
+    fixture.detectChanges();
   });
 
   it('loads and renders server-backed loan summaries', () => {

@@ -8,6 +8,7 @@ import com.huit.library.modules.finance.entity.OnlinePaymentSessionEntity;
 import com.huit.library.modules.finance.entity.WalletEntity;
 import com.huit.library.modules.finance.repository.OnlinePaymentSessionRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
+import com.huit.library.modules.circulation.service.LibraryHoursService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class OnlinePaymentService {
     private final String returnUrl;
     private final String frontendResultUrl;
     private final int expireMinutes;
+    private final LibraryHoursService libraryHoursService;
 
     public OnlinePaymentService(
             OnlinePaymentSessionRepository sessionRepository,
@@ -52,7 +54,8 @@ public class OnlinePaymentService {
             @Value("${library.payment.vnpay.hash-secret:}") String hashSecret,
             @Value("${library.payment.vnpay.return-url:http://localhost:8080/api/v1/online-payments/vnpay-return}") String returnUrl,
             @Value("${library.payment.vnpay.frontend-result-url:http://localhost:4200/my-penalties}") String frontendResultUrl,
-            @Value("${library.payment.vnpay.expire-minutes:15}") int expireMinutes) {
+            @Value("${library.payment.vnpay.expire-minutes:15}") int expireMinutes,
+            LibraryHoursService libraryHoursService) {
         this.sessionRepository = sessionRepository;
         this.walletRepository = walletRepository;
         this.debtLedgerService = debtLedgerService;
@@ -63,11 +66,13 @@ public class OnlinePaymentService {
         this.returnUrl = returnUrl;
         this.frontendResultUrl = frontendResultUrl;
         this.expireMinutes = expireMinutes;
+        this.libraryHoursService = libraryHoursService;
     }
 
     @Transactional
     public OnlinePaymentSessionDTO create(
             UUID userId, OnlinePaymentCreateRequestDTO request, String clientIp) {
+        libraryHoursService.requireCounterOpen("tạo giao dịch thanh toán");
         requireConfigured();
         String purpose = request.getPurpose().trim().toUpperCase(Locale.ROOT);
         if (!List.of("DEBT", "DEPOSIT").contains(purpose)) {

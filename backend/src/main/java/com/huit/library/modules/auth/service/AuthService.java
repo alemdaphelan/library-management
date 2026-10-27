@@ -37,7 +37,7 @@ public class AuthService {
     private static final String OTP_ATTEMPTS_PREFIX = "auth:otp:attempts:";
     private static final String OTP_LOCK_PREFIX = "auth:otp:lock:";
     private static final long OTP_TTL_MINUTES = 10;
-    private static final long OTP_RESEND_SECONDS = 60;
+    private static final long OTP_RESEND_SECONDS = 10;
     private static final long OTP_LOCK_MINUTES = 15;
     private static final long OTP_MAX_ATTEMPTS = 5;
 

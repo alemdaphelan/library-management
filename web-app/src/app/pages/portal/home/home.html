@@ -74,17 +74,20 @@
       <div class="recommendation-state" *ngIf="recommendationLoading"><span class="recommendation-spinner" aria-hidden="true"></span><span>Đang tạo danh sách phù hợp với bạn...</span></div>
       <div class="recommendation-state error" *ngIf="recommendationError && !recommendationLoading">Chưa thể tải gợi ý lúc này. Bạn vẫn có thể tra cứu toàn bộ danh mục sách.</div>
       <div class="recommendation-state" *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length === 0">Chưa có đủ tài liệu phù hợp để gợi ý.</div>
-      <div class="carousel-container" *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length > 0">
+      <div class="recommendation-carousel-shell" *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length > 0">
+        <button type="button" class="recommendation-arrow previous" aria-label="Xem gợi ý trước" (click)="recommendationTrack.scrollBy({ left: -720, behavior: 'smooth' })">&#10094;</button>
+        <div class="carousel-container" #recommendationTrack>
         <div class="carousel-track">
           <div class="book-card" *ngFor="let book of recommendedBooks" [routerLink]="['/book', book.bookId]">
             <div class="book-cover-wrapper">
               <img [src]="book.imageUrl || '/assets/images/cover_1.jpg'" [alt]="book.title" (error)="onCoverError($event)" class="book-cover-img">
-              <span class="recommendation-score">{{ recommendationPercent(book) }}% phù hợp</span>
               <div class="book-overlay"><button class="btn-primary btn-sm">Xem chi tiết</button></div>
             </div>
             <div class="book-info"><h3 class="book-name">{{ book.title }}</h3><p class="book-author">{{ book.author }}</p><p class="recommendation-reason">{{ book.reason }}</p></div>
           </div>
         </div>
+        </div>
+        <button type="button" class="recommendation-arrow next" aria-label="Xem gợi ý tiếp theo" (click)="recommendationTrack.scrollBy({ left: 720, behavior: 'smooth' })">&#10095;</button>
       </div>
     </div>
   </section>

@@ -3,6 +3,7 @@ package com.huit.library.modules.recommendation.service;
 import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.entity.CategoryEntity;
 import com.huit.library.modules.catalog.repository.BookRepository;
+import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.circulation.repository.BookPopularityProjection;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.recommendation.dto.RecommendationResponseDTO;
@@ -27,7 +28,7 @@ class BookRecommendationServiceTest {
         LoanDetailRepository loanRepository = mock(LoanDetailRepository.class);
         BookSubjectAssignmentRepository assignmentRepository = mock(BookSubjectAssignmentRepository.class);
         BookRecommendationService service = new BookRecommendationService(
-                bookRepository, loanRepository, assignmentRepository, new TfIdfSimilarityEngine());
+                bookRepository, mock(BookCopyRepository.class), loanRepository, assignmentRepository, new TfIdfSimilarityEngine());
         BookEntity popular = book(1L, "Java", "Công nghệ thông tin");
         BookEntity fallback = book(2L, "Cơ sở dữ liệu", "Công nghệ thông tin");
 
@@ -52,7 +53,7 @@ class BookRecommendationServiceTest {
         LoanDetailRepository loanRepository = mock(LoanDetailRepository.class);
         BookSubjectAssignmentRepository assignmentRepository = mock(BookSubjectAssignmentRepository.class);
         BookRecommendationService service = new BookRecommendationService(
-                bookRepository, loanRepository, assignmentRepository, new TfIdfSimilarityEngine());
+                bookRepository, mock(BookCopyRepository.class), loanRepository, assignmentRepository, new TfIdfSimilarityEngine());
         BookEntity source = book(1L, "Lập trình Java căn bản", "Công nghệ thông tin");
         BookEntity relevant = book(2L, "Lập trình Java Spring", "Công nghệ thông tin");
         BookEntity unrelated = book(3L, "Hóa sinh thực phẩm", "Công nghệ thông tin");

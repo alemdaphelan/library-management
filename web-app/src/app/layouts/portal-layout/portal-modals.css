@@ -15,6 +15,12 @@
 .notification-row:hover { background: #f8fafc; }
 .notification-dot { width: 9px; height: 9px; margin-top: 7px; flex: 0 0 9px; border-radius: 50%; background: #cbd5e1; }
 .notification-row.unread .notification-dot { background: #0284c7; box-shadow: 0 0 0 4px #e0f2fe; }
+.notification-row[data-tone="danger"] { border-left: 4px solid #dc2626; background: #fff7f7; }
+.notification-row[data-tone="danger"] .notification-dot { background: #dc2626; box-shadow: 0 0 0 4px #fee2e2; }
+.notification-row[data-tone="warning"] { border-left: 4px solid #eab308; background: #fffdf2; }
+.notification-row[data-tone="warning"] .notification-dot { background: #eab308; box-shadow: 0 0 0 4px #fef9c3; }
+.notification-row[data-tone="success"] { border-left: 4px solid #16a34a; background: #f4fff7; }
+.notification-row[data-tone="success"] .notification-dot { background: #16a34a; box-shadow: 0 0 0 4px #dcfce7; }
 .notification-body { min-width: 0; display: grid; gap: 5px; color: #334155; }
 .notification-body strong { color: #0f172a; }
 .notification-body small { color: #94a3b8; }

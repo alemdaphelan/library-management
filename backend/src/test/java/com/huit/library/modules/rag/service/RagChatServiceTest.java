@@ -142,4 +142,24 @@ class RagChatServiceTest {
         assertThat(response.answer()).contains("48 giờ", "mở cửa gần nhất");
         assertThat(response.answer()).doesNotContain("Sinh viên phải giữ gìn tài liệu");
     }
+
+    @Test
+    void moodQuestionReturnsOnlyGroundedCatalogRecommendations() {
+        when(retrievalService.retrieve(anyString())).thenReturn(List.of(new RagRetrievedContext(
+                "catalog-book-42",
+                "Hạt giống tâm hồn",
+                "/book/42",
+                "CATALOG",
+                "Tên sách: Hạt giống tâm hồn; thể loại: Kỹ năng sống.",
+                0.94)));
+
+        var response = service.ask(
+                "Hôm nay tôi buồn. Tôi muốn tìm một cuốn sách để tâm trạng tốt hơn.",
+                "anonymous:test");
+
+        assertThat(response.grounded()).isTrue();
+        assertThat(response.model()).isEqualTo("catalog-grounded-recommendation");
+        assertThat(response.answer()).contains("Hạt giống tâm hồn", "[1]");
+        assertThat(response.sources()).extracting(source -> source.sourceUri()).containsExactly("/book/42");
+    }
 }

@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpEventType } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -41,6 +41,7 @@ export class DigitalAssets implements OnInit {
     private digitalAssetsService: DigitalAssetsService,
     private bookService: BookService,
     private dialog: DialogService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
@@ -49,10 +50,11 @@ export class DigitalAssets implements OnInit {
 
   fetchAssets() {
     this.digitalAssetsService.getAssets().subscribe({
-      next: (data) => this.assets = data,
+      next: (data) => { this.assets = data; this.cdr.detectChanges(); },
       error: (err) => {
         this.errorMessage = this.errorText(err, 'Không thể tải danh sách tài liệu số.');
         this.assets = [];
+        this.cdr.detectChanges();
       }
     });
   }

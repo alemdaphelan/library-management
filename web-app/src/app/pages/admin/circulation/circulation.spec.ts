@@ -99,7 +99,7 @@ describe('Circulation counter', () => {
     component.completeTransaction();
 
     expect(service.checkout).toHaveBeenCalledWith(19, ['BC-019']);
-    expect(component.successMessage).toContain('Checkout thành công');
+    expect(component.successMessage).toBe('');
   });
 
   it('rejects a barcode outside the selected ticket without creating fallback data', () => {

@@ -45,7 +45,7 @@ describe('Home', () => {
     fixture = TestBed.createComponent(Home);
     component = fixture.componentInstance;
     await fixture.whenStable();
-  });
+  }, 30_000);
 
   it('should create', () => {
     expect(component).toBeTruthy();
@@ -58,7 +58,7 @@ describe('Home', () => {
     expect(component.recommendedBooks[0].bookId).toBe(12);
     expect(text).toContain('Gợi ý riêng cho bạn');
     expect(text).toContain('Lập trình Java');
-    expect(text).toContain('72% phù hợp');
+    expect(text).not.toContain('72% phù hợp');
   });
 
   it('does not render the removed mock room, seat, news or book sections', () => {

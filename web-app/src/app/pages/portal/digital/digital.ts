@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DigitalAsset, DigitalAssetsService } from '../../../services/digital-assets.service';
@@ -16,7 +16,7 @@ export class Digital implements OnInit {
   loading = false;
   errorMessage = '';
 
-  constructor(private assetService: DigitalAssetsService, public authService: AuthService) {}
+  constructor(private assetService: DigitalAssetsService, public authService: AuthService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     if (this.authService.isLoggedIn()) this.loadAssets();
@@ -29,10 +29,12 @@ export class Digital implements OnInit {
       next: assets => {
         this.assets = assets;
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.errorMessage = 'Không thể tải kho tài liệu số lúc này.';
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }

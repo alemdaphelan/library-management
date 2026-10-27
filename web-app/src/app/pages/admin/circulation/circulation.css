@@ -65,6 +65,8 @@
   width: 10px; height: 10px; background-color: #10b981; border-radius: 50%;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
+.pos-status.closed { color: #dc2626; }
+.pos-status.closed .status-indicator { background-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18); }
 
 /* Grid Layout */
 .pos-grid {

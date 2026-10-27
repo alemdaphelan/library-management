@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BookService } from '../../../services/book.service';
@@ -36,11 +36,12 @@ export class Books implements OnInit {
     private bookService: BookService,
     private categoryService: CategoryService,
     private dialog: DialogService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
     this.categoryService.getCategories().subscribe({
-      next: categories => this.categories = categories,
+      next: categories => { this.categories = categories; this.cdr.detectChanges(); },
       error: err => console.error('Failed to load categories', err)
     });
     this.loadBooks();
@@ -61,11 +62,13 @@ export class Books implements OnInit {
         this.totalPages = data.totalPages;
         this.totalElements = data.totalElements;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Failed to load books', err);
         this.isLoading = false;
         this.errorMessage = this.extractError(err, 'Không thể tải danh mục sách.');
+        this.cdr.detectChanges();
       }
     });
   }

@@ -264,11 +264,13 @@ class LoanServiceTest {
         overdue.setTicketId(24L);
         overdue.setDueDate(LocalDateTime.now().minusDays(3));
         overdue.setLateFineAccrued(new BigDecimal("3000"));
+        overdue.setReturnStatus("OVERDUE");
 
         LoanDetailEntity current = new LoanDetailEntity();
         current.setTicketId(24L);
         current.setDueDate(LocalDateTime.now().plusDays(2));
         current.setLateFineAccrued(BigDecimal.ZERO);
+        current.setReturnStatus("BORROWING");
 
         when(ticketRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(ticket));
         when(userRepository.findById(userId)).thenReturn(Optional.of(reader));

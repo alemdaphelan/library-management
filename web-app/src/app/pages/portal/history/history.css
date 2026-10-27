@@ -1097,3 +1097,10 @@
   .debt-summary { grid-template-columns: 1fr; }
   .debt-summary > .btn { justify-self: stretch; text-align: center; }
 }
+.ticket-book-row { display: flex; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid #e2e8f0; }
+.ticket-book-row > a { flex: 1; }
+.per-item-state { display: block; margin-top: 5px; color: #b45309; font-weight: 700; }
+.per-item-state.returned { color: #15803d; }
+.pickup-complete-note { color: #475569; font-size: .9rem; font-weight: 600; }
+.history-time-group { grid-column: 1 / -1; margin: 18px 0 4px; padding: 9px 13px; border-left: 4px solid #0284c7; background: #e0f2fe; color: #075985; border-radius: 6px; }
+.load-more-hint { grid-column: 1 / -1; text-align: center; color: #64748b; padding: 18px; }

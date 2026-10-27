@@ -28,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -57,6 +56,7 @@ public class CirculationStateService {
     private final LateFineService lateFineService;
     private final WaitlistService waitlistService;
     private final NotificationService notificationService;
+    private final LibraryHoursService libraryHoursService;
 
     public CirculationStateService(
             LoanTicketRepository loanTicketRepository,
@@ -69,7 +69,8 @@ public class CirculationStateService {
             CirculationStateMachine stateMachine,
             LateFineService lateFineService,
             WaitlistService waitlistService,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            LibraryHoursService libraryHoursService) {
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.historyRepository = historyRepository;
@@ -81,10 +82,12 @@ public class CirculationStateService {
         this.lateFineService = lateFineService;
         this.waitlistService = waitlistService;
         this.notificationService = notificationService;
+        this.libraryHoursService = libraryHoursService;
     }
 
     @Transactional
     public LoanStateResponseDTO approveReservation(Long ticketId, UUID operatorId) {
+        libraryHoursService.requireCounterOpen("duyệt yêu cầu mượn");
         LoanTicketEntity ticket = findTicket(ticketId);
         LoanTicketStatus currentStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
         if (!stateMachine.canTransition(currentStatus, LoanTicketStatus.RESERVED)) {
@@ -193,6 +196,7 @@ public class CirculationStateService {
 
     @Transactional
     public CirculationOperationResponseDTO checkout(CheckoutRequestDTO request, UUID operatorId) {
+        libraryHoursService.requireCounterOpen("giao sách");
         List<String> barcodes = normalizeBarcodes(request.getBarcodes());
         String requestHash = requestHash(
                 "CHECKOUT", request.getTicketId().toString(), String.join(",", barcodes));
@@ -249,7 +253,7 @@ public class CirculationStateService {
 
         LocalDateTime checkoutAt = LocalDateTime.now();
         LocalDateTime dueAt = LoanTicketType.fromDatabaseValue(ticket.getTicketType()) == LoanTicketType.ONSITE
-                ? checkoutAt.toLocalDate().atTime(LocalTime.of(21, 0))
+                ? checkoutAt.toLocalDate().atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
                 : checkoutAt.plusDays(10);
         if (dueAt.isBefore(checkoutAt)) {
             dueAt = checkoutAt.plusHours(1);
@@ -276,6 +280,7 @@ public class CirculationStateService {
 
     @Transactional
     public CirculationOperationResponseDTO manualCheckout(ManualCheckoutRequestDTO request, UUID operatorId) {
+        libraryHoursService.requireCounterOpen("lập phiếu mượn tại quầy");
         List<String> barcodes = normalizeBarcodes(request.getBarcodes());
         LoanTicketType ticketType;
         try {
@@ -329,7 +334,7 @@ public class CirculationStateService {
 
         LocalDateTime checkoutAt = LocalDateTime.now();
         LocalDateTime dueAt = ticketType == LoanTicketType.ONSITE
-                ? checkoutAt.toLocalDate().atTime(LocalTime.of(21, 0))
+                ? checkoutAt.toLocalDate().atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
                 : checkoutAt.plusDays(10);
         if (dueAt.isBefore(checkoutAt)) {
             dueAt = checkoutAt.plusHours(1);
@@ -362,6 +367,7 @@ public class CirculationStateService {
 
     @Transactional
     public CirculationOperationResponseDTO returnBooks(ReturnRequestDTO request, UUID operatorId) {
+        libraryHoursService.requireCounterOpen("nhận trả sách");
         List<String> barcodes = normalizeBarcodes(request.getBarcodes());
         String note = request.getReturnConditionNote() == null ? "" : request.getReturnConditionNote().trim();
         String requestHash = requestHash("RETURN", String.join(",", barcodes), note);

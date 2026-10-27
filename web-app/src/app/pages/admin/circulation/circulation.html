@@ -1,10 +1,11 @@
 <div class="circulation-page">
   <div class="pos-header">
     <div class="pos-tabs">
-      <button class="pos-tab" [class.active]="activeTab === 'borrow'" (click)="switchTab('borrow')">MƯỢN SÁCH</button>
+      <button class="pos-tab" [class.active]="activeTab === 'borrow' && borrowMode !== 'pending'" (click)="switchTab('borrow')">MƯỢN SÁCH</button>
       <button class="pos-tab" [class.active]="activeTab === 'return'" (click)="switchTab('return')">TRẢ SÁCH</button>
+      <button class="pos-tab" [class.active]="activeTab === 'borrow' && borrowMode === 'pending'" (click)="switchTab('borrow'); switchBorrowMode('pending')">CHỜ DUYỆT ({{ pendingRequests.length }})</button>
     </div>
-    <div class="pos-status"><span class="status-indicator"></span> Quầy đang hoạt động</div>
+    <div class="pos-status" [class.closed]="!isCounterOpen"><span class="status-indicator"></span> {{ isCounterOpen ? 'Quầy đang hoạt động' : 'Quầy đã đóng cửa' }}</div>
   </div>
 
   <div class="message error-banner" *ngIf="errorMessage">{{ errorMessage }}</div>
@@ -19,7 +20,6 @@
       <div class="borrow-mode-tabs">
         <button type="button" [class.active]="borrowMode === 'approved'" (click)="switchBorrowMode('approved')">Phiếu trực tuyến đã duyệt</button>
         <button type="button" [class.active]="borrowMode === 'manual'" (click)="switchBorrowMode('manual')">Lập phiếu trực tiếp tại quầy</button>
-        <button type="button" [class.active]="borrowMode === 'pending'" (click)="switchBorrowMode('pending')">Chờ duyệt ({{ pendingRequests.length }})</button>
       </div>
 
       <ng-container *ngIf="borrowMode === 'approved'">
@@ -142,7 +142,7 @@
         <div class="pos-summary" *ngIf="activeTab === 'return'"><span>Chế độ:</span><span class="summary-total">Tự động ghi nhận từng cuốn</span></div>
         <div class="pos-actions">
           <button class="btn-cancel" type="button" (click)="resetForm()">Hủy bỏ</button>
-          <button class="btn-checkout" type="button" *ngIf="activeTab === 'borrow'" [disabled]="!canSubmit" (click)="completeTransaction()">
+          <button class="btn-checkout" type="button" *ngIf="activeTab === 'borrow'" [disabled]="!canSubmit || !isCounterOpen" (click)="completeTransaction()">
             {{ isSubmitting ? 'ĐANG XỬ LÝ...' : (borrowMode === 'manual' ? 'LẬP PHIẾU & CHO MƯỢN' : 'HOÀN TẤT MƯỢN SÁCH') }}
           </button>
         </div>
@@ -164,7 +164,7 @@
       <textarea id="circulation-rejection" maxlength="500" [(ngModel)]="rejectionReason" placeholder="Nhập lý do để sinh viên nhận được thông báo rõ ràng"></textarea>
       <div class="pos-actions">
         <button type="button" class="btn-cancel" (click)="rejectDecision()" [disabled]="decisionInProgress">Xác nhận từ chối</button>
-        <button type="button" class="btn-checkout" (click)="approveDecision()" [disabled]="decisionInProgress">Duyệt yêu cầu</button>
+        <button type="button" class="btn-checkout" (click)="approveDecision()" [disabled]="decisionInProgress || !isCounterOpen">Duyệt yêu cầu</button>
       </div>
     </section>
   </div>

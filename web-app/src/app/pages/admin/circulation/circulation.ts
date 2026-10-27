@@ -52,6 +52,8 @@ export class Circulation implements OnInit, OnDestroy {
   private cameraTimer?: number;
   private scannerControls?: IScannerControls;
   private detectingFrame = false;
+  private counterClock?: number;
+  isCounterOpen = this.computeCounterOpen();
   pendingRequests: LoanTicketSummary[] = [];
   decisionLoan: LoanTicketDetail | null = null;
   decisionLoadingTicketId: number | null = null;
@@ -65,6 +67,10 @@ export class Circulation implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.counterClock = window.setInterval(() => {
+      this.isCounterOpen = this.computeCounterOpen();
+      this.cdr.detectChanges();
+    }, 30_000);
     this.loadPendingRequests();
     const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
     const referenceId = this.route?.snapshot.queryParamMap.get('referenceId');
@@ -169,6 +175,7 @@ export class Circulation implements OnInit, OnDestroy {
 
   switchTab(tab: 'borrow' | 'return'): void {
     this.activeTab = tab;
+    if (tab === 'borrow' && this.borrowMode === 'pending') this.borrowMode = 'approved';
     this.resetForm();
   }
 
@@ -305,7 +312,7 @@ export class Circulation implements OnInit, OnDestroy {
       next: operation => {
         this.isSubmitting = false;
         this.lastOperation = operation;
-        this.successMessage = operation.message || 'Giao dịch hoàn tất thành công.';
+        this.successMessage = '';
         this.selectedTicket = null;
         this.ticketInput = '';
         this.barcodeInput = '';
@@ -421,7 +428,13 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.counterClock) window.clearInterval(this.counterClock);
     this.stopCamera();
+  }
+
+  private computeCounterOpen(now = new Date()): boolean {
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    return minutes >= 7 * 60 + 30 && minutes < 17 * 60;
   }
 
   statusLabel(status: string): string {

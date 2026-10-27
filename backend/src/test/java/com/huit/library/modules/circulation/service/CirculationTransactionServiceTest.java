@@ -68,7 +68,8 @@ class CirculationTransactionServiceTest {
                 new CirculationStateMachine(),
                 lateFineService,
                 mock(WaitlistService.class),
-                mock(NotificationService.class));
+                mock(NotificationService.class),
+                mock(LibraryHoursService.class));
     }
 
     @Test

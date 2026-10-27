@@ -5,6 +5,7 @@ import com.huit.library.modules.finance.dto.AdjustmentRequestDTO;
 import com.huit.library.modules.finance.dto.AdjustmentReviewRequestDTO;
 import com.huit.library.modules.finance.dto.DebtPaymentRequestDTO;
 import com.huit.library.modules.finance.service.DebtLedgerService;
+import com.huit.library.modules.circulation.service.LibraryHoursService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,9 +18,11 @@ import java.util.UUID;
 @RequestMapping("/api/v1/transactions")
 public class PaymentController {
     private final DebtLedgerService debtLedgerService;
+    private final LibraryHoursService libraryHoursService;
 
-    public PaymentController(DebtLedgerService debtLedgerService) {
+    public PaymentController(DebtLedgerService debtLedgerService, LibraryHoursService libraryHoursService) {
         this.debtLedgerService = debtLedgerService;
+        this.libraryHoursService = libraryHoursService;
     }
 
     @PostMapping("/payments")
@@ -27,6 +30,7 @@ public class PaymentController {
     public ResponseEntity<?> recordPayment(
             @Valid @RequestBody DebtPaymentRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
+        libraryHoursService.requireCounterOpen("ghi nhận thanh toán");
         return ResponseEntity.ok(debtLedgerService.recordPayment(
                 request, operator.getUser().getUserId()));
     }

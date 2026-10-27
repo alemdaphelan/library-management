@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DashboardService,
@@ -23,7 +23,7 @@ export class Dashboard implements OnInit {
   loadingRequests = 0;
   errorMessage = '';
 
-  constructor(private dashboardService: DashboardService) {}
+  constructor(private dashboardService: DashboardService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.loadingRequests = 4;
@@ -71,6 +71,7 @@ export class Dashboard implements OnInit {
 
   private finishRequest(): void {
     this.loadingRequests = Math.max(0, this.loadingRequests - 1);
+    this.cdr.detectChanges();
   }
 
   private handleError(message: string, error: unknown): void {

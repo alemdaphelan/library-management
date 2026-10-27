@@ -1,4 +1,4 @@
-import { Component, OnInit, Optional } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProposalService, BookProposal } from '../../../services/proposal.service';
@@ -27,6 +27,7 @@ export class AdminSuggestions implements OnInit {
 
   constructor(
     private proposalService: ProposalService,
+    private cdr: ChangeDetectorRef,
     @Optional() private route?: ActivatedRoute,
   ) {}
 
@@ -50,11 +51,13 @@ export class AdminSuggestions implements OnInit {
           }
           this.requestedProposalId = undefined;
         }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Lỗi khi tải danh sách đề xuất:', err);
         this.isLoading = false;
         this.showAlert('error', 'Không thể tải danh sách đề xuất. Vui lòng thử lại!');
+        this.cdr.detectChanges();
       }
     });
   }

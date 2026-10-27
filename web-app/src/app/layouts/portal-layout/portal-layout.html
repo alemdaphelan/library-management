@@ -36,7 +36,9 @@
         <div class="header-user-area" *ngIf="authService.isLoggedIn()">
           <button class="btn-reader-card btn-borrow-cart" routerLink="/borrow-cart">
             <span class="icon">&#128722;</span> Giỏ mượn
-            <span class="cart-count" *ngIf="borrowCartService.count > 0">{{ borrowCartService.count }}</span>
+            <ng-container *ngIf="borrowCartService.count$ | async as cartCount">
+              <span class="cart-count" *ngIf="cartCount > 0">{{ cartCount }}</span>
+            </ng-container>
           </button>
           <button class="btn-reader-card notification-button" type="button" (click)="openNotifications()">
             <span class="icon">&#128276;</span> Thông báo
@@ -175,7 +177,7 @@
       <p class="modal-state" *ngIf="notificationLoading">Đang tải thông báo...</p>
       <p class="modal-state error" *ngIf="modalError">{{ modalError }}</p>
       <div class="notification-modal-list" *ngIf="!notificationLoading">
-        <button type="button" class="notification-row" [class.unread]="!item.isRead" *ngFor="let item of notifications" (click)="markNotificationRead(item)">
+        <button type="button" class="notification-row" [class.unread]="!item.isRead" [attr.data-tone]="notificationTone(item.type)" *ngFor="let item of notifications" (click)="markNotificationRead(item)">
           <span class="notification-dot"></span>
           <span class="notification-body"><strong>{{ notificationLabel(item.type) }}</strong><span>{{ item.content }}</span><small>{{ item.sentAt || item.createdAt | date:'dd/MM/yyyy HH:mm' }}</small></span>
         </button>

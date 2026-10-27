@@ -17,6 +17,9 @@ export interface RecommendationItem {
   popularityScore: number;
   borrowCount: number;
   reason: string;
+  availableCopies: number;
+  copies: number;
+  status: 'available' | 'out_of_stock';
 }
 
 export interface RecommendationResponse {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, Optional } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, Optional } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import {
@@ -21,6 +21,10 @@ export class Borrows implements OnInit {
   selectedLoan: LoanTicketDetail | null = null;
   searchTerm = '';
   statusFilter = 'ALL';
+  fromDate = this.todayValue();
+  toDate = this.todayValue();
+  currentPage = 1;
+  readonly pageSize = 10;
   isLoading = false;
   detailLoading = false;
   actionInProgress = false;
@@ -31,6 +35,7 @@ export class Borrows implements OnInit {
 
   constructor(
     private circulationService: CirculationService,
+    private cdr: ChangeDetectorRef,
     @Optional() private route?: ActivatedRoute,
   ) {}
 
@@ -45,14 +50,35 @@ export class Borrows implements OnInit {
 
   get filteredLoans(): LoanTicketSummary[] {
     const query = this.searchTerm.trim().toLocaleLowerCase('vi');
-    return this.loans.filter(loan => !['PENDING', 'RESERVED'].includes(loan.status)).filter(loan => {
+    return this.loans.filter(loan => {
       const matchesStatus = this.statusFilter === 'ALL' || loan.status === this.statusFilter;
+      const created = loan.createdAt ? new Date(loan.createdAt) : null;
+      const from = this.fromDate ? new Date(`${this.fromDate}T00:00:00`) : null;
+      const to = this.toDate ? new Date(`${this.toDate}T23:59:59.999`) : null;
+      const matchesDate = !created || ((!from || created >= from) && (!to || created <= to));
       const searchable = [loan.ticketId, loan.mssv, loan.readerName, loan.department]
         .filter(value => value !== null && value !== undefined)
         .join(' ')
         .toLocaleLowerCase('vi');
-      return matchesStatus && (!query || searchable.includes(query));
+      return matchesStatus && matchesDate && (!query || searchable.includes(query));
     });
+  }
+
+  get pagedLoans(): LoanTicketSummary[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.filteredLoans.slice(start, start + this.pageSize);
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredLoans.length / this.pageSize));
+  }
+
+  applyFilters(): void {
+    this.currentPage = 1;
+  }
+
+  changePage(page: number): void {
+    this.currentPage = Math.min(this.totalPages, Math.max(1, page));
   }
 
   get activeCount(): number {
@@ -79,10 +105,12 @@ export class Borrows implements OnInit {
           this.requestedTicketId = undefined;
           this.viewDetails(ticketId);
         }
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isLoading = false;
         this.errorMessage = this.extractError(error, 'Không thể tải danh sách phiếu mượn.');
+        this.cdr.detectChanges();
       },
     });
   }
@@ -95,10 +123,12 @@ export class Borrows implements OnInit {
       next: loan => {
         this.selectedLoan = loan;
         this.detailLoading = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.detailLoading = false;
         this.errorMessage = this.extractError(error, `Không thể tải phiếu #${ticketId}.`);
+        this.cdr.detectChanges();
       },
     });
   }
@@ -168,6 +198,12 @@ export class Borrows implements OnInit {
     if (status === 'PENDING' || status === 'RESERVED') return 'badge-warn';
     if (status === 'BORROWING') return 'badge-borrowing';
     return 'badge-ok';
+  }
+
+  private todayValue(): string {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 10);
   }
 
   private extractError(error: any, fallback: string): string {

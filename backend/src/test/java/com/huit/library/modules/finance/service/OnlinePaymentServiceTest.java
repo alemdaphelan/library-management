@@ -154,7 +154,8 @@ class OnlinePaymentServiceTest {
                 "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
                 "TESTCODE", SECRET,
                 "http://localhost:8080/api/v1/online-payments/vnpay-return",
-                "http://localhost:4200/my-penalties", 15);
+                "http://localhost:4200/my-penalties", 15,
+                mock(com.huit.library.modules.circulation.service.LibraryHoursService.class));
     }
 
     private String query(SortedMap<String, String> params) {

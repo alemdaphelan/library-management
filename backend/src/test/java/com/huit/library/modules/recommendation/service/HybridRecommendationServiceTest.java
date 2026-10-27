@@ -100,6 +100,7 @@ class HybridRecommendationServiceTest {
 
     private static class Fixture {
         private final BookRepository bookRepository = mock(BookRepository.class);
+        private final com.huit.library.modules.catalog.repository.BookCopyRepository bookCopyRepository = mock(com.huit.library.modules.catalog.repository.BookCopyRepository.class);
         private final LoanDetailRepository loanRepository = mock(LoanDetailRepository.class);
         private final UserRepository userRepository = mock(UserRepository.class);
         private final BookSubjectAssignmentRepository subjectRepository = mock(BookSubjectAssignmentRepository.class);
@@ -108,6 +109,7 @@ class HybridRecommendationServiceTest {
         private final RecommendationProperties properties = new RecommendationProperties();
         private final HybridRecommendationService service = new HybridRecommendationService(
                 bookRepository,
+                bookCopyRepository,
                 loanRepository,
                 userRepository,
                 subjectRepository,

@@ -83,7 +83,7 @@ class AuthServiceTest {
         user.setFullName("Nguyen Van A");
         when(userRepository.findFirstByEmailOrMssv("user@huit.edu.vn", "user@huit.edu.vn"))
                 .thenReturn(Optional.of(user));
-        when(valueOperations.setIfAbsent("auth:otp:resend:user@huit.edu.vn", "1", 60, TimeUnit.SECONDS))
+        when(valueOperations.setIfAbsent("auth:otp:resend:user@huit.edu.vn", "1", 10, TimeUnit.SECONDS))
                 .thenReturn(true, false);
 
         authService.forgotPassword("user@huit.edu.vn");
@@ -101,7 +101,7 @@ class AuthServiceTest {
         user.setFullName("Nguyen Van A");
         when(userRepository.findFirstByEmailOrMssv("user@huit.edu.vn", "user@huit.edu.vn"))
                 .thenReturn(Optional.of(user));
-        when(valueOperations.setIfAbsent("auth:otp:resend:user@huit.edu.vn", "1", 60, TimeUnit.SECONDS))
+        when(valueOperations.setIfAbsent("auth:otp:resend:user@huit.edu.vn", "1", 10, TimeUnit.SECONDS))
                 .thenReturn(true);
         doThrow(new MailSendException("SMTP unavailable"))
                 .when(mailSender).send(any(org.springframework.mail.SimpleMailMessage.class));

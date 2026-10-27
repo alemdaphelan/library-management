@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './auth.html',
   styleUrls: ['./auth.css']
 })
-export class Auth implements OnInit {
+export class Auth implements OnInit, OnDestroy {
   mode: 'login' | 'forgot' = 'login';
 
   loginData = { username: '', password: '' };
@@ -22,6 +22,8 @@ export class Auth implements OnInit {
   successMessage = '';
   errorMessage = '';
   showPassword = false;
+  resendCountdown = 0;
+  private resendTimer?: ReturnType<typeof setInterval>;
 
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
@@ -37,8 +39,15 @@ export class Auth implements OnInit {
       if (savedStep && savedEmail) {
         this.forgotStep = savedStep as 'email' | 'otp' | 'reset';
         this.forgotData.email = savedEmail;
+        if (this.forgotStep === 'otp') {
+          this.startResendCountdown();
+        }
       }
     }
+  }
+
+  ngOnDestroy(): void {
+    this.clearResendTimer();
   }
 
   toggleMode(newMode: 'login' | 'forgot', event: Event) {
@@ -50,6 +59,7 @@ export class Auth implements OnInit {
     this.forgotData = { email: '', otp: '', newPassword: '', confirmPassword: '' };
     sessionStorage.removeItem('forgotStep');
     sessionStorage.removeItem('forgotEmail');
+    this.clearResendTimer();
 
     const newUrl = newMode === 'login' ? '/login' : '/forgot-password';
     window.history.pushState({}, '', newUrl);
@@ -117,6 +127,7 @@ export class Auth implements OnInit {
           this.forgotStep = 'otp';
           sessionStorage.setItem('forgotStep', 'otp');
           sessionStorage.setItem('forgotEmail', this.forgotData.email);
+          this.startResendCountdown();
           this.cdr.detectChanges();
           
           setTimeout(() => {
@@ -134,6 +145,44 @@ export class Auth implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  onResendOtp(): void {
+    if (this.isSubmitting || this.resendCountdown > 0) return;
+
+    this.isSubmitting = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.authService.forgotPassword(this.forgotData.email).subscribe({
+      next: () => {
+        this.isSubmitting = false;
+        this.successMessage = 'Mã OTP mới đã được gửi đến email của bạn.';
+        this.startResendCountdown();
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.isSubmitting = false;
+        this.errorMessage = this.extractErrorMessage(err, 'Không thể gửi lại mã OTP. Vui lòng thử lại.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private startResendCountdown(): void {
+    this.clearResendTimer();
+    this.resendCountdown = 10;
+    this.resendTimer = setInterval(() => {
+      this.resendCountdown = Math.max(0, this.resendCountdown - 1);
+      if (this.resendCountdown === 0) this.clearResendTimer();
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  private clearResendTimer(): void {
+    if (this.resendTimer) {
+      clearInterval(this.resendTimer);
+      this.resendTimer = undefined;
+    }
   }
 
   onVerifyOtp() {

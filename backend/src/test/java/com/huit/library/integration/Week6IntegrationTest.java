@@ -440,7 +440,7 @@ class Week6IntegrationTest {
 
             assertThat(redisTemplate.opsForValue().get("auth:otp:" + email)).matches("\\d{6}");
             assertThat(redisTemplate.getExpire("auth:otp:resend:" + email, TimeUnit.SECONDS))
-                    .isBetween(1L, 60L);
+                    .isBetween(1L, 10L);
             String mailpitResponse = waitForCapturedMail(email);
             assertThat(mailpitResponse)
                     .contains("Mã xác nhận khôi phục mật khẩu")

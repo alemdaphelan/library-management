@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 
 export interface BorrowCartItem {
   bookId: number;
@@ -14,6 +15,8 @@ export type AddToBorrowCartResult = 'ADDED' | 'DUPLICATE' | 'FULL';
 export class BorrowCartService {
   private readonly storageKey = 'huit_library_borrow_cart';
   private items: BorrowCartItem[] = this.readItems();
+  private readonly countSubject = new BehaviorSubject<number>(this.items.length);
+  readonly count$ = this.countSubject.asObservable();
 
   get allItems(): BorrowCartItem[] {
     return [...this.items];
@@ -61,5 +64,6 @@ export class BorrowCartService {
     } catch {
       // Trình duyệt có thể chặn storage; giỏ vẫn hoạt động trong phiên hiện tại.
     }
+    this.countSubject.next(this.items.length);
   }
 }

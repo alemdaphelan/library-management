@@ -81,7 +81,11 @@ public class RagChatService {
             }
 
             String answer;
-            if (geminiApiClient.isConfigured()) {
+            if (isMoodRecommendation(question) && contexts.stream().anyMatch(context -> "CATALOG".equals(context.type()))) {
+                fallbackUsed = true;
+                model = "catalog-grounded-recommendation";
+                answer = moodRecommendationAnswer(contexts);
+            } else if (geminiApiClient.isConfigured()) {
                 try {
                     answer = geminiApiClient.generate(privacyFilter.redact(question), contexts);
                     if (!containsSourceCitation(answer, contexts.size())) {
@@ -194,6 +198,37 @@ public class RagChatService {
                     .append("\n\n");
         }
         return answer.toString().trim();
+    }
+
+    private boolean isMoodRecommendation(String value) {
+        String normalized = Normalizer.normalize(value == null ? "" : value.toLowerCase(Locale.ROOT),
+                        Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+        return normalized.contains("buon")
+                || normalized.contains("tam trang")
+                || normalized.contains("cang thang")
+                || normalized.contains("stress")
+                || normalized.contains("lo au")
+                || normalized.contains("dong luc")
+                || normalized.contains("thu gian");
+    }
+
+    private String moodRecommendationAnswer(List<RagRetrievedContext> contexts) {
+        List<RagRetrievedContext> books = contexts.stream()
+                .filter(context -> "CATALOG".equals(context.type()))
+                .limit(3)
+                .toList();
+        StringBuilder answer = new StringBuilder(
+                "Mình rất tiếc vì hôm nay bạn đang không vui. Dựa trên những tài liệu hiện có trong thư viện, bạn có thể tham khảo:\n\n");
+        for (RagRetrievedContext book : books) {
+            int sourceNumber = contexts.indexOf(book) + 1;
+            answer.append('[').append(sourceNumber).append("] ")
+                    .append(book.title())
+                    .append(" — xem thông tin và tình trạng bản sao trước khi mượn.\n\n");
+        }
+        answer.append("Nếu cảm giác buồn hoặc lo âu kéo dài, bạn cũng nên chia sẻ với người thân hoặc bộ phận hỗ trợ sinh viên của trường.");
+        return answer.toString();
     }
 
     private Set<String> meaningfulTerms(String value) {

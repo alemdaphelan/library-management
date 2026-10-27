@@ -33,6 +33,10 @@
   <div class="search-layout">
     <!-- Filters Sidebar -->
     <aside class="filters-sidebar card">
+      <div class="source-tabs" aria-label="Nguồn danh sách sách">
+        <button type="button" [class.active]="sourceMode === 'catalog'" (click)="setSourceMode('catalog')">Danh mục</button>
+        <button type="button" [class.active]="sourceMode === 'for-you'" (click)="setSourceMode('for-you')">Dành cho bạn</button>
+      </div>
       <h3 class="filter-title">Bộ lọc tìm kiếm</h3>
       
       <div class="filter-group">
@@ -97,13 +101,14 @@
             <div class="book-cat">{{ book.category }}</div>
             <h3 class="book-name" [routerLink]="['/book', book.id]" style="cursor: pointer;">{{ book.title }}</h3>
             <p class="book-author">{{ book.author }}</p>
+            <p class="recommendation-reason" *ngIf="sourceMode === 'for-you'">{{ book.reason }}</p>
           </div>
         </div>
 
       </div>
 
       <div class="empty-search" *ngIf="books.length === 0">
-        <h3>Không có tài liệu phù hợp</h3>
+        <h3>{{ recommendationLoading ? 'Đang tạo danh sách dành cho bạn...' : 'Không có tài liệu phù hợp' }}</h3>
         <p *ngIf="filterStatus === 'available'">Hiện không có bản sao sẵn sàng theo điều kiện đã chọn. Hãy bỏ bộ lọc hoặc kiểm tra lại sau.</p>
         <p *ngIf="filterStatus !== 'available'">Hãy thử từ khóa khác hoặc xóa bớt bộ lọc.</p>
       </div>

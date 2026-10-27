@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -34,6 +34,7 @@ export class ShelfMap implements OnInit {
   constructor(
     private locationService: LocationService,
     private dialog: DialogService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -53,6 +54,7 @@ export class ShelfMap implements OnInit {
           this.shelves = [];
           this.selectedBookshelf = undefined;
           this.isLoading = false;
+          this.cdr.detectChanges();
         }
       },
       error: error => this.handleError('Không thể tải danh sách tầng.', error)
@@ -80,6 +82,7 @@ export class ShelfMap implements OnInit {
         } else {
           this.shelves = [];
           this.isLoading = false;
+          this.cdr.detectChanges();
         }
       },
       error: error => this.handleError('Không thể tải danh sách dãy kệ.', error)
@@ -100,6 +103,7 @@ export class ShelfMap implements OnInit {
         this.selectedShelf = undefined;
         this.shelfBooks = [];
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: error => this.handleError('Không thể tải danh sách ngăn kệ.', error)
     });
@@ -112,11 +116,13 @@ export class ShelfMap implements OnInit {
       next: books => {
         this.shelfBooks = books || [];
         this.isLoadingShelfBooks = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.isLoadingShelfBooks = false;
         this.shelfBooks = [];
         this.handleError('Không thể tải danh sách tài liệu trong ngăn kệ.', error);
+        this.cdr.detectChanges();
       }
     });
   }

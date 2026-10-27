@@ -47,10 +47,12 @@ public class OrientationService {
     @Transactional
     public OrientationDtos.ClassResponse create(OrientationDtos.ClassRequest request, UUID actorId) {
         validateTimes(request.startAt(), request.endAt());
-        validateFacilitator(request.facilitatorId(), request.startAt(), request.endAt());
+        UUID facilitatorId = request.facilitatorId() == null ? actorId : request.facilitatorId();
+        validateFacilitator(facilitatorId, request.startAt(), request.endAt());
         OrientationClassEntity entity = new OrientationClassEntity();
         entity.setClassCode("HD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
         apply(entity, request);
+        entity.setFacilitatorId(facilitatorId);
         entity.setCreatedBy(actorId);
         entity.setStatus("SCHEDULED");
         entity = classRepository.save(entity);
@@ -61,12 +63,14 @@ public class OrientationService {
     public OrientationDtos.ClassResponse update(Long id, OrientationDtos.ClassRequest request) {
         validateTimes(request.startAt(), request.endAt());
         OrientationClassEntity entity = find(id);
+        UUID existingFacilitatorId = entity.getFacilitatorId();
         if (request.facilitatorId() != null
                 && classRepository.existsByFacilitatorIdAndClassIdNotAndStartAtLessThanAndEndAtGreaterThan(
                 request.facilitatorId(), id, request.endAt(), request.startAt())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Người phụ trách đã có lớp trùng thời gian");
         }
         apply(entity, request);
+        if (request.facilitatorId() == null) entity.setFacilitatorId(existingFacilitatorId);
         return response(classRepository.save(entity));
     }
 

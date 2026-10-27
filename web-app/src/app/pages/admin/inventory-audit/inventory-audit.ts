@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   InventoryAudit as InventoryAuditModel,
@@ -30,6 +30,7 @@ export class InventoryAudit implements OnInit {
   constructor(
     private readonly inventoryAuditService: InventoryAuditService,
     private readonly dialog: DialogService,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -50,6 +51,7 @@ export class InventoryAudit implements OnInit {
         } else {
           this.selectedAudit = undefined;
           this.isLoading = false;
+          this.cdr.detectChanges();
         }
       },
       error: error => this.handleError('Không thể tải lịch sử kiểm kê.', error),
@@ -64,6 +66,7 @@ export class InventoryAudit implements OnInit {
         this.replaceAudit(detail);
         this.isLoading = false;
         if (detail.status === 'IN_PROGRESS') this.focusBarcode();
+        this.cdr.detectChanges();
       },
       error: error => this.handleError('Không thể tải chi tiết phiên kiểm kê.', error),
     });

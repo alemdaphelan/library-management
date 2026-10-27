@@ -4,6 +4,7 @@ import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.repository.BookRepository;
+import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.circulation.repository.BookPopularityProjection;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.UserBookInteractionProjection;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 @Service
 public class HybridRecommendationService {
     private final BookRepository bookRepository;
+    private final BookCopyRepository bookCopyRepository;
     private final LoanDetailRepository loanDetailRepository;
     private final UserRepository userRepository;
     private final BookSubjectAssignmentRepository subjectAssignmentRepository;
@@ -48,6 +50,7 @@ public class HybridRecommendationService {
 
     public HybridRecommendationService(
             BookRepository bookRepository,
+            BookCopyRepository bookCopyRepository,
             LoanDetailRepository loanDetailRepository,
             UserRepository userRepository,
             BookSubjectAssignmentRepository subjectAssignmentRepository,
@@ -56,6 +59,7 @@ public class HybridRecommendationService {
             RecommendationCacheService cacheService,
             RecommendationProperties properties) {
         this.bookRepository = bookRepository;
+        this.bookCopyRepository = bookCopyRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.userRepository = userRepository;
         this.subjectAssignmentRepository = subjectAssignmentRepository;
@@ -259,6 +263,8 @@ public class HybridRecommendationService {
                 coldStart);
         String categoryName = book.getCategory() == null ? null : book.getCategory().getName();
         String imageUrl = firstNonBlank(book.getImageUrlM(), book.getImageUrlL(), book.getImageUrlS());
+        long copies = bookCopyRepository.findByBookId(book.getBookId()).size();
+        long availableCopies = bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE");
         return new RecommendationItemDTO(
                 book.getBookId(),
                 book.getTitle(),
@@ -271,7 +277,10 @@ public class HybridRecommendationService {
                 round(departmentScore),
                 round(popularityScore),
                 borrowCount,
-                reason);
+                reason,
+                availableCopies,
+                copies,
+                availableCopies > 0 ? "available" : "out_of_stock");
     }
 
     private String reason(

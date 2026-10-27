@@ -106,6 +106,10 @@
           <button type="submit" class="btn-submit" [disabled]="isSubmitting">
             {{ isSubmitting ? 'Đang xác thực...' : 'Xác thực OTP' }}
           </button>
+          <button type="button" class="btn-resend" (click)="onResendOtp()"
+                  [disabled]="isSubmitting || resendCountdown > 0">
+            {{ resendCountdown > 0 ? 'Gửi lại mã sau ' + resendCountdown + ' giây' : 'Gửi lại mã OTP' }}
+          </button>
         </form>
 
         <form *ngIf="forgotStep === 'reset'" (ngSubmit)="onResetPassword()">

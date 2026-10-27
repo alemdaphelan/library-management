@@ -158,6 +158,20 @@ export class PortalLayout implements OnInit, OnDestroy {
     } as Record<string, string>)[type] || 'Thông báo thư viện';
   }
 
+  notificationTone(type: string): 'danger' | 'warning' | 'success' | 'info' {
+    const normalized = (type || '').toUpperCase();
+    if (normalized.includes('OVERDUE') || normalized.includes('REJECTED') || normalized.includes('LOCKED') || normalized.includes('PENALTY')) {
+      return 'danger';
+    }
+    if (normalized.includes('DUE_SOON') || normalized.includes('REMINDER') || normalized.includes('WAITLIST') || normalized.includes('NO_SHOW')) {
+      return 'warning';
+    }
+    if (normalized.includes('APPROVED') || normalized.includes('UNLOCKED') || normalized.includes('RETURNED') || normalized.includes('PAYMENT')) {
+      return 'success';
+    }
+    return 'info';
+  }
+
   isCirculationLocked(lockedUntil?: string): boolean {
     return !!lockedUntil && new Date(lockedUntil).getTime() > Date.now();
   }

@@ -1,4 +1,4 @@
-import { Component, OnInit, Optional } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -28,6 +28,7 @@ export class Imports implements OnInit {
 
   constructor(
     private importsService: ImportsService,
+    private cdr: ChangeDetectorRef,
     @Optional() private route?: ActivatedRoute,
   ) {}
 
@@ -50,11 +51,13 @@ export class Imports implements OnInit {
         this.importReceipts = receipts || [];
         this.suppliers = suppliers || [];
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error fetching inventory data', err);
         this.isLoading = false;
         this.errorMessage = this.extractError(err, 'Không thể tải dữ liệu nhập kho. Vui lòng thử lại.');
+        this.cdr.detectChanges();
       }
     });
   }

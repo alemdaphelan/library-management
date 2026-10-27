@@ -146,11 +146,10 @@ public class LoanService {
         LocalDateTime pickupDateTime = notifiedEntry != null
                 ? notifiedEntry.getExpiresAt()
                 : waitlistService.calculateDirectReservationDeadline(pickupDate, LocalDateTime.now());
-        LocalDate effectivePickupDate = pickupDateTime.toLocalDate();
         LocalDateTime dueDateTime;
         LoanTicketType ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
         if (ticketType == LoanTicketType.ONSITE) {
-            dueDateTime = effectivePickupDate.atTime(21, 0); // Đọc tại chỗ trong ngày
+            dueDateTime = pickupDateTime; // Đọc tại chỗ phải trả trước giờ đóng cửa trong ngày
         } else {
             dueDateTime = pickupDateTime.plusDays(10); // Quy định mượn về nhà 10 ngày
         }
@@ -260,7 +259,7 @@ public class LoanService {
                 pickupDate, LocalDateTime.now());
         LoanTicketType ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
         LocalDateTime dueDate = ticketType == LoanTicketType.ONSITE
-                ? pickupDeadline.toLocalDate().atTime(21, 0)
+                ? pickupDeadline
                 : pickupDeadline.plusDays(10);
 
         LoanTicketEntity ticket = new LoanTicketEntity();
@@ -493,6 +492,7 @@ public class LoanService {
                 .barcode(detail.getBarcode())
                 .ticketType(LoanTicketType.fromDatabaseValue(ticket.getTicketType()).name())
                 .status(LoanTicketStatus.fromDatabaseValue(ticket.getStatus()).name())
+                .itemStatus(detail.getReturnStatus())
                 .decisionNote(ticket.getDecisionNote())
                 .createdAt(ticket.getCreatedAt())
                 .pickupDeadline(pickupDeadline)
@@ -513,15 +513,20 @@ public class LoanService {
         List<LoanDetailEntity> details = loanDetailRepository.findByTicketId(ticket.getTicketId());
         LocalDateTime now = LocalDateTime.now();
 
-        LocalDateTime nearestDueDate = details.stream()
+        LoanTicketStatus ticketStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
+        boolean activeBorrow = ticketStatus == LoanTicketStatus.BORROWING
+                || ticketStatus == LoanTicketStatus.OVERDUE;
+        LocalDateTime nearestDueDate = activeBorrow ? details.stream()
                 .map(LoanDetailEntity::getDueDate)
                 .filter(java.util.Objects::nonNull)
                 .min(LocalDateTime::compareTo)
-                .orElse(null);
-        int overdueItemCount = (int) details.stream()
+                .orElse(null) : null;
+        int overdueItemCount = activeBorrow ? (int) details.stream()
                 .filter(detail -> detail.getReturnDate() == null)
+                .filter(detail -> "BORROWING".equalsIgnoreCase(detail.getReturnStatus())
+                        || "OVERDUE".equalsIgnoreCase(detail.getReturnStatus()))
                 .filter(detail -> detail.getDueDate() != null && detail.getDueDate().isBefore(now))
-                .count();
+                .count() : 0;
         BigDecimal totalLateFine = details.stream()
                 .map(LoanDetailEntity::getLateFineAccrued)
                 .filter(java.util.Objects::nonNull)

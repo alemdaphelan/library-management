@@ -2,6 +2,7 @@ package com.huit.library.modules.recommendation.service;
 
 import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.repository.BookRepository;
+import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.circulation.repository.BookPopularityProjection;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.recommendation.dto.RecommendationItemDTO;
@@ -30,16 +31,19 @@ public class BookRecommendationService {
     private static final long MIN_BORROWS_FOR_SUFFICIENT_DATA = 20;
 
     private final BookRepository bookRepository;
+    private final BookCopyRepository bookCopyRepository;
     private final LoanDetailRepository loanDetailRepository;
     private final BookSubjectAssignmentRepository subjectAssignmentRepository;
     private final TfIdfSimilarityEngine similarityEngine;
 
     public BookRecommendationService(
             BookRepository bookRepository,
+            BookCopyRepository bookCopyRepository,
             LoanDetailRepository loanDetailRepository,
             BookSubjectAssignmentRepository subjectAssignmentRepository,
             TfIdfSimilarityEngine similarityEngine) {
         this.bookRepository = bookRepository;
+        this.bookCopyRepository = bookCopyRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.subjectAssignmentRepository = subjectAssignmentRepository;
         this.similarityEngine = similarityEngine;
@@ -202,6 +206,8 @@ public class BookRecommendationService {
             String reason) {
         String categoryName = book.getCategory() == null ? null : book.getCategory().getName();
         String imageUrl = firstNonBlank(book.getImageUrlM(), book.getImageUrlL(), book.getImageUrlS());
+        long copies = bookCopyRepository.findByBookId(book.getBookId()).size();
+        long availableCopies = bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE");
         return new RecommendationItemDTO(
                 book.getBookId(),
                 book.getTitle(),
@@ -214,7 +220,10 @@ public class BookRecommendationService {
                 round(departmentScore),
                 round(popularityScore),
                 borrowCount,
-                reason);
+                reason,
+                availableCopies,
+                copies,
+                availableCopies > 0 ? "available" : "out_of_stock");
     }
 
     private void appendFallbackItems(

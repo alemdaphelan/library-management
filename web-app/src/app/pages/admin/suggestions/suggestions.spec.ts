@@ -2,6 +2,8 @@ import { of } from 'rxjs';
 import { AdminSuggestions } from './suggestions';
 
 describe('AdminSuggestions', () => {
+  const cdr = { detectChanges: vi.fn() };
+
   it('opens the exact proposal referenced by an admin notification', () => {
     const proposal = { proposalId: 7, title: 'Clean Architecture', status: 'PENDING' };
     const proposalService = {
@@ -10,7 +12,7 @@ describe('AdminSuggestions', () => {
     const route = {
       snapshot: { queryParamMap: { get: (key: string) => key === 'referenceId' ? '7' : null } },
     };
-    const component = new AdminSuggestions(proposalService as any, route as any);
+    const component = new AdminSuggestions(proposalService as any, cdr as any, route as any);
 
     component.ngOnInit();
 
@@ -23,7 +25,7 @@ describe('AdminSuggestions', () => {
     const proposalService = {
       updateProposalStatus: vi.fn(() => of({})),
     };
-    const component = new AdminSuggestions(proposalService as any);
+    const component = new AdminSuggestions(proposalService as any, cdr as any);
     component.selectedSuggestion = {
       proposalId: 7,
       title: 'Clean Architecture',
@@ -46,7 +48,7 @@ describe('AdminSuggestions', () => {
         adminNote: 'Đã có đủ bản tương đương',
       })),
     };
-    const component = new AdminSuggestions(proposalService as any);
+    const component = new AdminSuggestions(proposalService as any, cdr as any);
     component.proposals = [{ proposalId: 7, title: 'Clean Architecture', status: 'PENDING' }];
     component.selectedSuggestion = component.proposals[0];
     component.adminNoteInput = 'Đã có đủ bản tương đương';

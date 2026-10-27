@@ -7,6 +7,7 @@ import { CategoryService, Category } from '../../../services/category.service';
 import { Subject, Subscription, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HomeService, RecommendationResponse } from '../../../services/home.service';
 
 @Component({
   selector: 'app-search',
@@ -19,6 +20,8 @@ export class Search implements OnInit, OnDestroy {
   viewMode: 'grid' | 'list' = 'grid';
   allBooks: any[] = [];
   books: any[] = [];
+  sourceMode: 'catalog' | 'for-you' = 'catalog';
+  recommendationLoading = false;
 
   // Filtering & Sorting State
   searchQuery: string = '';
@@ -44,7 +47,8 @@ export class Search implements OnInit, OnDestroy {
     private categoryService: CategoryService,
     private cdr: ChangeDetectorRef,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private homeService: HomeService
   ) {}
 
   ngOnInit() {
@@ -131,6 +135,10 @@ export class Search implements OnInit, OnDestroy {
   }
 
   fetchBooks() {
+    if (this.sourceMode === 'for-you') {
+      this.fetchRecommendations();
+      return;
+    }
     const availability = this.filterStatus === 'available'
       ? 'AVAILABLE'
       : this.filterStatus === 'borrowed' ? 'UNAVAILABLE' : undefined;
@@ -172,10 +180,48 @@ export class Search implements OnInit, OnDestroy {
     });
   }
 
+  fetchRecommendations(): void {
+    this.recommendationLoading = true;
+    this.homeService.getRecommendedBooks(50).subscribe({
+      next: (response: RecommendationResponse) => {
+        this.allBooks = (response.items ?? []).map((book, index) => ({
+          id: book.bookId,
+          title: book.title,
+          author: book.author || 'Đang cập nhật',
+          cover: book.imageUrl || '/assets/images/cover_1.jpg',
+          category: book.categoryName || 'Khác',
+          status: book.status || 'out_of_stock',
+          availableCopies: Number(book.availableCopies || 0),
+          copies: Number(book.copies || 0),
+          reason: book.reason,
+          recommendationOrder: index
+        }));
+        this.recommendationLoading = false;
+        this.currentPage = 0;
+        this.applyFilters();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.allBooks = [];
+        this.recommendationLoading = false;
+        this.applyFilters();
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  setSourceMode(mode: 'catalog' | 'for-you'): void {
+    if (this.sourceMode === mode) return;
+    this.sourceMode = mode;
+    this.currentPage = 0;
+    this.fetchBooks();
+  }
+
   goToPage(page: number) {
     if (page >= 0 && page < this.totalPages) {
       this.currentPage = page;
-      this.fetchBooks();
+      if (this.sourceMode === 'catalog') this.fetchBooks();
+      else this.applyFilters();
     }
   }
 
@@ -190,16 +236,28 @@ export class Search implements OnInit, OnDestroy {
   onSearch() {
     this.showDropdown = false;
     this.currentPage = 0;
-    this.fetchBooks();
+    if (this.sourceMode === 'catalog') this.fetchBooks();
+    else this.applyFilters();
   }
 
   onStatusChange(): void {
     this.currentPage = 0;
-    this.fetchBooks();
+    if (this.sourceMode === 'catalog') this.fetchBooks();
+    else this.applyFilters();
   }
 
   applyFilters() {
     let filtered = [...this.allBooks];
+
+    if (this.sourceMode === 'for-you') {
+      const query = this.searchQuery.trim().toLocaleLowerCase('vi');
+      if (query) {
+        filtered = filtered.filter(book => [book.title, book.author, book.category, book.reason]
+          .some(value => String(value || '').toLocaleLowerCase('vi').includes(query)));
+      }
+      if (this.filterStatus === 'available') filtered = filtered.filter(book => book.status === 'available');
+      if (this.filterStatus === 'borrowed') filtered = filtered.filter(book => book.status !== 'available');
+    }
 
     // Category filter
     const activeCategories = Object.keys(this.selectedCategories).filter(c => this.selectedCategories[c]);
@@ -208,7 +266,9 @@ export class Search implements OnInit, OnDestroy {
     }
 
     // Sorting
-    if (this.sortOption === 'newest') {
+    if (this.sourceMode === 'for-you' && this.sortOption === 'newest') {
+      filtered.sort((a, b) => a.recommendationOrder - b.recommendationOrder);
+    } else if (this.sortOption === 'newest') {
       filtered.sort((a, b) => b.id - a.id);
     } else if (this.sortOption === 'az') {
       filtered.sort((a, b) => a.title.localeCompare(b.title));
@@ -216,7 +276,14 @@ export class Search implements OnInit, OnDestroy {
       filtered.sort((a, b) => b.title.localeCompare(a.title));
     }
 
-    this.books = filtered;
+    if (this.sourceMode === 'for-you') {
+      this.totalElements = filtered.length;
+      this.totalPages = Math.ceil(filtered.length / this.pageSize);
+      const start = this.currentPage * this.pageSize;
+      this.books = filtered.slice(start, start + this.pageSize);
+    } else {
+      this.books = filtered;
+    }
   }
 
   clearFilters() {

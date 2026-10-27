@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import * as QRCode from 'qrcode';
@@ -17,6 +17,7 @@ export interface LoanItem {
   barcode?: string;
   ticketType?: string;
   status: string; // 'PENDING', 'RESERVED', 'BORROWING', 'RETURNED', 'CANCELLED'
+  itemStatus?: string;
   decisionNote?: string;
   createdAt?: string;
   pickupDeadline?: string;
@@ -30,6 +31,7 @@ export interface LoanItem {
 
 export interface LoanTicketGroup extends LoanItem {
   items: LoanItem[];
+  timeGroup?: string;
 }
 
 @Component({
@@ -54,6 +56,7 @@ export class History implements OnInit {
   pastList: LoanTicketGroup[] = [];
   cancelledList: LoanTicketGroup[] = [];
   allList: LoanTicketGroup[] = [];
+  displayedAllCount = 7;
 
   // Backward compatibility
   activeBorrows: LoanTicketGroup[] = [];
@@ -103,6 +106,18 @@ export class History implements OnInit {
 
   setTab(tab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' | 'CANCELLED'): void {
     this.selectedTab = tab;
+    if (tab === 'ALL') this.displayedAllCount = 7;
+  }
+
+  get visibleAllList(): LoanTicketGroup[] {
+    return this.allList.slice(0, this.displayedAllCount);
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    if (this.selectedTab !== 'ALL' || this.displayedAllCount >= this.allList.length) return;
+    const remaining = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+    if (remaining < 240) this.displayedAllCount += 7;
   }
 
   loadLoans(): void {
@@ -167,6 +182,7 @@ export class History implements OnInit {
         barcode: raw.barcode,
         ticketType: raw.ticketType || 'BORROW',
         status: statusUpper,
+        itemStatus: String(raw.itemStatus || raw.returnStatus || statusUpper).toUpperCase(),
         decisionNote: raw.decisionNote,
         createdAt: raw.createdAt,
         pickupDeadline: raw.pickupDeadline,
@@ -214,7 +230,26 @@ export class History implements OnInit {
       ...ticketItems[0],
       bookTitle: ticketItems.length === 1 ? ticketItems[0].bookTitle : `${ticketItems.length} tài liệu trong phiếu`,
       items: ticketItems,
-    }));
+      timeGroup: this.timeGroup(ticketItems[0].createdAt),
+    })).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }
+
+  private timeGroup(createdAt?: string): string {
+    if (!createdAt) return 'Cũ hơn';
+    const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+    if (days <= 1) return 'Trong 1 ngày qua';
+    if (days <= 7) return 'Trong 1 tuần qua';
+    if (days <= 31) return 'Trong 1 tháng qua';
+    return 'Cũ hơn 1 tháng';
+  }
+
+  showTimeHeader(index: number): boolean {
+    return index === 0 || this.visibleAllList[index - 1]?.timeGroup !== this.visibleAllList[index]?.timeGroup;
+  }
+
+  itemStatusLabel(item: LoanItem): string {
+    const status = (item.itemStatus || item.status || '').toUpperCase();
+    return ({ BORROWING: 'Đang giữ', OVERDUE: 'Quá hạn', RETURNED: 'Đã trả', PENDING: 'Chờ nhận', RESERVED: 'Đã giữ chỗ' } as Record<string, string>)[status] || status;
   }
 
   statusLabel(status: string): string {

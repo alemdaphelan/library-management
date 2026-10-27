@@ -1,6 +1,6 @@
 <div class="penalty-page">
   <header class="page-title">
-    <div><small>TUẦN 9 · NGHIỆP VỤ THU PHẠT</small><h1>Mất/hỏng, đền bù và đối soát</h1></div>
+    <div><small>QUẢN LÝ CÔNG NỢ THƯ VIỆN</small><h1>Mất/hỏng, đền bù và đối soát</h1></div>
     <button type="button" (click)="load()" [disabled]="loading">{{ loading ? 'Đang tải…' : 'Làm mới' }}</button>
   </header>
 
@@ -14,7 +14,7 @@
         <select [(ngModel)]="caseStatusFilter">
           <option value="ALL">Tất cả</option>
           <option value="UNPAID">Chưa thanh toán</option>
-          <option value="PARTIAL">Thanh toán một phần</option>
+          <option value="PARTIAL">Còn công nợ (đã thu một phần)</option>
           <option value="PAID">Đã thanh toán</option>
         </select>
       </label>
