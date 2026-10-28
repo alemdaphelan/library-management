@@ -35,6 +35,11 @@ export interface WishlistItem {
   addedAt: string;
 }
 
+export interface DepartmentOption {
+  key: string;
+  displayName: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -48,7 +53,8 @@ export class BookService {
     page: number = 0,
     size: number = 10,
     categoryId?: number,
-    availability?: 'AVAILABLE' | 'UNAVAILABLE'
+    availability?: 'AVAILABLE' | 'UNAVAILABLE',
+    department?: string
   ): Observable<any> {
     const params: Record<string, string> = {
       page: page.toString(),
@@ -57,7 +63,12 @@ export class BookService {
     if (query?.trim()) params['query'] = query.trim();
     if (categoryId) params['categoryId'] = categoryId.toString();
     if (availability) params['availability'] = availability;
+    if (department?.trim()) params['department'] = department.trim();
     return this.http.get<any>(this.apiUrl, { params });
+  }
+
+  getDepartments(): Observable<DepartmentOption[]> {
+    return this.http.get<DepartmentOption[]>(`${this.apiUrl}/departments`);
   }
 
   getBookById(id: string): Observable<any> {

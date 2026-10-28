@@ -2,7 +2,11 @@ package com.huit.library.modules.catalog.service;
 
 import com.huit.library.modules.catalog.dto.BookResponseDTO;
 import com.huit.library.modules.catalog.entity.BookEntity;
+import com.huit.library.modules.catalog.entity.BookCopyEntity;
+import com.huit.library.modules.catalog.entity.BookshelfEntity;
 import com.huit.library.modules.catalog.entity.CategoryEntity;
+import com.huit.library.modules.catalog.entity.FloorEntity;
+import com.huit.library.modules.catalog.entity.ShelfEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.BookRepository;
 import com.huit.library.modules.catalog.repository.CategoryRepository;
@@ -173,5 +177,41 @@ class BookServiceTest {
 
         assertThat(result.getTitle()).isEqualTo("Clean Code");
         verify(bookRepository, never()).incrementViewCount(any());
+    }
+
+    @Test
+    void bookDetailReturnsTheRealFloorBookshelfAndShelfLocation() {
+        BookRepository bookRepository = mock(BookRepository.class);
+        BookCopyRepository copyRepository = mock(BookCopyRepository.class);
+        BookService service = new BookService(
+                bookRepository, copyRepository, mock(CategoryRepository.class),
+                mock(DepartmentSubjectAffinityRepository.class), mock(ReviewRepository.class),
+                mock(LoanDetailRepository.class));
+        BookEntity book = new BookEntity();
+        book.setBookId(16L);
+        book.setTitle("Cấu trúc dữ liệu và giải thuật");
+
+        FloorEntity floor = new FloorEntity();
+        floor.setName("Tầng 2");
+        BookshelfEntity bookshelf = new BookshelfEntity();
+        bookshelf.setName("Kệ CNTT");
+        bookshelf.setFloor(floor);
+        ShelfEntity shelf = new ShelfEntity();
+        shelf.setName("Ngăn Giải thuật");
+        shelf.setBookshelf(bookshelf);
+        BookCopyEntity copy = new BookCopyEntity();
+        copy.setBarcode("BC-000016-001");
+        copy.setBookId(16L);
+        copy.setStatus("AVAILABLE");
+        copy.setShelf(shelf);
+
+        when(bookRepository.incrementViewCount(16L)).thenReturn(1);
+        when(bookRepository.findById(16L)).thenReturn(Optional.of(book));
+        when(copyRepository.findByBookId(16L)).thenReturn(List.of(copy));
+
+        BookResponseDTO result = service.getBookById(16L);
+
+        assertThat(result.getLocation()).isEqualTo("Tầng 2 / Kệ CNTT / Ngăn Giải thuật");
+        assertThat(result.getAvailableCopies()).isEqualTo(1);
     }
 }

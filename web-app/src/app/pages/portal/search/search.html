@@ -46,6 +46,22 @@
         <label class="checkbox-label"><input type="radio" name="status" value="borrowed" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Hết bản sẵn sàng</label>
       </div>
 
+      <div class="filter-group" *ngIf="sourceMode === 'catalog'">
+        <h4>Ngành / Khoa</h4>
+        <select
+          class="department-select"
+          [(ngModel)]="selectedDepartment"
+          (change)="onDepartmentChange()"
+          [disabled]="departmentsLoading"
+          aria-label="Lọc sách theo ngành hoặc khoa">
+          <option value="">{{ departmentsLoading ? 'Đang tải danh sách...' : 'Tất cả ngành / khoa' }}</option>
+          <option *ngFor="let department of departments" [value]="department.key">
+            {{ department.displayName }}
+          </option>
+        </select>
+        <p class="department-help">Danh sách được phân loại từ nội dung sách và ngành đào tạo HUIT.</p>
+      </div>
+
       <div class="filter-group">
         <h4>Thể loại</h4>
         <label class="checkbox-label" *ngFor="let cat of availableCategories; let i = index">

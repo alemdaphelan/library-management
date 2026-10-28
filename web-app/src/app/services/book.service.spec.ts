@@ -62,4 +62,23 @@ describe('BookService interactions', () => {
     expect(request.request.method).toBe('GET');
     request.flush({ bookId: 1, title: 'Clean Code' });
   });
+
+  it('loads HUIT departments and filters the catalog by department', () => {
+    service.getDepartments().subscribe();
+    service.getBooks('', 0, 12, undefined, 'AVAILABLE', 'cong nghe thong tin').subscribe();
+
+    const departmentRequest = http.expectOne(`${environment.apiUrl}/books/departments`);
+    expect(departmentRequest.request.method).toBe('GET');
+    departmentRequest.flush([
+      { key: 'cong nghe thong tin', displayName: 'Công nghệ thông tin' },
+    ]);
+
+    const catalogRequest = http.expectOne(request =>
+      request.url === `${environment.apiUrl}/books`
+      && request.params.get('department') === 'cong nghe thong tin'
+    );
+    expect(catalogRequest.request.method).toBe('GET');
+    expect(catalogRequest.request.params.get('availability')).toBe('AVAILABLE');
+    catalogRequest.flush({ content: [], totalPages: 0, totalElements: 0 });
+  });
 });

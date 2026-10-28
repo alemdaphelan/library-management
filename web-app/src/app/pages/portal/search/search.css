@@ -59,6 +59,34 @@
   font-size: 1rem;
 }
 
+.department-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  line-height: 1.35;
+  outline: none;
+}
+
+.department-select:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+}
+
+.department-select:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.department-help {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;

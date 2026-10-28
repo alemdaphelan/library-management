@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { BookService } from '../../../services/book.service';
+import { BookService, DepartmentOption } from '../../../services/book.service';
 import { CategoryService, Category } from '../../../services/category.service';
 import { Subject, Subscription, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
@@ -28,6 +28,9 @@ export class Search implements OnInit, OnDestroy {
   filterStatus: string = 'all'; // 'all', 'available', 'borrowed'
   availableCategories: string[] = [];
   selectedCategories: { [key: string]: boolean } = {};
+  departments: DepartmentOption[] = [];
+  selectedDepartment: string = '';
+  departmentsLoading = false;
   sortOption: string = 'newest';
 
   // Pagination State
@@ -54,6 +57,7 @@ export class Search implements OnInit, OnDestroy {
   ngOnInit() {
     this.searchQuery = this.route.snapshot.queryParamMap.get('query')?.trim() || '';
     this.fetchCategories();
+    this.fetchDepartments();
     this.fetchBooks();
 
     this.searchSubscription = this.searchSubject.pipe(
@@ -63,7 +67,14 @@ export class Search implements OnInit, OnDestroy {
         if (!query.trim()) {
           return of({ content: [] });
         }
-        return this.bookService.getBooks(query, 0, 5).pipe(
+        return this.bookService.getBooks(
+          query,
+          0,
+          5,
+          undefined,
+          undefined,
+          this.selectedDepartment || undefined
+        ).pipe(
           catchError(() => of({ content: [] }))
         );
       })
@@ -134,6 +145,23 @@ export class Search implements OnInit, OnDestroy {
     });
   }
 
+  fetchDepartments(): void {
+    this.departmentsLoading = true;
+    this.bookService.getDepartments().subscribe({
+      next: departments => {
+        this.departments = departments ?? [];
+        this.departmentsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        console.error('Error fetching departments', err);
+        this.departments = [];
+        this.departmentsLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   fetchBooks() {
     if (this.sourceMode === 'for-you') {
       this.fetchRecommendations();
@@ -147,7 +175,8 @@ export class Search implements OnInit, OnDestroy {
       this.currentPage,
       this.pageSize,
       undefined,
-      availability
+      availability,
+      this.selectedDepartment || undefined
     ).subscribe({
       next: (data) => {
         if (data && data.content && data.content.length > 0) {
@@ -246,6 +275,12 @@ export class Search implements OnInit, OnDestroy {
     else this.applyFilters();
   }
 
+  onDepartmentChange(): void {
+    this.currentPage = 0;
+    if (this.sourceMode === 'catalog') this.fetchBooks();
+    else this.applyFilters();
+  }
+
   applyFilters() {
     let filtered = [...this.allBooks];
 
@@ -289,6 +324,7 @@ export class Search implements OnInit, OnDestroy {
   clearFilters() {
     this.searchQuery = '';
     this.filterStatus = 'all'; 
+    this.selectedDepartment = '';
     
     // Re-assign object to trigger change detection for ngModel bindings
     const clearedCategories: { [key: string]: boolean } = {};
