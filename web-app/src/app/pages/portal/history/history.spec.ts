@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { History } from './history';
+import { LibraryPolicyService } from '../../../services/library-policy.service';
+import { of } from 'rxjs';
 
 describe('History', () => {
   let component: History;
@@ -9,6 +11,10 @@ describe('History', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [History],
+      providers: [{
+        provide: LibraryPolicyService,
+        useValue: { getPublicPolicy: () => of({ maximumRenewalCount: 1, renewalDays: 10 }) },
+      }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(History);

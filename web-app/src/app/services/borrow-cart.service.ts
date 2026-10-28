@@ -15,6 +15,7 @@ export type AddToBorrowCartResult = 'ADDED' | 'DUPLICATE' | 'FULL';
 export class BorrowCartService {
   private readonly storageKey = 'huit_library_borrow_cart';
   private items: BorrowCartItem[] = this.readItems();
+  private maximumItems = Number.MAX_SAFE_INTEGER;
   private readonly countSubject = new BehaviorSubject<number>(this.items.length);
   readonly count$ = this.countSubject.asObservable();
 
@@ -26,11 +27,17 @@ export class BorrowCartService {
     return this.items.length;
   }
 
+  setMaximumItems(value: number): void {
+    if (Number.isFinite(value) && value > 0) {
+      this.maximumItems = Math.floor(value);
+    }
+  }
+
   add(item: BorrowCartItem): AddToBorrowCartResult {
     if (this.items.some(existing => existing.bookId === item.bookId)) {
       return 'DUPLICATE';
     }
-    if (this.items.length >= 3) {
+    if (this.items.length >= this.maximumItems) {
       return 'FULL';
     }
     this.items = [...this.items, item];
@@ -52,7 +59,7 @@ export class BorrowCartService {
     try {
       const raw = localStorage.getItem(this.storageKey);
       const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.slice(0, 3) : [];
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }

@@ -44,9 +44,17 @@ public class OrientationService {
         return classRepository.findAllByOrderByStartAtAsc().stream().map(this::response).toList();
     }
 
+    @Transactional(readOnly = true)
+    public OrientationDtos.ClassResponse get(Long id) {
+        return response(find(id));
+    }
+
     @Transactional
     public OrientationDtos.ClassResponse create(OrientationDtos.ClassRequest request, UUID actorId) {
         validateTimes(request.startAt(), request.endAt());
+        if (!request.startAt().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lớp hướng dẫn phải bắt đầu trong tương lai");
+        }
         UUID facilitatorId = request.facilitatorId() == null ? actorId : request.facilitatorId();
         validateFacilitator(facilitatorId, request.startAt(), request.endAt());
         OrientationClassEntity entity = new OrientationClassEntity();
@@ -63,6 +71,9 @@ public class OrientationService {
     public OrientationDtos.ClassResponse update(Long id, OrientationDtos.ClassRequest request) {
         validateTimes(request.startAt(), request.endAt());
         OrientationClassEntity entity = find(id);
+        if (!"SCHEDULED".equals(entity.getStatus()) || !entity.getStartAt().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Không thể sửa lớp đã bắt đầu hoặc hoàn tất");
+        }
         UUID existingFacilitatorId = entity.getFacilitatorId();
         if (request.facilitatorId() != null
                 && classRepository.existsByFacilitatorIdAndClassIdNotAndStartAtLessThanAndEndAtGreaterThan(
@@ -81,6 +92,21 @@ public class OrientationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Không thể xóa lớp đã bắt đầu; hãy lưu làm lịch sử");
         }
         classRepository.delete(entity);
+    }
+
+    @Transactional
+    public void unassign(Long classId, Long enrollmentId) {
+        OrientationClassEntity orientationClass = find(classId);
+        if (!"SCHEDULED".equals(orientationClass.getStatus())
+                || !orientationClass.getStartAt().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ có thể gỡ sinh viên khỏi lớp chưa bắt đầu");
+        }
+        OrientationEnrollmentEntity enrollment = enrollmentRepository
+                .findByEnrollmentIdAndClassId(enrollmentId, classId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Không tìm thấy sinh viên trong lớp hướng dẫn"));
+        enrollmentRepository.delete(enrollment);
     }
 
     @Transactional(readOnly = true)

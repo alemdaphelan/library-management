@@ -19,7 +19,7 @@ import com.huit.library.modules.penalty.entity.CompensationRateEntity;
 import com.huit.library.modules.penalty.entity.PenaltyCaseEntity;
 import com.huit.library.modules.penalty.repository.CompensationRateRepository;
 import com.huit.library.modules.penalty.repository.PenaltyCaseRepository;
-import org.springframework.beans.factory.annotation.Value;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +43,7 @@ public class PenaltyCaseService {
     private final WalletRepository walletRepository;
     private final LateFineService lateFineService;
     private final NotificationService notificationService;
-    private final BigDecimal technicalFee;
+    private final LibraryPolicyService policyService;
 
     public PenaltyCaseService(
             PenaltyCaseRepository caseRepository,
@@ -55,7 +55,7 @@ public class PenaltyCaseService {
             WalletRepository walletRepository,
             LateFineService lateFineService,
             NotificationService notificationService,
-            @Value("${library.circulation.technical-processing-fee:50000}") BigDecimal technicalFee) {
+            LibraryPolicyService policyService) {
         this.caseRepository = caseRepository;
         this.rateRepository = rateRepository;
         this.detailRepository = detailRepository;
@@ -65,7 +65,7 @@ public class PenaltyCaseService {
         this.walletRepository = walletRepository;
         this.lateFineService = lateFineService;
         this.notificationService = notificationService;
-        this.technicalFee = technicalFee;
+        this.policyService = policyService;
     }
 
     @Transactional
@@ -102,7 +102,7 @@ public class PenaltyCaseService {
             }
             repair = positiveRequired(request.getRepairFee(), "Phải nhập chi phí sửa chữa hư hỏng nhẹ");
         } else {
-            processing = technicalFee;
+            processing = policyService.technicalProcessingFee();
             if (Boolean.TRUE.equals(request.getStillInMarket()) && !"REPLACEMENT".equals(settlement)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tài liệu còn lưu hành phải được thay thế đúng quy định");
             }
@@ -167,7 +167,7 @@ public class PenaltyCaseService {
         penaltyCase.setPaidAmount(BigDecimal.ZERO);
         penaltyCase.setStatus("OUTSTANDING");
         penaltyCase.setReportedAt(reportedAt);
-        penaltyCase.setSettlementDueAt(reportedAt.plusDays(30));
+        penaltyCase.setSettlementDueAt(reportedAt.plusDays(policyService.compensationSettlementDays()));
         penaltyCase.setCreatedBy(operatorId);
         penaltyCase = caseRepository.save(penaltyCase);
 

@@ -113,6 +113,42 @@
       </div>
       <span class="count">{{ shelfBooks.length }} bản sao</span>
     </div>
+
+    <div class="subject-rule-panel">
+      <div class="subject-rule-heading">
+        <div>
+          <h3>Chủ đề được phép xếp tại ngăn</h3>
+          <p *ngIf="isAdmin">Chọn các chủ đề phù hợp. Để trống nếu ngăn này chưa áp dụng giới hạn phân loại.</p>
+          <p *ngIf="!isAdmin">Tài khoản Thủ thư chỉ được xem quy tắc; chỉ Admin có quyền thay đổi.</p>
+        </div>
+        <span class="subject-count">{{ selectedSubjectIds.length }}/{{ availableSubjects.length }} chủ đề</span>
+      </div>
+
+      <div class="loading" *ngIf="isLoadingSubjects">Đang tải quy tắc chủ đề…</div>
+      <div class="subject-grid" *ngIf="!isLoadingSubjects && availableSubjects.length">
+        <label class="subject-option" *ngFor="let subject of availableSubjects" [class.selected]="isSubjectSelected(subject.subjectId)">
+          <input
+            type="checkbox"
+            [checked]="isSubjectSelected(subject.subjectId)"
+            [disabled]="!isAdmin || isSavingSubjects"
+            (change)="toggleSubject(subject.subjectId, $any($event.target).checked)">
+          <span>
+            <strong>{{ subject.name }}</strong>
+            <small>{{ subject.code }}<ng-container *ngIf="subject.description"> · {{ subject.description }}</ng-container></small>
+          </span>
+        </label>
+      </div>
+      <p class="empty" *ngIf="!isLoadingSubjects && availableSubjects.length === 0">Chưa có chủ đề hoạt động để cấu hình.</p>
+
+      <div class="subject-actions" *ngIf="isAdmin">
+        <span *ngIf="selectedSubjectIds.length === 0">Không giới hạn: hệ thống vẫn cho phép xếp mọi loại sách vào ngăn này.</span>
+        <span *ngIf="selectedSubjectIds.length > 0">Khi đã lưu, sách ngoài các chủ đề đã chọn sẽ bị từ chối khi chuyển vị trí.</span>
+        <button type="button" (click)="saveSubjectRules()" [disabled]="isLoadingSubjects || isSavingSubjects">
+          {{ isSavingSubjects ? 'Đang lưu…' : 'Lưu quy tắc chủ đề' }}
+        </button>
+      </div>
+    </div>
+
     <div class="loading" *ngIf="isLoadingShelfBooks">Đang tải danh sách tài liệu…</div>
     <div class="table-wrap" *ngIf="!isLoadingShelfBooks && shelfBooks.length">
       <table>

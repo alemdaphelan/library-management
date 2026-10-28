@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/book_cover.dart';
 import '../services/loan_service.dart';
 import '../services/wishlist_service.dart';
+import '../services/library_policy_service.dart';
 import 'borrowed_screen.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   bool _isSaved = false;
   bool _saving = false;
+  LibraryPolicy? _policy;
 
   int? get _bookId {
     final raw = widget.book?['bookId'] ?? widget.book?['id'];
@@ -26,6 +28,16 @@ class _DetailScreenState extends State<DetailScreen> {
   void initState() {
     super.initState();
     _loadSavedStatus();
+    _loadPolicy();
+  }
+
+  Future<void> _loadPolicy() async {
+    try {
+      final policy = await LibraryPolicyService.getPolicy();
+      if (mounted) setState(() => _policy = policy);
+    } catch (_) {
+      // Backend vẫn kiểm tra quy định khi sinh viên gửi yêu cầu mượn.
+    }
   }
 
   Future<void> _loadSavedStatus() async {
@@ -152,12 +164,16 @@ class _DetailScreenState extends State<DetailScreen> {
                     const Divider(height: 18),
                     _buildInfoRow(
                       'Thời gian giữ:',
-                      '24 giờ kể từ thời điểm đăng ký',
+                      _policy == null
+                          ? 'Theo trạng thái bản sao và quy định thư viện'
+                          : 'Tối đa ${_policy!.waitlistHoldHours} giờ khi được gọi từ hàng đợi',
                     ),
                     const Divider(height: 18),
                     _buildInfoRow(
                       'Thời hạn mượn:',
-                      '10 ngày theo quy định thư viện',
+                      _policy == null
+                          ? 'Đang tải quy định thư viện'
+                          : '${_policy!.homeLoanDays} ngày theo quy định thư viện',
                       highlightColor: Colors.green.shade700,
                     ),
                   ],

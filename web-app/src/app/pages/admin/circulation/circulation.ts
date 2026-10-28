@@ -12,6 +12,7 @@ import {
   LoanTicketDetail,
   LoanTicketSummary,
 } from '../../../services/circulation.service';
+import { LibraryPolicyService } from '../../../services/library-policy.service';
 
 interface CounterBook extends BookCopy {
   displayTitle: string;
@@ -59,14 +60,28 @@ export class Circulation implements OnInit, OnDestroy {
   decisionLoadingTicketId: number | null = null;
   rejectionReason = '';
   decisionInProgress = false;
+  maximumOpenItems: number | null = null;
+  homeLoanDays: number | null = null;
 
   constructor(
     private circulationService: CirculationService,
+    private policyService: LibraryPolicyService,
     private cdr: ChangeDetectorRef,
     @Optional() private route?: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
+    this.policyService.getPublicPolicy().subscribe({
+      next: policy => {
+        this.maximumOpenItems = policy.maximumOpenItems;
+        this.homeLoanDays = policy.homeLoanDays;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Không thể tải quy định mượn hiện hành.';
+        this.cdr.detectChanges();
+      },
+    });
     this.counterClock = window.setInterval(() => {
       this.isCounterOpen = this.computeCounterOpen();
       this.cdr.detectChanges();
@@ -237,8 +252,12 @@ export class Circulation implements OnInit, OnDestroy {
       this.errorMessage = `Barcode ${barcode} đã được quét trong giao dịch này.`;
       return;
     }
-    if (this.scannedBooks.length >= 3) {
-      this.errorMessage = 'Mỗi giao dịch chỉ xử lý tối đa 3 tài liệu.';
+    if (this.maximumOpenItems === null) {
+      this.errorMessage = 'Chưa tải được giới hạn tài liệu. Vui lòng thử lại.';
+      return;
+    }
+    if (this.scannedBooks.length >= this.maximumOpenItems) {
+      this.errorMessage = `Mỗi giao dịch chỉ xử lý tối đa ${this.maximumOpenItems} tài liệu.`;
       return;
     }
     if (this.activeTab === 'borrow' && this.borrowMode === 'approved' && !this.selectedTicket) {

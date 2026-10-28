@@ -7,8 +7,12 @@ import com.huit.library.modules.catalog.entity.FloorEntity;
 import com.huit.library.modules.catalog.entity.ShelfEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.ShelfRepository;
+import com.huit.library.modules.catalog.repository.ShelfSubjectRuleRepository;
+import com.huit.library.modules.recommendation.repository.BookSubjectAssignmentRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
@@ -23,10 +27,18 @@ public class BookCopyService {
 
     private final BookCopyRepository bookCopyRepository;
     private final ShelfRepository shelfRepository;
+    private final ShelfSubjectRuleRepository shelfSubjectRuleRepository;
+    private final BookSubjectAssignmentRepository bookSubjectAssignmentRepository;
 
-    public BookCopyService(BookCopyRepository bookCopyRepository, ShelfRepository shelfRepository) {
+    public BookCopyService(
+            BookCopyRepository bookCopyRepository,
+            ShelfRepository shelfRepository,
+            ShelfSubjectRuleRepository shelfSubjectRuleRepository,
+            BookSubjectAssignmentRepository bookSubjectAssignmentRepository) {
         this.bookCopyRepository = bookCopyRepository;
         this.shelfRepository = shelfRepository;
+        this.shelfSubjectRuleRepository = shelfSubjectRuleRepository;
+        this.bookSubjectAssignmentRepository = bookSubjectAssignmentRepository;
     }
 
     @Transactional(readOnly = true)
@@ -47,6 +59,7 @@ public class BookCopyService {
                 .orElseThrow(() -> new RuntimeException("Book copy not found"));
         ShelfEntity shelf = shelfRepository.findById(shelfId)
                 .orElseThrow(() -> new RuntimeException("Shelf not found"));
+        validateSubjectPlacement(copy, shelf);
         copy.setShelf(shelf);
         return toResponse(bookCopyRepository.save(copy));
     }
@@ -65,6 +78,24 @@ public class BookCopyService {
     private BookCopyEntity findCopy(String barcode) {
         return bookCopyRepository.findById(barcode)
                 .orElseThrow(() -> new RuntimeException("Book copy not found"));
+    }
+
+    private void validateSubjectPlacement(BookCopyEntity copy, ShelfEntity shelf) {
+        List<Long> allowedSubjectIds = shelfSubjectRuleRepository
+                .findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(shelf.getShelfId())
+                .stream()
+                .map(rule -> rule.getSubject().getSubjectId())
+                .toList();
+        if (allowedSubjectIds.isEmpty()) {
+            return;
+        }
+        if (!bookSubjectAssignmentRepository.existsByBook_BookIdAndSubject_SubjectIdIn(
+                copy.getBookId(), allowedSubjectIds)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Đầu sách không thuộc chủ đề được phép xếp tại ngăn này"
+            );
+        }
     }
 
     private BookCopyResponseDTO toResponse(BookCopyEntity copy) {

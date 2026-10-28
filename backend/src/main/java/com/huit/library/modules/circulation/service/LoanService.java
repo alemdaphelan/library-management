@@ -23,6 +23,7 @@ import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
 import com.huit.library.modules.notification.service.StaffNotificationService;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,7 @@ public class LoanService {
     private final CirculationStateService circulationStateService;
     private final WaitlistService waitlistService;
     private final StaffNotificationService staffNotificationService;
+    private final LibraryPolicyService policyService;
 
     public LoanService(
             LoanTicketRepository loanTicketRepository,
@@ -59,7 +61,8 @@ public class LoanService {
             UserRepository userRepository,
             CirculationStateService circulationStateService,
             WaitlistService waitlistService,
-            StaffNotificationService staffNotificationService) {
+            StaffNotificationService staffNotificationService,
+            LibraryPolicyService policyService) {
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.waitlistRepository = waitlistRepository;
@@ -69,6 +72,7 @@ public class LoanService {
         this.circulationStateService = circulationStateService;
         this.waitlistService = waitlistService;
         this.staffNotificationService = staffNotificationService;
+        this.policyService = policyService;
     }
 
     @Transactional
@@ -151,7 +155,7 @@ public class LoanService {
         if (ticketType == LoanTicketType.ONSITE) {
             dueDateTime = pickupDateTime; // Đọc tại chỗ phải trả trước giờ đóng cửa trong ngày
         } else {
-            dueDateTime = pickupDateTime.plusDays(10); // Quy định mượn về nhà 10 ngày
+            dueDateTime = pickupDateTime.plusDays(policyService.homeLoanDays());
         }
 
         // Create LoanTicket
@@ -206,8 +210,11 @@ public class LoanService {
     @Transactional
     public BatchBorrowResponseDTO reserveBooks(BatchBorrowRequestDTO request, UUID userId) {
         List<Long> bookIds = request.getBookIds() == null ? List.of() : request.getBookIds();
-        if (bookIds.isEmpty() || bookIds.size() > 3) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mỗi phiếu phải có từ 1 đến 3 tài liệu");
+        int maximumOpenItems = policyService.maximumOpenItems();
+        if (bookIds.isEmpty() || bookIds.size() > maximumOpenItems) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Mỗi phiếu phải có từ 1 đến " + maximumOpenItems + " tài liệu");
         }
         if (new LinkedHashSet<>(bookIds).size() != bookIds.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách đăng ký có đầu sách bị trùng");
@@ -260,7 +267,7 @@ public class LoanService {
         LoanTicketType ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
         LocalDateTime dueDate = ticketType == LoanTicketType.ONSITE
                 ? pickupDeadline
-                : pickupDeadline.plusDays(10);
+                : pickupDeadline.plusDays(policyService.homeLoanDays());
 
         LoanTicketEntity ticket = new LoanTicketEntity();
         ticket.setUserId(userId);
@@ -429,8 +436,10 @@ public class LoanService {
         }
 
         int currentRenewals = detail.getRenewalCount() != null ? detail.getRenewalCount() : 0;
-        if (currentRenewals >= 1) {
-            throw new RuntimeException("Tài liệu chỉ được gia hạn tối đa 1 lần. Vui lòng hoàn trả đúng hạn!");
+        int maximumRenewalCount = policyService.maximumRenewalCount();
+        if (currentRenewals >= maximumRenewalCount) {
+            throw new RuntimeException("Tài liệu chỉ được gia hạn tối đa "
+                    + maximumRenewalCount + " lần. Vui lòng hoàn trả đúng hạn!");
         }
 
         // Kiểm tra xem cuốn sách này có bạn đọc nào đang chờ trong hàng đợi Waitlist không
@@ -445,10 +454,10 @@ public class LoanService {
             }
         }
 
-        // Tăng số lần gia hạn và gia hạn thêm 10 ngày
+        // Mỗi lần gia hạn dùng số ngày do quản trị viên cấu hình.
         detail.setRenewalCount(currentRenewals + 1);
         LocalDateTime baseDate = detail.getDueDate() != null ? detail.getDueDate() : LocalDateTime.now();
-        detail.setDueDate(baseDate.plusDays(10));
+        detail.setDueDate(baseDate.plusDays(policyService.renewalDays()));
         loanDetailRepository.save(detail);
 
         return toLoanItem(ticket, detail);

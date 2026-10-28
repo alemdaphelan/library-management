@@ -101,7 +101,7 @@ public class LoanController {
     }
 
     @PostMapping("/renew/{ticketId}")
-    @Operation(summary = "Renew Loan", description = "Reader renews a currently borrowed book, extending due date by 10 days.")
+    @Operation(summary = "Renew Loan", description = "Reader renews a currently borrowed book according to the active library policy.")
     public ResponseEntity<?> renewLoan(
             @PathVariable Long ticketId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -110,7 +110,7 @@ public class LoanController {
     }
 
     @PostMapping("/renew/{ticketId}/items/{detailId}")
-    @Operation(summary = "Renew one loan item", description = "Renews exactly one borrowed item by 10 days from its current due date.")
+    @Operation(summary = "Renew one loan item", description = "Renews exactly one borrowed item according to the active library policy.")
     public ResponseEntity<?> renewLoanItem(
             @PathVariable Long ticketId,
             @PathVariable Long detailId,

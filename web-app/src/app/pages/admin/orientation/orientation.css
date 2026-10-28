@@ -1,1 +1,38 @@
-.orientation-page { color:#0f172a; } header,.week-tools,.drawer-head,.actions,.excel { display:flex; justify-content:space-between; align-items:center; gap:12px; } header h1 { margin:0; } header p,.drawer p { color:#64748b; } button,.upload { border:0; border-radius:8px; padding:10px 14px; background:#0284c7; color:#fff; font-weight:700; cursor:pointer; } .week-tools { margin:20px 0; padding:12px; background:#fff; border:1px solid #e2e8f0; border-radius:10px; }.calendar { display:grid; grid-template-columns:repeat(7,minmax(145px,1fr)); gap:8px; overflow-x:auto; }.calendar section { min-height:270px; padding:10px; background:#fff; border:1px solid #e2e8f0; border-radius:10px; }.calendar h3 { margin:0 0 10px; font-size:.9rem; text-transform:capitalize; }.calendar h3 small { display:block; color:#64748b; }.calendar article { display:grid; gap:5px; margin-bottom:8px; padding:10px; border-left:4px solid #0284c7; border-radius:7px; background:#f0f9ff; cursor:pointer; }.calendar article small { color:#475569; }.calendar section>p { color:#94a3b8; font-size:.82rem; }.message { padding:10px; border-radius:8px; }.error { background:#fee2e2;color:#991b1b }.success { background:#dcfce7;color:#166534 }.modal { position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#0f172ab8;padding:20px }.modal form { width:min(620px,100%);display:grid;gap:12px;padding:22px;border-radius:14px;background:#fff }.modal label { display:grid;gap:6px;font-weight:700 }.modal input,.modal select,.drawer input { padding:10px;border:1px solid #cbd5e1;border-radius:7px }.two { display:grid;grid-template-columns:1fr 1fr;gap:12px }.drawer { position:fixed;z-index:1001;top:0;right:0;width:min(650px,95vw);height:100vh;overflow:auto;padding:22px;box-sizing:border-box;background:#fff;box-shadow:-20px 0 50px #0f172a33 }.drawer-head button { background:#e2e8f0;color:#0f172a;font-size:1.2rem }.assign,.excel,.attendance { margin:18px 0;padding:14px;border:1px solid #e2e8f0;border-radius:10px }.student-list { display:grid;max-height:180px;overflow:auto;gap:6px;margin-bottom:10px }.student-list label { font-weight:400 }.attendance article { display:grid;grid-template-columns:1.2fr 1fr auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #e2e8f0 }.attendance small { display:block;color:#64748b }.attendance button { padding:7px }.danger { background:#dc2626!important }.delete { width:100% }.upload { display:inline-block } @media(max-width:1000px){.calendar{grid-template-columns:repeat(7,180px)}} @media(max-width:650px){.two,.attendance article{grid-template-columns:1fr}.drawer{width:100vw}}
+.orientation-page { color: #0f172a; }
+header, .week-tools, .drawer-head, .actions, .excel { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+header h1 { margin: 0; }
+header p, .drawer p { color: #64748b; }
+button, .upload { border: 0; border-radius: 8px; padding: 10px 14px; background: #0284c7; color: #fff; font-weight: 700; cursor: pointer; }
+.week-tools { margin: 20px 0; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; }
+.calendar { display: grid; grid-template-columns: repeat(7, minmax(145px, 1fr)); gap: 8px; overflow-x: auto; }
+.calendar section { min-height: 270px; padding: 10px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; }
+.calendar h3 { margin: 0 0 10px; font-size: .9rem; text-transform: capitalize; }
+.calendar h3 small { display: block; color: #64748b; }
+.calendar article { display: grid; gap: 5px; margin-bottom: 8px; padding: 10px; border-left: 4px solid #0284c7; border-radius: 7px; background: #f0f9ff; cursor: pointer; }
+.calendar article small { color: #475569; }
+.calendar section > p { color: #94a3b8; font-size: .82rem; }
+.message { padding: 10px; border-radius: 8px; }
+.error { background: #fee2e2; color: #991b1b; }
+.success { background: #dcfce7; color: #166534; }
+.modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #0f172ab8; padding: 20px; }
+.modal form { width: min(620px, 100%); display: grid; gap: 12px; padding: 22px; border-radius: 14px; background: #fff; }
+.modal label { display: grid; gap: 6px; font-weight: 700; }
+.modal input, .modal select, .drawer input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 7px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.drawer { position: fixed; z-index: 1001; top: 0; right: 0; width: min(650px, 95vw); height: 100vh; overflow: auto; padding: 22px; box-sizing: border-box; background: #fff; box-shadow: -20px 0 50px #0f172a33; }
+.drawer-head button { background: #e2e8f0; color: #0f172a; font-size: 1.2rem; }
+.assign, .excel, .attendance { margin: 18px 0; padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; }
+.student-list { display: grid; max-height: 180px; overflow: auto; gap: 6px; margin-bottom: 10px; }
+.student-list label { font-weight: 400; }
+.attendance article { display: grid; grid-template-columns: 1.2fr 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+.attendance small { display: block; color: #64748b; }
+.attendance button { padding: 7px; }
+.attendance-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.danger { background: #dc2626 !important; }
+.muted { background: #64748b !important; }
+.delete { width: 100%; }
+.upload { display: inline-block; }
+.locked-note { padding: 10px; border-radius: 8px; background: #fff7ed; color: #9a3412; font-weight: 600; }
+.assign button:disabled { cursor: not-allowed; opacity: .5; }
+@media (max-width: 1000px) { .calendar { grid-template-columns: repeat(7, 180px); } }
+@media (max-width: 650px) { .two, .attendance article { grid-template-columns: 1fr; } .drawer { width: 100vw; } }

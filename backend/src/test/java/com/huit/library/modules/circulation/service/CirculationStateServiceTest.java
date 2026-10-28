@@ -18,6 +18,7 @@ import com.huit.library.modules.finance.repository.WalletRepository;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.penalty.service.LateFineService;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -53,6 +54,9 @@ class CirculationStateServiceTest {
         userRepository = mock(UserRepository.class);
         walletRepository = mock(WalletRepository.class);
         operationRepository = mock(CirculationOperationRepository.class);
+        LibraryPolicyService policyService = mock(LibraryPolicyService.class);
+        when(policyService.maximumOpenItems()).thenReturn(3);
+        when(policyService.homeLoanDays()).thenReturn(10);
         service = new CirculationStateService(
                 ticketRepository,
                 detailRepository,
@@ -65,7 +69,8 @@ class CirculationStateServiceTest {
                 mock(LateFineService.class),
                 waitlistService,
                 mock(NotificationService.class),
-                mock(LibraryHoursService.class));
+                mock(LibraryHoursService.class),
+                policyService);
     }
 
     @Test

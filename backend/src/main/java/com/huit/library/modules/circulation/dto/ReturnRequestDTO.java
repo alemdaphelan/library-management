@@ -15,7 +15,6 @@ public class ReturnRequestDTO {
     private String idempotencyKey;
 
     @NotEmpty(message = "Barcodes list cannot be empty")
-    @Size(max = 3, message = "A return request cannot contain more than 3 books")
     private List<@Valid @NotBlank(message = "Barcode must not be blank") String> barcodes;
 
     @Size(max = 500, message = "Return condition note must not exceed 500 characters")

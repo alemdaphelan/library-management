@@ -19,6 +19,5 @@ public class CheckoutRequestDTO {
     private Long ticketId;
 
     @NotEmpty(message = "Barcodes list cannot be empty")
-    @Size(max = 3, message = "A checkout request cannot contain more than 3 books")
     private List<@Valid @NotBlank(message = "Barcode must not be blank") String> barcodes;
 }

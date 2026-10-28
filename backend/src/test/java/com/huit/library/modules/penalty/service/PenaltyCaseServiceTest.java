@@ -15,6 +15,7 @@ import com.huit.library.modules.penalty.dto.ReplacementAcceptanceRequestDTO;
 import com.huit.library.modules.penalty.entity.PenaltyCaseEntity;
 import com.huit.library.modules.penalty.repository.CompensationRateRepository;
 import com.huit.library.modules.penalty.repository.PenaltyCaseRepository;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -51,9 +52,12 @@ class PenaltyCaseServiceTest {
             if (value.getCaseId() == null) value.setCaseId(ids.getAndIncrement());
             return value;
         });
+        LibraryPolicyService policyService = mock(LibraryPolicyService.class);
+        when(policyService.technicalProcessingFee()).thenReturn(new BigDecimal("50000"));
+        when(policyService.compensationSettlementDays()).thenReturn(30);
         service = new PenaltyCaseService(cases, mock(CompensationRateRepository.class), details,
                 tickets, copies, transactions, wallets, mock(LateFineService.class),
-                mock(NotificationService.class), new BigDecimal("50000"));
+                mock(NotificationService.class), policyService);
     }
 
     @Test

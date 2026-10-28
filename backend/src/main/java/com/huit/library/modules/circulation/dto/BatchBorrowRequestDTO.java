@@ -13,7 +13,6 @@ import java.util.List;
 @Data
 public class BatchBorrowRequestDTO {
     @NotEmpty(message = "Danh sách đầu sách không được để trống")
-    @Size(max = 3, message = "Mỗi phiếu chỉ được đăng ký tối đa 3 tài liệu")
     private List<@Valid @NotNull(message = "Mã đầu sách không được để trống") Long> bookIds;
 
     @Pattern(regexp = "BORROW|ONSITE", message = "Ticket type must be BORROW or ONSITE")

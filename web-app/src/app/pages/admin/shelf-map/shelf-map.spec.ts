@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { ShelfMap } from './shelf-map';
 import { LocationNode, LocationService } from '../../../services/location.service';
+import { AuthService } from '../../../services/auth.service';
 
 describe('ShelfMap', () => {
   let component: ShelfMap;
@@ -15,6 +16,17 @@ describe('ShelfMap', () => {
     getFloors: vi.fn(() => of([floor])),
     getBookshelves: vi.fn(() => of([bookshelf])),
     getShelves: vi.fn(() => of([shelf])),
+    getShelfBooks: vi.fn(() => of([])),
+    getAvailableSubjects: vi.fn(() => of([
+      { subjectId: 5, code: 'IT', name: 'Công nghệ thông tin' },
+      { subjectId: 8, code: 'FOOD', name: 'Công nghệ thực phẩm' },
+    ])),
+    getShelfSubjects: vi.fn(() => of([
+      { subjectId: 5, code: 'IT', name: 'Công nghệ thông tin' },
+    ])),
+    updateShelfSubjects: vi.fn(() => of([
+      { subjectId: 5, code: 'IT', name: 'Công nghệ thông tin' },
+    ])),
     createFloor: vi.fn(() => of(floor)),
     createBookshelf: vi.fn(() => of(bookshelf)),
     createShelf: vi.fn(() => of(shelf)),
@@ -26,11 +38,16 @@ describe('ShelfMap', () => {
     deleteShelf: vi.fn(() => of(void 0)),
   };
 
+  const authService = { getRole: vi.fn(() => 'ADMIN') };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [ShelfMap],
-      providers: [{ provide: LocationService, useValue: locationService }],
+      providers: [
+        { provide: LocationService, useValue: locationService },
+        { provide: AuthService, useValue: authService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ShelfMap);
@@ -64,5 +81,17 @@ describe('ShelfMap', () => {
     component.createFloor();
 
     expect(locationService.createFloor).not.toHaveBeenCalled();
+  });
+
+  it('loads and saves the selected shelf subject rules', () => {
+    component.selectShelf(shelf);
+
+    expect(locationService.getShelfSubjects).toHaveBeenCalledWith(3);
+    expect(component.selectedSubjectIds).toEqual([5]);
+
+    component.toggleSubject(8, true);
+    component.saveSubjectRules();
+
+    expect(locationService.updateShelfSubjects).toHaveBeenCalledWith(3, [5, 8]);
   });
 });

@@ -37,14 +37,14 @@ class CirculationDtoValidationTest {
     }
 
     @Test
-    void checkoutRequiresTicketAndAtMostThreeNonBlankBarcodes() {
+    void checkoutRequiresTicketButLeavesItemLimitToActivePolicy() {
         CheckoutRequestDTO request = new CheckoutRequestDTO();
         request.setIdempotencyKey("checkout-test-1");
         request.setBarcodes(List.of("BC-1", "BC-2", "BC-3", "BC-4"));
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
-                .containsExactlyInAnyOrder("ticketId", "barcodes");
+                .containsExactly("ticketId");
     }
 
     @Test
@@ -69,13 +69,11 @@ class CirculationDtoValidationTest {
     }
 
     @Test
-    void batchReservationAllowsAtMostThreeBooks() {
+    void batchReservationLeavesItemLimitToActivePolicy() {
         BatchBorrowRequestDTO request = new BatchBorrowRequestDTO();
         request.setBookIds(List.of(1L, 2L, 3L, 4L));
 
-        assertThat(validator.validate(request))
-                .extracting(violation -> violation.getPropertyPath().toString())
-                .containsExactly("bookIds");
+        assertThat(validator.validate(request)).isEmpty();
     }
 
     @Test

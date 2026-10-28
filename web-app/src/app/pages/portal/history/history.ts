@@ -6,6 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 import { CirculationService } from '../../../services/circulation.service';
 import { DebtEntry, PenaltyCase, PenaltyService } from '../../../services/penalty.service';
 import { DialogService } from '../../../services/dialog.service';
+import { LibraryPolicyService } from '../../../services/library-policy.service';
 
 export interface LoanItem {
   ticketId: number;
@@ -73,6 +74,9 @@ export class History implements OnInit {
   renewingTicketId: number | null = null;
   debtEntries: DebtEntry[] = [];
   penaltyCases: PenaltyCase[] = [];
+  maximumRenewalCount = 0;
+  renewalDays = 0;
+  policyLoaded = false;
 
   constructor(
     private authService: AuthService,
@@ -81,9 +85,11 @@ export class History implements OnInit {
     private router: Router,
     private cdr: ChangeDetectorRef,
     private dialog: DialogService,
+    private policyService: LibraryPolicyService,
   ) {}
 
   ngOnInit(): void {
+    this.loadPolicy();
     this.isLoggedIn = this.authService.isLoggedIn();
     if (this.isLoggedIn) {
       this.loadLoans();
@@ -91,6 +97,22 @@ export class History implements OnInit {
     } else {
       this.isLoading = false;
     }
+  }
+
+  private loadPolicy(): void {
+    this.policyService.getPublicPolicy().subscribe({
+      next: policy => {
+        this.maximumRenewalCount = policy.maximumRenewalCount;
+        this.renewalDays = policy.renewalDays;
+        this.policyLoaded = true;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.policyLoaded = false;
+        this.errorMessage = this.errorMessage || 'Không thể tải quy định gia hạn. Vui lòng tải lại trang.';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   get outstandingDebt(): number {
@@ -320,10 +342,14 @@ export class History implements OnInit {
   }
 
   async renewBook(item: LoanItem): Promise<void> {
-    if (item.renewalCount !== undefined && item.renewalCount >= 1) {
+    if (!this.policyLoaded) {
+      this.dialog.show({ title: 'Chưa tải được quy định', message: 'Vui lòng tải lại trang trước khi gia hạn.', type: 'warning', confirmText: 'Đã hiểu' });
+      return;
+    }
+    if (item.renewalCount !== undefined && item.renewalCount >= this.maximumRenewalCount) {
       this.dialog.show({
         title: 'Không thể gia hạn',
-        message: 'Tài liệu này đã đạt số lần gia hạn tối đa (1/1 lần). Vui lòng hoàn trả đúng hạn tại quầy!',
+        message: `Tài liệu này đã đạt số lần gia hạn tối đa (${item.renewalCount}/${this.maximumRenewalCount} lần). Vui lòng hoàn trả đúng hạn tại quầy!`,
         type: 'warning',
         confirmText: 'Đã hiểu',
       });
@@ -332,7 +358,7 @@ export class History implements OnInit {
 
     const accepted = await this.dialog.confirm({
       title: 'Xác nhận gia hạn',
-      message: `Gia hạn thêm 10 ngày cho cuốn sách “${item.bookTitle}” (Phiếu #${item.ticketId})?`,
+      message: `Gia hạn thêm ${this.renewalDays} ngày cho cuốn sách “${item.bookTitle}” (Phiếu #${item.ticketId})?`,
       type: 'info',
       confirmText: 'Gia hạn',
     });
@@ -344,8 +370,8 @@ export class History implements OnInit {
     this.circulationService.renewLoan(item.ticketId, item.detailId).subscribe({
       next: (res: any) => {
         this.renewingTicketId = null;
-        const newDueStr = res.dueDate ? new Date(res.dueDate).toLocaleDateString('vi-VN') : 'thêm 10 ngày';
-        this.showToast(`Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/1)`);
+        const newDueStr = res.dueDate ? new Date(res.dueDate).toLocaleDateString('vi-VN') : `thêm ${this.renewalDays} ngày`;
+        this.showToast(`Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/${this.maximumRenewalCount})`);
         this.loadLoans();
       },
       error: (err: any) => {

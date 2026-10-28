@@ -1,7 +1,9 @@
 package com.huit.library.modules.catalog.controller;
 
 import com.huit.library.modules.catalog.dto.LocationRequestDTO;
+import com.huit.library.modules.catalog.dto.ShelfSubjectRuleRequestDTO;
 import com.huit.library.modules.catalog.service.LocationService;
+import com.huit.library.modules.catalog.service.ShelfSubjectRuleService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,9 +14,11 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
 public class LocationController {
     private final LocationService locationService;
+    private final ShelfSubjectRuleService shelfSubjectRuleService;
 
-    public LocationController(LocationService locationService) {
+    public LocationController(LocationService locationService, ShelfSubjectRuleService shelfSubjectRuleService) {
         this.locationService = locationService;
+        this.shelfSubjectRuleService = shelfSubjectRuleService;
     }
 
     @GetMapping("/floors")
@@ -65,6 +69,24 @@ public class LocationController {
     @GetMapping("/shelves/{id}/books")
     public ResponseEntity<?> getShelfBooks(@PathVariable Long id) {
         return ResponseEntity.ok(locationService.getShelfBooks(id));
+    }
+
+    @GetMapping("/subjects")
+    public ResponseEntity<?> getAvailableSubjects() {
+        return ResponseEntity.ok(shelfSubjectRuleService.getAvailableSubjects());
+    }
+
+    @GetMapping("/shelves/{id}/subjects")
+    public ResponseEntity<?> getShelfSubjects(@PathVariable Long id) {
+        return ResponseEntity.ok(shelfSubjectRuleService.getShelfSubjects(id));
+    }
+
+    @PutMapping("/shelves/{id}/subjects")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> replaceShelfSubjects(
+            @PathVariable Long id,
+            @Valid @RequestBody ShelfSubjectRuleRequestDTO request) {
+        return ResponseEntity.ok(shelfSubjectRuleService.replaceShelfSubjects(id, request));
     }
 
     @PostMapping("/shelves")

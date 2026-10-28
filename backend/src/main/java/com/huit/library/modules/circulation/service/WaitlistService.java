@@ -11,6 +11,7 @@ import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class WaitlistService {
     private final LoanDetailRepository detailRepository;
     private final NotificationService notificationService;
     private final ReservationNoShowService noShowService;
+    private final LibraryPolicyService policyService;
     private final LocalTime defaultOpenTime;
     private final LocalTime defaultCloseTime;
 
@@ -46,6 +48,7 @@ public class WaitlistService {
             LoanDetailRepository detailRepository,
             NotificationService notificationService,
             ReservationNoShowService noShowService,
+            LibraryPolicyService policyService,
             @Value("${library.circulation.default-open-time:07:30}") String defaultOpenTime,
             @Value("${library.circulation.default-close-time:17:00}") String defaultCloseTime) {
         this.waitlistRepository = waitlistRepository;
@@ -56,6 +59,7 @@ public class WaitlistService {
         this.detailRepository = detailRepository;
         this.notificationService = notificationService;
         this.noShowService = noShowService;
+        this.policyService = policyService;
         this.defaultOpenTime = LocalTime.parse(defaultOpenTime);
         this.defaultCloseTime = LocalTime.parse(defaultCloseTime);
     }
@@ -116,7 +120,7 @@ public class WaitlistService {
                 waitlistRepository.save(entry);
                 continue;
             }
-            LocalDateTime expiresAt = adjustToOpening(now.plusHours(48));
+            LocalDateTime expiresAt = adjustToOpening(now.plusHours(policyService.waitlistHoldHours()));
             entry.setStatus("NOTIFIED");
             entry.setNotifiedAt(now);
             entry.setExpiresAt(expiresAt);
@@ -158,7 +162,8 @@ public class WaitlistService {
             copyRepository.save(copy);
             notificationService.createOnce(
                     entry.getUserId(), "WAITLIST_EXPIRED",
-                    "Lượt giữ sách trong hàng đợi đã hết hạn sau 48 giờ.",
+                    "Lượt giữ sách trong hàng đợi đã hết hạn sau "
+                            + policyService.waitlistHoldHours() + " giờ.",
                     "WAITLIST", entry.getWaitlistId().toString(),
                     "WAITLIST_EXPIRED:" + entry.getWaitlistId(), now);
             promoteNext(copy, now);

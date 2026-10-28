@@ -15,6 +15,10 @@ describe('Detail review policy', () => {
   const borrowCartService = {
     count: 0,
     add: vi.fn(() => 'ADDED'),
+    setMaximumItems: vi.fn(),
+  };
+  const policyService = {
+    getPublicPolicy: vi.fn(() => of({ homeLoanDays: 10, waitlistHoldHours: 48 })),
   };
 
   const createComponent = (saveReview: ReturnType<typeof vi.fn>) => new Detail(
@@ -30,6 +34,7 @@ describe('Detail review policy', () => {
     { isLoggedIn: () => true } as any,
     circulationService as any,
     borrowCartService as any,
+    policyService as any,
     { detectChanges: vi.fn() } as any,
   );
 

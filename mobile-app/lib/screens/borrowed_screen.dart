@@ -5,6 +5,7 @@ import 'package:mobile_app/services/loan_service.dart';
 import 'package:mobile_app/widgets/book_cover.dart';
 import 'package:mobile_app/screens/login_screen.dart';
 import 'package:mobile_app/services/librarian_qr_service.dart';
+import 'package:mobile_app/services/library_policy_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class BorrowedScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
   Map<String, dynamic>? _userProfile;
   List<dynamic> _borrowedBooks = [];
   bool _isLoading = true;
+  LibraryPolicy? _policy;
 
   @override
   void initState() {
@@ -29,10 +31,17 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
     try {
       final profile = await AuthService.getCurrentUser();
       final loans = await LoanService.getLoans();
+      LibraryPolicy? policy;
+      try {
+        policy = await LibraryPolicyService.getPolicy();
+      } catch (_) {
+        // Vẫn hiển thị danh sách; thao tác gia hạn bị khóa đến khi tải được quy định.
+      }
       if (mounted) {
         setState(() {
           _userProfile = profile;
           _borrowedBooks = loans;
+          _policy = policy;
           _isLoading = false;
         });
       }
@@ -343,11 +352,12 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
     required int renewalCount,
   }) {
     final canRenew =
+        _policy != null &&
         status == 'BORROWING' &&
         daysLeft >= 0 &&
         ticketId != null &&
         detailId != null &&
-        renewalCount < 1;
+        renewalCount < _policy!.maximumRenewalCount;
     final canCancel =
         (status == 'PENDING' || status == 'RESERVED') && ticketId != null;
     Color statusColor = status == 'OVERDUE' || daysLeft < 0
@@ -362,7 +372,10 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
       'OVERDUE' => 'Quá hạn ${daysLeft.abs()} ngày',
       _ => 'Còn $daysLeft ngày',
     };
-    double progress = ((10 - daysLeft) / 10).clamp(0.0, 1.0);
+    final loanDays = _policy?.homeLoanDays;
+    double progress = loanDays == null || loanDays <= 0
+        ? 0
+        : ((loanDays - daysLeft) / loanDays).clamp(0.0, 1.0);
 
     return Container(
       decoration: BoxDecoration(
@@ -534,7 +547,7 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                   ),
                   child: Text(
                     canRenew
-                        ? 'Gia hạn thêm 10 ngày (1 lần)'
+                        ? 'Gia hạn thêm ${_policy!.renewalDays} ngày (${renewalCount + 1}/${_policy!.maximumRenewalCount})'
                         : 'Hủy phiếu đặt giữ',
                   ),
                 ),

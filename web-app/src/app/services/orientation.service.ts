@@ -16,12 +16,14 @@ export class OrientationService {
   private api = `${environment.apiUrl}/orientation-classes`;
   constructor(private http: HttpClient) {}
   list(): Observable<OrientationClass[]> { return this.http.get<OrientationClass[]>(this.api); }
+  get(id: number): Observable<OrientationClass> { return this.http.get<OrientationClass>(`${this.api}/${id}`); }
   create(request: any): Observable<OrientationClass> { return this.http.post<OrientationClass>(this.api, request); }
   update(id: number, request: any): Observable<OrientationClass> { return this.http.put<OrientationClass>(`${this.api}/${id}`, request); }
   delete(id: number): Observable<void> { return this.http.delete<void>(`${this.api}/${id}`); }
   availableStudents(id: number): Observable<OrientationPerson[]> { return this.http.get<OrientationPerson[]>(`${this.api}/${id}/available-students`); }
   facilitators(startAt: string, endAt: string): Observable<OrientationPerson[]> { return this.http.get<OrientationPerson[]>(`${this.api}/available-facilitators`, { params: { startAt, endAt } }); }
   assign(id: number, userIds: string[], randomCount = 0): Observable<OrientationClass> { return this.http.post<OrientationClass>(`${this.api}/${id}/assign`, { userIds, randomCount }); }
+  unassign(id: number, enrollmentId: number): Observable<void> { return this.http.delete<void>(`${this.api}/${id}/enrollments/${enrollmentId}`); }
   attendance(id: number, items: any[]): Observable<OrientationClass> { return this.http.post<OrientationClass>(`${this.api}/${id}/attendance`, { items }); }
   template(id: number): Observable<HttpResponse<Blob>> { return this.http.get(`${this.api}/${id}/attendance-template`, { observe: 'response', responseType: 'blob' }); }
   importAttendance(id: number, file: File): Observable<OrientationClass> { const form = new FormData(); form.append('file', file); return this.http.post<OrientationClass>(`${this.api}/${id}/attendance-import`, form); }

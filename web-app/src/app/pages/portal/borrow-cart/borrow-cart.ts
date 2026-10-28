@@ -9,6 +9,7 @@ import {
   BorrowEligibility,
   CirculationService,
 } from '../../../services/circulation.service';
+import { LibraryPolicy, LibraryPolicyService } from '../../../services/library-policy.service';
 
 @Component({
   selector: 'app-borrow-cart',
@@ -29,16 +30,26 @@ export class BorrowCart implements OnInit {
   result: BatchBorrowResponse | null = null;
   eligibility: BorrowEligibility | null = null;
   isCheckingEligibility = false;
+  policy: LibraryPolicy | null = null;
 
   constructor(
     private borrowCartService: BorrowCartService,
     private circulationService: CirculationService,
+    private policyService: LibraryPolicyService,
     private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
     this.refreshItems();
     this.loadEligibility();
+    this.policyService.getPublicPolicy().subscribe({
+      next: policy => {
+        this.policy = policy;
+        this.borrowCartService.setMaximumItems(policy.maximumOpenItems);
+        this.cdr.detectChanges();
+      },
+      error: () => { /* Backend vẫn xác thực hạn mức khi gửi phiếu. */ },
+    });
     const today = new Date();
     this.minPickupDate = this.formatLocalDate(today);
     this.pickupDate = this.formatLocalDate(today);
@@ -97,6 +108,7 @@ export class BorrowCart implements OnInit {
     this.circulationService.getMyBorrowEligibility().subscribe({
       next: eligibility => {
         this.eligibility = eligibility;
+        this.borrowCartService.setMaximumItems(eligibility.maximumItems);
         this.isCheckingEligibility = false;
         if (this.items.length > eligibility.remainingSlots) {
           this.errorMessage = eligibility.message;

@@ -18,6 +18,7 @@ import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.penalty.service.LateFineService;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
@@ -57,6 +58,9 @@ class CirculationTransactionServiceTest {
         lateFineService = mock(LateFineService.class);
         lenient().when(lateFineService.accrueLateFine(any(), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
+        LibraryPolicyService policyService = mock(LibraryPolicyService.class);
+        lenient().when(policyService.maximumOpenItems()).thenReturn(3);
+        lenient().when(policyService.homeLoanDays()).thenReturn(10);
         service = new CirculationStateService(
                 ticketRepository,
                 detailRepository,
@@ -69,7 +73,8 @@ class CirculationTransactionServiceTest {
                 lateFineService,
                 mock(WaitlistService.class),
                 mock(NotificationService.class),
-                mock(LibraryHoursService.class));
+                mock(LibraryHoursService.class),
+                policyService);
     }
 
     @Test

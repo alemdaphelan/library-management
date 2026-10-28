@@ -12,8 +12,8 @@ describe('Orientation', () => {
     classCode: 'HD-TEST',
     title: 'Hướng dẫn sử dụng thư viện',
     location: 'Phòng A1',
-    startAt: '2026-10-27T08:00:00',
-    endAt: '2026-10-27T10:00:00',
+    startAt: '2099-10-27T08:00:00',
+    endAt: '2099-10-27T10:00:00',
     capacity: 30,
     status: 'SCHEDULED',
     enrolledCount: 0,
@@ -21,17 +21,19 @@ describe('Orientation', () => {
   };
   const service = {
     list: vi.fn(() => of([orientationClass])),
+    get: vi.fn(() => of(orientationClass)),
     create: vi.fn(() => of(orientationClass)),
     update: vi.fn(() => of(orientationClass)),
     delete: vi.fn(() => of(void 0)),
     availableStudents: vi.fn(() => of([])),
     facilitators: vi.fn(() => of([])),
     assign: vi.fn(() => of(orientationClass)),
+    unassign: vi.fn(() => of(void 0)),
     attendance: vi.fn(() => of(orientationClass)),
     template: vi.fn(),
     importAttendance: vi.fn()
   };
-  const auth = { getRole: vi.fn(() => 'ADMIN') };
+  const auth = { getRole: vi.fn(() => 'ADMIN'), getUserProfile: vi.fn(() => ({ userId: 'admin-id', fullName: 'Admin' })) };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -60,5 +62,13 @@ describe('Orientation', () => {
 
     expect(service.update).toHaveBeenCalledWith(1, expect.objectContaining({ location: 'Phòng A2' }));
     expect(component.success).toContain('cập nhật');
+  });
+
+  it('does not let a librarian open the class creation form', () => {
+    auth.getRole.mockReturnValueOnce('LIBRARIAN');
+
+    component.openCreate();
+
+    expect(component.showForm).toBe(false);
   });
 });

@@ -21,6 +21,13 @@ export interface ShelfBook {
   status: string;
 }
 
+export interface ShelfSubject {
+  subjectId: number;
+  code: string;
+  name: string;
+  description?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LocationService {
   private readonly apiUrl = `${environment.apiUrl}/locations`;
@@ -67,6 +74,18 @@ export class LocationService {
 
   getShelfBooks(shelfId: number): Observable<ShelfBook[]> {
     return this.http.get<ShelfBook[]>(`${this.apiUrl}/shelves/${shelfId}/books`);
+  }
+
+  getAvailableSubjects(): Observable<ShelfSubject[]> {
+    return this.http.get<ShelfSubject[]>(`${this.apiUrl}/subjects`);
+  }
+
+  getShelfSubjects(shelfId: number): Observable<ShelfSubject[]> {
+    return this.http.get<ShelfSubject[]>(`${this.apiUrl}/shelves/${shelfId}/subjects`);
+  }
+
+  updateShelfSubjects(shelfId: number, subjectIds: number[]): Observable<ShelfSubject[]> {
+    return this.http.put<ShelfSubject[]>(`${this.apiUrl}/shelves/${shelfId}/subjects`, { subjectIds });
   }
 
   createShelf(name: string, bookshelfId: number): Observable<LocationNode> {

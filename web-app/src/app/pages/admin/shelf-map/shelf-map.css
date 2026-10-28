@@ -220,6 +220,115 @@
   border-radius: 12px;
 }
 
+.subject-rule-panel {
+  margin-bottom: 22px;
+  padding: 18px;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  background: #f8fcff;
+}
+
+.subject-rule-heading,
+.subject-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.subject-rule-heading h3 {
+  margin: 0 0 4px;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.subject-rule-heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.subject-count {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.subject-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.subject-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #dbeafe;
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.subject-option.selected {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+}
+
+.subject-option input {
+  margin-top: 3px;
+  accent-color: #0284c7;
+}
+
+.subject-option span {
+  display: grid;
+  min-width: 0;
+}
+
+.subject-option strong {
+  color: #1e293b;
+  font-size: 0.88rem;
+}
+
+.subject-option small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subject-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #dbeafe;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.subject-actions button {
+  flex: none;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #0284c7;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subject-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .table-wrap { overflow-x: auto; }
 .shelf-books table { width: 100%; border-collapse: collapse; }
 .shelf-books th, .shelf-books td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
@@ -257,6 +366,10 @@
   .location-column {
     min-height: auto;
   }
+
+  .subject-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -266,5 +379,15 @@
 
   .path-summary {
     white-space: normal;
+  }
+
+  .subject-rule-heading,
+  .subject-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .subject-grid {
+    grid-template-columns: 1fr;
   }
 }

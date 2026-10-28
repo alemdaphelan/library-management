@@ -211,7 +211,7 @@ export class CirculationService {
   }
 
   /**
-   * Bạn đọc gia hạn thời gian mượn sách (thêm 10 ngày)
+   * Bạn đọc gia hạn thời gian mượn sách theo quy định hiện hành.
    */
   renewLoan(ticketId: number, detailId?: number): Observable<any> {
     const url = detailId

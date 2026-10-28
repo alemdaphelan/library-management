@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changesets/01-init-schema.yaml
+  - include:
+      file: db/changelog/changesets/29-library-policy.yaml
+  - include:
+      file: db/changelog/changesets/30-library-policy-renewal-limit.yaml
+  - include:
+      file: db/changelog/changesets/31-library-policy-history.yaml

@@ -32,6 +32,7 @@ import { ShelfMap } from './pages/admin/shelf-map/shelf-map';
 import { InventoryAudit } from './pages/admin/inventory-audit/inventory-audit';
 import { Penalties } from './pages/admin/penalties/penalties';
 import { Orientation } from './pages/admin/orientation/orientation';
+import { LibraryPolicy } from './pages/admin/library-policy/library-policy';
 
 // Auth Pages
 import { Auth } from './pages/auth/auth';
@@ -78,7 +79,8 @@ export const routes: Routes = [
       { path: 'suggestions', component: AdminSuggestions, title: 'Duyệt Đề xuất sách' },
       { path: 'notifications', component: Notifications, title: 'Thông báo của tôi' },
       { path: 'shelf-map', component: ShelfMap, title: 'Sơ đồ Kệ Sách' },
-      { path: 'orientation', component: Orientation, title: 'Lớp hướng dẫn thư viện' }
+      { path: 'orientation', component: Orientation, title: 'Lớp hướng dẫn thư viện', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
+      { path: 'library-policy', component: LibraryPolicy, title: 'Quy định thư viện', data: { roles: ['ADMIN'] } }
     ]
   },
   { path: '**', redirectTo: '' }

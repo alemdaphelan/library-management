@@ -7,8 +7,7 @@ import com.huit.library.modules.finance.entity.TransactionEntity;
 import com.huit.library.modules.finance.entity.WalletEntity;
 import com.huit.library.modules.finance.repository.TransactionRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,30 +20,17 @@ public class LateFineService {
     private final LoanDetailRepository loanDetailRepository;
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
-    private final BigDecimal homeDailyRate;
-    private final BigDecimal onsiteDailyRate;
+    private final LibraryPolicyService policyService;
 
-    @Autowired
     public LateFineService(
             LoanDetailRepository loanDetailRepository,
             WalletRepository walletRepository,
             TransactionRepository transactionRepository,
-            @Value("${library.circulation.late-fine-per-day:1000}") BigDecimal homeDailyRate,
-            @Value("${library.circulation.onsite-late-fine-per-day:5000}") BigDecimal onsiteDailyRate) {
+            LibraryPolicyService policyService) {
         this.loanDetailRepository = loanDetailRepository;
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
-        this.homeDailyRate = homeDailyRate;
-        this.onsiteDailyRate = onsiteDailyRate;
-    }
-
-    public LateFineService(
-            LoanDetailRepository loanDetailRepository,
-            WalletRepository walletRepository,
-            TransactionRepository transactionRepository,
-            BigDecimal homeDailyRate) {
-        this(loanDetailRepository, walletRepository, transactionRepository,
-                homeDailyRate, homeDailyRate.multiply(BigDecimal.valueOf(5)));
+        this.policyService = policyService;
     }
 
     public BigDecimal accrueLateFine(
@@ -65,7 +51,7 @@ public class LateFineService {
             return BigDecimal.ZERO;
         }
         BigDecimal rate = "ONSITE".equalsIgnoreCase(ticket.getTicketType())
-                ? onsiteDailyRate : homeDailyRate;
+                ? policyService.onsiteLateFinePerDay() : policyService.homeLateFinePerDay();
         BigDecimal expectedFine = rate
                 .multiply(BigDecimal.valueOf(chargeableDays))
                 .setScale(2, RoundingMode.UNNECESSARY);

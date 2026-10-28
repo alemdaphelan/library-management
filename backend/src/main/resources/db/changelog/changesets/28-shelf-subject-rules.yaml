@@ -1,0 +1,77 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-shelf-subject-rules
+      author: codex
+      changes:
+        - createTable:
+            tableName: shelf_subject_rules
+            columns:
+              - column:
+                  name: rule_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: shelf_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_shelf_subject_rule_shelf
+                    references: shelves(shelf_id)
+                    deleteCascade: true
+              - column:
+                  name: subject_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_shelf_subject_rule_subject
+                    references: recommendation_subjects(subject_id)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addUniqueConstraint:
+            tableName: shelf_subject_rules
+            columnNames: shelf_id, subject_id
+            constraintName: uk_shelf_subject_rule
+        - createIndex:
+            tableName: shelf_subject_rules
+            indexName: idx_shelf_subject_rule_shelf
+            columns:
+              - column:
+                  name: shelf_id
+        - createIndex:
+            tableName: shelf_subject_rules
+            indexName: idx_shelf_subject_rule_subject
+            columns:
+              - column:
+                  name: subject_id
+
+  - changeSet:
+      id: seed-shelf-subject-rules-from-current-catalog
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              INSERT INTO shelf_subject_rules (shelf_id, subject_id, active, created_at, updated_at)
+              SELECT DISTINCT copy.shelf_id, assignment.subject_id, TRUE, NOW(), NOW()
+              FROM book_copies copy
+              JOIN book_subject_assignments assignment
+                ON assignment.book_id = copy.book_id
+               AND assignment.primary_subject = TRUE
+              WHERE copy.shelf_id IS NOT NULL
+              ON CONFLICT (shelf_id, subject_id) DO NOTHING;

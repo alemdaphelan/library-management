@@ -14,6 +14,8 @@ public interface BookSubjectAssignmentRepository extends JpaRepository<BookSubje
 
     List<BookSubjectAssignmentEntity> findByBook_BookIdIn(Collection<Long> bookIds);
 
+    boolean existsByBook_BookIdAndSubject_SubjectIdIn(Long bookId, Collection<Long> subjectIds);
+
     @Query("""
             select distinct book
             from BookSubjectAssignmentEntity assignment

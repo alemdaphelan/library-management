@@ -15,6 +15,7 @@ import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
 import com.huit.library.modules.notification.service.StaffNotificationService;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
@@ -43,6 +44,7 @@ class LoanServiceTest {
     private WaitlistRepository waitlistRepository;
     private CirculationStateService circulationStateService;
     private WaitlistService waitlistService;
+    private LibraryPolicyService policyService;
     private LoanService service;
 
     @BeforeEach
@@ -55,6 +57,11 @@ class LoanServiceTest {
         waitlistRepository = mock(WaitlistRepository.class);
         circulationStateService = mock(CirculationStateService.class);
         waitlistService = mock(WaitlistService.class);
+        policyService = mock(LibraryPolicyService.class);
+        when(policyService.maximumOpenItems()).thenReturn(3);
+        when(policyService.homeLoanDays()).thenReturn(10);
+        when(policyService.renewalDays()).thenReturn(10);
+        when(policyService.maximumRenewalCount()).thenReturn(1);
         service = new LoanService(
                 ticketRepository,
                 detailRepository,
@@ -64,7 +71,8 @@ class LoanServiceTest {
                 userRepository,
                 circulationStateService,
                 waitlistService,
-                mock(StaffNotificationService.class));
+                mock(StaffNotificationService.class),
+                policyService);
     }
 
     @Test
@@ -221,6 +229,34 @@ class LoanServiceTest {
 
         assertThat(detail.getRenewalCount()).isEqualTo(1);
         assertThat(detail.getDueDate()).isEqualTo(originalDueDate.plusDays(10));
+    }
+
+    @Test
+    void renewUsesConfiguredMaximumRenewalCount() {
+        UUID userId = UUID.randomUUID();
+        LoanTicketEntity ticket = new LoanTicketEntity();
+        ticket.setTicketId(221L);
+        ticket.setUserId(userId);
+        ticket.setTicketType("BORROW");
+        ticket.setStatus("BORROWING");
+        LocalDateTime originalDueDate = LocalDateTime.now().plusDays(2);
+        LoanDetailEntity detail = new LoanDetailEntity();
+        detail.setTicketId(221L);
+        detail.setBarcode("BC-221");
+        detail.setReturnStatus("BORROWING");
+        detail.setDueDate(originalDueDate);
+        detail.setRenewalCount(1);
+
+        when(policyService.maximumRenewalCount()).thenReturn(2);
+        when(policyService.renewalDays()).thenReturn(7);
+        when(ticketRepository.findByIdForUpdate(221L)).thenReturn(Optional.of(ticket));
+        when(detailRepository.findByTicketId(221L)).thenReturn(List.of(detail));
+        when(copyRepository.findById("BC-221")).thenReturn(Optional.empty());
+
+        service.renewLoan(221L, userId);
+
+        assertThat(detail.getRenewalCount()).isEqualTo(2);
+        assertThat(detail.getDueDate()).isEqualTo(originalDueDate.plusDays(7));
     }
 
     @Test

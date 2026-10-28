@@ -19,7 +19,9 @@ public class OrientationController {
     public OrientationController(OrientationService service) { this.service = service; }
 
     @GetMapping public Object list() { return service.list(); }
-    @PostMapping public Object create(@Valid @RequestBody OrientationDtos.ClassRequest request,
+    @GetMapping("/{id}") public Object get(@PathVariable Long id) { return service.get(id); }
+    @PostMapping @PreAuthorize("hasRole('ADMIN')")
+    public Object create(@Valid @RequestBody OrientationDtos.ClassRequest request,
                                       @AuthenticationPrincipal CustomUserDetails principal) {
         return service.create(request, principal.getUser().getUserId());
     }
@@ -33,6 +35,11 @@ public class OrientationController {
     public Object facilitators(@RequestParam LocalDateTime startAt, @RequestParam LocalDateTime endAt) { return service.availableFacilitators(startAt, endAt); }
     @PostMapping("/{id}/assign") @PreAuthorize("hasRole('ADMIN')")
     public Object assign(@PathVariable Long id, @Valid @RequestBody OrientationDtos.AssignmentRequest request) { return service.assign(id, request); }
+    @DeleteMapping("/{id}/enrollments/{enrollmentId}") @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> unassign(@PathVariable Long id, @PathVariable Long enrollmentId) {
+        service.unassign(id, enrollmentId);
+        return ResponseEntity.noContent().build();
+    }
     @PostMapping("/{id}/attendance")
     public Object attendance(@PathVariable Long id, @Valid @RequestBody OrientationDtos.AttendanceRequest request,
                              @AuthenticationPrincipal CustomUserDetails principal) { return service.markAttendance(id, request, principal.getUser().getUserId()); }

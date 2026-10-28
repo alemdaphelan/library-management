@@ -11,7 +11,8 @@ describe('BorrowCartService', () => {
     service = TestBed.inject(BorrowCartService);
   });
 
-  it('stores no more than three distinct titles', () => {
+  it('uses the maximum number of titles supplied by the active policy', () => {
+    service.setMaximumItems(3);
     expect(service.add({ bookId: 1, title: 'Sách A' })).toBe('ADDED');
     expect(service.add({ bookId: 2, title: 'Sách B' })).toBe('ADDED');
     expect(service.add({ bookId: 3, title: 'Sách C' })).toBe('ADDED');

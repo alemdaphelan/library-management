@@ -1,0 +1,121 @@
+<section class="policy-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">QUẢN TRỊ NGHIỆP VỤ</p>
+      <h1>Quy định mượn – trả và xử phạt</h1>
+      <p class="subtitle">Điều chỉnh quy định tại một nơi, không cần sửa trực tiếp trong mã nguồn.</p>
+    </div>
+    <button class="secondary" type="button" (click)="refresh()" [disabled]="loading || saving || loadingHistory">Làm mới</button>
+  </header>
+
+  <div class="notice info">
+    Quy định mới áp dụng cho giao dịch phát sinh sau khi lưu. Phiếu mượn, hạn trả và công nợ đã tạo không bị thay đổi ngược.
+  </div>
+  <div class="notice error" *ngIf="error">{{ error }}</div>
+  <div class="notice success" *ngIf="success">{{ success }}</div>
+
+  <div class="loading" *ngIf="loading">Đang tải quy định...</div>
+
+  <form *ngIf="policy && !loading" (ngSubmit)="save()">
+    <div class="policy-grid">
+      <article class="policy-card">
+        <div class="card-heading">
+          <span class="card-icon">📚</span>
+          <div><h2>Mượn, trả và gia hạn</h2><p>Giới hạn áp dụng cho sinh viên và các phiếu mượn mới.</p></div>
+        </div>
+        <label>Tối đa tài liệu đang hoạt động
+          <input type="number" name="maximumOpenItems" [(ngModel)]="policy.maximumOpenItems" min="1" max="20" required>
+          <small>Gồm phiếu chờ duyệt, chờ nhận, đang mượn và quá hạn.</small>
+        </label>
+        <label>Số ngày mượn về nhà
+          <input type="number" name="homeLoanDays" [(ngModel)]="policy.homeLoanDays" min="1" max="90" required>
+        </label>
+        <label>Số ngày cộng thêm khi gia hạn
+          <input type="number" name="renewalDays" [(ngModel)]="policy.renewalDays" min="1" max="90" required>
+        </label>
+        <label>Số lần gia hạn tối đa / tài liệu
+          <input type="number" name="maximumRenewalCount" [(ngModel)]="policy.maximumRenewalCount" min="0" max="20" required>
+          <small>Nhập 0 nếu thư viện tạm thời không cho phép gia hạn.</small>
+        </label>
+        <label>Thời hạn giữ sách trong hàng đợi (giờ)
+          <input type="number" name="waitlistHoldHours" [(ngModel)]="policy.waitlistHoldHours" min="1" max="336" required>
+          <small>Nếu hết hạn lúc thư viện đóng cửa, hệ thống dời đến lần mở cửa kế tiếp.</small>
+        </label>
+      </article>
+
+      <article class="policy-card">
+        <div class="card-heading">
+          <span class="card-icon">₫</span>
+          <div><h2>Tiền phạt và đền bù</h2><p>Mức tiền được dùng khi hệ thống phát sinh khoản phạt mới.</p></div>
+        </div>
+        <label>Phạt mượn về nhà quá hạn / ngày (VNĐ)
+          <input type="number" name="homeLateFinePerDay" [(ngModel)]="policy.homeLateFinePerDay" min="0" step="1000" required>
+        </label>
+        <label>Phạt đọc tại chỗ quá hạn / ngày (VNĐ)
+          <input type="number" name="onsiteLateFinePerDay" [(ngModel)]="policy.onsiteLateFinePerDay" min="0" step="1000" required>
+        </label>
+        <label>Phí xử lý kỹ thuật / tài liệu (VNĐ)
+          <input type="number" name="technicalProcessingFee" [(ngModel)]="policy.technicalProcessingFee" min="0" step="1000" required>
+        </label>
+        <label>Thời hạn hoàn tất đền bù (ngày)
+          <input type="number" name="compensationSettlementDays" [(ngModel)]="policy.compensationSettlementDays" min="1" max="365" required>
+        </label>
+      </article>
+    </div>
+
+    <footer class="form-footer">
+      <span *ngIf="policy.updatedAt">Cập nhật gần nhất: {{ policy.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+      <button class="primary" type="submit" [disabled]="saving">{{ saving ? 'Đang lưu...' : 'Lưu quy định' }}</button>
+    </footer>
+  </form>
+
+  <section class="history-section">
+    <div class="history-heading">
+      <div>
+        <p class="eyebrow">NHẬT KÝ CẤU HÌNH</p>
+        <h2>Lịch sử thay đổi quy định</h2>
+        <p>Mỗi lần lưu đều được giữ lại để phục vụ đối soát và kiểm tra.</p>
+      </div>
+      <span class="history-count" *ngIf="!loadingHistory">{{ history.length }} phiên bản</span>
+    </div>
+
+    <div class="notice error" *ngIf="historyError">{{ historyError }}</div>
+    <div class="history-loading" *ngIf="loadingHistory">Đang tải lịch sử thay đổi...</div>
+    <div class="history-empty" *ngIf="!loadingHistory && !historyError && !history.length">
+      Chưa có phiên bản cấu hình nào được ghi nhận.
+    </div>
+
+    <div class="history-list" *ngIf="!loadingHistory && history.length">
+      <article class="history-item" *ngFor="let item of history; let index = index; trackBy: trackHistory">
+        <div class="history-marker"></div>
+        <div class="history-content">
+          <div class="history-meta">
+            <div>
+              <strong>{{ item.changedByName || 'Quản trị viên' }}</strong>
+              <span *ngIf="item.changedByEmail">{{ item.changedByEmail }}</span>
+            </div>
+            <time>{{ item.changedAt | date:'dd/MM/yyyy HH:mm:ss' }}</time>
+          </div>
+
+          <div class="initial-version" *ngIf="!history[index + 1]">
+            <strong>Khởi tạo cấu hình</strong>
+            <span>Phiên bản đầu tiên được ghi nhận từ quy định đang áp dụng.</span>
+          </div>
+
+          <div class="change-list" *ngIf="history[index + 1] && changesFor(index).length">
+            <div class="change-row" *ngFor="let change of changesFor(index)">
+              <span class="change-label">{{ change.label }}</span>
+              <span class="old-value">{{ change.before }}</span>
+              <span class="arrow">→</span>
+              <span class="new-value">{{ change.after }}</span>
+            </div>
+          </div>
+
+          <div class="no-change" *ngIf="history[index + 1] && !changesFor(index).length">
+            Đã lưu lại quy định mà không thay đổi giá trị.
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+</section>

@@ -22,6 +22,7 @@ import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
 import com.huit.library.modules.penalty.service.LateFineService;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +45,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class CirculationStateService {
-    private static final int MAX_OPEN_ITEMS = 3;
     private final LoanTicketRepository loanTicketRepository;
     private final LoanDetailRepository loanDetailRepository;
     private final LoanStatusHistoryRepository historyRepository;
@@ -57,6 +57,7 @@ public class CirculationStateService {
     private final WaitlistService waitlistService;
     private final NotificationService notificationService;
     private final LibraryHoursService libraryHoursService;
+    private final LibraryPolicyService policyService;
 
     public CirculationStateService(
             LoanTicketRepository loanTicketRepository,
@@ -70,7 +71,8 @@ public class CirculationStateService {
             LateFineService lateFineService,
             WaitlistService waitlistService,
             NotificationService notificationService,
-            LibraryHoursService libraryHoursService) {
+            LibraryHoursService libraryHoursService,
+            LibraryPolicyService policyService) {
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.historyRepository = historyRepository;
@@ -83,6 +85,7 @@ public class CirculationStateService {
         this.waitlistService = waitlistService;
         this.notificationService = notificationService;
         this.libraryHoursService = libraryHoursService;
+        this.policyService = policyService;
     }
 
     @Transactional
@@ -141,32 +144,37 @@ public class CirculationStateService {
     }
 
     public void ensureEligibleForReservation(UUID userId, int requestedItems) {
-        if (requestedItems < 1 || requestedItems > MAX_OPEN_ITEMS) {
+        int maximumOpenItems = policyService.maximumOpenItems();
+        if (requestedItems < 1 || requestedItems > maximumOpenItems) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Mỗi phiếu phải có từ 1 đến 3 tài liệu");
+                    "Mỗi phiếu phải có từ 1 đến " + maximumOpenItems + " tài liệu");
         }
         ensureNoDebtOrOverdue(userId);
         long openItems = loanDetailRepository.countOpenItemsByUserId(
                 userId,
                 List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
-        if (openItems + requestedItems > MAX_OPEN_ITEMS) {
+        if (openItems + requestedItems > maximumOpenItems) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Yêu cầu có " + requestedItems + " tài liệu nhưng bạn đọc hiện đã có "
-                            + openItems + "; mỗi bạn đọc được đặt giữ hoặc mượn tối đa 3 tài liệu");
+                            + openItems + "; mỗi bạn đọc được đặt giữ hoặc mượn tối đa "
+                            + maximumOpenItems + " tài liệu");
         }
     }
 
     @Transactional(readOnly = true)
     public BorrowEligibilityDTO getBorrowEligibility(UUID userId) {
+        int maximumOpenItems = policyService.maximumOpenItems();
         long openItems = countOpenItems(userId);
-        long remainingSlots = Math.max(0, MAX_OPEN_ITEMS - openItems);
+        long remainingSlots = Math.max(0, maximumOpenItems - openItems);
         String message = remainingSlots > 0
                 ? "Bạn còn có thể đăng ký " + remainingSlots + " tài liệu."
-                : "Bạn đã đủ 3 tài liệu đang chờ duyệt, chờ nhận hoặc đang mượn. Hãy trả hoặc hủy một tài liệu trước khi đăng ký tiếp.";
+                : "Bạn đã đủ " + maximumOpenItems
+                        + " tài liệu đang chờ duyệt, chờ nhận hoặc đang mượn. "
+                        + "Hãy trả hoặc hủy một tài liệu trước khi đăng ký tiếp.";
         return BorrowEligibilityDTO.builder()
-                .maximumItems(MAX_OPEN_ITEMS)
+                .maximumItems(maximumOpenItems)
                 .openItems(openItems)
                 .remainingSlots(remainingSlots)
                 .eligible(remainingSlots > 0)
@@ -175,12 +183,14 @@ public class CirculationStateService {
     }
 
     private void ensureCurrentOpenItemsWithinLimit(UUID userId) {
+        int maximumOpenItems = policyService.maximumOpenItems();
         long openItems = countOpenItems(userId);
-        if (openItems > MAX_OPEN_ITEMS) {
+        if (openItems > maximumOpenItems) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Bạn đọc hiện có " + openItems
-                            + " tài liệu trong các phiếu đang hoạt động, vượt giới hạn 3 tài liệu; không thể duyệt thêm");
+                            + " tài liệu trong các phiếu đang hoạt động, vượt giới hạn "
+                            + maximumOpenItems + " tài liệu; không thể duyệt thêm");
         }
     }
 
@@ -231,10 +241,11 @@ public class CirculationStateService {
         ensureNoDebtOrOverdue(ticket.getUserId());
         long borrowedItems = loanDetailRepository.countOpenItemsByUserId(
                 ticket.getUserId(), List.of("BORROWING", "OVERDUE"));
-        if (borrowedItems + barcodes.size() > MAX_OPEN_ITEMS) {
+        int maximumOpenItems = policyService.maximumOpenItems();
+        if (borrowedItems + barcodes.size() > maximumOpenItems) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Checkout vượt giới hạn tối đa 3 tài liệu đang mượn");
+                    "Checkout vượt giới hạn tối đa " + maximumOpenItems + " tài liệu đang mượn");
         }
 
         List<com.huit.library.modules.catalog.entity.BookCopyEntity> copies =
@@ -254,7 +265,7 @@ public class CirculationStateService {
         LocalDateTime checkoutAt = LocalDateTime.now();
         LocalDateTime dueAt = LoanTicketType.fromDatabaseValue(ticket.getTicketType()) == LoanTicketType.ONSITE
                 ? checkoutAt.toLocalDate().atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
-                : checkoutAt.plusDays(10);
+                : checkoutAt.plusDays(policyService.homeLoanDays());
         if (dueAt.isBefore(checkoutAt)) {
             dueAt = checkoutAt.plusHours(1);
         }
@@ -335,7 +346,7 @@ public class CirculationStateService {
         LocalDateTime checkoutAt = LocalDateTime.now();
         LocalDateTime dueAt = ticketType == LoanTicketType.ONSITE
                 ? checkoutAt.toLocalDate().atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
-                : checkoutAt.plusDays(10);
+                : checkoutAt.plusDays(policyService.homeLoanDays());
         if (dueAt.isBefore(checkoutAt)) {
             dueAt = checkoutAt.plusHours(1);
         }

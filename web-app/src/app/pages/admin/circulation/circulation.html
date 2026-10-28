@@ -73,7 +73,7 @@
         </div>
         <label for="manual-ticket-type">Hình thức mượn</label>
         <select id="manual-ticket-type" [(ngModel)]="manualTicketType">
-          <option value="BORROW">Mượn về nhà — 10 ngày</option>
+          <option value="BORROW">Mượn về nhà — {{ homeLoanDays === null ? 'theo quy định' : (homeLoanDays + ' ngày') }}</option>
           <option value="ONSITE">Đọc tại chỗ — trả trong ngày</option>
         </select>
         <label for="manual-note">Tình trạng khi giao sách</label>

@@ -64,9 +64,6 @@ library:
     secret: ${QR_SECRET:huit-library-development-qr-secret-change-in-production}
     ttl-minutes: ${QR_TTL_MINUTES:10}
   circulation:
-    late-fine-per-day: ${LATE_FINE_PER_DAY:1000}
-    onsite-late-fine-per-day: ${ONSITE_LATE_FINE_PER_DAY:5000}
-    technical-processing-fee: ${TECHNICAL_PROCESSING_FEE:50000}
     due-soon-days: ${DUE_SOON_DAYS:1}
     academic-year-start-month: ${ACADEMIC_YEAR_START_MONTH:8}
     academic-year-start-day: ${ACADEMIC_YEAR_START_DAY:1}

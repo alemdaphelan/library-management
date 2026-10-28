@@ -7,6 +7,7 @@ import com.huit.library.modules.finance.entity.TransactionEntity;
 import com.huit.library.modules.finance.entity.WalletEntity;
 import com.huit.library.modules.finance.repository.TransactionRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,8 +32,11 @@ class LateFineServiceTest {
         detailRepository = mock(LoanDetailRepository.class);
         walletRepository = mock(WalletRepository.class);
         transactionRepository = mock(TransactionRepository.class);
+        LibraryPolicyService policyService = mock(LibraryPolicyService.class);
+        when(policyService.homeLateFinePerDay()).thenReturn(new BigDecimal("1000"));
+        when(policyService.onsiteLateFinePerDay()).thenReturn(new BigDecimal("5000"));
         service = new LateFineService(
-                detailRepository, walletRepository, transactionRepository, new BigDecimal("1000"));
+                detailRepository, walletRepository, transactionRepository, policyService);
     }
 
     @Test

@@ -352,7 +352,7 @@
                   </svg>
                   Mượn về nhà
                 </div>
-                <span class="type-sub">Thời hạn mượn 10 ngày kể từ khi nhận tại quầy</span>
+                <span class="type-sub">Thời hạn mượn {{ homeLoanDays === null ? 'theo quy định' : (homeLoanDays + ' ngày') }} kể từ khi nhận tại quầy</span>
               </div>
             </label>
 
@@ -375,7 +375,7 @@
         <div class="form-section">
           <label class="form-label" for="pickupDate">Ngày hẹn đến nhận sách</label>
           <input type="date" id="pickupDate" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" class="form-input" readonly>
-          <span class="form-help">Tài liệu có sẵn chỉ được giữ đến giờ đóng cửa hôm nay; tài liệu từ hàng đợi được giữ 48 giờ từ lúc thông báo.</span>
+          <span class="form-help">Tài liệu có sẵn chỉ được giữ đến giờ đóng cửa hôm nay; tài liệu từ hàng đợi được giữ {{ waitlistHoldHours === null ? 'theo quy định' : (waitlistHoldHours + ' giờ') }} từ lúc thông báo.</span>
         </div>
 
         <div class="form-section">
@@ -468,7 +468,7 @@
           </div>
           <div class="ticket-row">
             <span class="t-lbl">Hình thức:</span>
-            <span class="t-val">{{ borrowSuccessData.ticketType === 'BORROW' ? 'Mượn mang về (10 ngày)' : 'Đọc tại chỗ' }}</span>
+            <span class="t-val">{{ borrowSuccessData.ticketType === 'BORROW' ? ('Mượn mang về (' + (homeLoanDays === null ? 'theo quy định' : homeLoanDays + ' ngày') + ')') : 'Đọc tại chỗ' }}</span>
           </div>
           <div class="ticket-row" *ngIf="borrowSuccessData.pickupDate">
             <span class="t-lbl">Hạn đến nhận sách:</span>

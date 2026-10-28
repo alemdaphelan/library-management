@@ -92,7 +92,7 @@ public class SecurityConfig {
                                         "/api/v1/online-payments/vnpay-return",
                                         "/api/v1/online-payments/vnpay-ipn").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/v1/chatbot/query").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/books", "/books/**", "/categories", "/categories/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/books", "/books/**", "/categories", "/categories/**", "/library-policy").permitAll()
                                 .anyRequest().authenticated()
                 );
 

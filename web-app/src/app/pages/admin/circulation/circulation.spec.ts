@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { CirculationService, LoanTicketDetail } from '../../../services/circulation.service';
 import { Circulation } from './circulation';
+import { LibraryPolicyService } from '../../../services/library-policy.service';
 
 describe('Circulation counter', () => {
   let component: Circulation;
@@ -49,6 +50,9 @@ describe('Circulation counter', () => {
     returnBooks: vi.fn(() => of({ ...operation, operationType: 'RETURN' as const, status: 'RETURNED', message: 'Trả thành công 1 tài liệu' })),
     resolveQrPayload: vi.fn(() => of({ type: 'LOAN_TICKET', ticketId: 19, allowedActions: ['CHECKOUT'], items: [] })),
   };
+  const policyService = {
+    getPublicPolicy: vi.fn(() => of({ maximumOpenItems: 3, homeLoanDays: 10 })),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -56,7 +60,10 @@ describe('Circulation counter', () => {
     service.getActiveLoanItemByBarcode.mockReturnValue(of(reservedTicket.items[0]));
     await TestBed.configureTestingModule({
       imports: [Circulation],
-      providers: [{ provide: CirculationService, useValue: service }],
+      providers: [
+        { provide: CirculationService, useValue: service },
+        { provide: LibraryPolicyService, useValue: policyService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Circulation);

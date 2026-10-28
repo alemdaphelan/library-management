@@ -56,4 +56,22 @@ describe('LocationService', () => {
     expect(request.request.body).toEqual({ name: 'Ngăn 01', parentId: 9 });
     request.flush({ id: 11, name: 'Ngăn 01', type: 'SHELF', parentId: 9 });
   });
+
+  it('loads and updates subject rules for a shelf', () => {
+    service.getAvailableSubjects().subscribe();
+    const subjectsRequest = httpTesting.expectOne(`${environment.apiUrl}/locations/subjects`);
+    expect(subjectsRequest.request.method).toBe('GET');
+    subjectsRequest.flush([]);
+
+    service.getShelfSubjects(9).subscribe();
+    const rulesRequest = httpTesting.expectOne(`${environment.apiUrl}/locations/shelves/9/subjects`);
+    expect(rulesRequest.request.method).toBe('GET');
+    rulesRequest.flush([]);
+
+    service.updateShelfSubjects(9, [2, 5]).subscribe();
+    const updateRequest = httpTesting.expectOne(`${environment.apiUrl}/locations/shelves/9/subjects`);
+    expect(updateRequest.request.method).toBe('PUT');
+    expect(updateRequest.request.body).toEqual({ subjectIds: [2, 5] });
+    updateRequest.flush([]);
+  });
 });

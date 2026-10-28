@@ -2,8 +2,9 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { LocationNode, LocationService, ShelfBook } from '../../../services/location.service';
+import { LocationNode, LocationService, ShelfBook, ShelfSubject } from '../../../services/location.service';
 import { DialogService } from '../../../services/dialog.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-shelf-map',
@@ -22,6 +23,10 @@ export class ShelfMap implements OnInit {
   selectedShelf?: LocationNode;
   shelfBooks: ShelfBook[] = [];
   isLoadingShelfBooks = false;
+  availableSubjects: ShelfSubject[] = [];
+  selectedSubjectIds: number[] = [];
+  isLoadingSubjects = false;
+  isSavingSubjects = false;
 
   newFloorName = '';
   newBookshelfName = '';
@@ -35,10 +40,26 @@ export class ShelfMap implements OnInit {
     private locationService: LocationService,
     private dialog: DialogService,
     private cdr: ChangeDetectorRef,
+    private auth: AuthService,
   ) {}
 
+  get isAdmin(): boolean {
+    return this.auth.getRole() === 'ADMIN';
+  }
+
   ngOnInit(): void {
+    this.loadAvailableSubjects();
     this.loadFloors();
+  }
+
+  loadAvailableSubjects(): void {
+    this.locationService.getAvailableSubjects().subscribe({
+      next: subjects => {
+        this.availableSubjects = subjects || [];
+        this.cdr.detectChanges();
+      },
+      error: error => this.handleError('Không thể tải danh mục chủ đề.', error)
+    });
   }
 
   loadFloors(preferredFloorId?: number): void {
@@ -67,6 +88,7 @@ export class ShelfMap implements OnInit {
     this.selectedBookshelf = undefined;
     this.selectedShelf = undefined;
     this.shelfBooks = [];
+    this.selectedSubjectIds = [];
     this.shelves = [];
     this.loadBookshelves(floor.id);
   }
@@ -92,6 +114,9 @@ export class ShelfMap implements OnInit {
   selectBookshelf(bookshelf: LocationNode): void {
     if (this.selectedBookshelf?.id === bookshelf.id) return;
     this.selectedBookshelf = bookshelf;
+    this.selectedShelf = undefined;
+    this.shelfBooks = [];
+    this.selectedSubjectIds = [];
     this.loadShelves(bookshelf.id);
   }
 
@@ -102,6 +127,7 @@ export class ShelfMap implements OnInit {
         this.shelves = shelves;
         this.selectedShelf = undefined;
         this.shelfBooks = [];
+        this.selectedSubjectIds = [];
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -111,7 +137,9 @@ export class ShelfMap implements OnInit {
 
   selectShelf(shelf: LocationNode): void {
     this.selectedShelf = shelf;
+    this.selectedSubjectIds = [];
     this.isLoadingShelfBooks = true;
+    this.isLoadingSubjects = true;
     this.locationService.getShelfBooks(shelf.id).subscribe({
       next: books => {
         this.shelfBooks = books || [];
@@ -122,6 +150,53 @@ export class ShelfMap implements OnInit {
         this.isLoadingShelfBooks = false;
         this.shelfBooks = [];
         this.handleError('Không thể tải danh sách tài liệu trong ngăn kệ.', error);
+        this.cdr.detectChanges();
+      }
+    });
+    this.locationService.getShelfSubjects(shelf.id).subscribe({
+      next: subjects => {
+        this.selectedSubjectIds = (subjects || []).map(subject => subject.subjectId);
+        this.isLoadingSubjects = false;
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.isLoadingSubjects = false;
+        this.selectedSubjectIds = [];
+        this.handleError('Không thể tải quy tắc chủ đề của ngăn kệ.', error);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  isSubjectSelected(subjectId: number): boolean {
+    return this.selectedSubjectIds.includes(subjectId);
+  }
+
+  toggleSubject(subjectId: number, checked: boolean): void {
+    if (!this.isAdmin) return;
+    this.selectedSubjectIds = checked
+      ? Array.from(new Set([...this.selectedSubjectIds, subjectId]))
+      : this.selectedSubjectIds.filter(id => id !== subjectId);
+  }
+
+  saveSubjectRules(): void {
+    if (!this.selectedShelf || !this.isAdmin || this.isSavingSubjects) return;
+    this.isSavingSubjects = true;
+    this.errorMessage = '';
+    this.locationService.updateShelfSubjects(this.selectedShelf.id, this.selectedSubjectIds).subscribe({
+      next: subjects => {
+        this.selectedSubjectIds = (subjects || []).map(subject => subject.subjectId);
+        this.isSavingSubjects = false;
+        this.showSuccess(
+          this.selectedSubjectIds.length
+            ? `Đã lưu ${this.selectedSubjectIds.length} chủ đề cho ${this.selectedShelf!.name}.`
+            : `Đã bỏ giới hạn chủ đề của ${this.selectedShelf!.name}.`
+        );
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.isSavingSubjects = false;
+        this.handleError('Không thể lưu quy tắc chủ đề.', error);
         this.cdr.detectChanges();
       }
     });

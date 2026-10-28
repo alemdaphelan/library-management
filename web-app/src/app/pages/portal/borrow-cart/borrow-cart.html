@@ -3,7 +3,7 @@
     <div>
       <span class="eyebrow">ĐĂNG KÝ MƯỢN TÀI LIỆU</span>
       <h1>Giỏ mượn sách</h1>
-      <p>Chọn tối đa 3 tài liệu và tạo một phiếu mượn duy nhất.</p>
+      <p>Chọn tối đa {{ eligibility?.maximumItems ?? policy?.maximumOpenItems ?? '…' }} tài liệu và tạo một phiếu mượn duy nhất.</p>
     </div>
     <a routerLink="/search" class="outline-link">Tiếp tục tìm sách</a>
   </div>
@@ -32,7 +32,7 @@
     <section class="items-panel">
       <div class="panel-heading">
         <h2>Tài liệu đã chọn</h2>
-        <span>{{ items.length }}/3 cuốn</span>
+        <span>{{ items.length }}/{{ eligibility?.maximumItems ?? policy?.maximumOpenItems ?? '…' }} cuốn</span>
       </div>
       <article class="cart-item" *ngFor="let item of items">
         <img [src]="item.cover || '/assets/images/cover_1.jpg'" [alt]="item.title">
@@ -57,7 +57,7 @@
       <label>Hình thức sử dụng</label>
       <div class="type-options">
         <button type="button" [class.active]="ticketType === 'BORROW'" (click)="ticketType = 'BORROW'">
-          <strong>Mượn về</strong><span>10 ngày từ lúc nhận</span>
+          <strong>Mượn về</strong><span>{{ policy ? (policy.homeLoanDays + ' ngày từ lúc nhận') : 'Theo quy định hiện hành' }}</span>
         </button>
         <button type="button" [class.active]="ticketType === 'ONSITE'" (click)="ticketType = 'ONSITE'">
           <strong>Đọc tại chỗ</strong><span>Trả trước giờ đóng cửa cùng ngày</span>
@@ -66,7 +66,7 @@
 
       <label for="cart-pickup-date">Ngày đến nhận</label>
       <input id="cart-pickup-date" type="date" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" readonly>
-      <small>Phiếu trực tuyến chỉ giữ sách đến giờ đóng cửa hôm nay. Quy tắc 48 giờ chỉ dành cho người được gọi từ hàng đợi.</small>
+      <small>Phiếu trực tuyến chỉ giữ sách đến giờ đóng cửa hôm nay. Quy tắc {{ policy ? (policy.waitlistHoldHours + ' giờ') : 'giữ chỗ' }} chỉ dành cho người được gọi từ hàng đợi.</small>
 
       <label for="cart-note">Ghi chú cho thủ thư</label>
       <textarea id="cart-note" maxlength="500" [(ngModel)]="note" placeholder="Ví dụ: nhận tại quầy tầng 2"></textarea>

@@ -41,7 +41,7 @@ class OrientationServiceTest {
     @Test
     void createsAClassWithThirtyStudentCapacityAndWeeklyCalendarData() {
         UUID actorId = UUID.randomUUID();
-        LocalDateTime start = LocalDateTime.of(2026, 10, 27, 8, 0);
+        LocalDateTime start = LocalDateTime.now().plusDays(7).withHour(8).withMinute(0).withSecond(0).withNano(0);
         when(classRepository.save(any())).thenAnswer(invocation -> {
             OrientationClassEntity entity = invocation.getArgument(0);
             entity.setClassId(11L);
@@ -100,14 +100,40 @@ class OrientationServiceTest {
                 .hasMessageContaining("chưa được cấp thẻ");
     }
 
+    @Test
+    void removesAnAccidentallyAssignedStudentFromAClassThatHasNotStarted() {
+        OrientationClassEntity orientationClass = scheduledClass();
+        OrientationEnrollmentEntity enrollment = new OrientationEnrollmentEntity();
+        enrollment.setEnrollmentId(15L);
+        enrollment.setClassId(1L);
+        when(classRepository.findById(1L)).thenReturn(Optional.of(orientationClass));
+        when(enrollmentRepository.findByEnrollmentIdAndClassId(15L, 1L)).thenReturn(Optional.of(enrollment));
+
+        service.unassign(1L, 15L);
+
+        verify(enrollmentRepository).delete(enrollment);
+    }
+
+    @Test
+    void refusesToRemoveAttendanceHistoryAfterAClassHasStarted() {
+        OrientationClassEntity orientationClass = scheduledClass();
+        orientationClass.setStartAt(LocalDateTime.now().minusMinutes(1));
+        when(classRepository.findById(1L)).thenReturn(Optional.of(orientationClass));
+
+        assertThatThrownBy(() -> service.unassign(1L, 15L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("chưa bắt đầu");
+        verify(enrollmentRepository, never()).delete(any());
+    }
+
     private OrientationClassEntity scheduledClass() {
         OrientationClassEntity entity = new OrientationClassEntity();
         entity.setClassId(1L);
         entity.setClassCode("HD-TEST");
         entity.setTitle("Hướng dẫn sử dụng thư viện");
         entity.setLocation("Phòng A1");
-        entity.setStartAt(LocalDateTime.of(2026, 10, 27, 8, 0));
-        entity.setEndAt(LocalDateTime.of(2026, 10, 27, 10, 0));
+        entity.setStartAt(LocalDateTime.now().plusDays(7).withHour(8).withMinute(0).withSecond(0).withNano(0));
+        entity.setEndAt(entity.getStartAt().plusHours(2));
         entity.setCapacity(30);
         entity.setStatus("SCHEDULED");
         return entity;

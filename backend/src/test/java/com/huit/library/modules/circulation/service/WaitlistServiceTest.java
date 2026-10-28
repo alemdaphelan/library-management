@@ -11,6 +11,7 @@ import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.policy.service.LibraryPolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -44,8 +45,10 @@ class WaitlistServiceTest {
         details = mock(LoanDetailRepository.class);
         notifications = mock(NotificationService.class);
         noShows = mock(ReservationNoShowService.class);
+        LibraryPolicyService policyService = mock(LibraryPolicyService.class);
+        when(policyService.waitlistHoldHours()).thenReturn(48);
         service = new WaitlistService(waitlists, copies, holidays, users, wallets, details,
-                notifications, noShows, "07:30", "17:00");
+                notifications, noShows, policyService, "07:30", "17:00");
     }
 
     @Test

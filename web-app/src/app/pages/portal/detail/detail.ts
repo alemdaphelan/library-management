@@ -9,6 +9,7 @@ import { DigitalAsset, DigitalAssetsService } from '../../../services/digital-as
 import { AuthService } from '../../../services/auth.service';
 import { CirculationService, BorrowResponse } from '../../../services/circulation.service';
 import { BorrowCartService } from '../../../services/borrow-cart.service';
+import { LibraryPolicyService } from '../../../services/library-policy.service';
 
 @Component({
   selector: 'app-detail',
@@ -38,6 +39,8 @@ export class Detail implements OnInit, OnDestroy {
   digitalAssetsLoading = false;
   isPreviewingEbook = false;
   isCheckingBorrowEligibility = false;
+  homeLoanDays: number | null = null;
+  waitlistHoldHours: number | null = null;
 
   // Reservation / Borrow Modal State
   showBorrowModal = false;
@@ -67,11 +70,20 @@ export class Detail implements OnInit, OnDestroy {
     private authService: AuthService,
     private circulationService: CirculationService,
     private borrowCartService: BorrowCartService,
+    private policyService: LibraryPolicyService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     window.scrollTo(0, 0);
+    this.policyService.getPublicPolicy().subscribe({
+      next: policy => {
+        this.homeLoanDays = policy.homeLoanDays;
+        this.waitlistHoldHours = policy.waitlistHoldHours;
+        this.cdr.detectChanges();
+      },
+      error: () => { /* Backend vẫn kiểm tra quy định khi tạo phiếu. */ },
+    });
 
     this.routeSub = this.route.paramMap.subscribe(params => {
       const id = params.get('id');
@@ -216,8 +228,9 @@ export class Detail implements OnInit, OnDestroy {
     this.circulationService.getMyBorrowEligibility().subscribe({
       next: eligibility => {
         this.isCheckingBorrowEligibility = false;
+        this.borrowCartService.setMaximumItems(eligibility.maximumItems);
         if (!eligibility.eligible || this.borrowCartService.count >= eligibility.remainingSlots) {
-          this.showToast(eligibility.message || 'Bạn đã đạt giới hạn 3 tài liệu đang hoạt động.');
+          this.showToast(eligibility.message || `Bạn đã đạt giới hạn ${eligibility.maximumItems} tài liệu đang hoạt động.`);
           return;
         }
         const result = this.borrowCartService.add({
@@ -228,14 +241,14 @@ export class Detail implements OnInit, OnDestroy {
           availableCopies: this.book.availableCopies,
         });
         if (result === 'FULL') {
-          this.showToast('Giỏ mượn đã đủ 3 tài liệu. Vui lòng hoàn tất phiếu hiện tại.');
+          this.showToast(`Giỏ mượn đã đủ ${eligibility.maximumItems} tài liệu. Vui lòng hoàn tất phiếu hiện tại.`);
         } else if (result === 'DUPLICATE') {
           this.showToast('Đầu sách này đã có trong giỏ mượn.');
         } else {
           const slotsAfterAdd = Math.max(0, eligibility.remainingSlots - this.borrowCartService.count);
           this.showToast(slotsAfterAdd > 0
             ? `Đã thêm vào giỏ. Bạn còn có thể chọn ${slotsAfterAdd} tài liệu.`
-            : 'Đã thêm vào giỏ. Bạn đã dùng hết giới hạn 3 tài liệu đang hoạt động.');
+            : `Đã thêm vào giỏ. Bạn đã dùng hết giới hạn ${eligibility.maximumItems} tài liệu đang hoạt động.`);
         }
         this.cdr.detectChanges();
       },
