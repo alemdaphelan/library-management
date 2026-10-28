@@ -49,10 +49,14 @@ public class AuthService {
     private final JavaMailSender mailSender;
     private final StringRedisTemplate redisTemplate;
 
-    public AuthService(AuthenticationManager authenticationManager, JwtUtils jwtUtils, 
-                       UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       com.huit.library.core.security.TokenService tokenService,
-                       JavaMailSender mailSender, StringRedisTemplate redisTemplate) {
+    private final String fromEmail;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AuthService(AuthenticationManager authenticationManager, JwtUtils jwtUtils,
+            UserRepository userRepository, PasswordEncoder passwordEncoder,
+            com.huit.library.core.security.TokenService tokenService,
+            JavaMailSender mailSender, StringRedisTemplate redisTemplate,
+            @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}") String fromEmail) {
         this.authenticationManager = authenticationManager;
         this.jwtUtils = jwtUtils;
         this.userRepository = userRepository;
@@ -60,6 +64,7 @@ public class AuthService {
         this.tokenService = tokenService;
         this.mailSender = mailSender;
         this.redisTemplate = redisTemplate;
+        this.fromEmail = fromEmail;
     }
 
     public JwtResponseDTO authenticateUser(LoginRequestDTO loginRequest) {
@@ -68,7 +73,7 @@ public class AuthService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
-        
+
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         UserEntity user = userDetails.getUser();
         String refreshToken = tokenService.generateAndStoreRefreshToken(user.getEmail());
@@ -107,20 +112,20 @@ public class AuthService {
         if (email == null) {
             throw new BadCredentialsException("Invalid refresh token");
         }
-        
+
         UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
                 .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
-        
-        org.springframework.security.core.userdetails.UserDetails userDetails = 
-                new com.huit.library.core.security.CustomUserDetails(user);
-                
+
+        org.springframework.security.core.userdetails.UserDetails userDetails = new com.huit.library.core.security.CustomUserDetails(
+                user);
+
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userDetails, null, userDetails.getAuthorities());
-                
+
         String newJwt = jwtUtils.generateJwtToken(authentication);
         String newRefreshToken = tokenService.generateAndStoreRefreshToken(email);
         tokenService.deleteRefreshToken(refreshToken);
-        
+
         return JwtResponseDTO.builder()
                 .tokenType("Bearer")
                 .accessToken(newJwt)
@@ -161,20 +166,25 @@ public class AuthService {
             redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier);
             redisTemplate.delete(OTP_LOCK_PREFIX + identifier);
         }
-        
+
         // Send email
         SimpleMailMessage message = new SimpleMailMessage();
+        if (fromEmail != null && !fromEmail.isBlank()) {
+            message.setFrom(fromEmail);
+        }
         message.setTo(user.getEmail() != null && !user.getEmail().isEmpty() ? user.getEmail() : email);
         message.setSubject("Mã xác nhận khôi phục mật khẩu (Library Management)");
         message.setText("Xin chào " + user.getFullName() + ",\n\n" +
                 "Mã xác nhận (OTP) của bạn là: " + otp + "\n" +
                 "Mã này có hiệu lực trong 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n" +
                 "Trân trọng,\nThư viện HUIT.");
-        
+
         try {
             // Sending before returning prevents the request from reporting success when the
-            // mail server has not accepted the OTP yet. It also keeps failures observable in
-            // integration tests and deployment logs instead of losing them in a detached thread.
+            // mail server has not accepted the OTP yet. It also keeps failures observable
+            // in
+            // integration tests and deployment logs instead of losing them in a detached
+            // thread.
             mailSender.send(message);
         } catch (Exception e) {
             LOGGER.error("Không thể gửi email OTP", e);
@@ -239,7 +249,7 @@ public class AuthService {
                     .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
             user.setPasswordHash(passwordEncoder.encode(newPassword));
             userRepository.save(user);
-            
+
             // Delete all password-recovery state after a successful reset.
             for (String identifier : identifiers(normalizeIdentifier(email), normalizeIdentifier(user.getEmail()))) {
                 redisTemplate.delete(OTP_PREFIX + identifier);
@@ -264,8 +274,10 @@ public class AuthService {
 
     private Set<String> identifiers(String input, String primaryEmail) {
         Set<String> identifiers = new LinkedHashSet<>();
-        if (input != null) identifiers.add(input);
-        if (primaryEmail != null) identifiers.add(primaryEmail);
+        if (input != null)
+            identifiers.add(input);
+        if (primaryEmail != null)
+            identifiers.add(primaryEmail);
         return identifiers;
     }
 

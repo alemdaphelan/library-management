@@ -40,7 +40,7 @@ class AuthServiceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         authService = new AuthService(
                 mock(AuthenticationManager.class), mock(JwtUtils.class), userRepository,
-                passwordEncoder, mock(TokenService.class), mailSender, redisTemplate);
+                passwordEncoder, mock(TokenService.class), mailSender, redisTemplate, "no-reply@huit.edu.vn");
     }
 
     @Test
