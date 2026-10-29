@@ -11,6 +11,7 @@ import {
   CirculationService,
   LoanItem,
   LoanTicketDetail,
+  LoanTicketSummary,
 } from '../../../services/circulation.service';
 import { LibraryPolicyService } from '../../../services/library-policy.service';
 

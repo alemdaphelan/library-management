@@ -103,7 +103,7 @@ public class CirculationStateService {
         ensureNoDebtOrOverdue(ticket.getUserId());
         ensureCurrentOpenItemsWithinLimit(ticket.getUserId());
         List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticketId);
-        if (details.isEmpty() || details.size() > MAX_OPEN_ITEMS
+        if (details.isEmpty() || details.size() > policyService.maximumOpenItems()
                 || details.stream().anyMatch(detail -> detail.getBarcode() == null
                     || detail.getReturnDate() != null
                     || LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus()) != LoanDetailStatus.PENDING)) {
