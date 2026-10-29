@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: uat-library-orientation
+      author: codex
+      changes:
+        - createTable:
+            tableName: library_orientation_classes
+            columns:
+              - column: { name: class_id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: class_code, type: varchar(40), constraints: { nullable: false, unique: true } }
+              - column: { name: title, type: varchar(200), constraints: { nullable: false } }
+              - column: { name: location, type: varchar(200), constraints: { nullable: false } }
+              - column: { name: start_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: end_at, type: timestamp, constraints: { nullable: false } }
+              - column: { name: capacity, type: int, defaultValueNumeric: 30, constraints: { nullable: false } }
+              - column: { name: facilitator_id, type: uuid }
+              - column: { name: created_by, type: uuid, constraints: { nullable: false } }
+              - column: { name: status, type: varchar(30), defaultValue: SCHEDULED, constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp }
+              - column: { name: updated_at, type: timestamp }
+        - createTable:
+            tableName: library_orientation_enrollments
+            columns:
+              - column: { name: enrollment_id, type: bigint, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: class_id, type: bigint, constraints: { nullable: false } }
+              - column: { name: user_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: attendance_status, type: varchar(30), defaultValue: ASSIGNED, constraints: { nullable: false } }
+              - column: { name: note, type: varchar(500) }
+              - column: { name: marked_by, type: uuid }
+              - column: { name: marked_at, type: timestamp }
+              - column: { name: created_at, type: timestamp }
+              - column: { name: updated_at, type: timestamp }
+        - addUniqueConstraint:
+            tableName: library_orientation_enrollments
+            columnNames: class_id, user_id
+            constraintName: uq_orientation_class_student
+        - addForeignKeyConstraint:
+            baseTableName: library_orientation_enrollments
+            baseColumnNames: class_id
+            referencedTableName: library_orientation_classes
+            referencedColumnNames: class_id
+            constraintName: fk_orientation_enrollment_class
+            onDelete: CASCADE
+        - createIndex:
+            tableName: library_orientation_classes
+            indexName: idx_orientation_start_at
+            columns:
+              - column: { name: start_at }

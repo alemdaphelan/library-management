@@ -6,7 +6,9 @@ databaseChangeLog:
       changes:
         - sql:
             sql: >
-              DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học');
+              ALTER TABLE books ADD COLUMN IF NOT EXISTS category_id BIGINT;
+
+              DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học', 'Khác');
 
               INSERT INTO categories (name, description, created_at, updated_at)
               SELECT v.name, v.description, NOW(), NOW()

@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProposalService, BookProposal } from '../../../services/proposal.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-admin-suggestions',
@@ -22,9 +23,17 @@ export class AdminSuggestions implements OnInit {
 
   proposals: BookProposal[] = [];
 
-  constructor(private proposalService: ProposalService) {}
+  private requestedProposalId?: number;
+
+  constructor(
+    private proposalService: ProposalService,
+    private cdr: ChangeDetectorRef,
+    @Optional() private route?: ActivatedRoute,
+  ) {}
 
   ngOnInit(): void {
+    const referenceId = this.route?.snapshot.queryParamMap.get('referenceId');
+    this.requestedProposalId = referenceId ? Number(referenceId) : undefined;
     this.loadProposals();
   }
 
@@ -34,11 +43,21 @@ export class AdminSuggestions implements OnInit {
       next: (data) => {
         this.proposals = data || [];
         this.isLoading = false;
+        if (this.requestedProposalId) {
+          const requested = this.proposals.find(item => item.proposalId === this.requestedProposalId);
+          if (requested) {
+            this.activeTab = 'ALL';
+            this.openDrawer(requested);
+          }
+          this.requestedProposalId = undefined;
+        }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Lỗi khi tải danh sách đề xuất:', err);
         this.isLoading = false;
         this.showAlert('error', 'Không thể tải danh sách đề xuất. Vui lòng thử lại!');
+        this.cdr.detectChanges();
       }
     });
   }
@@ -123,13 +142,17 @@ export class AdminSuggestions implements OnInit {
       error: (err) => {
         this.isUpdating = false;
         console.error('Lỗi khi duyệt đề xuất:', err);
-        this.showAlert('error', 'Có lỗi xảy ra khi duyệt đề xuất!');
+        this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi duyệt đề xuất!'));
       }
     });
   }
 
   rejectSuggestion(): void {
     if (!this.selectedSuggestion || !this.selectedSuggestion.proposalId) return;
+    if (!this.adminNoteInput.trim()) {
+      this.showAlert('error', 'Vui lòng nhập lý do từ chối để phản hồi cho sinh viên.');
+      return;
+    }
 
     this.isUpdating = true;
     this.proposalService.updateProposalStatus(
@@ -154,9 +177,19 @@ export class AdminSuggestions implements OnInit {
       error: (err) => {
         this.isUpdating = false;
         console.error('Lỗi khi từ chối đề xuất:', err);
-        this.showAlert('error', 'Có lỗi xảy ra khi từ chối đề xuất!');
+        this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi từ chối đề xuất!'));
       }
     });
+  }
+
+  urgencyLabel(level?: string): string {
+    return ({ LOW: 'Thấp', NORMAL: 'Bình thường', HIGH: 'Cao' } as Record<string, string>)[level || 'NORMAL'] || 'Bình thường';
+  }
+
+  private extractError(error: any, fallback: string): string {
+    const body = error?.error;
+    const message = typeof body === 'string' ? body : body?.detail ?? body?.message ?? body?.error;
+    return typeof message === 'string' && message.trim() ? message : fallback;
   }
 
   private showAlert(type: 'success' | 'error', text: string): void {

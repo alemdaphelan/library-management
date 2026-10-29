@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.UUID;
+
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
@@ -18,4 +20,10 @@ public class DigitalDocumentEntity extends BaseEntity {
     private String fileUrl;
     private String format; // PDF, EPUB
     private Long fileSize; // In bytes
+    private String originalFilename;
+    private String displayName;
+    private String contentType;
+    private String storageKey;
+    private String accessLevel;
+    private UUID uploadedBy;
 }

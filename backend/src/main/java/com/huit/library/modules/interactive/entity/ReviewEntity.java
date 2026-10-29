@@ -18,5 +18,6 @@ public class ReviewEntity extends BaseEntity {
     private Long bookId;
     private UUID userId;
     private Integer rating;
+    @Column(length = 1000)
     private String comment;
 }

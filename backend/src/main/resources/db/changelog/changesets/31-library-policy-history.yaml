@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-library-policy-history
+      author: codex
+      changes:
+        - createTable:
+            tableName: library_policy_history
+            columns:
+              - column:
+                  name: history_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column: { name: policy_id, type: bigint, constraints: { nullable: false } }
+              - column: { name: maximum_open_items, type: integer, constraints: { nullable: false } }
+              - column: { name: home_loan_days, type: integer, constraints: { nullable: false } }
+              - column: { name: renewal_days, type: integer, constraints: { nullable: false } }
+              - column: { name: maximum_renewal_count, type: integer, constraints: { nullable: false } }
+              - column: { name: waitlist_hold_hours, type: integer, constraints: { nullable: false } }
+              - column: { name: home_late_fine_per_day, type: "decimal(14,2)", constraints: { nullable: false } }
+              - column: { name: onsite_late_fine_per_day, type: "decimal(14,2)", constraints: { nullable: false } }
+              - column: { name: technical_processing_fee, type: "decimal(14,2)", constraints: { nullable: false } }
+              - column: { name: compensation_settlement_days, type: integer, constraints: { nullable: false } }
+              - column: { name: changed_by, type: uuid }
+              - column:
+                  name: changed_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints: { nullable: false }
+        - createIndex:
+            tableName: library_policy_history
+            indexName: idx_library_policy_history_changed_at
+            columns:
+              - column: { name: changed_at, descending: true }
+        - sql:
+            sql: >-
+              INSERT INTO library_policy_history
+                (policy_id, maximum_open_items, home_loan_days, renewal_days,
+                 maximum_renewal_count, waitlist_hold_hours, home_late_fine_per_day,
+                 onsite_late_fine_per_day, technical_processing_fee,
+                 compensation_settlement_days, changed_by, changed_at)
+              SELECT policy_id, maximum_open_items, home_loan_days, renewal_days,
+                     maximum_renewal_count, waitlist_hold_hours, home_late_fine_per_day,
+                     onsite_late_fine_per_day, technical_processing_fee,
+                     compensation_settlement_days, updated_by,
+                     COALESCE(updated_at, CURRENT_TIMESTAMP)
+              FROM library_policies

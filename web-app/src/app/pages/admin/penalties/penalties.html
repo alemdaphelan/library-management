@@ -1,0 +1,108 @@
+<div class="penalty-page">
+  <header class="page-title">
+    <div><small>QUẢN LÝ CÔNG NỢ THƯ VIỆN</small><h1>Mất/hỏng, đền bù và đối soát</h1></div>
+    <button type="button" (click)="load()" [disabled]="loading">{{ loading ? 'Đang tải…' : 'Làm mới' }}</button>
+  </header>
+
+  <p class="alert error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <p class="alert success" *ngIf="successMessage">{{ successMessage }}</p>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <h2>Hồ sơ đang quản lý</h2>
+      <label class="status-filter">Thanh toán
+        <select [(ngModel)]="caseStatusFilter">
+          <option value="ALL">Tất cả</option>
+          <option value="UNPAID">Chưa thanh toán</option>
+          <option value="PARTIAL">Còn công nợ (đã thu một phần)</option>
+          <option value="PAID">Đã thanh toán</option>
+        </select>
+      </label>
+    </div>
+    <div class="table-wrap">
+      <table *ngIf="filteredCases.length; else emptyCases">
+        <thead><tr><th>Hồ sơ</th><th>Bạn đọc / Phiếu</th><th>Sự cố</th><th>Các khoản</th><th>Đã xử lý</th><th>Hạn / Trạng thái</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let item of filteredCases" [id]="'penalty-case-' + item.caseId" [class.highlighted-row]="item.caseId === highlightedCaseId">
+            <td><strong>#{{ item.caseId }}</strong><br><small>{{ item.barcode }}</small></td>
+            <td><small>{{ item.userId }}</small><br>Phiếu #{{ item.ticketId }} · Chi tiết #{{ item.loanDetailId }}</td>
+            <td>{{ item.incidentType === 'LOST' ? 'Mất' : 'Hỏng ' + (item.damageSeverity || '') }}<br><small>{{ item.description }}</small></td>
+            <td>Sửa: {{ item.repairFee | number:'1.0-0':'en-US' }} VNĐ<br>Đền: {{ item.compensationAmount | number:'1.0-0':'en-US' }} VNĐ<br>Kỹ thuật: {{ item.technicalFee | number:'1.0-0':'en-US' }} VNĐ</td>
+            <td><strong>{{ item.paidAmount | number:'1.0-0':'en-US' }} / {{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ</strong><br><span class="payment-status">{{ paymentStatusLabel(item) }}</span><br><small>Phạt trễ trước báo mất: {{ item.overdueFineSnapshot | number:'1.0-0':'en-US' }} VNĐ</small></td>
+            <td>{{ item.settlementDueAt | date:'dd/MM/yyyy' }}<br><span class="status" [attr.data-status]="item.status">{{ statusLabel(item.status) }}</span></td>
+            <td><button type="button" *ngIf="item.status === 'OUTSTANDING'" (click)="submitReview(item.caseId)">Xin miễn giảm</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #emptyCases><p class="empty">Chưa có hồ sơ mất/hỏng.</p></ng-template>
+    </div>
+  </section>
+
+  <div class="form-grid">
+    <form class="panel" (ngSubmit)="createCase()">
+      <h2>Lập hồ sơ mất/hỏng</h2>
+      <label>Chi tiết mượn ID<input type="number" name="detailId" [(ngModel)]="caseForm.loanDetailId" min="1" required></label>
+      <div class="row"><label>Sự cố<select name="incident" [(ngModel)]="caseForm.incidentType"><option value="LOST">Mất</option><option value="DAMAGED">Hư hỏng</option></select></label>
+      <label *ngIf="caseForm.incidentType === 'DAMAGED'">Mức độ<select name="severity" [(ngModel)]="caseForm.damageSeverity"><option value="LIGHT">Nhẹ</option><option value="HEAVY">Nặng</option></select></label></div>
+      <label *ngIf="caseForm.incidentType === 'DAMAGED'">Số trang bị ảnh hưởng<input type="number" name="pagesAffected" [(ngModel)]="caseForm.pagesAffected" min="1" placeholder="1–10 là hư nhẹ; trên 10 là hư nặng"></label>
+      <label>Mô tả<textarea name="description" [(ngModel)]="caseForm.description" maxlength="1000" required></textarea></label>
+      <div class="row"><label>Loại tài liệu<select name="material" [(ngModel)]="caseForm.materialType"><option value="BOOK">Sách</option><option value="CD_DVD">CD/DVD</option><option value="MAP">Bản đồ</option></select></label>
+      <label>Ngôn ngữ<select name="language" [(ngModel)]="caseForm.languageCategory"><option value="VIETNAMESE">Việt ngữ</option><option value="FOREIGN">Ngoại văn</option></select></label></div>
+      <label class="check"><input type="checkbox" name="market" [(ngModel)]="caseForm.stillInMarket"> Còn lưu hành trên thị trường</label>
+      <label>Phương thức<select name="settlement" [(ngModel)]="caseForm.settlementMethod"><option value="REPLACEMENT">Mua sách thay thế</option><option value="CASH">Nộp tiền</option><option value="REPAIR">Sửa chữa</option></select></label>
+      <div class="row"><label>Giá bìa<input type="number" name="coverPrice" [(ngModel)]="caseForm.coverPrice" min="0"></label><label>Phí sửa nhẹ<input type="number" name="repairFee" [(ngModel)]="caseForm.repairFee" min="0"></label></div>
+      <div class="row" *ngIf="caseForm.languageCategory === 'FOREIGN' && caseForm.settlementMethod === 'CASH'"><label>Tỷ giá<input type="number" name="fxRate" [(ngModel)]="caseForm.fxRate" min="0"></label><label>Nguồn tỷ giá<input name="fxSource" [(ngModel)]="caseForm.fxSource"></label></div>
+      <button class="primary" type="submit" [disabled]="submitting">Lập hồ sơ</button>
+    </form>
+
+    <form class="panel" (ngSubmit)="pay()">
+      <h2>Thu tiền và xuất biên nhận</h2>
+      <label>User ID<input name="paymentUser" [(ngModel)]="paymentForm.userId" required></label>
+      <label>Số tiền<input type="number" name="paymentAmount" [(ngModel)]="paymentForm.amount" min="1" required></label>
+      <label>Phương thức<select name="paymentMethod" [(ngModel)]="paymentForm.method"><option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option></select></label>
+      <label>Ghi chú<textarea name="paymentNote" [(ngModel)]="paymentForm.note"></textarea></label>
+      <button class="primary" type="submit" [disabled]="submitting">Ghi nhận thanh toán</button>
+      <article class="receipt" *ngIf="receipt"><strong>Biên nhận {{ receipt.receiptNumber }}</strong><p>Tổng thu: {{ receipt.totalAmount | number:'1.0-0':'en-US' }} VNĐ · Còn nợ: {{ receipt.remainingDebt | number:'1.0-0':'en-US' }} VNĐ</p><ul><li *ngFor="let line of receipt.allocations">{{ line.feeType }}: {{ line.amount | number:'1.0-0':'en-US' }} VNĐ — {{ line.reason }}</li></ul></article>
+    </form>
+
+    <form class="panel" (ngSubmit)="acceptReplacement()">
+      <h2>Tiếp nhận sách thay thế</h2>
+      <label>Hồ sơ ID<input type="number" name="replacementCase" [(ngModel)]="replacementForm.caseId" min="1"></label>
+      <label>Barcode mới<input name="replacementBarcode" [(ngModel)]="replacementForm.replacementBarcode"></label>
+      <label>Xác minh nhan đề/tác giả/năm/bìa<textarea name="replacementNote" [(ngModel)]="replacementForm.verificationNote"></textarea></label>
+      <button class="primary" type="submit" [disabled]="submitting">Xác nhận tiếp nhận</button>
+    </form>
+
+    <form class="panel" (ngSubmit)="requestAdjustment()">
+      <h2>Yêu cầu điều chỉnh giao dịch</h2>
+      <label>Giao dịch ID<input type="number" name="adjustmentTransaction" [(ngModel)]="adjustmentForm.transactionId" min="1"></label>
+      <label>Số tiền điều chỉnh<input type="number" name="adjustmentAmount" [(ngModel)]="adjustmentForm.amount" min="1"></label>
+      <label>Lý do<textarea name="adjustmentReason" [(ngModel)]="adjustmentForm.reason"></textarea></label>
+      <button class="primary" type="submit" [disabled]="submitting">Gửi Admin duyệt</button>
+    </form>
+
+    <form class="panel admin-only" *ngIf="isAdmin" (ngSubmit)="reviewWaiver()">
+      <h2>Admin ghi nhận quyết định miễn giảm</h2>
+      <div class="row"><label>Hồ sơ ID<input type="number" name="waiverCase" [(ngModel)]="waiverForm.caseId"></label><label>Quyết định<select name="waiverAction" [(ngModel)]="waiverForm.action"><option value="APPROVE">Duyệt</option><option value="REJECT">Từ chối</option></select></label></div>
+      <label>Số tiền miễn/giảm<input type="number" name="waiverAmount" [(ngModel)]="waiverForm.waiverAmount" min="0"></label>
+      <div class="row"><label>Người quyết định<input name="decisionMaker" [(ngModel)]="waiverForm.externalDecisionMaker"></label><label>Số văn bản<input name="documentNo" [(ngModel)]="waiverForm.decisionDocumentNo"></label></div>
+      <label>Ngày quyết định<input type="date" name="decisionDate" [(ngModel)]="waiverForm.decisionDate"></label>
+      <label>Lý do<textarea name="waiverReason" [(ngModel)]="waiverForm.reason"></textarea></label>
+      <button class="primary" type="submit" [disabled]="submitting">Ghi nhận quyết định</button>
+    </form>
+
+    <form class="panel admin-only" *ngIf="isAdmin" (ngSubmit)="createRate()">
+      <h2>Admin cấu hình biểu phí không có giá bìa</h2>
+      <div class="row"><label>Loại<select name="rateMaterial" [(ngModel)]="rateForm.materialType"><option value="BOOK">Sách</option><option value="CD_DVD">CD/DVD</option><option value="MAP">Bản đồ</option></select></label><label>Ngôn ngữ<select name="rateLanguage" [(ngModel)]="rateForm.languageCategory"><option value="VIETNAMESE">Việt ngữ</option><option value="FOREIGN">Ngoại văn</option></select></label></div>
+      <label>Mức đền bù<input type="number" name="rateAmount" [(ngModel)]="rateForm.amount" min="1"></label>
+      <div class="row"><label>Hiệu lực từ<input type="date" name="validFrom" [(ngModel)]="rateForm.validFrom"></label><label>Đến ngày<input type="date" name="validUntil" [(ngModel)]="rateForm.validUntil"></label></div>
+      <label>Ghi chú<input name="rateNote" [(ngModel)]="rateForm.note"></label>
+      <button class="primary" type="submit" [disabled]="submitting">Lưu biểu phí</button>
+    </form>
+  </div>
+
+  <section class="panel admin-only" *ngIf="isAdmin">
+    <h2>Yêu cầu điều chỉnh chờ Admin</h2>
+    <div class="adjustment" *ngFor="let item of adjustments"><span>#{{ item.adjustmentId }} · Giao dịch {{ item.transactionId }} · {{ item.requestedAmount | number:'1.0-0':'en-US' }} VNĐ · {{ item.reason }} · {{ item.status }}</span><span *ngIf="item.status === 'PENDING'"><button type="button" (click)="reviewAdjustment(item.adjustmentId, 'REJECT')">Từ chối</button><button class="primary" type="button" (click)="reviewAdjustment(item.adjustmentId, 'APPROVE')">Duyệt</button></span></div>
+  </section>
+</div>

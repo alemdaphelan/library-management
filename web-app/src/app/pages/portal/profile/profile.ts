@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { NotificationService } from '../../../services/notification.service';
 
 @Component({
   selector: 'app-profile',
@@ -11,16 +12,20 @@ import { AuthService } from '../../../services/auth.service';
   templateUrl: './profile.html',
   styleUrls: ['./profile.css']
 })
-export class Profile {
+export class Profile implements OnInit {
   activeTab: 'info' | 'password' | 'settings' = 'info';
 
   userInfo = {
-    fullName: 'Đang tải...',
-    studentId: 'Đang tải...',
-    email: 'Đang tải...',
-    phone: 'Đang tải...',
-    faculty: 'Đang tải...',
-    avatarUrl: ''
+    fullName: '',
+    studentId: '',
+    email: '',
+    phone: '',
+    faculty: '',
+    avatarUrl: '',
+    cardStatus: 'UNKNOWN',
+    cardExpiryDate: '',
+    circulationLockedUntil: '',
+    circulationLockReason: ''
   };
 
   passwordData = {
@@ -31,25 +36,63 @@ export class Profile {
 
   settings = {
     emailAlerts: true,
-    smsAlerts: false
+    pushAlerts: true
   };
 
   isSaving = false;
   isUploadingAvatar = false;
+  isProfileLoading = true;
+  isPreferencesLoading = false;
+  preferencesLoaded = false;
   successMsg = '';
   errMsg = '';
+  profileError = '';
+  preferencesError = '';
+  private initialized = false;
 
-  constructor(private route: ActivatedRoute, private authService: AuthService) {
+  constructor(
+    private route: ActivatedRoute,
+    private authService: AuthService,
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.route.queryParams.subscribe(params => {
-      if (params['tab']) {
-        this.activeTab = params['tab'];
+      const tab = params['tab'];
+      if (tab === 'info' || tab === 'password' || tab === 'settings') {
+        this.setActiveTab(tab);
       }
     });
-
-    this.loadProfile();
   }
 
-  loadProfile() {
+  ngOnInit(): void {
+    this.initialized = true;
+    this.loadProfile();
+    if (this.activeTab === 'settings') {
+      this.loadNotificationPreferences();
+    }
+  }
+
+  setActiveTab(tab: 'info' | 'password' | 'settings'): void {
+    this.activeTab = tab;
+    if (this.initialized && tab === 'settings' && !this.preferencesLoaded) {
+      this.loadNotificationPreferences();
+    }
+  }
+
+  get roleLabel(): string {
+    const role = this.authService.getRole();
+    if (role === 'ADMIN') return 'Quản trị viên';
+    if (role === 'LIBRARIAN') return 'Thủ thư';
+    return 'Sinh viên';
+  }
+
+  get isStudentProfile(): boolean {
+    return this.authService.getRole() === 'STUDENT';
+  }
+
+  loadProfile(): void {
+    this.isProfileLoading = true;
+    this.profileError = '';
     this.authService.fetchMyProfile().subscribe({
       next: (user: any) => {
         this.userInfo = {
@@ -58,13 +101,72 @@ export class Profile {
           email: user.email || 'Chưa cập nhật',
           phone: user.phone || '',
           faculty: user.department || user.faculty || 'Khoa Công nghệ thông tin',
-          avatarUrl: user.avatarUrl || ''
+          avatarUrl: user.avatarUrl || '',
+          cardStatus: user.cardStatus || 'UNKNOWN',
+          cardExpiryDate: user.cardExpiryDate || '',
+          circulationLockedUntil: user.circulationLockedUntil || '',
+          circulationLockReason: user.circulationLockReason || ''
         };
+        this.isProfileLoading = false;
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
         console.error('Failed to fetch profile', err);
+        this.isProfileLoading = false;
+        if (err?.status === 401 || err?.status === 403) {
+          this.authService.logout();
+          return;
+        }
+        const cached = this.authService.getUserProfile();
+        if (cached) {
+          this.userInfo.fullName = cached.fullName || '';
+          this.userInfo.studentId = cached.mssv || '';
+          this.userInfo.email = cached.email || '';
+          this.userInfo.avatarUrl = cached.avatarUrl || '';
+          this.userInfo.cardStatus = cached.cardStatus || 'UNKNOWN';
+        }
+        this.profileError = 'Không thể đồng bộ thông tin mới nhất. Dữ liệu đang hiển thị có thể là dữ liệu đăng nhập gần nhất.';
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  loadNotificationPreferences(): void {
+    if (this.isPreferencesLoading || this.preferencesLoaded) return;
+    this.isPreferencesLoading = true;
+    this.preferencesError = '';
+    this.notificationService.getPreferences().subscribe({
+      next: preferences => {
+        this.settings = {
+          emailAlerts: preferences.emailEnabled,
+          pushAlerts: preferences.pushEnabled,
+        };
+        this.isPreferencesLoading = false;
+        this.preferencesLoaded = true;
+        this.cdr.detectChanges();
+      },
+      error: (error: any) => {
+        this.isPreferencesLoading = false;
+        if (error?.status === 401 || error?.status === 403) {
+          this.authService.logout();
+          return;
+        }
+        this.preferencesError = 'Không thể tải cài đặt thông báo. Hãy thử lại sau khi hệ thống kết nối ổn định.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  accountStatusLabel(): string {
+    if (this.userInfo.circulationLockedUntil
+        && new Date(this.userInfo.circulationLockedUntil).getTime() > Date.now()) {
+      return 'Tạm khóa quyền mượn';
+    }
+    const status = this.userInfo.cardStatus?.toUpperCase();
+    if (status === 'ACTIVE') return 'Đang hoạt động';
+    if (status === 'LOCKED') return 'Đang bị khóa';
+    if (status === 'EXPIRED') return 'Đã hết hạn';
+    return 'Chưa được cấp thẻ';
   }
 
   onFileSelected(event: any) {
@@ -181,13 +283,31 @@ export class Profile {
         }
       });
     } else {
+      if (!this.preferencesLoaded) {
+        this.preferencesError = 'Cần tải thành công cài đặt hiện tại trước khi lưu.';
+        return;
+      }
       this.isSaving = true;
       this.successMsg = '';
-      setTimeout(() => {
-        this.isSaving = false;
-        this.successMsg = 'Lưu cài đặt thông báo thành công!';
-        setTimeout(() => this.successMsg = '', 3000);
-      }, 500);
+      this.errMsg = '';
+      this.preferencesError = '';
+      this.notificationService.updatePreferences({
+        emailEnabled: this.settings.emailAlerts,
+        pushEnabled: this.settings.pushAlerts,
+      }).subscribe({
+        next: preferences => {
+          this.settings.emailAlerts = preferences.emailEnabled;
+          this.settings.pushAlerts = preferences.pushEnabled;
+          this.isSaving = false;
+          this.successMsg = 'Đã lưu cài đặt thông báo.';
+          setTimeout(() => this.successMsg = '', 3000);
+        },
+        error: (error: any) => {
+          this.isSaving = false;
+          this.preferencesError = typeof error?.error === 'string'
+            ? error.error : 'Không thể lưu cài đặt thông báo.';
+        },
+      });
     }
   }
 }

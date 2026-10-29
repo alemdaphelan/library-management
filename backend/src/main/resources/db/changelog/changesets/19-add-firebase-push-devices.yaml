@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: week12e-add-firebase-push-devices
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              CREATE TABLE push_device_registrations (
+                  registration_id UUID PRIMARY KEY,
+                  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+                  token VARCHAR(512) NOT NULL UNIQUE,
+                  platform VARCHAR(20) NOT NULL,
+                  device_id VARCHAR(128),
+                  active BOOLEAN NOT NULL DEFAULT TRUE,
+                  last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  CONSTRAINT chk_push_device_platform
+                      CHECK (platform IN ('ANDROID', 'IOS', 'WEB'))
+              );
+
+              CREATE INDEX idx_push_device_user_active
+                  ON push_device_registrations(user_id, active);

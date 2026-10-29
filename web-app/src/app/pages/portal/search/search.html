@@ -2,7 +2,7 @@
   <!-- Search Header -->
   <div class="search-header">
     <div class="search-box-large" style="position: relative;">
-      <input type="text" placeholder="Tìm kiếm sách, tác giả, chủ đề..." class="search-input-large" 
+      <input type="text" placeholder="Tìm tên sách, tác giả, ISBN hoặc nội dung như K-NN, trí tuệ nhân tạo..." class="search-input-large"
              [(ngModel)]="searchQuery" 
              (ngModelChange)="onSearchInput($event)"
              (keyup.enter)="onSearch()"
@@ -33,13 +33,33 @@
   <div class="search-layout">
     <!-- Filters Sidebar -->
     <aside class="filters-sidebar card">
+      <div class="source-tabs" aria-label="Nguồn danh sách sách">
+        <button type="button" [class.active]="sourceMode === 'catalog'" (click)="setSourceMode('catalog')">Danh mục</button>
+        <button type="button" [class.active]="sourceMode === 'for-you'" (click)="setSourceMode('for-you')">Dành cho bạn</button>
+      </div>
       <h3 class="filter-title">Bộ lọc tìm kiếm</h3>
       
       <div class="filter-group">
         <h4>Trạng thái</h4>
-        <label class="checkbox-label"><input type="radio" name="status" value="all" [(ngModel)]="filterStatus" (change)="applyFilters()"> Tất cả</label>
-        <label class="checkbox-label"><input type="radio" name="status" value="available" [(ngModel)]="filterStatus" (change)="applyFilters()"> Có sẵn</label>
-        <label class="checkbox-label"><input type="radio" name="status" value="borrowed" [(ngModel)]="filterStatus" (change)="applyFilters()"> Đang mượn</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="all" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Tất cả</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="available" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Có sẵn</label>
+        <label class="checkbox-label"><input type="radio" name="status" value="borrowed" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Hết bản sẵn sàng</label>
+      </div>
+
+      <div class="filter-group" *ngIf="sourceMode === 'catalog'">
+        <h4>Ngành / Khoa</h4>
+        <select
+          class="department-select"
+          [(ngModel)]="selectedDepartment"
+          (change)="onDepartmentChange()"
+          [disabled]="departmentsLoading"
+          aria-label="Lọc sách theo ngành hoặc khoa">
+          <option value="">{{ departmentsLoading ? 'Đang tải danh sách...' : 'Tất cả ngành / khoa' }}</option>
+          <option *ngFor="let department of departments" [value]="department.key">
+            {{ department.displayName }}
+          </option>
+        </select>
+        <p class="department-help">Danh sách được phân loại từ nội dung sách và ngành đào tạo HUIT.</p>
       </div>
 
       <div class="filter-group">
@@ -55,7 +75,7 @@
     <!-- Search Results -->
     <main class="search-results">
       <div class="results-meta">
-        <span>Tìm thấy <strong>{{ books.length }}</strong> kết quả phù hợp</span>
+        <span>Tìm thấy <strong>{{ totalElements }}</strong> kết quả phù hợp</span>
         
         <div class="meta-actions">
           <!-- View Toggle -->
@@ -83,21 +103,30 @@
           <div class="book-cover-wrapper" [routerLink]="['/book', book.id]" style="cursor: pointer;">
             <img *ngIf="!book.imgError" [src]="book.cover" alt="{{ book.title }}" class="book-cover-img" (error)="book.imgError = true">
             <div class="book-cover-fallback" *ngIf="book.imgError || !book.cover">
-              <span>{{ book.title }}</span>
+              <span class="fallback-icon">📖</span>
+              <span class="fallback-title">{{ book.title }}</span>
+              <span class="fallback-author">{{ book.author }}</span>
             </div>
             <div class="book-overlay">
               <button class="btn-primary btn-sm" [routerLink]="['/book', book.id]">Xem chi tiết</button>
             </div>
           </div>
           <div class="book-info">
-            <span class="badge-available" *ngIf="book.status === 'available'">Có sẵn</span>
-            <span class="badge-pending" *ngIf="book.status === 'borrowed'">Đã mượn hết</span>
+            <span class="badge-available" *ngIf="book.status === 'available'">Có sẵn {{ book.availableCopies }}/{{ book.copies }}</span>
+            <span class="badge-pending" *ngIf="book.status === 'out_of_stock'">Hết bản sẵn sàng</span>
             <div class="book-cat">{{ book.category }}</div>
             <h3 class="book-name" [routerLink]="['/book', book.id]" style="cursor: pointer;">{{ book.title }}</h3>
             <p class="book-author">{{ book.author }}</p>
+            <p class="recommendation-reason" *ngIf="sourceMode === 'for-you'">{{ book.reason }}</p>
           </div>
         </div>
 
+      </div>
+
+      <div class="empty-search" *ngIf="books.length === 0">
+        <h3>{{ recommendationLoading ? 'Đang tạo danh sách dành cho bạn...' : 'Không có tài liệu phù hợp' }}</h3>
+        <p *ngIf="filterStatus === 'available'">Hiện không có bản sao sẵn sàng theo điều kiện đã chọn. Hãy bỏ bộ lọc hoặc kiểm tra lại sau.</p>
+        <p *ngIf="filterStatus !== 'available'">Hãy thử từ khóa khác hoặc xóa bớt bộ lọc.</p>
       </div>
       
       <!-- Pagination -->

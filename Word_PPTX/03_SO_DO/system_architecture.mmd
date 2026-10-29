@@ -1,0 +1,58 @@
+flowchart LR
+    subgraph Clients["Lớp giao diện"]
+        WEB["Web Angular 21\nPortal + Admin"]
+        MOBILE["Mobile Flutter\nSinh viên + quét QR thủ thư"]
+    end
+
+    subgraph Edge["Lớp truy cập cục bộ"]
+        NGINX["Nginx\nReverse proxy"]
+    end
+
+    subgraph Backend["Spring Boot 3.2 / Java 17"]
+        SEC["Spring Security\nJWT + RBAC"]
+        AUTH["Auth & Users"]
+        CAT["Catalog & Location"]
+        CIR["Circulation + QR"]
+        INV["Inventory & Digital"]
+        FIN["Penalty, Debt & Payment"]
+        REC["Hybrid Recommender"]
+        RAG["RAG Chatbot"]
+        NOTI["Notification"]
+    end
+
+    subgraph Data["Dữ liệu vận hành"]
+        PG[("PostgreSQL + pgvector\nNguồn dữ liệu chính")]
+        REDIS[("Redis\nOTP, token revoke, cache")]
+        FILES[("Volume tài liệu số")]
+        MAIL["Mailpit/SMTP"]
+    end
+
+    GEMINI["Gemini API\nEmbedding + Generation"]
+    FUTURE["MongoDB / Kafka / Elasticsearch\nCấu hình hướng mở rộng, không phải luồng chính"]
+
+    WEB --> NGINX
+    MOBILE --> NGINX
+    NGINX --> SEC
+    SEC --> AUTH
+    SEC --> CAT
+    SEC --> CIR
+    SEC --> INV
+    SEC --> FIN
+    SEC --> REC
+    SEC --> RAG
+    SEC --> NOTI
+
+    AUTH --> PG
+    AUTH --> REDIS
+    CAT --> PG
+    CIR --> PG
+    INV --> PG
+    INV --> FILES
+    FIN --> PG
+    REC --> PG
+    REC --> REDIS
+    RAG --> PG
+    RAG --> GEMINI
+    NOTI --> PG
+    NOTI --> MAIL
+    Backend -. "chưa tính là luồng hoàn tất" .-> FUTURE

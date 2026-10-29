@@ -1,0 +1,301 @@
+erDiagram
+    STAFF_ROLES ||--o{ USERS : assigns
+    USERS ||--o| WALLETS : owns
+    USERS ||--o{ LOAN_TICKETS : creates
+    LOAN_TICKETS ||--|{ LOAN_DETAILS : contains
+    LOAN_TICKETS ||--o{ LOAN_STATUS_HISTORY : records
+    USERS ||--o{ LOAN_STATUS_HISTORY : changes
+    BOOK_COPIES ||--o{ LOAN_DETAILS : circulates
+    LOAN_DETAILS ||--o{ TRANSACTIONS : incurs
+    LOAN_TICKETS ||--o{ TRANSACTIONS : groups
+    USERS ||--o{ TRANSACTIONS : pays
+
+    CATEGORIES ||--o{ BOOKS : classifies
+    BOOKS ||--o{ BOOK_COPIES : has
+    BOOKS ||--o{ BOOK_SUBJECT_ASSIGNMENTS : receives
+    RECOMMENDATION_SUBJECTS ||--o{ BOOK_SUBJECT_ASSIGNMENTS : labels
+    RECOMMENDATION_SUBJECTS ||--o{ DEPARTMENT_SUBJECT_AFFINITIES : matches
+    FLOORS ||--o{ BOOKSHELVES : contains
+    BOOKSHELVES ||--o{ SHELVES : contains
+    SHELVES ||--o{ BOOK_COPIES : locates
+
+    BOOKS ||--o{ WAITLISTS : queues
+    USERS ||--o{ WAITLISTS : joins
+    USERS ||--o{ NOTIFICATIONS : receives
+
+    SUPPLIERS ||--o{ GOODS_RECEIPTS : supplies
+    GOODS_RECEIPTS ||--|{ RECEIPT_DETAILS : contains
+    BOOKS ||--o{ RECEIPT_DETAILS : imports
+    USERS ||--o{ INVENTORY_AUDITS : conducts
+    INVENTORY_AUDITS ||--o{ INVENTORY_DETAILS : records
+    BOOK_COPIES ||--o{ INVENTORY_DETAILS : verifies
+
+    BOOKS ||--o| DIGITAL_DOCUMENTS : has
+    DIGITAL_DOCUMENTS ||--o{ DIGITAL_USAGE_LOGS : logs
+    USERS ||--o{ DIGITAL_USAGE_LOGS : accesses
+
+    USERS ||--o{ BOOK_PROPOSALS : proposes
+    USERS ||--o{ COMPLAINTS : submits
+    USERS ||--o{ REVIEWS : writes
+    BOOKS ||--o{ REVIEWS : receives
+    USERS ||--o{ WISHLISTS : saves
+    BOOKS ||--o{ WISHLISTS : appears_in
+
+    STAFF_ROLES {
+        varchar role_id PK
+        varchar role_name
+        text permissions
+    }
+    USERS {
+        uuid user_id PK
+        varchar role_id FK
+        varchar password_hash
+        boolean is_first_login
+        varchar full_name
+        varchar mssv
+        varchar department
+        varchar email
+        varchar phone
+        varchar user_type
+        varchar card_status
+        datetime card_expiry_date
+        boolean discipline_flag
+        text avatar_url
+    }
+    WALLETS {
+        bigint wallet_id PK
+        uuid user_id FK
+        decimal deposit_balance
+        decimal total_debt
+    }
+
+    CATEGORIES {
+        bigint category_id PK
+        varchar name
+        text description
+    }
+    BOOKS {
+        bigint book_id PK
+        bigint category_id FK
+        text title
+        text author
+        text publisher
+        varchar isbn
+        varchar ddc_call_number
+        int publish_year
+        varchar language
+        varchar label_color
+        decimal default_price
+        boolean is_digital
+        text image_url_s
+        text image_url_m
+        text image_url_l
+    }
+    RECOMMENDATION_SUBJECTS {
+        bigint subject_id PK
+        varchar code UK
+        varchar name
+        text description
+        boolean active
+    }
+    DEPARTMENT_SUBJECT_AFFINITIES {
+        bigint affinity_id PK
+        varchar department_key
+        varchar display_name
+        bigint subject_id FK
+        decimal weight
+        varchar source
+        boolean active
+    }
+    BOOK_SUBJECT_ASSIGNMENTS {
+        bigint assignment_id PK
+        bigint book_id FK
+        bigint subject_id FK
+        decimal confidence
+        varchar classification_source
+        varchar evidence
+        boolean primary_subject
+    }
+    FLOORS {
+        bigint floor_id PK
+        varchar name
+    }
+    BOOKSHELVES {
+        bigint bookshelf_id PK
+        bigint floor_id FK
+        varchar name
+    }
+    SHELVES {
+        bigint shelf_id PK
+        bigint bookshelf_id FK
+        varchar name
+    }
+    BOOK_COPIES {
+        varchar barcode PK
+        bigint book_id FK
+        bigint shelf_id FK
+        varchar status
+        text condition_note
+        uuid locked_by_user FK
+        datetime locked_until
+    }
+
+    LOAN_TICKETS {
+        bigint ticket_id PK
+        uuid user_id FK
+        varchar ticket_type
+        varchar status
+        uuid processed_by FK
+        varchar decision_note
+        bigint version
+        datetime created_at
+        datetime updated_at
+    }
+    LOAN_DETAILS {
+        bigint detail_id PK
+        bigint ticket_id FK
+        varchar barcode FK
+        text checkout_condition_note
+        text return_condition_note
+        varchar return_status
+        datetime due_date
+        datetime return_date
+        int renewal_count
+        boolean is_recalled
+        decimal late_fine_accrued
+    }
+    LOAN_STATUS_HISTORY {
+        bigint history_id PK
+        bigint ticket_id FK
+        varchar from_status
+        varchar to_status
+        uuid changed_by FK
+        varchar reason
+        datetime created_at
+    }
+    CIRCULATION_OPERATIONS {
+        uuid operation_id PK
+        varchar idempotency_key UK
+        varchar operation_type
+        varchar request_hash
+        varchar ticket_ids
+        varchar barcodes
+        varchar result_status
+        varchar message
+        datetime processed_at
+    }
+    WAITLISTS {
+        bigint waitlist_id PK
+        bigint book_id FK
+        uuid user_id FK
+        varchar status
+    }
+    TRANSACTIONS {
+        bigint transaction_id PK
+        bigint parent_transaction_id FK
+        uuid user_id FK
+        bigint ticket_id FK
+        bigint loan_detail_id FK
+        varchar admin_ref
+        text proof_document_url
+        decimal amount
+        varchar type
+        varchar status
+        varchar reason
+        varchar dedup_key UK
+    }
+    NOTIFICATIONS {
+        uuid notif_id PK
+        uuid user_id FK
+        varchar type
+        text content
+        boolean is_read
+        datetime sent_at
+        varchar reference_type
+        varchar reference_id
+        varchar dedup_key UK
+    }
+
+    SUPPLIERS {
+        bigint supplier_id PK
+        varchar name
+        text contact_info
+    }
+    GOODS_RECEIPTS {
+        bigint receipt_id PK
+        bigint supplier_id FK
+        varchar receipt_code
+        decimal total_amount
+        varchar status
+    }
+    RECEIPT_DETAILS {
+        bigint detail_id PK
+        bigint receipt_id FK
+        bigint book_id FK
+        int quantity
+        decimal unit_price
+    }
+    INVENTORY_AUDITS {
+        bigint audit_id PK
+        uuid conducted_by FK
+        int total_system_books
+        int total_actual_books
+        varchar status
+    }
+    INVENTORY_DETAILS {
+        varchar detail_id PK
+        bigint audit_id FK
+        varchar barcode FK
+        varchar scan_status
+        varchar scanned_location
+    }
+
+    DIGITAL_DOCUMENTS {
+        bigint document_id PK
+        bigint book_id FK
+        text file_url
+        varchar format
+        bigint file_size
+    }
+    DIGITAL_USAGE_LOGS {
+        bigint log_id PK
+        bigint document_id FK
+        uuid user_id FK
+        datetime access_time
+        int pages_read
+    }
+    BOOK_PROPOSALS {
+        bigint proposal_id PK
+        uuid user_id FK
+        varchar title
+        varchar author_name
+        varchar publisher
+        text reason
+        text note
+        text admin_note
+        varchar status
+    }
+    COMPLAINTS {
+        bigint complaint_id PK
+        uuid user_id FK
+        varchar title
+        text content
+        varchar status
+    }
+    REVIEWS {
+        bigint review_id PK
+        bigint book_id FK
+        uuid user_id FK
+        int rating
+        text comment
+    }
+    WISHLISTS {
+        uuid wishlist_id PK
+        bigint book_id FK
+        uuid user_id FK
+        datetime added_at
+    }
+
+    %% QR is a signed request token and is not stored as a room or booking entity.
+    %% Room, room booking and kiosk tables are outside the official product scope.
+    %% INVENTORY_DETAILS.audit_id is bigint in the target model; JPA and Liquibase must be aligned before the next schema migration.

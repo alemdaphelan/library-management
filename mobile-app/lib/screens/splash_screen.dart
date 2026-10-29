@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:mobile_app/screens/login_screen.dart';
+import 'package:mobile_app/screens/main_layout.dart';
+import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/services/push_notification_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,18 +16,24 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToLogin();
+    _openInitialScreen();
   }
 
-  void _navigateToLogin() async {
-    // Chờ 2 giây
-    await Future.delayed(const Duration(seconds: 2));
+  void _openInitialScreen() async {
+    await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
-    
-    // Chuyển sang màn hình Đăng nhập (thay thế hoàn toàn Splash)
+    final token = await AuthService.getToken();
+    if (token != null && token.isNotEmpty) {
+      unawaited(PushNotificationService.syncToken());
+    }
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      MaterialPageRoute(
+        builder: (context) => token == null || token.isEmpty
+            ? const LoginScreen()
+            : const MainLayout(),
+      ),
     );
   }
 
@@ -35,7 +45,6 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo (Sử dụng Icon lớn hoặc Asset image mô phỏng logo trường)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -44,14 +53,13 @@ class _SplashScreenState extends State<SplashScreen> {
                 border: Border.all(color: const Color(0xFF0284c7), width: 2),
               ),
               child: const Icon(
-                Icons.school, // Mock logo HUIT
+                Icons.school,
                 size: 80,
                 color: Color(0xFF0284c7),
               ),
             ),
             const SizedBox(height: 24),
-            
-            // Tên ứng dụng
+
             const Text(
               'HUIT LIBRARY',
               style: TextStyle(
@@ -71,8 +79,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 50),
-            
-            // Loading indicator (tùy chọn, để màn hình không bị tĩnh)
+
             const SizedBox(
               width: 30,
               height: 30,

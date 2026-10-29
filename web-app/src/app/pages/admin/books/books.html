@@ -9,27 +9,27 @@
     </button>
   </div>
 
+  <div class="page-message error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="page-message success" *ngIf="successMessage">{{ successMessage }}</div>
+
   <div class="card">
     <div class="table-toolbar">
       <div class="search-box">
         <span class="icon search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
-        <input type="text" placeholder="Tìm kiếm theo mã, tên sách, tác giả..." class="form-control" style="width: 320px; padding-left: 35px;">
+        <input type="text" placeholder="Tìm kiếm theo ISBN, tên sách, tác giả..." class="form-control" style="width: 320px; padding-left: 35px;"
+               [(ngModel)]="searchQuery" (keyup.enter)="applyFilters()">
       </div>
       <div class="filter-chips">
-        <button class="chip active">Tất cả</button>
-        <button class="chip">CNTT</button>
-        <button class="chip">Kinh tế</button>
-        <button class="chip">Ngôn ngữ</button>
+        <button class="chip" [class.active]="!selectedCategoryId" (click)="selectedCategoryId = undefined; applyFilters()">Tất cả</button>
+        <button class="chip" *ngFor="let category of categories" [class.active]="selectedCategoryId === category.categoryId"
+                (click)="selectedCategoryId = category.categoryId; applyFilters()">{{ category.name }}</button>
       </div>
       <div class="filter-actions" style="margin-left: auto; display: flex; gap: 10px;">
-        <select class="form-control" style="width: 150px;">
-          <option>Trạng thái</option>
-          <option>Có sẵn</option>
-          <option>Hết sách</option>
+        <select class="form-control" style="width: 150px;" [(ngModel)]="selectedAvailability" (change)="applyFilters()">
+          <option value="">Tất cả trạng thái</option>
+          <option value="AVAILABLE">Có sẵn</option>
+          <option value="UNAVAILABLE">Hết sách</option>
         </select>
-        <button class="btn-outline">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Cột hiển thị
-        </button>
       </div>
     </div>
 
@@ -46,7 +46,7 @@
             <th class="text-right">Thao tác</th>
           </tr>
         </thead>
-        <tbody>
+      <tbody *ngIf="!isLoading">
           <tr *ngFor="let book of books">
             <td>
               <div class="book-info-cell">
@@ -57,18 +57,18 @@
                 <div class="book-details">
                   <div class="book-title">{{ book.title }}</div>
                   <div class="book-author">{{ book.author }}</div>
-                  <div class="book-id">Mã ĐKCB: {{ book.id }}</div>
+                  <div class="book-id">Mã sách: {{ book.bookId }}</div>
                 </div>
               </div>
             </td>
             <td>{{ book.isbn }}</td>
-            <td><span class="badge badge-light">{{ book.category }}</span></td>
+            <td><span class="badge badge-light">{{ book.category?.name || 'Chưa phân loại' }}</span></td>
             <td>
               <div class="location-cell">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {{ book.location }}
               </div>
             </td>
-            <td class="text-center"><strong>{{ book.copies }}</strong></td>
+            <td class="text-center"><strong>{{ book.availableCopies }}/{{ book.copies }}</strong></td>
             <td>
               <span class="badge" [ngClass]="{
                 'badge-available': book.status === 'available',
@@ -82,13 +82,15 @@
               <button class="action-btn edit-btn" title="Chỉnh sửa" (click)="openDrawer('edit', book)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
-              <button class="action-btn delete-btn" title="Xóa">
+              <button class="action-btn delete-btn" title="Xóa" (click)="deleteBook(book)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               </button>
             </td>
           </tr>
         </tbody>
       </table>
+      <div class="table-state" *ngIf="isLoading">Đang tải danh mục sách...</div>
+      <div class="table-state" *ngIf="!isLoading && !books.length">Không có đầu sách nào khớp bộ lọc.</div>
     </div>
     
     <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
@@ -132,9 +134,11 @@
           <div class="cover-preview-fallback" *ngIf="currentBook.imgError || !(currentBook.imageUrlL || currentBook.imageUrlM || currentBook.imageUrlS || currentBook.coverUrl)">
             <span>{{ (currentBook.title || 'B') | slice:0:1 }}</span>
           </div>
-          <div class="upload-actions">
-            <button type="button" class="btn-outline btn-sm">Tải ảnh lên</button>
-            <p class="upload-hint">Định dạng .jpg, .png. Tối đa 2MB.</p>
+          <div class="upload-actions flex-1">
+            <label>Đường dẫn ảnh bìa</label>
+            <input type="url" class="form-control" name="imageUrlL" [(ngModel)]="currentBook.imageUrlL"
+                   (ngModelChange)="currentBook.imgError = false" placeholder="https://.../cover.jpg">
+            <p class="upload-hint">Nhập URL ảnh hợp lệ; hệ thống sẽ hiển thị bản xem trước.</p>
           </div>
         </div>
       </div>
@@ -160,27 +164,26 @@
       <div class="form-row">
         <div class="form-group flex-1">
           <label>Chuyên ngành / Thể loại</label>
-          <select class="form-control" name="category" [(ngModel)]="currentBook.category">
-            <option value="Công nghệ thông tin">Công nghệ thông tin</option>
-            <option value="Kinh tế, Kế toán">Kinh tế, Kế toán</option>
-            <option value="Khoa học kỹ thuật">Khoa học kỹ thuật</option>
-            <option value="Ngôn ngữ">Ngôn ngữ</option>
+          <select class="form-control" name="categoryId" [(ngModel)]="currentBook.categoryId">
+            <option [ngValue]="undefined">Chưa phân loại</option>
+            <option *ngFor="let category of categories" [ngValue]="category.categoryId">{{ category.name }}</option>
           </select>
         </div>
-        <div class="form-group flex-1">
-          <label>Số lượng bản sao</label>
-          <input type="number" class="form-control" name="copies" [(ngModel)]="currentBook.copies" placeholder="VD: 5">
+        <div class="form-group flex-1" *ngIf="drawerMode === 'edit'">
+          <label>Bản sao sẵn sàng / tổng số</label>
+          <input type="text" class="form-control" [value]="(currentBook.availableCopies || 0) + ' / ' + (currentBook.copies || 0)" disabled>
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Vị trí lưu trữ</label>
-        <input type="text" class="form-control" name="location" [(ngModel)]="currentBook.location" placeholder="VD: Tầng 3 - Kệ IT-204">
+      <div class="form-group" *ngIf="drawerMode === 'edit' && currentBook.location">
+        <label>Vị trí các bản sao</label>
+        <input type="text" class="form-control" [value]="currentBook.location" disabled>
       </div>
       
       <div class="form-group">
         <label>Tóm tắt nội dung</label>
-        <textarea class="form-control" rows="4" placeholder="Nhập mô tả hoặc tóm tắt nội dung tài liệu..."></textarea>
+        <textarea class="form-control" rows="4" name="description" [(ngModel)]="currentBook.description"
+                  placeholder="Nhập mô tả hoặc tóm tắt nội dung tài liệu..."></textarea>
       </div>
     </form>
   </div>

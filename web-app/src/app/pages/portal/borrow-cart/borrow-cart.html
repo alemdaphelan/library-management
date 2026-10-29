@@ -1,0 +1,81 @@
+<main class="borrow-cart-page">
+  <div class="page-heading">
+    <div>
+      <span class="eyebrow">ĐĂNG KÝ MƯỢN TÀI LIỆU</span>
+      <h1>Giỏ mượn sách</h1>
+      <p>Chọn tối đa {{ eligibility?.maximumItems ?? policy?.maximumOpenItems ?? '…' }} tài liệu và tạo một phiếu mượn duy nhất.</p>
+    </div>
+    <a routerLink="/search" class="outline-link">Tiếp tục tìm sách</a>
+  </div>
+
+  <div class="success-card" *ngIf="result">
+    <div class="success-mark">✓</div>
+    <div>
+      <h2>Tạo phiếu #{{ result.ticketId }} thành công</h2>
+      <p>{{ result.message }}</p>
+      <div class="success-meta">
+        <span>{{ result.bookTitles.length }} tài liệu</span>
+        <span>Hạn nhận: {{ result.pickupDeadline | date:'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+      <a routerLink="/history" class="primary-link">Xem phiếu và mã QR</a>
+    </div>
+  </div>
+
+  <div class="empty-card" *ngIf="!result && items.length === 0">
+    <div class="empty-icon">🛒</div>
+    <h2>Giỏ mượn đang trống</h2>
+    <p>Mở trang chi tiết sách và chọn “Thêm vào giỏ mượn”.</p>
+    <a routerLink="/search" class="primary-link">Tra cứu sách</a>
+  </div>
+
+  <div class="cart-grid" *ngIf="!result && items.length > 0">
+    <section class="items-panel">
+      <div class="panel-heading">
+        <h2>Tài liệu đã chọn</h2>
+        <span>{{ items.length }}/{{ eligibility?.maximumItems ?? policy?.maximumOpenItems ?? '…' }} cuốn</span>
+      </div>
+      <article class="cart-item" *ngFor="let item of items">
+        <img [src]="item.cover || '/assets/images/cover_1.jpg'" [alt]="item.title">
+        <div class="item-copy">
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.author || 'Đang cập nhật tác giả' }}</p>
+          <span>Còn {{ item.availableCopies || 0 }} bản tại thời điểm thêm vào giỏ</span>
+        </div>
+        <button type="button" class="remove-button" (click)="remove(item.bookId)">Xóa</button>
+      </article>
+      <p class="availability-note">Tình trạng bản sao sẽ được kiểm tra lại khi tạo phiếu.</p>
+    </section>
+
+    <section class="checkout-panel">
+      <h2>Thông tin phiếu mượn</h2>
+
+      <div class="eligibility-note" *ngIf="eligibility" [class.blocked]="!eligibility.eligible || items.length > eligibility.remainingSlots">
+        <strong>Hạn mức: {{ eligibility.openItems }}/{{ eligibility.maximumItems }} tài liệu đang hoạt động</strong>
+        <span>{{ eligibility.message }}</span>
+      </div>
+
+      <label>Hình thức sử dụng</label>
+      <div class="type-options">
+        <button type="button" [class.active]="ticketType === 'BORROW'" (click)="ticketType = 'BORROW'">
+          <strong>Mượn về</strong><span>{{ policy ? (policy.homeLoanDays + ' ngày từ lúc nhận') : 'Theo quy định hiện hành' }}</span>
+        </button>
+        <button type="button" [class.active]="ticketType === 'ONSITE'" (click)="ticketType = 'ONSITE'">
+          <strong>Đọc tại chỗ</strong><span>Trả trước giờ đóng cửa cùng ngày</span>
+        </button>
+      </div>
+
+      <label for="cart-pickup-date">Ngày đến nhận</label>
+      <input id="cart-pickup-date" type="date" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" readonly>
+      <small>Phiếu trực tuyến chỉ giữ sách đến giờ đóng cửa hôm nay. Quy tắc {{ policy ? (policy.waitlistHoldHours + ' giờ') : 'giữ chỗ' }} chỉ dành cho người được gọi từ hàng đợi.</small>
+
+      <label for="cart-note">Ghi chú cho thủ thư</label>
+      <textarea id="cart-note" maxlength="500" [(ngModel)]="note" placeholder="Ví dụ: nhận tại quầy tầng 2"></textarea>
+
+      <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <button type="button" class="submit-button" (click)="submit()" [disabled]="isSubmitting || isCheckingEligibility || (eligibility !== null && items.length > eligibility.remainingSlots)">
+        {{ isSubmitting ? 'Đang tạo phiếu...' : (isCheckingEligibility ? 'Đang kiểm tra hạn mức...' : 'Tạo một phiếu cho ' + items.length + ' tài liệu') }}
+      </button>
+    </section>
+  </div>
+</main>

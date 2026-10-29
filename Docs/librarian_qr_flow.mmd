@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor Librarian as Thủ thư
+    participant Mobile as Mobile Scanner
+    participant QR as QR Resolve API
+    participant Auth as Security Context
+    participant Loan as Circulation State Service
+    participant DB as PostgreSQL
+    participant Notify as Notification Service
+
+    Librarian->>Mobile: Đăng nhập và mở Quét QR
+    Mobile->>Auth: Gửi JWT
+    Auth-->>Mobile: Xác nhận role LIBRARIAN
+    Librarian->>Mobile: Quét QR thẻ hoặc phiếu mượn
+    Mobile->>QR: POST resolve với payload đã ký
+    QR->>QR: Kiểm tra chữ ký loại và thời hạn
+    alt QR không hợp lệ hoặc hết hạn
+        QR-->>Mobile: Từ chối với mã lỗi
+        Mobile-->>Librarian: Hiển thị lỗi và cho quét lại
+    else QR hợp lệ
+        QR->>DB: Tải hồ sơ hoặc phiếu mượn
+        DB-->>QR: Dữ liệu hiện tại
+        QR-->>Mobile: Thông tin tối thiểu và thao tác được phép
+        Librarian->>Mobile: Chọn Mượn hoặc Trả và quét barcode
+        Mobile->>Loan: Checkout hoặc return với idempotency key
+        Loan->>DB: Khóa và kiểm tra user ticket copy debt
+        alt Vi phạm quy tắc
+            DB-->>Loan: Lỗi nghiệp vụ
+            Loan-->>Mobile: Từ chối và nêu lý do
+        else Hợp lệ
+            Loan->>DB: Cập nhật ticket detail copy transaction
+            Loan->>Notify: Tạo thông báo kết quả
+            Loan-->>Mobile: Thành công với dữ liệu mới
+            Mobile-->>Librarian: Hiển thị biên nhận và trạng thái
+        end
+    end
+
+    Note over Mobile,Loan: Mobile chỉ nhận diện và gửi yêu cầu Backend sở hữu mọi thay đổi trạng thái
+    Note over QR,Loan: Yêu cầu lặp cùng idempotency key không được tạo giao dịch thứ hai

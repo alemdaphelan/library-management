@@ -1,9 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import * as QRCode from 'qrcode';
 import { AuthService } from '../../../services/auth.service';
 import { CirculationService } from '../../../services/circulation.service';
+import { DebtEntry, PenaltyCase, PenaltyService } from '../../../services/penalty.service';
+import { DialogService } from '../../../services/dialog.service';
+import { LibraryPolicyService } from '../../../services/library-policy.service';
 
 export interface LoanItem {
   ticketId: number;
@@ -15,13 +18,21 @@ export interface LoanItem {
   barcode?: string;
   ticketType?: string;
   status: string; // 'PENDING', 'RESERVED', 'BORROWING', 'RETURNED', 'CANCELLED'
+  itemStatus?: string;
+  decisionNote?: string;
   createdAt?: string;
+  pickupDeadline?: string;
   dueDate?: string;
   returnDate?: string;
   daysRemaining?: number;
   progress?: number;
   statusType?: 'normal' | 'warning' | 'overdue' | 'pending';
   renewalCount?: number;
+}
+
+export interface LoanTicketGroup extends LoanItem {
+  items: LoanItem[];
+  timeGroup?: string;
 }
 
 @Component({
@@ -39,16 +50,18 @@ export class History implements OnInit {
   private toastTimer?: any;
 
   // Tabs state
-  selectedTab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' = 'BORROWING';
+  selectedTab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' | 'CANCELLED' = 'BORROWING';
 
-  borrowingList: LoanItem[] = [];
-  pendingList: LoanItem[] = [];
-  pastList: LoanItem[] = [];
-  allList: LoanItem[] = [];
+  borrowingList: LoanTicketGroup[] = [];
+  pendingList: LoanTicketGroup[] = [];
+  pastList: LoanTicketGroup[] = [];
+  cancelledList: LoanTicketGroup[] = [];
+  allList: LoanTicketGroup[] = [];
+  displayedAllCount = 7;
 
   // Backward compatibility
-  activeBorrows: LoanItem[] = [];
-  pastBorrows: LoanItem[] = [];
+  activeBorrows: LoanTicketGroup[] = [];
+  pastBorrows: LoanTicketGroup[] = [];
 
   // QR Code Modal State
   showQrModal = false;
@@ -59,25 +72,74 @@ export class History implements OnInit {
   // Action states
   cancellingTicketId: number | null = null;
   renewingTicketId: number | null = null;
+  debtEntries: DebtEntry[] = [];
+  penaltyCases: PenaltyCase[] = [];
+  maximumRenewalCount = 0;
+  renewalDays = 0;
+  policyLoaded = false;
 
   constructor(
     private authService: AuthService,
     private circulationService: CirculationService,
+    private penaltyService: PenaltyService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private dialog: DialogService,
+    private policyService: LibraryPolicyService,
   ) {}
 
   ngOnInit(): void {
+    this.loadPolicy();
     this.isLoggedIn = this.authService.isLoggedIn();
     if (this.isLoggedIn) {
       this.loadLoans();
+      this.loadFinancials();
     } else {
       this.isLoading = false;
     }
   }
 
-  setTab(tab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST'): void {
+  private loadPolicy(): void {
+    this.policyService.getPublicPolicy().subscribe({
+      next: policy => {
+        this.maximumRenewalCount = policy.maximumRenewalCount;
+        this.renewalDays = policy.renewalDays;
+        this.policyLoaded = true;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.policyLoaded = false;
+        this.errorMessage = this.errorMessage || 'Không thể tải quy định gia hạn. Vui lòng tải lại trang.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  get outstandingDebt(): number {
+    return this.debtEntries
+      .filter(entry => Number(entry.amount) > 0)
+      .reduce((sum, entry) => sum + Math.max(0, Number(entry.amount) - Number(entry.paidAmount || 0)), 0);
+  }
+
+  loadFinancials(): void {
+    this.penaltyService.getMyLedger().subscribe({ next: value => this.debtEntries = value || [] });
+    this.penaltyService.getMyCases().subscribe({ next: value => this.penaltyCases = value || [] });
+  }
+
+  setTab(tab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' | 'CANCELLED'): void {
     this.selectedTab = tab;
+    if (tab === 'ALL') this.displayedAllCount = 7;
+  }
+
+  get visibleAllList(): LoanTicketGroup[] {
+    return this.allList.slice(0, this.displayedAllCount);
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    if (this.selectedTab !== 'ALL' || this.displayedAllCount >= this.allList.length) return;
+    const remaining = document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+    if (remaining < 240) this.displayedAllCount += 7;
   }
 
   loadLoans(): void {
@@ -107,6 +169,7 @@ export class History implements OnInit {
     const borrowing: LoanItem[] = [];
     const pending: LoanItem[] = [];
     const past: LoanItem[] = [];
+    const cancelled: LoanItem[] = [];
     const all: LoanItem[] = [];
 
     items.forEach(raw => {
@@ -141,7 +204,10 @@ export class History implements OnInit {
         barcode: raw.barcode,
         ticketType: raw.ticketType || 'BORROW',
         status: statusUpper,
+        itemStatus: String(raw.itemStatus || raw.returnStatus || statusUpper).toUpperCase(),
+        decisionNote: raw.decisionNote,
         createdAt: raw.createdAt,
+        pickupDeadline: raw.pickupDeadline,
         dueDate: raw.dueDate,
         returnDate: raw.returnDate,
         daysRemaining: days !== null ? days : undefined,
@@ -152,28 +218,79 @@ export class History implements OnInit {
 
       all.push(item);
 
-      if (statusUpper === 'BORROWING') {
+      if (statusUpper === 'BORROWING' || statusUpper === 'OVERDUE') {
         borrowing.push(item);
       } else if (statusUpper === 'PENDING' || statusUpper === 'RESERVED') {
         pending.push(item);
-      } else {
+      } else if (statusUpper === 'RETURNED') {
         past.push(item);
+      } else if (statusUpper === 'CANCELLED' || statusUpper === 'REJECTED') {
+        cancelled.push(item);
       }
     });
 
-    this.allList = all;
-    this.borrowingList = borrowing;
-    this.pendingList = pending;
-    this.pastList = past;
+    this.allList = this.groupLoans(all);
+    this.borrowingList = this.groupLoans(borrowing);
+    this.pendingList = this.groupLoans(pending);
+    this.pastList = this.groupLoans(past);
+    this.cancelledList = this.groupLoans(cancelled);
 
     // Backward compatibility for existing references
-    this.activeBorrows = [...borrowing, ...pending];
-    this.pastBorrows = past;
+    this.activeBorrows = [...this.borrowingList, ...this.pendingList];
+    this.pastBorrows = this.pastList;
 
     // Tự động chuyển tab nếu tab hiện tại trống nhưng tab khác có dữ liệu
     if (this.selectedTab === 'BORROWING' && borrowing.length === 0 && pending.length > 0) {
       this.selectedTab = 'PENDING';
     }
+  }
+
+  private groupLoans(items: LoanItem[]): LoanTicketGroup[] {
+    const byTicket = new Map<number, LoanItem[]>();
+    items.forEach(item => byTicket.set(item.ticketId, [...(byTicket.get(item.ticketId) || []), item]));
+    return [...byTicket.values()].map(ticketItems => ({
+      ...ticketItems[0],
+      bookTitle: ticketItems.length === 1 ? ticketItems[0].bookTitle : `${ticketItems.length} tài liệu trong phiếu`,
+      items: ticketItems,
+      timeGroup: this.timeGroup(ticketItems[0].createdAt),
+    })).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }
+
+  private timeGroup(createdAt?: string): string {
+    if (!createdAt) return 'Cũ hơn';
+    const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
+    if (days <= 1) return 'Trong 1 ngày qua';
+    if (days <= 7) return 'Trong 1 tuần qua';
+    if (days <= 31) return 'Trong 1 tháng qua';
+    return 'Cũ hơn 1 tháng';
+  }
+
+  showTimeHeader(index: number): boolean {
+    return index === 0 || this.visibleAllList[index - 1]?.timeGroup !== this.visibleAllList[index]?.timeGroup;
+  }
+
+  itemStatusLabel(item: LoanItem): string {
+    const status = (item.itemStatus || item.status || '').toUpperCase();
+    return ({ BORROWING: 'Đang giữ', OVERDUE: 'Quá hạn', RETURNED: 'Đã trả', PENDING: 'Chờ nhận', RESERVED: 'Đã giữ chỗ' } as Record<string, string>)[status] || status;
+  }
+
+  statusLabel(status: string): string {
+    return ({
+      BORROWING: 'Đang mượn',
+      OVERDUE: 'Quá hạn',
+      PENDING: 'Chờ thủ thư duyệt',
+      RESERVED: 'Chờ nhận sách',
+      RETURNED: 'Đã hoàn trả',
+      CANCELLED: 'Đã hủy',
+      REJECTED: 'Đã từ chối',
+    } as Record<string, string>)[status] || status;
+  }
+
+  statusClass(status: string): string {
+    if (status === 'BORROWING' || status === 'OVERDUE') return 'borrowing';
+    if (status === 'PENDING' || status === 'RESERVED') return 'pending';
+    if (status === 'CANCELLED' || status === 'REJECTED') return 'cancelled';
+    return 'returned';
   }
 
   openQrModal(item: LoanItem): void {
@@ -182,24 +299,31 @@ export class History implements OnInit {
     this.isGeneratingQr = true;
     this.qrCodeDataUrl = null;
 
-    const qrPayload = `HUIT-PM-${item.ticketId}`;
-    QRCode.toDataURL(qrPayload, {
-      width: 240,
-      margin: 1.5,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff'
+    this.circulationService.getTicketQrPayload(item.ticketId).subscribe({
+      next: ({ payload }) => {
+        QRCode.toDataURL(payload, {
+          width: 240,
+          margin: 1.5,
+          color: {
+            dark: '#0f172a',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'M'
+        }).then((url: string) => {
+          this.qrCodeDataUrl = url;
+          this.isGeneratingQr = false;
+          this.cdr.detectChanges();
+        }).catch((err: any) => this.handleQrError(err));
       },
-      errorCorrectionLevel: 'M'
-    }).then((url: string) => {
-      this.qrCodeDataUrl = url;
-      this.isGeneratingQr = false;
-      this.cdr.detectChanges();
-    }).catch((err: any) => {
-      console.error('Lỗi tạo mã QR:', err);
-      this.isGeneratingQr = false;
-      this.cdr.detectChanges();
+      error: (err) => this.handleQrError(err),
     });
+  }
+
+  private handleQrError(err: unknown): void {
+    console.error('Lỗi tạo mã QR:', err);
+    this.isGeneratingQr = false;
+    this.errorMessage = 'Không thể tạo mã QR bảo mật. Vui lòng thử lại.';
+    this.cdr.detectChanges();
   }
 
   closeQrModal(): void {
@@ -217,22 +341,37 @@ export class History implements OnInit {
     this.showToast('Đã tải hình ảnh mã QR phiếu mượn về máy!');
   }
 
-  renewBook(item: LoanItem): void {
-    if (item.renewalCount !== undefined && item.renewalCount >= 2) {
-      alert('Tài liệu này đã đạt số lần gia hạn tối đa (2/2 lần). Vui lòng hoàn trả tài liệu đúng hạn tại quầy!');
+  async renewBook(item: LoanItem): Promise<void> {
+    if (!this.policyLoaded) {
+      this.dialog.show({ title: 'Chưa tải được quy định', message: 'Vui lòng tải lại trang trước khi gia hạn.', type: 'warning', confirmText: 'Đã hiểu' });
+      return;
+    }
+    if (item.renewalCount !== undefined && item.renewalCount >= this.maximumRenewalCount) {
+      this.dialog.show({
+        title: 'Không thể gia hạn',
+        message: `Tài liệu này đã đạt số lần gia hạn tối đa (${item.renewalCount}/${this.maximumRenewalCount} lần). Vui lòng hoàn trả đúng hạn tại quầy!`,
+        type: 'warning',
+        confirmText: 'Đã hiểu',
+      });
       return;
     }
 
-    if (!confirm(`Bạn có chắc chắn muốn gia hạn thêm 7 ngày cho cuốn sách "${item.bookTitle}" (Phiếu #${item.ticketId}) không?`)) {
+    const accepted = await this.dialog.confirm({
+      title: 'Xác nhận gia hạn',
+      message: `Gia hạn thêm ${this.renewalDays} ngày cho cuốn sách “${item.bookTitle}” (Phiếu #${item.ticketId})?`,
+      type: 'info',
+      confirmText: 'Gia hạn',
+    });
+    if (!accepted) {
       return;
     }
 
     this.renewingTicketId = item.ticketId;
-    this.circulationService.renewLoan(item.ticketId).subscribe({
+    this.circulationService.renewLoan(item.ticketId, item.detailId).subscribe({
       next: (res: any) => {
         this.renewingTicketId = null;
-        const newDueStr = res.dueDate ? new Date(res.dueDate).toLocaleDateString('vi-VN') : 'thêm 7 ngày';
-        this.showToast(`Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/2)`);
+        const newDueStr = res.dueDate ? new Date(res.dueDate).toLocaleDateString('vi-VN') : `thêm ${this.renewalDays} ngày`;
+        this.showToast(`Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/${this.maximumRenewalCount})`);
         this.loadLoans();
       },
       error: (err: any) => {
@@ -244,13 +383,19 @@ export class History implements OnInit {
         } else if (err.error?.message) {
           msg = err.error.message;
         }
-        alert(msg);
+        this.dialog.show({ title: 'Không thể gia hạn', message: msg, type: 'error', confirmText: 'Đóng' });
       }
     });
   }
 
-  cancelReservation(item: LoanItem): void {
-    if (!confirm(`Bạn có chắc muốn hủy phiếu đặt giữ #${item.ticketId} cho cuốn sách "${item.bookTitle}" không?`)) {
+  async cancelReservation(item: LoanItem): Promise<void> {
+    const accepted = await this.dialog.confirm({
+      title: 'Hủy phiếu đặt giữ',
+      message: `Bạn có chắc muốn hủy phiếu #${item.ticketId} cho cuốn sách “${item.bookTitle}”?`,
+      type: 'warning',
+      confirmText: 'Hủy phiếu',
+    });
+    if (!accepted) {
       return;
     }
 
@@ -264,8 +409,14 @@ export class History implements OnInit {
       error: (err) => {
         this.cancellingTicketId = null;
         console.error('Error cancelling reservation:', err);
-        const msg = (err.error && typeof err.error === 'string') ? err.error : 'Không thể hủy phiếu mượn vào lúc này!';
-        alert(msg);
+        const rawMessage = typeof err?.error === 'string'
+          ? err.error
+          : (err?.error?.detail ?? err?.error?.message);
+        const msg = typeof rawMessage === 'string' && rawMessage.trim()
+          ? rawMessage
+          : 'Không thể hủy phiếu mượn vào lúc này!';
+        this.dialog.show({ title: 'Không thể hủy phiếu', message: msg, type: 'error', confirmText: 'Đóng' });
+        this.loadLoans();
       }
     });
   }

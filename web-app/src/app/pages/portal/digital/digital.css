@@ -38,3 +38,46 @@
   display: inline-block; padding: 10px 20px; background: #e0f2fe; color: #0369a1; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; text-align: center; transition: background 0.2s;
 }
 .btn-access:hover { background: #bae6fd; }
+
+.login-required,
+.state {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #bae6fd;
+  border-radius: 14px;
+}
+.login-required h2 { color: #0f172a; margin-top: 0; }
+.login-required p, .state { color: #64748b; }
+.state.error { color: #991b1b; border-color: #fecaca; background: #fef2f2; }
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 22px;
+}
+.asset-card {
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 5px 18px rgba(2, 132, 199, .07);
+}
+.format {
+  padding: 28px;
+  text-align: center;
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #38bdf8, #0369a1);
+}
+.asset-body { padding: 20px; display: grid; gap: 10px; }
+.asset-body h3 { margin: 0; color: #0f172a; }
+.asset-body p, .asset-body small { margin: 0; color: #64748b; }
+.asset-body .btn-access { border: 0; cursor: pointer; margin-top: 8px; }
+.asset-actions { display: flex; gap: 8px; margin-top: 8px; }
+.asset-actions .btn-access { flex: 1; margin-top: 0; }
+.btn-download { flex: 1; padding: 10px 16px; border: 1px solid #7dd3fc; border-radius: 8px; background: #fff; color: #0369a1; font-weight: 700; cursor: pointer; }
+.btn-download:hover { background: #f0f9ff; }

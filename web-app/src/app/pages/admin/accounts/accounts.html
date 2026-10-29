@@ -1,132 +1,153 @@
 <div class="admin-page">
   <div class="admin-header">
     <div>
-      <h1 class="page-title">Hồ sơ Bạn đọc & Thẻ</h1>
-      <p style="color: var(--text-muted); margin-top: 5px;">Quản lý danh sách sinh viên, trạng thái thẻ thư viện và import dữ liệu từ hệ thống Đào tạo.</p>
+      <h1 class="page-title">Hồ sơ bạn đọc & thẻ</h1>
+      <p class="page-subtitle">Quản lý tài khoản sinh viên và trạng thái sử dụng thư viện.</p>
     </div>
     <div class="header-actions">
-      <button class="btn-outline">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-        Tạo thủ công
-      </button>
-      <button class="btn-primary" (click)="openImportModal()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-        Import Excel
-      </button>
+      <span *ngIf="isReadOnly" class="badge badge-warning">Chế độ chỉ xem dành cho Thủ thư</span>
+      <button *ngIf="!isReadOnly" class="btn-primary" type="button" (click)="openCreate()">Thêm sinh viên</button>
     </div>
   </div>
 
+  <p class="message error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <p class="message success" *ngIf="successMessage">{{ successMessage }}</p>
+
   <div class="card">
     <div class="table-toolbar">
-      <div class="search-box">
-        <span class="icon search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
-        <input type="text" placeholder="Tra cứu MSSV, Email, Họ tên..." class="form-control" style="width: 350px; padding-left: 35px;">
-      </div>
-      <div class="filter-chips">
-        <select class="form-control" style="width: 150px;">
-          <option>Tất cả trạng thái</option>
-          <option>Hoạt động</option>
-          <option>Bị khóa</option>
-          <option>Hết hạn</option>
-        </select>
-        <button class="btn-outline">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-          Lọc
-        </button>
-      </div>
+      <input class="form-control search" type="search" [(ngModel)]="searchTerm" placeholder="Tìm tên, MSSV, email hoặc khoa…">
+      <select class="form-control" [(ngModel)]="statusFilter">
+        <option value="">Tất cả trạng thái</option>
+        <option value="ACTIVE">Hoạt động</option><option value="LOCKED">Bị khóa</option><option value="EXPIRED">Hết hạn</option><option value="UNISSUED">Chưa cấp thẻ</option>
+      </select>
     </div>
 
     <div class="table-responsive">
       <table class="admin-table">
-        <thead>
-          <tr>
-            <th width="35%">Thông tin Sinh viên</th>
-            <th width="15%">MSSV</th>
-            <th width="15%">Lớp</th>
-            <th width="10%" class="text-center">Sách mượn</th>
-            <th width="15%">Trạng thái thẻ</th>
-            <th width="10%" class="text-right">Thao tác</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Thông tin sinh viên</th><th>MSSV</th><th>Khoa/Đơn vị</th><th>Trạng thái thẻ</th><th>Thao tác</th></tr></thead>
         <tbody>
-          <tr *ngFor="let st of students">
-            <td>
-              <div class="user-cell">
-                <div class="user-avatar">{{ st.name.charAt(0) }}</div>
-                <div class="user-details">
-                  <div class="user-name">{{ st.name }}</div>
-                  <div class="user-email">{{ st.email }}</div>
-                </div>
-              </div>
-            </td>
-            <td><strong>{{ st.id }}</strong></td>
-            <td>{{ st.class }}</td>
-            <td class="text-center">{{ st.borrowed }} cuốn</td>
-            <td>
-              <span class="badge" [ngClass]="{
-                'badge-available': st.status === 'active',
-                'badge-danger': st.status === 'locked',
-                'badge-warning': st.status === 'expired'
-              }">
-                {{ st.status === 'active' ? 'Hoạt động' : st.status === 'locked' ? 'Bị khóa' : 'Hết hạn' }}
-              </span>
-            </td>
-            <td class="text-right">
-              <button class="action-btn edit-btn" title="Cập nhật">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-              </button>
-              <button class="action-btn" title="Khóa thẻ" *ngIf="st.status === 'active'">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              </button>
+          <tr *ngFor="let st of filteredStudents">
+            <td><div class="user-cell"><div class="user-avatar">{{ st.fullName.charAt(0) }}</div><div class="user-details"><div class="user-name">{{ st.fullName }}</div><div class="user-email">{{ st.email }}<span *ngIf="st.phone"> · {{ st.phone }}</span></div></div></div></td>
+            <td><strong>{{ st.mssv }}</strong></td>
+            <td>{{ st.department || '—' }}</td>
+            <td><span class="badge" [ngClass]="{'badge-available': st.cardStatus === 'ACTIVE','badge-danger': st.cardStatus === 'LOCKED','badge-warning': st.cardStatus === 'EXPIRED'}">{{ cardStatusLabel(st.cardStatus) }}</span></td>
+            <td class="actions-cell">
+              <button class="action-text view" type="button" (click)="openProfile(st)">Xem hồ sơ</button>
+              <button *ngIf="!isReadOnly" class="action-text" type="button" (click)="openEdit(st)">Sửa</button>
+              <button *ngIf="!isReadOnly" class="action-text danger" type="button" (click)="deleteStudent(st)">Xóa</button>
             </td>
           </tr>
+          <tr *ngIf="!loading && filteredStudents.length === 0"><td colspan="5" class="text-center empty">Không có sinh viên phù hợp.</td></tr>
+          <tr *ngIf="loading"><td colspan="5" class="text-center empty">Đang tải dữ liệu…</td></tr>
         </tbody>
       </table>
     </div>
-    
-    <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.85rem; color: #64748b;">Hiển thị 1-5 của 15,200 sinh viên</span>
-      <div style="display: flex; gap: 5px;">
-        <button class="btn-outline btn-sm">Trước</button>
-        <button class="btn-primary btn-sm">1</button>
-        <button class="btn-outline btn-sm">2</button>
-        <button class="btn-outline btn-sm">3</button>
-        <button class="btn-outline btn-sm">Sau</button>
-      </div>
-    </div>
+    <div class="result-count">Hiển thị {{ filteredStudents.length }} / {{ students.length }} sinh viên.</div>
   </div>
-</div>
 
-<!-- Import Modal overlay -->
-<div class="modal-overlay" *ngIf="isImportModalOpen" (click)="closeImportModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3>Import Danh sách Sinh viên</h3>
-      <button class="close-btn" (click)="closeImportModal()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">
-        Tải lên file Excel (.xlsx, .csv) danh sách sinh viên được xuất từ hệ thống Quản lý Đào tạo.
-      </p>
-      
-      <!-- Drag & Drop Zone -->
-      <div class="dropzone">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-        <h4>Kéo thả file vào đây</h4>
-        <p>hoặc</p>
-        <button class="btn-outline btn-sm">Chọn file từ máy tính</button>
-        <span class="file-hint">Hỗ trợ: .xlsx, .xls, .csv (Tối đa 5MB)</span>
+  <div class="modal-overlay" *ngIf="showProfile" (click)="closeProfile()">
+    <section class="profile-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div><h3>Hồ sơ nghiệp vụ bạn đọc</h3><p>Thông tin thẻ, mượn trả, công nợ và vi phạm từ dữ liệu thật.</p></div>
+        <button type="button" class="close-btn" (click)="closeProfile()">×</button>
       </div>
+      <div class="profile-loading" *ngIf="profileLoading">Đang tổng hợp hồ sơ bạn đọc…</div>
+      <div class="profile-body" *ngIf="selectedProfile as profile">
+        <div class="reader-hero">
+          <div class="profile-avatar">{{ profile.student.fullName.charAt(0) }}</div>
+          <div class="profile-identity">
+            <h2>{{ profile.student.fullName }}</h2>
+            <p>{{ profile.student.mssv }} · {{ profile.student.department || 'Chưa cập nhật khoa' }}</p>
+            <span class="badge" [ngClass]="{'badge-available': profile.card.cardStatus === 'ACTIVE','badge-danger': profile.card.cardStatus === 'LOCKED','badge-warning': profile.card.cardStatus === 'EXPIRED'}">
+              {{ cardStatusLabel(profile.card.cardStatus) }}
+            </span>
+          </div>
+          <button *ngIf="!isReadOnly" type="button" class="btn-outline" (click)="closeProfile(); openEdit(profile.student)">Sửa hồ sơ/thẻ</button>
+        </div>
 
-      <div style="margin-top: 20px; font-size: 0.85rem; color: #475569;">
-        <a href="#" style="color: #0284c7; text-decoration: none;">Tải file mẫu (Template)</a>
+        <div class="profile-alert" *ngIf="profile.card.circulationLockReason || profile.student.disciplineFlag">
+          <strong>Quyền mượn đang bị hạn chế.</strong>
+          <span>{{ profile.card.circulationLockReason || 'Tài khoản có cờ kỷ luật.' }}</span>
+          <span *ngIf="profile.card.circulationLockedUntil">Đến {{ profile.card.circulationLockedUntil | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card"><span>Tiền thế chân</span><strong>{{ profile.card.depositBalance | number:'1.0-0':'en-US' }} VNĐ</strong></div>
+          <div class="summary-card debt"><span>Công nợ hiện tại</span><strong>{{ profile.card.totalDebt | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ outstandingLedgerCount }} khoản chưa tất toán</small></div>
+          <div class="summary-card"><span>Phiếu đang hoạt động</span><strong>{{ activeLoanCount }}</strong><small>{{ overdueLoanCount }} phiếu quá hạn</small></div>
+          <div class="summary-card warning"><span>Vi phạm năm học</span><strong>{{ profile.student.overdueViolationCount || 0 }} quá hạn</strong><small>{{ profile.student.reservationNoShowCount || 0 }} lần không nhận sách</small></div>
+        </div>
+
+        <section class="detail-section">
+          <h4>Thông tin thẻ thư viện</h4>
+          <div class="detail-grid">
+            <div><span>Mã thẻ</span><strong>{{ profile.card.issued ? profile.card.cardNumber : 'Chưa cấp thẻ' }}</strong></div>
+            <div><span>Ngày lập</span><strong>{{ profile.card.issuedAt ? (profile.card.issuedAt | date:'dd/MM/yyyy') : '—' }}</strong></div>
+            <div><span>Ngày hết hạn</span><strong>{{ profile.card.expiryDate ? (profile.card.expiryDate | date:'dd/MM/yyyy') : 'Chưa có dữ liệu' }}</strong></div>
+            <div><span>Email / điện thoại</span><strong>{{ profile.student.email }}<br>{{ profile.student.phone || 'Chưa cập nhật' }}</strong></div>
+          </div>
+        </section>
+
+        <section class="detail-section">
+          <div class="section-heading"><h4>Phiếu mượn gần đây</h4><span>{{ profile.loans.length }} phiếu</span></div>
+          <div class="compact-table-wrap">
+            <table class="compact-table">
+              <thead><tr><th>Phiếu</th><th>Loại</th><th>Trạng thái</th><th>Tài liệu</th><th>Hạn gần nhất</th><th></th></tr></thead>
+              <tbody>
+                <tr *ngFor="let loan of profile.loans | slice:0:8">
+                  <td>#{{ loan.ticketId }}</td><td>{{ loan.ticketType === 'ONSITE' ? 'Tại chỗ' : 'Mượn về' }}</td>
+                  <td><span class="status-text" [class.danger]="loan.status === 'OVERDUE'">{{ loanStatusLabel(loan.status) }}</span></td>
+                  <td>{{ loan.itemCount }}</td><td>{{ loan.nearestDueDate ? (loan.nearestDueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+                  <td><button type="button" class="link-button" (click)="openWorkflow('/admin/circulation','LOAN_TICKET',loan.ticketId)">Mở phiếu</button></td>
+                </tr>
+                <tr *ngIf="!profile.loans.length"><td colspan="6" class="empty">Chưa có lịch sử mượn.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="detail-section split-section">
+          <div>
+            <div class="section-heading"><h4>Công nợ và giao dịch</h4><span>{{ profile.ledger.length }} dòng</span></div>
+            <div class="record-list">
+              <div class="record" *ngFor="let entry of profile.ledger | slice:0:6">
+                <div><strong>{{ entry.reason || entry.type }}</strong><small>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm' }} · {{ entry.status }}</small></div>
+                <b [class.negative]="entry.amount < 0">{{ entry.amount | number:'1.0-0':'en-US' }} VNĐ</b>
+              </div>
+              <p class="empty" *ngIf="!profile.ledger.length">Không có giao dịch công nợ.</p>
+            </div>
+            <button type="button" class="btn-outline section-action" (click)="openWorkflow('/admin/penalties','USER',profile.student.userId)">Mở quản lý thu phạt</button>
+          </div>
+          <div>
+            <div class="section-heading"><h4>Hồ sơ mất/hỏng</h4><span>{{ profile.penaltyCases.length }} hồ sơ</span></div>
+            <div class="record-list">
+              <div class="record" *ngFor="let item of profile.penaltyCases | slice:0:6">
+                <div><strong>#{{ item.caseId }} · {{ item.incidentType === 'LOST' ? 'Mất' : 'Hư hỏng' }}</strong><small>{{ item.barcode || 'Không có barcode' }} · {{ item.status }}</small></div>
+                <b>{{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ</b>
+              </div>
+              <p class="empty" *ngIf="!profile.penaltyCases.length">Không có hồ sơ mất/hỏng.</p>
+            </div>
+            <button type="button" class="btn-outline section-action" (click)="openWorkflow('/admin/penalties','USER',profile.student.userId)">Mở hồ sơ phạt</button>
+          </div>
+        </section>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-outline" (click)="closeImportModal()">Hủy bỏ</button>
-      <button class="btn-primary" (click)="closeImportModal()">Bắt đầu Import</button>
-    </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showForm" (click)="showForm = false">
+    <form class="student-dialog" (ngSubmit)="saveStudent()" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h3>{{ editingMssv ? 'Cập nhật sinh viên' : 'Thêm sinh viên' }}</h3><button type="button" class="close-btn" (click)="showForm = false">×</button></div>
+      <div class="modal-body form-grid">
+        <label>MSSV<input class="form-control" name="mssv" [(ngModel)]="form.mssv" maxlength="30" required></label>
+        <label>Họ tên<input class="form-control" name="fullName" [(ngModel)]="form.fullName" maxlength="255" required></label>
+        <label>Email<input class="form-control" name="email" type="email" [(ngModel)]="form.email" required></label>
+        <label>Số điện thoại<input class="form-control" name="phone" [(ngModel)]="form.phone"></label>
+        <label>Khoa/Đơn vị<input class="form-control" name="department" [(ngModel)]="form.department"></label>
+        <label>Trạng thái thẻ<select class="form-control" name="cardStatus" [(ngModel)]="form.cardStatus"><option value="ACTIVE">Hoạt động</option><option value="LOCKED">Bị khóa</option><option value="EXPIRED">Hết hạn</option></select></label>
+        <label>Ngày hết hạn thẻ<input class="form-control" name="cardExpiryDate" type="datetime-local" [(ngModel)]="form.cardExpiryDate"></label>
+        <p class="password-note" *ngIf="!editingMssv">Mật khẩu ban đầu là MSSV; sinh viên phải đổi mật khẩu ở lần đăng nhập đầu tiên.</p>
+      </div>
+      <div class="modal-footer"><button class="btn-outline" type="button" (click)="showForm = false">Hủy</button><button class="btn-primary" type="submit" [disabled]="saving">{{ saving ? 'Đang lưu…' : 'Lưu hồ sơ' }}</button></div>
+    </form>
   </div>
 </div>

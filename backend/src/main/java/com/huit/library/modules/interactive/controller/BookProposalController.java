@@ -9,11 +9,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/proposals")
@@ -27,29 +27,20 @@ public class BookProposalController {
     }
 
     @PostMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Submit book proposal", description = "Student/reader submits a recommendation to buy new book")
-    public ResponseEntity<?> submitProposal(Authentication authentication, @RequestBody CreateProposalRequestDTO req) {
-        UUID userId = null;
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
-            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-            userId = userDetails.getUser().getUserId();
-        }
-
-        try {
-            ProposalResponseDTO result = proposalService.createProposal(userId, req);
-            return ResponseEntity.ok(result);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<ProposalResponseDTO> submitProposal(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody CreateProposalRequestDTO req) {
+        return ResponseEntity.ok(proposalService.createProposal(
+                userDetails.getUser().getUserId(), req));
     }
 
     @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get my proposals", description = "Reader views their submitted proposals and approval status")
-    public ResponseEntity<?> getMyProposals(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails)) {
-            return ResponseEntity.status(401).body("Vui lòng đăng nhập để xem lịch sử đề xuất");
-        }
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+    public ResponseEntity<List<ProposalResponseDTO>> getMyProposals(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         List<ProposalResponseDTO> list = proposalService.getMyProposals(userDetails.getUser().getUserId());
         return ResponseEntity.ok(list);
     }
@@ -64,7 +55,7 @@ public class BookProposalController {
     @PutMapping("/admin/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Update proposal status", description = "Librarian/admin approves or rejects a proposal")
-    public ResponseEntity<?> updateProposalStatus(@PathVariable Long id, @RequestBody UpdateProposalStatusDTO req) {
+    public ResponseEntity<?> updateProposalStatus(@PathVariable Long id, @Valid @RequestBody UpdateProposalStatusDTO req) {
         try {
             ProposalResponseDTO result = proposalService.updateStatus(id, req);
             return ResponseEntity.ok(result);

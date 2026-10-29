@@ -1,7 +1,8 @@
 $baseUrl = "http://localhost:8080/api/v1/auth"
+$demoPassword = if ($env:DEMO_ADMIN_PASSWORD) { $env:DEMO_ADMIN_PASSWORD } else { "admin123" }
 $loginPayload = @{
     email = "admin@huit.edu.vn"
-    password = "admin123"
+    password = $demoPassword
 } | ConvertTo-Json
 
 Write-Host "1. Testing Login..."
@@ -11,8 +12,6 @@ $refreshToken = $loginResponse.refreshToken
 
 if ($accessToken -and $refreshToken) {
     Write-Host "Login Successful!"
-    Write-Host "Access Token: $($accessToken.Substring(0, 20))..."
-    Write-Host "Refresh Token: $($refreshToken.Substring(0, 20))..."
 } else {
     Write-Host "Login Failed!"
     exit 1
@@ -29,8 +28,6 @@ $newRefreshToken = $refreshResponse.refreshToken
 
 if ($newAccessToken -and $newRefreshToken) {
     Write-Host "Refresh Successful!"
-    Write-Host "New Access Token: $($newAccessToken.Substring(0, 20))..."
-    Write-Host "New Refresh Token: $($newRefreshToken.Substring(0, 20))..."
 } else {
     Write-Host "Refresh Failed!"
     exit 1
@@ -59,5 +56,10 @@ try {
     $failResponse = Invoke-RestMethod -Uri "$baseUrl/refresh-token" -Method Post -Body $refreshPayload2 -ContentType "application/json"
     Write-Host "Wait, this should have failed!"
 } catch {
-    Write-Host "Success: Token was rejected as expected: $($_.Exception.Message)"
+    $statusCode = [int]$_.Exception.Response.StatusCode
+    if ($statusCode -ne 401) {
+        Write-Host "Failed: revoked refresh token returned HTTP $statusCode instead of 401."
+        exit 1
+    }
+    Write-Host "Success: revoked refresh token returned HTTP 401."
 }

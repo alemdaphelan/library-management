@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 22-uat-e-reservation-no-show-counter
+      author: codex
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: reservation_no_show_count
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reservation_violation_academic_year
+                  type: varchar(20)

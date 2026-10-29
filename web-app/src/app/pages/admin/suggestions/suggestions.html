@@ -59,7 +59,7 @@
             Đang tải dữ liệu đề xuất sách...
           </td>
         </tr>
-        <tr *ngFor="let s of filteredSuggestions">
+        <tr *ngFor="let s of filteredSuggestions" (click)="openDrawer(s)" style="cursor: pointer;">
           <td>
             <div style="font-weight: 600; color: #0f172a; margin-bottom: 4px;">{{ s.title }}</div>
             <div style="font-size: 0.85rem; color: #64748b;">
@@ -81,8 +81,8 @@
             <span class="badge badge-danger" *ngIf="s.status === 'REJECTED'">Từ chối</span>
           </td>
           <td class="text-center">
-            <button class="btn-primary btn-sm" style="padding: 6px 14px;" (click)="openDrawer(s)" *ngIf="s.status === 'PENDING'">Duyệt ngay</button>
-            <button class="btn-outline btn-sm" (click)="openDrawer(s)" *ngIf="s.status !== 'PENDING'">Chi tiết</button>
+            <button class="btn-primary btn-sm" style="padding: 6px 14px;" (click)="$event.stopPropagation(); openDrawer(s)" *ngIf="s.status === 'PENDING'">Duyệt ngay</button>
+            <button class="btn-outline btn-sm" (click)="$event.stopPropagation(); openDrawer(s)" *ngIf="s.status !== 'PENDING'">Chi tiết</button>
           </td>
         </tr>
         <tr *ngIf="!isLoading && filteredSuggestions.length === 0">
@@ -128,6 +128,26 @@
           <div class="meta-label">Ngày gửi</div>
           <div class="meta-val">{{ selectedSuggestion.createdAt ? (selectedSuggestion.createdAt | date:'dd/MM/yyyy HH:mm') : 'N/A' }}</div>
         </div>
+        <div class="meta-item">
+          <div class="meta-label">ISBN</div>
+          <div class="meta-val">{{ selectedSuggestion.isbn || 'Chưa cung cấp' }}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Năm / Phiên bản</div>
+          <div class="meta-val">{{ selectedSuggestion.publicationYear || 'Chưa rõ' }}<span *ngIf="selectedSuggestion.edition"> · {{ selectedSuggestion.edition }}</span></div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Thể loại</div>
+          <div class="meta-val">{{ selectedSuggestion.genre || 'Chưa phân loại' }}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Mức độ cần thiết</div>
+          <div class="meta-val">{{ urgencyLabel(selectedSuggestion.urgencyLevel) }}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Giá dự kiến</div>
+          <div class="meta-val">{{ selectedSuggestion.estimatedPrice != null ? (selectedSuggestion.estimatedPrice | number:'1.0-0') + ' VNĐ' : 'Chưa cung cấp' }}</div>
+        </div>
       </div>
     </div>
 
@@ -136,16 +156,21 @@
       <div class="reason-box">"{{ selectedSuggestion.reason }}"</div>
     </div>
 
-    <div class="form-group" style="margin-top: 16px;" *ngIf="selectedSuggestion.note">
-      <label>Link tham khảo / Ghi chú từ sinh viên:</label>
+    <div class="form-group" style="margin-top: 16px;" *ngIf="selectedSuggestion.externalUrl">
+      <label>Đường dẫn tham khảo:</label>
       <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; word-break: break-all;">
-        {{ selectedSuggestion.note }}
+        <a [href]="selectedSuggestion.externalUrl" target="_blank" rel="noopener noreferrer">{{ selectedSuggestion.externalUrl }}</a>
       </div>
     </div>
 
+    <div class="form-group" style="margin-top: 16px;" *ngIf="selectedSuggestion.note">
+      <label>Ghi chú bổ sung từ sinh viên:</label>
+      <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 6px; font-size: 0.9rem;">{{ selectedSuggestion.note }}</div>
+    </div>
+
     <div class="form-group" style="margin-top: 20px;" *ngIf="selectedSuggestion.status === 'PENDING'">
-      <label>Ghi chú của Thủ thư (Lý do từ chối hoặc hướng dẫn bổ sung):</label>
-      <textarea [(ngModel)]="adminNoteInput" class="form-control" rows="4" placeholder="Nhập ghi chú phản hồi cho sinh viên (không bắt buộc)..."></textarea>
+      <label>Ghi chú của Thủ thư (bắt buộc khi từ chối):</label>
+      <textarea [(ngModel)]="adminNoteInput" maxlength="1000" class="form-control" rows="4" placeholder="Nhập lý do từ chối hoặc ghi chú phản hồi..."></textarea>
     </div>
     
     <div *ngIf="selectedSuggestion.status === 'APPROVED'">
@@ -156,6 +181,9 @@
       <div *ngIf="selectedSuggestion.adminNote" style="margin-top: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px;">
         <div style="font-weight: 600; color: #166534; font-size: 0.85rem; margin-bottom: 4px;">Ghi chú của thủ thư:</div>
         <div style="color: #14532d; font-size: 0.95rem;">{{ selectedSuggestion.adminNote }}</div>
+      </div>
+      <div style="margin-top: 12px; background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 8px; color: #1e3a8a;">
+        Đầu sách #{{ selectedSuggestion.approvedBookId || 'đang cập nhật' }} đã được tạo với 0 bản sao. Hãy lập phiếu nhập kho để bổ sung bản sách vật lý.
       </div>
     </div>
 

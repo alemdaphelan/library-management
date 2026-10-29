@@ -1,0 +1,180 @@
+databaseChangeLog:
+  - changeSet:
+      id: week10a-create-recommendation-data-foundation
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              CREATE TABLE recommendation_subjects (
+                  subject_id BIGSERIAL PRIMARY KEY,
+                  code VARCHAR(64) NOT NULL UNIQUE,
+                  name VARCHAR(255) NOT NULL,
+                  description VARCHAR(1000),
+                  active BOOLEAN NOT NULL DEFAULT TRUE,
+                  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+              );
+
+              CREATE TABLE department_subject_affinities (
+                  affinity_id BIGSERIAL PRIMARY KEY,
+                  department_key VARCHAR(255) NOT NULL,
+                  display_name VARCHAR(255) NOT NULL,
+                  subject_id BIGINT NOT NULL REFERENCES recommendation_subjects(subject_id),
+                  weight NUMERIC(4,3) NOT NULL,
+                  source VARCHAR(64) NOT NULL DEFAULT 'HUIT_2026',
+                  active BOOLEAN NOT NULL DEFAULT TRUE,
+                  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  CONSTRAINT uk_department_subject UNIQUE (department_key, subject_id),
+                  CONSTRAINT chk_department_subject_weight CHECK (weight > 0 AND weight <= 1)
+              );
+
+              CREATE TABLE book_subject_assignments (
+                  assignment_id BIGSERIAL PRIMARY KEY,
+                  book_id BIGINT NOT NULL REFERENCES books(book_id) ON DELETE CASCADE,
+                  subject_id BIGINT NOT NULL REFERENCES recommendation_subjects(subject_id),
+                  confidence NUMERIC(4,3) NOT NULL,
+                  classification_source VARCHAR(64) NOT NULL,
+                  evidence VARCHAR(500),
+                  primary_subject BOOLEAN NOT NULL DEFAULT FALSE,
+                  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                  CONSTRAINT uk_book_recommendation_subject UNIQUE (book_id, subject_id),
+                  CONSTRAINT chk_book_subject_confidence CHECK (confidence > 0 AND confidence <= 1),
+                  CONSTRAINT chk_book_subject_source CHECK (
+                      classification_source IN (
+                          'MANUAL', 'IMPORTED', 'KEYWORD_HIGH_CONFIDENCE', 'LEGACY_REVIEWED'
+                      )
+                  )
+              );
+
+              CREATE INDEX idx_department_subject_key
+                  ON department_subject_affinities(department_key)
+                  WHERE active = TRUE;
+              CREATE INDEX idx_book_subject_book ON book_subject_assignments(book_id);
+              CREATE INDEX idx_book_subject_subject ON book_subject_assignments(subject_id);
+
+  - changeSet:
+      id: week10a-seed-huit-recommendation-taxonomy
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              INSERT INTO recommendation_subjects (code, name, description)
+              VALUES
+                ('FOOD_TECH', 'Công nghệ thực phẩm', 'Công nghệ, chế biến, an toàn và chất lượng thực phẩm'),
+                ('BUSINESS_MARKETING', 'Kinh doanh và Marketing', 'Quản trị, kinh doanh, marketing và thương mại'),
+                ('FINANCE_ACCOUNTING', 'Tài chính và Kế toán', 'Tài chính, ngân hàng, kế toán và công nghệ tài chính'),
+                ('LAW', 'Luật', 'Pháp luật, luật kinh tế và chính sách'),
+                ('CHEM_BIO_ENV', 'Hóa - Sinh - Môi trường', 'Hóa học, vật liệu, sinh học, tài nguyên và môi trường'),
+                ('IT_DATA_AI', 'CNTT - Dữ liệu - AI', 'Công nghệ thông tin, an toàn thông tin, khoa học dữ liệu và AI'),
+                ('TEXTILE_FASHION', 'Dệt may và Thời trang', 'Công nghệ dệt may, thiết kế và kinh doanh thời trang'),
+                ('ENGINEERING_AUTOMATION', 'Cơ khí - Điện - Tự động hóa', 'Cơ khí, cơ điện tử, nhiệt, điện và điều khiển tự động'),
+                ('CULINARY_NUTRITION', 'Ẩm thực và Dinh dưỡng', 'Dinh dưỡng, khoa học chế biến món ăn và ẩm thực'),
+                ('TOURISM_HOSPITALITY', 'Du lịch và Dịch vụ', 'Du lịch, lữ hành, nhà hàng và khách sạn'),
+                ('LANGUAGES', 'Ngoại ngữ', 'Ngôn ngữ Anh, Trung Quốc, ngôn ngữ học và biên phiên dịch'),
+                ('LOGISTICS_INDUSTRIAL', 'Logistics và Quản lý công nghiệp', 'Chuỗi cung ứng, logistics và quản lý công nghiệp'),
+                ('GENERAL_FOUNDATION', 'Kiến thức đại cương và kỹ năng', 'Toán, khoa học cơ bản, kỹ năng và tài liệu tham khảo chung');
+
+              WITH mappings(department_key, display_name, subject_code, weight) AS (
+                VALUES
+                  ('cong nghe thuc pham', 'Công nghệ thực phẩm', 'FOOD_TECH', 1.000),
+                  ('dam bao chat luong va attp', 'Đảm bảo chất lượng và ATTP', 'FOOD_TECH', 1.000),
+                  ('cong nghe che bien thuy san', 'Công nghệ chế biến thủy sản', 'FOOD_TECH', 1.000),
+                  ('quan tri kinh doanh thuc pham', 'Quản trị kinh doanh thực phẩm', 'FOOD_TECH', 0.800),
+                  ('quan tri kinh doanh thuc pham', 'Quản trị kinh doanh thực phẩm', 'BUSINESS_MARKETING', 0.800),
+                  ('quan tri kinh doanh', 'Quản trị kinh doanh', 'BUSINESS_MARKETING', 1.000),
+                  ('kinh doanh quoc te', 'Kinh doanh quốc tế', 'BUSINESS_MARKETING', 1.000),
+                  ('marketing', 'Marketing', 'BUSINESS_MARKETING', 1.000),
+                  ('thuong mai dien tu', 'Thương mại điện tử', 'BUSINESS_MARKETING', 0.900),
+                  ('thuong mai dien tu', 'Thương mại điện tử', 'IT_DATA_AI', 0.500),
+                  ('logistics va quan ly chuoi cung ung', 'Logistics và quản lý chuỗi cung ứng', 'LOGISTICS_INDUSTRIAL', 1.000),
+                  ('ke toan', 'Kế toán', 'FINANCE_ACCOUNTING', 1.000),
+                  ('tai chinh ngan hang', 'Tài chính - Ngân hàng', 'FINANCE_ACCOUNTING', 1.000),
+                  ('cong nghe tai chinh', 'Công nghệ tài chính', 'FINANCE_ACCOUNTING', 0.900),
+                  ('cong nghe tai chinh', 'Công nghệ tài chính', 'IT_DATA_AI', 0.500),
+                  ('luat kinh te', 'Luật kinh tế', 'LAW', 1.000),
+                  ('luat kinh te', 'Luật kinh tế', 'BUSINESS_MARKETING', 0.400),
+                  ('luat', 'Luật', 'LAW', 1.000),
+                  ('cong nghe ky thuat hoa hoc', 'Công nghệ kỹ thuật hóa học', 'CHEM_BIO_ENV', 1.000),
+                  ('cong nghe vat lieu', 'Công nghệ vật liệu', 'CHEM_BIO_ENV', 1.000),
+                  ('cong nghe ky thuat moi truong', 'Công nghệ kỹ thuật môi trường', 'CHEM_BIO_ENV', 1.000),
+                  ('quan ly tai nguyen va moi truong', 'Quản lý tài nguyên và môi trường', 'CHEM_BIO_ENV', 1.000),
+                  ('cong nghe sinh hoc', 'Công nghệ sinh học', 'CHEM_BIO_ENV', 1.000),
+                  ('cong nghe thong tin', 'Công nghệ thông tin', 'IT_DATA_AI', 1.000),
+                  ('khoa cong nghe thong tin', 'Khoa Công nghệ thông tin', 'IT_DATA_AI', 1.000),
+                  ('an toan thong tin', 'An toàn thông tin', 'IT_DATA_AI', 1.000),
+                  ('khoa hoc du lieu', 'Khoa học dữ liệu', 'IT_DATA_AI', 1.000),
+                  ('tri tue nhan tao', 'Trí tuệ nhân tạo', 'IT_DATA_AI', 1.000),
+                  ('kinh doanh thoi trang va det may', 'Kinh doanh thời trang và Dệt may', 'TEXTILE_FASHION', 0.800),
+                  ('kinh doanh thoi trang va det may', 'Kinh doanh thời trang và Dệt may', 'BUSINESS_MARKETING', 0.600),
+                  ('cong nghe det may', 'Công nghệ dệt, may', 'TEXTILE_FASHION', 1.000),
+                  ('cong nghe che tao may', 'Công nghệ chế tạo máy', 'ENGINEERING_AUTOMATION', 1.000),
+                  ('cong nghe ky thuat co dien tu', 'Công nghệ kỹ thuật cơ điện tử', 'ENGINEERING_AUTOMATION', 1.000),
+                  ('ky thuat nhiet', 'Kỹ thuật nhiệt', 'ENGINEERING_AUTOMATION', 1.000),
+                  ('cong nghe ky thuat dien dien tu', 'Công nghệ kỹ thuật Điện, Điện tử', 'ENGINEERING_AUTOMATION', 1.000),
+                  ('cong nghe ky thuat dieu khien va tu dong hoa', 'Công nghệ kỹ thuật điều khiển và tự động hóa', 'ENGINEERING_AUTOMATION', 1.000),
+                  ('khoa hoc dinh duong va am thuc', 'Khoa học dinh dưỡng và ẩm thực', 'CULINARY_NUTRITION', 1.000),
+                  ('khoa hoc che bien mon an', 'Khoa học chế biến món ăn', 'CULINARY_NUTRITION', 1.000),
+                  ('quan tri dich vu du lich va lu hanh', 'Quản trị dịch vụ du lịch và lữ hành', 'TOURISM_HOSPITALITY', 1.000),
+                  ('quan tri nha hang va dich vu an uong', 'Quản trị nhà hàng và dịch vụ ăn uống', 'TOURISM_HOSPITALITY', 0.900),
+                  ('quan tri nha hang va dich vu an uong', 'Quản trị nhà hàng và dịch vụ ăn uống', 'CULINARY_NUTRITION', 0.500),
+                  ('quan tri khach san', 'Quản trị khách sạn', 'TOURISM_HOSPITALITY', 1.000),
+                  ('du lich', 'Du lịch', 'TOURISM_HOSPITALITY', 1.000),
+                  ('ngon ngu anh', 'Ngôn ngữ Anh', 'LANGUAGES', 1.000),
+                  ('ngon ngu trung quoc', 'Ngôn ngữ Trung Quốc', 'LANGUAGES', 1.000),
+                  ('quan ly cong nghiep', 'Quản lý công nghiệp', 'LOGISTICS_INDUSTRIAL', 1.000)
+              )
+              INSERT INTO department_subject_affinities (
+                  department_key, display_name, subject_id, weight, source)
+              SELECT m.department_key, m.display_name, s.subject_id, m.weight, 'HUIT_2026'
+              FROM mappings m
+              JOIN recommendation_subjects s ON s.code = m.subject_code;
+
+  - changeSet:
+      id: week10a-classify-books-with-high-confidence-keywords
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              WITH rules(subject_code, pattern, confidence) AS (
+                VALUES
+                  ('IT_DATA_AI', '\m(computer|programming|software|database|algorithm|network|cybersecurity|artificial intelligence|machine learning|data science|java|python|linux|web development|information systems?)\M', 0.950),
+                  ('FOOD_TECH', '\m(food science|food technology|food processing|food safety|quality assurance|seafood|fisheries)\M', 0.930),
+                  ('CULINARY_NUTRITION', '\m(nutrition|culinary|cooking|cookbook|gastronomy|food service)\M', 0.900),
+                  ('CHEM_BIO_ENV', '\m(chemistry|biochemistry|biology|biotechnology|environmental science|ecology|materials science)\M', 0.930),
+                  ('BUSINESS_MARKETING', '\m(business|marketing|commerce|entrepreneurship|business management)\M', 0.900),
+                  ('FINANCE_ACCOUNTING', '\m(accounting|finance|banking|fintech|investment management)\M', 0.930),
+                  ('LAW', '\m(law|legal|jurisprudence|legislation)\M', 0.900),
+                  ('TEXTILE_FASHION', '\m(textile|fashion|garment|apparel)\M', 0.920),
+                  ('ENGINEERING_AUTOMATION', '\m(mechanical engineering|mechatronics|electrical engineering|electronics|automation|control systems?|thermodynamics|manufacturing engineering)\M', 0.930),
+                  ('TOURISM_HOSPITALITY', '\m(tourism|hospitality|hotel management|restaurant management|travel management)\M', 0.930),
+                  ('LANGUAGES', '\m(english language|chinese language|linguistics|translation studies)\M', 0.900),
+                  ('LOGISTICS_INDUSTRIAL', '\m(logistics|supply chain|operations management|industrial management)\M', 0.930)
+              )
+              INSERT INTO book_subject_assignments (
+                  book_id, subject_id, confidence, classification_source, evidence, primary_subject)
+              SELECT
+                  b.book_id,
+                  s.subject_id,
+                  r.confidence,
+                  'KEYWORD_HIGH_CONFIDENCE',
+                  'title matched controlled rule: ' || r.subject_code,
+                  ROW_NUMBER() OVER (
+                      PARTITION BY b.book_id
+                      ORDER BY r.confidence DESC, r.subject_code
+                  ) = 1
+              FROM books b
+              JOIN rules r ON COALESCE(b.title, '') ~* r.pattern
+              JOIN recommendation_subjects s ON s.code = r.subject_code
+              ON CONFLICT (book_id, subject_id) DO NOTHING;
+
+              ANALYZE recommendation_subjects;
+              ANALYZE department_subject_affinities;
+              ANALYZE book_subject_assignments;

@@ -97,6 +97,21 @@
 }
 .suggest-btn:hover { text-decoration: underline; opacity: 0.8; }
 
+.source-panel {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 10px;
+  color: #0f172a;
+}
+.source-heading { color: #1d4ed8; font-size: 0.78rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
+.source-item { display: flex; gap: 8px; margin-top: 8px; }
+.source-index { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 50%; background: #0284c7; color: white; display: grid; place-items: center; font-size: 0.72rem; font-weight: 700; }
+.source-content { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.source-content strong, .source-content a { color: #075985; font-size: 0.82rem; text-decoration: none; }
+.source-content span { color: #475569; font-size: 0.75rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fallback-note { margin-top: 9px; color: #92400e; font-size: 0.72rem; line-height: 1.35; }
+
 .chat-footer {
   padding: 15px 20px;
   background: white;

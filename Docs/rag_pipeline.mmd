@@ -1,0 +1,37 @@
+flowchart LR
+    subgraph INDEX["Luồng lập chỉ mục"]
+        POLICY["Tài liệu nghiệp vụ kiểm soát"]
+        CATALOG["Catalog PostgreSQL"]
+        CHUNK["Chuẩn hóa + chia chunk"]
+        EMBED1["Gemini embedding\nhoặc local hash fallback"]
+        VECTOR[("PostgreSQL pgvector")]
+        POLICY --> CHUNK
+        CATALOG --> CHUNK
+        CHUNK --> EMBED1
+        EMBED1 --> VECTOR
+    end
+
+    subgraph QUERY["Luồng hỏi đáp"]
+        QUESTION["Câu hỏi Web"]
+        GUARD["Input guard + rate limit\nprivacy filter"]
+        EMBED2["Embedding câu hỏi"]
+        RETRIEVE["Top-K vector + catalog retriever"]
+        GATE{"Điểm bằng chứng >= 0.60?"}
+        PROMPT["Prompt chỉ chứa bằng chứng đã lấy"]
+        GEMINI["Gemini generation"]
+        VALIDATE{"Có citation hợp lệ?"}
+        ANSWER["Câu trả lời + nguồn + gợi ý"]
+        FALLBACK["Relevant-sentence fallback\ncó dẫn nguồn"]
+        REFUSE["Từ chối: chưa đủ bằng chứng"]
+        AUDIT["Audit hash + model + latency"]
+
+        QUESTION --> GUARD --> EMBED2 --> RETRIEVE
+        VECTOR --> RETRIEVE
+        RETRIEVE --> GATE
+        GATE -->|Có| PROMPT --> GEMINI --> VALIDATE
+        VALIDATE -->|Có| ANSWER
+        VALIDATE -->|Không / timeout / quota| FALLBACK --> ANSWER
+        GATE -->|Không| REFUSE
+        ANSWER --> AUDIT
+        REFUSE --> AUDIT
+    end

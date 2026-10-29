@@ -3,13 +3,11 @@ package com.huit.library.modules.interactive.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/feedback")
-@Tag(name = "8. Interactive (Complaints, Proposals)", description = "Endpoints for complaints and book proposals")
+@RequestMapping({"/feedback", "/api/v1/feedback"})
+@Tag(name = "8. Interactive Feedback", description = "Public feedback endpoints")
 public class FeedbackController {
 
     @PostMapping("/complaints")
@@ -18,9 +16,4 @@ public class FeedbackController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/proposals")
-    @Operation(summary = "Submit Proposal", description = "Propose the library buys a new book.")
-    public ResponseEntity<?> submitProposal() {
-        return ResponseEntity.ok().build();
-    }
 }

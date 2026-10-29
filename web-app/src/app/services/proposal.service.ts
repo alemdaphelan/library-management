@@ -13,9 +13,17 @@ export interface BookProposal {
   title: string;
   authorName?: string;
   publisher?: string;
+  isbn?: string;
+  publicationYear?: number | null;
+  edition?: string;
+  estimatedPrice?: number | null;
+  externalUrl?: string;
+  genre?: string;
+  urgencyLevel?: 'LOW' | 'NORMAL' | 'HIGH';
   reason?: string;
   note?: string;
   adminNote?: string;
+  approvedBookId?: number;
   status?: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt?: string;
   updatedAt?: string;

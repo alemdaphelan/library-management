@@ -8,10 +8,10 @@
         <div class="topbar-left">
           <span class="tb-item">&#9202; T2 - T7: 07:30 - 20:30</span>
           <span class="tb-item">&#128222; Hotline: (028) 3816 1673</span>
-          <a href="#" class="tb-item tb-link">&#10067; Hướng dẫn độc giả</a>
+          <a routerLink="/guide" class="tb-item tb-link">&#10067; Hướng dẫn độc giả</a>
         </div>
         <div class="topbar-right">
-          <span class="tb-item lang-switch">VN | EN</span>
+          <a *ngIf="canAccessAdmin" routerLink="/admin" class="tb-btn-dark"><span class="icon">&#9881;</span> Trang quản trị</a>
           <a *ngIf="!authService.isLoggedIn()" routerLink="/login" class="tb-btn-dark"><span class="icon">&#128274;</span> Đăng nhập</a>
         </div>
       </div>
@@ -34,7 +34,17 @@
         </div>
 
         <div class="header-user-area" *ngIf="authService.isLoggedIn()">
-          <button class="btn-reader-card" routerLink="/profile">
+          <button class="btn-reader-card btn-borrow-cart" routerLink="/borrow-cart">
+            <span class="icon">&#128722;</span> Giỏ mượn
+            <ng-container *ngIf="borrowCartService.count$ | async as cartCount">
+              <span class="cart-count" *ngIf="cartCount > 0">{{ cartCount }}</span>
+            </ng-container>
+          </button>
+          <button class="btn-reader-card notification-button" type="button" (click)="openNotifications()">
+            <span class="icon">&#128276;</span> Thông báo
+            <span class="notification-count" *ngIf="unreadNotificationCount > 0">{{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}</span>
+          </button>
+          <button class="btn-reader-card" type="button" (click)="openLibraryCard()">
             <span class="icon">&#128179;</span> Thẻ thư viện
           </button>
           
@@ -45,8 +55,12 @@
             </div>
             
             <div class="user-dropdown" *ngIf="isUserMenuOpen">
+              <a *ngIf="canAccessAdmin" routerLink="/admin" (click)="isUserMenuOpen = false">Trang quản trị</a>
+              <a routerLink="/saved-books" (click)="isUserMenuOpen = false">Tủ sách cá nhân</a>
+              <a routerLink="/my-penalties" (click)="isUserMenuOpen = false">Công nợ & Khoản phạt</a>
               <a routerLink="/profile" [queryParams]="{tab: 'settings'}">Cài đặt</a>
               <a routerLink="/history">Lịch sử mượn & Phiếu QR</a>
+              <a (click)="openNotifications()" style="cursor: pointer;">Thông báo & Nhắc hạn</a>
               <a routerLink="/profile" [queryParams]="{tab: 'password'}">Đổi mật khẩu</a>
               <a (click)="logout()" class="logout" style="cursor: pointer;">Đăng xuất</a>
             </div>
@@ -62,8 +76,8 @@
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">TRANG CHỦ</a>
           <a routerLink="/about" routerLinkActive="active" class="nav-link">GIỚI THIỆU</a>
           <a routerLink="/search" routerLinkActive="active" class="nav-link">TÌM KIẾM & TRA CỨU</a>
-          <a routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
-          <a routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
+          <a *ngIf="authService.isLoggedIn()" routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
+          <a *ngIf="authService.isLoggedIn()" routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
           <a routerLink="/digital" routerLinkActive="active" class="nav-link">TÀI NGUYÊN SỐ & CSDL</a>
           <a routerLink="/guide" routerLinkActive="active" class="nav-link">HƯỚNG DẪN BẠN ĐỌC</a>
         </nav>
@@ -127,9 +141,9 @@
       <div class="footer-col">
         <h3 class="footer-heading">Tiện ích bạn đọc</h3>
         <ul class="footer-links">
-          <li><a href="#">Tra cứu Mục lục Trực tuyến</a></li>
-          <li><a href="#">Đăng ký phòng học nhóm & Thảo luận</a></li>
-          <li><a href="#">Gia hạn và Đặt trước tài liệu</a></li>
+          <li><a routerLink="/search">Tra cứu Mục lục Trực tuyến</a></li>
+          <li><a routerLink="/digital">Tài nguyên số & CSDL</a></li>
+          <li><a routerLink="/history">Gia hạn và theo dõi tài liệu</a></li>
         </ul>
       </div>
     </div>
@@ -141,7 +155,7 @@
           Bản quyền &copy; 2026 Trung tâm Thông tin - Thư viện, Trường Đại học Công Thương TP. Hồ Chí Minh (HUIT).
         </div>
         <div class="bottom-links">
-          <a href="#">Chính sách</a> &bull; <a href="#">Điều khoản</a>
+          <a routerLink="/guide">Quy định sử dụng</a> &bull; <a routerLink="/about">Thông tin thư viện</a>
         </div>
       </div>
     </div>
@@ -149,4 +163,55 @@
 
   <!-- Chatbot Widget -->
   <app-chatbot></app-chatbot>
+
+  <div class="modal-backdrop" *ngIf="isNotificationModalOpen" (click)="closeOverlays()">
+    <section class="portal-modal notification-modal" role="dialog" aria-modal="true" aria-label="Thông báo thư viện" (click)="$event.stopPropagation()">
+      <header class="modal-header">
+        <div><span class="modal-eyebrow">TRUNG TÂM THÔNG TIN - THƯ VIỆN</span><h2>Thông báo của bạn</h2></div>
+        <button type="button" class="modal-close" (click)="closeOverlays()" aria-label="Đóng">×</button>
+      </header>
+      <div class="modal-toolbar">
+        <span>{{ unreadNotificationCount }} thông báo chưa đọc</span>
+        <button type="button" (click)="markAllNotificationsRead()" [disabled]="unreadNotificationCount === 0">Đánh dấu tất cả đã đọc</button>
+      </div>
+      <p class="modal-state" *ngIf="notificationLoading">Đang tải thông báo...</p>
+      <p class="modal-state error" *ngIf="modalError">{{ modalError }}</p>
+      <div class="notification-modal-list" *ngIf="!notificationLoading">
+        <button type="button" class="notification-row" [class.unread]="!item.isRead" [attr.data-tone]="notificationTone(item.type)" *ngFor="let item of notifications" (click)="markNotificationRead(item)">
+          <span class="notification-dot"></span>
+          <span class="notification-body"><strong>{{ notificationLabel(item.type) }}</strong><span>{{ item.content }}</span><small>{{ item.sentAt || item.createdAt | date:'dd/MM/yyyy HH:mm' }}</small></span>
+        </button>
+        <p class="modal-state" *ngIf="notifications.length === 0">Bạn chưa có thông báo nào.</p>
+      </div>
+      <footer class="modal-footer-link"><a routerLink="/profile" [queryParams]="{tab: 'settings'}" (click)="closeOverlays()">Cài đặt phương thức nhận thông báo</a></footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="isCardModalOpen" (click)="closeOverlays()">
+    <section class="portal-modal card-modal" role="dialog" aria-modal="true" aria-label="Thẻ thư viện" (click)="$event.stopPropagation()">
+      <header class="modal-header card-header">
+        <div><span class="modal-eyebrow">HUIT LIBRARY</span><h2>Thẻ thư viện điện tử</h2></div>
+        <button type="button" class="modal-close" (click)="closeOverlays()" aria-label="Đóng">×</button>
+      </header>
+      <p class="modal-state" *ngIf="cardLoading">Đang tải thông tin thẻ...</p>
+      <p class="modal-state error" *ngIf="modalError">{{ modalError }}</p>
+      <div class="library-card-empty" *ngIf="libraryCard && !libraryCard.issued && !cardLoading">
+        <span class="empty-card-icon">&#128179;</span>
+        <h3>Bạn chưa được cấp thẻ thư viện</h3>
+        <p>Vui lòng liên hệ quầy thư viện hoặc quản trị viên để hoàn tất hồ sơ và được cấp thẻ.</p>
+      </div>
+      <div class="library-card-content" *ngIf="libraryCard && libraryCard.issued && !cardLoading">
+        <div class="card-owner"><span class="card-avatar">{{ libraryCard.ownerName.charAt(0) }}</span><div><small>CHỦ SỞ HỮU</small><strong>{{ libraryCard.ownerName }}</strong><span>{{ libraryCard.department || 'Chưa cập nhật khoa' }}</span></div></div>
+        <dl class="card-details">
+          <div><dt>Mã thẻ / MSSV</dt><dd>{{ libraryCard.cardNumber || 'Chưa cập nhật' }}</dd></div>
+          <div><dt>Trạng thái</dt><dd class="card-status" [class.active]="libraryCard.cardStatus === 'ACTIVE' && !isCirculationLocked(libraryCard.circulationLockedUntil)">{{ cardStatusLabel(libraryCard.cardStatus, libraryCard.circulationLockedUntil) }}</dd></div>
+          <div><dt>Ngày lập</dt><dd>{{ libraryCard.issuedAt ? (libraryCard.issuedAt | date:'dd/MM/yyyy') : 'Chưa có dữ liệu' }}</dd></div>
+          <div><dt>Ngày hết hạn</dt><dd>{{ libraryCard.expiryDate ? (libraryCard.expiryDate | date:'dd/MM/yyyy') : 'Chưa có dữ liệu' }}</dd></div>
+          <div><dt>Tiền thế chân</dt><dd>{{ libraryCard.depositBalance | number:'1.0-0' }} VNĐ</dd></div>
+          <div><dt>Công nợ hiện tại</dt><dd [class.debt]="libraryCard.totalDebt > 0">{{ libraryCard.totalDebt | number:'1.0-0' }} VNĐ</dd></div>
+        </dl>
+        <div class="card-lock-note" *ngIf="libraryCard.circulationLockReason">{{ libraryCard.circulationLockReason }}<span *ngIf="libraryCard.circulationLockedUntil"> · Khóa đến {{ libraryCard.circulationLockedUntil | date:'dd/MM/yyyy HH:mm' }}</span></div>
+      </div>
+    </section>
+  </div>
 </div>

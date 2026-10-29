@@ -1,0 +1,116 @@
+databaseChangeLog:
+  - changeSet:
+      id: 14-add-circulation-maintenance
+      author: codex
+      changes:
+        - addColumn:
+            tableName: transactions
+            columns:
+              - column:
+                  name: user_id
+                  type: uuid
+              - column:
+                  name: ticket_id
+                  type: bigint
+              - column:
+                  name: loan_detail_id
+                  type: bigint
+              - column:
+                  name: reason
+                  type: varchar(500)
+              - column:
+                  name: status
+                  type: varchar(32)
+              - column:
+                  name: dedup_key
+                  type: varchar(160)
+        - addColumn:
+            tableName: notifications
+            columns:
+              - column:
+                  name: reference_type
+                  type: varchar(32)
+              - column:
+                  name: reference_id
+                  type: varchar(100)
+              - column:
+                  name: dedup_key
+                  type: varchar(200)
+        - sql:
+            dbms: postgresql
+            sql: |
+              UPDATE notifications SET is_read = false WHERE is_read IS NULL;
+              CREATE UNIQUE INDEX ux_transactions_dedup_key
+                  ON transactions (dedup_key);
+              CREATE UNIQUE INDEX ux_notifications_dedup_key
+                  ON notifications (dedup_key);
+              CREATE INDEX idx_loan_details_due_open
+                  ON loan_details (due_date, ticket_id)
+                  WHERE return_date IS NULL AND return_status IN ('BORROWING', 'OVERDUE');
+              CREATE INDEX idx_book_copies_reservation_expiry
+                  ON book_copies (locked_until)
+                  WHERE status = 'RESERVED' AND locked_until IS NOT NULL;
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_transaction_user
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: ticket_id
+            referencedTableName: loan_tickets
+            referencedColumnNames: ticket_id
+            constraintName: fk_transaction_ticket
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: loan_detail_id
+            referencedTableName: loan_details
+            referencedColumnNames: detail_id
+            constraintName: fk_transaction_loan_detail
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transactions
+            constraintName: fk_transaction_loan_detail
+        - dropForeignKeyConstraint:
+            baseTableName: transactions
+            constraintName: fk_transaction_ticket
+        - dropForeignKeyConstraint:
+            baseTableName: transactions
+            constraintName: fk_transaction_user
+        - sql:
+            dbms: postgresql
+            sql: |
+              DROP INDEX IF EXISTS idx_book_copies_reservation_expiry;
+              DROP INDEX IF EXISTS idx_loan_details_due_open;
+              DROP INDEX IF EXISTS ux_notifications_dedup_key;
+              DROP INDEX IF EXISTS ux_transactions_dedup_key;
+        - dropColumn:
+            tableName: notifications
+            columnName: dedup_key
+        - dropColumn:
+            tableName: notifications
+            columnName: reference_id
+        - dropColumn:
+            tableName: notifications
+            columnName: reference_type
+        - dropColumn:
+            tableName: transactions
+            columnName: dedup_key
+        - dropColumn:
+            tableName: transactions
+            columnName: status
+        - dropColumn:
+            tableName: transactions
+            columnName: reason
+        - dropColumn:
+            tableName: transactions
+            columnName: loan_detail_id
+        - dropColumn:
+            tableName: transactions
+            columnName: ticket_id
+        - dropColumn:
+            tableName: transactions
+            columnName: user_id

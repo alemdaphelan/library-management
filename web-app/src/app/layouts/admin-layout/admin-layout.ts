@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -14,7 +14,7 @@ export class AdminLayout {
   isSidebarCollapsed = false;
   isUserMenuOpen = false;
 
-  constructor(public authService: AuthService, private router: Router) {}
+  constructor(public authService: AuthService) {}
 
   toggleSidebar() {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
@@ -27,6 +27,5 @@ export class AdminLayout {
   logout() {
     this.authService.logout();
     this.isUserMenuOpen = false;
-    this.router.navigate(['/login']);
   }
 }

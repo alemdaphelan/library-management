@@ -1,0 +1,289 @@
+classDiagram
+    direction TB
+
+    class AuthController {
+        +login(request)
+        +logout(request)
+        +refreshToken(request)
+        +changePassword(request)
+        +forgotPassword(request)
+        +verifyOtp(request)
+        +resetPassword(request)
+        +getProfile()
+        +updateProfile(request)
+    }
+    class UserController {
+        +getStudents()
+        +getStudent(mssv)
+        +createStudent(request)
+        +updateStudent(mssv, request)
+        +deleteStudent(mssv)
+    }
+    class BookController {
+        +searchBooks(query, categoryId, pageable)
+        +getBook(id)
+        +createBook(request)
+        +updateBook(id, request)
+        +deleteBook(id)
+        +getRecommendations()
+    }
+    class BookCopyController {
+        +getCopies(bookId)
+        +getByBarcode(barcode)
+        +updateLocation(barcode, shelfId)
+        +updateStatus(barcode, status)
+    }
+    class LocationController {
+        +getFloors()
+        +manageFloors()
+        +manageBookshelves()
+        +manageShelves()
+    }
+    class InventoryController {
+        +getSuppliers()
+        +createSupplier(request)
+        +createReceipt(request)
+        +getReceipts()
+        +getStats()
+        +createAudit()
+        +scanAudit(auditId, request)
+        +completeAudit(auditId)
+    }
+    class DashboardController {
+        +getStats()
+        +getWeeklyStats()
+        +getRecentActivities()
+        +getTrendingBooks()
+    }
+    class ProposalController {
+        +createProposal(request)
+        +getMyProposals()
+        +getAllProposals()
+        +updateStatus(id, request)
+    }
+    class LoanController {
+        +reserve(request)
+        +getMyLoans()
+        +getLoan(ticketId)
+        +cancel(ticketId)
+        +renew(ticketId)
+        +approve(ticketId)
+        +reject(ticketId, request)
+        +checkout(request)
+        +returnBook(request)
+    }
+
+    class AuthService {
+        +authenticateUser(request)
+        +changePassword(userId, request)
+        +refreshToken(token)
+        +forgotPassword(email)
+        +verifyOtp(email, otp)
+        +resetPassword(email, otp, password)
+    }
+    class UserService {
+        +getAllStudents()
+        +createStudent(student)
+        +updateStudent(mssv, student)
+        +deleteStudent(mssv)
+    }
+    class BookService {
+        +searchBooks(query, categoryId, pageable)
+        +getBookById(id)
+        +createBook(book)
+        +updateBook(id, book)
+        +deleteBook(id)
+    }
+    class BookCopyService {
+        +getByBarcode(barcode)
+        +updateLocation(barcode, shelfId)
+        +updateStatus(barcode, status)
+    }
+    class LocationService {
+        +getFloors()
+        +createFloor(request)
+        +createBookshelf(request)
+        +createShelf(request)
+        +deleteLocation(id)
+    }
+    class InventoryService {
+        +getAllSuppliers()
+        +createSupplier(supplier)
+        +importBooks(request)
+        +getAllReceipts()
+        +getStats()
+    }
+    class InventoryAuditService {
+        +createAudit(user)
+        +getAudits()
+        +getAudit(auditId)
+        +scan(auditId, request)
+        +complete(auditId)
+    }
+    class DashboardService {
+        +getStats()
+        +getWeeklyStats()
+        +getRecentActivities()
+        +getTrendingBooks()
+    }
+    class BookProposalService {
+        +createProposal(userId, request)
+        +getMyProposals(userId)
+        +getAllProposals()
+        +updateStatus(id, request)
+    }
+    class LoanService {
+        +reserveOrBorrowBook(request, userId)
+        +getMyLoans(userId)
+        +getLoan(ticketId)
+        +renewLoan(ticketId, userId)
+        +cancelReservation(ticketId, userId)
+    }
+
+    class CirculationStateService {
+        <<active_week_9A_9B>>
+        +approveReservation(ticketId, operatorId)
+        +rejectReservation(ticketId, operatorId, reason)
+        +cancelReservation(ticket, actorId)
+        +checkout(request, operatorId)
+        +returnBooks(request, operatorId)
+        +ensureEligibleForReservation(userId)
+    }
+    class CirculationStateMachine {
+        <<active_week_9A>>
+        +transition(ticket, target)
+        +canTransition(current, target)
+    }
+    class LibrarianQrService {
+        <<planned_required>>
+        +resolveQr(payload, librarianId)
+        +validateSignature(payload)
+        +validateExpiry(payload)
+        +preventDuplicate(idempotencyKey)
+    }
+    class NotificationService {
+        <<active_week_9C>>
+        +createOnce(userId, type, content, dedupKey)
+        +getMyNotifications(userId)
+        +markAsRead(notificationId, userId)
+    }
+    class CirculationMaintenanceService {
+        <<active_week_9C>>
+        +processAt(now)
+        -expireReservation(ticketId, now)
+        -markOverdueAndAccrue(ticketId, now)
+        -createDueSoonNotifications(now)
+    }
+    class CirculationScheduler {
+        <<active_week_9C>>
+        +maintainCirculation()
+    }
+    class LateFineService {
+        <<active_week_9C>>
+        +accrueLateFine(ticket, detail, calculatedAt)
+    }
+    class DigitalDocumentService {
+        <<planned_week_7D>>
+        +upload(request)
+        +download(documentId, userId)
+        +authorizeAccess(documentId, userId)
+    }
+    class RecommendationService {
+        <<planned_week_10>>
+        +rankTopK(userId)
+        +popularFallback()
+        +evaluate(metrics)
+    }
+
+    class UserRepository { <<JPA>> }
+    class BookRepository { <<JPA_PostgreSQL>> }
+    class BookCopyRepository { <<JPA_PostgreSQL>> }
+    class CategoryRepository { <<JPA_PostgreSQL>> }
+    class FloorRepository { <<JPA_PostgreSQL>> }
+    class BookshelfRepository { <<JPA_PostgreSQL>> }
+    class ShelfRepository { <<JPA_PostgreSQL>> }
+    class SupplierRepository { <<JPA_PostgreSQL>> }
+    class GoodsReceiptRepository { <<JPA_PostgreSQL>> }
+    class InventoryAuditRepository { <<JPA_PostgreSQL>> }
+    class InventoryDetailRepository { <<JPA_PostgreSQL>> }
+    class LoanTicketRepository { <<JPA_PostgreSQL>> }
+    class LoanDetailRepository { <<JPA_PostgreSQL>> }
+    class LoanStatusHistoryRepository { <<JPA_PostgreSQL>> }
+    class CirculationOperationRepository { <<JPA_PostgreSQL>> }
+    class TransactionRepository { <<JPA_PostgreSQL>> }
+    class NotificationRepository { <<JPA_PostgreSQL>> }
+    class DigitalDocumentRepository { <<JPA_PostgreSQL>> }
+
+    class RedisTokenStore {
+        <<active_infrastructure>>
+        +revoke(token, ttl)
+        +isRevoked(token)
+        +storeOtp(email, otp)
+    }
+    class MailSender {
+        <<active_integration>>
+        +sendOtp(email)
+    }
+    class ElasticsearchSearch {
+        <<optional_ADR_001>>
+    }
+
+    AuthController --> AuthService
+    UserController --> UserService
+    BookController --> BookService
+    BookCopyController --> BookCopyService
+    LocationController --> LocationService
+    InventoryController --> InventoryService
+    InventoryController --> InventoryAuditService
+    DashboardController --> DashboardService
+    ProposalController --> BookProposalService
+    LoanController --> LoanService
+    LoanController --> CirculationStateService
+
+    AuthService --> UserRepository
+    AuthService --> RedisTokenStore
+    AuthService --> MailSender
+    UserService --> UserRepository
+    BookService --> BookRepository
+    BookService --> BookCopyRepository
+    BookService --> CategoryRepository
+    BookCopyService --> BookCopyRepository
+    BookCopyService --> ShelfRepository
+    LocationService --> FloorRepository
+    LocationService --> BookshelfRepository
+    LocationService --> ShelfRepository
+    InventoryService --> SupplierRepository
+    InventoryService --> GoodsReceiptRepository
+    InventoryService --> BookCopyRepository
+    InventoryAuditService --> InventoryAuditRepository
+    InventoryAuditService --> InventoryDetailRepository
+    InventoryAuditService --> BookCopyRepository
+    LoanService --> LoanTicketRepository
+    LoanService --> LoanDetailRepository
+    LoanService --> BookCopyRepository
+    LoanService --> CirculationStateService
+
+    LibrarianQrService ..> CirculationStateService : dispatches
+    CirculationStateService ..> LoanTicketRepository
+    CirculationStateService ..> LoanDetailRepository
+    CirculationStateService ..> LoanStatusHistoryRepository
+    CirculationStateService ..> CirculationOperationRepository
+    CirculationStateService ..> BookCopyRepository
+    CirculationStateService --> CirculationStateMachine
+    CirculationStateService --> LateFineService
+    CirculationScheduler --> CirculationMaintenanceService
+    CirculationMaintenanceService --> CirculationStateMachine
+    CirculationMaintenanceService --> LateFineService
+    CirculationMaintenanceService --> NotificationService
+    CirculationMaintenanceService ..> LoanTicketRepository
+    CirculationMaintenanceService ..> LoanDetailRepository
+    CirculationMaintenanceService ..> BookCopyRepository
+    LateFineService ..> TransactionRepository
+    NotificationService ..> NotificationRepository
+    DigitalDocumentService ..> DigitalDocumentRepository
+    RecommendationService ..> BookRepository
+    RecommendationService ..> LoanDetailRepository
+    BookService ..> ElasticsearchSearch : optional
+
+    note for LoanService "9A to 9C implement review checkout return ten day rules overdue fine scheduling idempotency and concurrency control"
+    note for LibrarianQrService "Mobile resolves identity only; Backend owns every circulation state change"

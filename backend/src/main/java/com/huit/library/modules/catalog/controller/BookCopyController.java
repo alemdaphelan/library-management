@@ -25,6 +25,12 @@ public class BookCopyController {
         return ResponseEntity.ok(bookCopyService.getCopiesByBookId(bookId));
     }
 
+    @GetMapping("/{barcode}")
+    @Operation(summary = "Get copy by barcode", description = "Look up a physical copy and its full shelf location.")
+    public ResponseEntity<?> getByBarcode(@PathVariable String barcode) {
+        return ResponseEntity.ok(bookCopyService.getByBarcode(barcode));
+    }
+
     @PutMapping("/{barcode}/location")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Update copy location", description = "Update the physical shelf/room location of a book copy.")

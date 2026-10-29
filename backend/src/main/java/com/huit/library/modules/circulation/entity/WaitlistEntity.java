@@ -4,6 +4,7 @@ import com.huit.library.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -18,4 +19,7 @@ public class WaitlistEntity extends BaseEntity {
     private Long bookId;
     private UUID userId;
     private String status; // WAITING, NOTIFIED, EXPIRED
+    private LocalDateTime notifiedAt;
+    private LocalDateTime expiresAt;
+    private String reservedBarcode;
 }

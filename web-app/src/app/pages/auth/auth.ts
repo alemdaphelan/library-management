@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './auth.html',
   styleUrls: ['./auth.css']
 })
-export class Auth implements OnInit {
+export class Auth implements OnInit, OnDestroy {
   mode: 'login' | 'forgot' = 'login';
 
   loginData = { username: '', password: '' };
@@ -21,6 +21,13 @@ export class Auth implements OnInit {
   isSubmitting = false;
   successMessage = '';
   errorMessage = '';
+  showPassword = false;
+  resendCountdown = 0;
+  private resendTimer?: ReturnType<typeof setInterval>;
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
+  }
 
   constructor(private router: Router, private authService: AuthService, private cdr: ChangeDetectorRef) { }
 
@@ -32,8 +39,15 @@ export class Auth implements OnInit {
       if (savedStep && savedEmail) {
         this.forgotStep = savedStep as 'email' | 'otp' | 'reset';
         this.forgotData.email = savedEmail;
+        if (this.forgotStep === 'otp') {
+          this.startResendCountdown();
+        }
       }
     }
+  }
+
+  ngOnDestroy(): void {
+    this.clearResendTimer();
   }
 
   toggleMode(newMode: 'login' | 'forgot', event: Event) {
@@ -45,9 +59,32 @@ export class Auth implements OnInit {
     this.forgotData = { email: '', otp: '', newPassword: '', confirmPassword: '' };
     sessionStorage.removeItem('forgotStep');
     sessionStorage.removeItem('forgotEmail');
+    this.clearResendTimer();
 
     const newUrl = newMode === 'login' ? '/login' : '/forgot-password';
     window.history.pushState({}, '', newUrl);
+  }
+
+  private extractErrorMessage(err: any, fallback: string): string {
+    if (!err) return fallback;
+    if (err.status === 0) {
+      return 'Không thể kết nối đến hệ thống thư viện. Vui lòng thử lại hoặc liên hệ người quản trị.';
+    }
+    if (typeof err.error === 'string' && err.error.trim()) {
+      return err.error;
+    }
+    if (err.error && typeof err.error === 'object') {
+      if (err.error.message && typeof err.error.message === 'string') {
+        return err.error.message;
+      }
+      if (err.error.error && typeof err.error.error === 'string') {
+        return err.error.error;
+      }
+    }
+    if (err.message && typeof err.message === 'string' && !err.message.includes('Http failure response')) {
+      return err.message;
+    }
+    return fallback;
   }
 
   onLogin() {
@@ -64,10 +101,14 @@ export class Auth implements OnInit {
         }
       },
       error: (err) => {
-        console.log(err);
+        console.error('Login error:', err);
         this.isSubmitting = false;
-        this.errorMessage = 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!';
-        alert(this.errorMessage);
+        if (err.status === 0) {
+          this.errorMessage = 'Không thể kết nối đến hệ thống thư viện. Vui lòng thử lại hoặc liên hệ người quản trị.';
+        } else {
+          this.errorMessage = this.extractErrorMessage(err, 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!');
+        }
+        this.cdr.detectChanges();
       }
     });
   }
@@ -86,6 +127,7 @@ export class Auth implements OnInit {
           this.forgotStep = 'otp';
           sessionStorage.setItem('forgotStep', 'otp');
           sessionStorage.setItem('forgotEmail', this.forgotData.email);
+          this.startResendCountdown();
           this.cdr.detectChanges();
           
           setTimeout(() => {
@@ -97,11 +139,50 @@ export class Auth implements OnInit {
         }
       },
       error: (err: any) => {
+        console.error('Forgot password error:', err);
         this.isSubmitting = false;
-        this.errorMessage = err.error || 'Đã có lỗi xảy ra.';
+        this.errorMessage = this.extractErrorMessage(err, 'Đã có lỗi xảy ra khi gửi yêu cầu khôi phục.');
         this.cdr.detectChanges();
       }
     });
+  }
+
+  onResendOtp(): void {
+    if (this.isSubmitting || this.resendCountdown > 0) return;
+
+    this.isSubmitting = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.authService.forgotPassword(this.forgotData.email).subscribe({
+      next: () => {
+        this.isSubmitting = false;
+        this.successMessage = 'Mã OTP mới đã được gửi đến email của bạn.';
+        this.startResendCountdown();
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.isSubmitting = false;
+        this.errorMessage = this.extractErrorMessage(err, 'Không thể gửi lại mã OTP. Vui lòng thử lại.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private startResendCountdown(): void {
+    this.clearResendTimer();
+    this.resendCountdown = 10;
+    this.resendTimer = setInterval(() => {
+      this.resendCountdown = Math.max(0, this.resendCountdown - 1);
+      if (this.resendCountdown === 0) this.clearResendTimer();
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  private clearResendTimer(): void {
+    if (this.resendTimer) {
+      clearInterval(this.resendTimer);
+      this.resendTimer = undefined;
+    }
   }
 
   onVerifyOtp() {
@@ -124,8 +205,9 @@ export class Auth implements OnInit {
         }, 3000);
       },
       error: (err: any) => {
+        console.error('Verify OTP error:', err);
         this.isSubmitting = false;
-        this.errorMessage = err.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.';
+        this.errorMessage = this.extractErrorMessage(err, 'Mã OTP không hợp lệ hoặc đã hết hạn.');
         this.cdr.detectChanges();
       }
     });
@@ -154,8 +236,9 @@ export class Auth implements OnInit {
         }, 3000);
       },
       error: (err: any) => {
+        console.error('Reset password error:', err);
         this.isSubmitting = false;
-        this.errorMessage = err.error || 'Đặt lại mật khẩu thất bại.';
+        this.errorMessage = this.extractErrorMessage(err, 'Đặt lại mật khẩu thất bại.');
         this.cdr.detectChanges();
       }
     });

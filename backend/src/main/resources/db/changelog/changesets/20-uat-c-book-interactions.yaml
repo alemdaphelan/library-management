@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: uat-c-book-interactions-and-real-stats
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              ALTER TABLE books
+                  ADD COLUMN IF NOT EXISTS description TEXT,
+                  ADD COLUMN IF NOT EXISTS view_count BIGINT NOT NULL DEFAULT 0;
+
+              ALTER TABLE reviews
+                  ALTER COLUMN comment TYPE VARCHAR(1000);
+
+              DELETE FROM reviews duplicate
+              USING reviews original
+              WHERE duplicate.user_id = original.user_id
+                AND duplicate.book_id = original.book_id
+                AND duplicate.review_id < original.review_id;
+
+              DELETE FROM wishlists duplicate
+              USING wishlists original
+              WHERE duplicate.user_id = original.user_id
+                AND duplicate.book_id = original.book_id
+                AND duplicate.wishlist_id::text < original.wishlist_id::text;
+
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_reviews_user_book
+                  ON reviews(user_id, book_id);
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_wishlists_user_book
+                  ON wishlists(user_id, book_id);
+              CREATE INDEX IF NOT EXISTS idx_reviews_book ON reviews(book_id);
+              CREATE INDEX IF NOT EXISTS idx_wishlists_user_added
+                  ON wishlists(user_id, added_at DESC);
+
+              DO $$
+              BEGIN
+                  IF NOT EXISTS (
+                      SELECT 1 FROM pg_constraint WHERE conname = 'chk_reviews_rating'
+                  ) THEN
+                      ALTER TABLE reviews
+                          ADD CONSTRAINT chk_reviews_rating CHECK (rating BETWEEN 1 AND 5);
+                  END IF;
+              END $$;
+

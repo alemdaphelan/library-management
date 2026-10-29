@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-library-policy-renewal-limit
+      author: codex
+      changes:
+        - addColumn:
+            tableName: library_policies
+            columns:
+              - column:
+                  name: maximum_renewal_count
+                  type: integer
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false

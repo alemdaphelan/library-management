@@ -1,5 +1,10 @@
 # Docker
 .env
+.env.*
+!.env.example
+
+# Codex/local verification artifacts
+.codex-tmp/
 
 # MacOS
 .DS_Store
@@ -33,9 +38,22 @@ build/
 
 # Build
 target/
+node_modules/
 *.jar
 *.war
 *.ear
 *.zip
 *.tar.gz
 *.rar
+~$*.docx
+backend/schema.sql
+backend/data/digital-assets/
+backups/
+Test.txt
+/CNTT-KLCN119.docx
+/Quy định thư viện.docx
+
+# Firebase private credentials (never commit service-account keys)
+.secrets/
+*firebase-adminsdk*.json
+*service-account*.json

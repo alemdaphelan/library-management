@@ -6,26 +6,39 @@ import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.catalog.entity.BookCopyEntity;
 import com.huit.library.modules.catalog.entity.CategoryEntity;
 import com.huit.library.modules.inventory.entity.SupplierEntity;
+import com.huit.library.modules.orientation.entity.OrientationClassEntity;
+import com.huit.library.modules.orientation.entity.OrientationEnrollmentEntity;
+import com.huit.library.modules.orientation.repository.OrientationClassRepository;
+import com.huit.library.modules.orientation.repository.OrientationEnrollmentRepository;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(name = "app.database-seeding.enabled", havingValue = "true", matchIfMissing = true)
 public class DatabaseSeeder implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
+    private final OrientationClassRepository orientationClassRepository;
+    private final OrientationEnrollmentRepository orientationEnrollmentRepository;
 
-    public DatabaseSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder, EntityManager entityManager) {
+    public DatabaseSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder, EntityManager entityManager,
+                          OrientationClassRepository orientationClassRepository,
+                          OrientationEnrollmentRepository orientationEnrollmentRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.entityManager = entityManager;
+        this.orientationClassRepository = orientationClassRepository;
+        this.orientationEnrollmentRepository = orientationEnrollmentRepository;
     }
 
     @Override
@@ -34,6 +47,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         seedUsers();
         seedData();
         seedSuppliers();
+        seedOrientationClasses();
     }
 
     private void seedUsers() {
@@ -83,12 +97,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private void seedCategories() {
-        // Xóa các category rác không thuộc danh sách chuẩn (nếu có)
-        entityManager.createNativeQuery(
-            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học')"
-        ).executeUpdate();
-
-        // Thêm các category chuẩn nếu chưa tồn tại
+        // 1. Thêm các category chuẩn nếu chưa tồn tại
         String insertQuery = "INSERT INTO categories (name, description, created_at, updated_at) " +
             "SELECT v.name, v.description, NOW(), NOW() " +
             "FROM (VALUES " +
@@ -103,6 +112,17 @@ public class DatabaseSeeder implements CommandLineRunner {
             ") AS v(name, description) " +
             "WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = v.name)";
         entityManager.createNativeQuery(insertQuery).executeUpdate();
+
+        // 2. Chuyển hướng các sách đang trỏ vào category cũ/rác sang category 'Khoa học' để tránh lỗi Foreign Key
+        entityManager.createNativeQuery(
+            "UPDATE books SET category_id = (SELECT category_id FROM categories WHERE name = 'Khoa học' LIMIT 1) " +
+            "WHERE category_id IN (SELECT category_id FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học'))"
+        ).executeUpdate();
+
+        // 3. Xóa các category rác không thuộc danh sách chuẩn
+        entityManager.createNativeQuery(
+            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học')"
+        ).executeUpdate();
     }
 
     private void classifyBooksByTitleKeywords() {
@@ -282,5 +302,56 @@ public class DatabaseSeeder implements CommandLineRunner {
             
             System.out.println("Seeded suppliers.");
         }
+    }
+
+    private void seedOrientationClasses() {
+        if (orientationClassRepository.count() > 0) return;
+        UserEntity admin = userRepository.findByEmail("admin@huit.edu.vn").orElse(null);
+        UserEntity librarian = userRepository.findByEmail("librarian@huit.edu.vn").orElse(admin);
+        if (admin == null || librarian == null) return;
+
+        LocalDateTime base = LocalDateTime.now().withMinute(0).withSecond(0).withNano(0);
+        OrientationClassEntity upcoming = orientationClassRepository.save(orientationClass(
+                "HD-DEMO-01", "Hướng dẫn sử dụng thư viện - Cơ bản", "Phòng A1.01",
+                base.plusDays(1).withHour(8), base.plusDays(1).withHour(10), 30,
+                librarian.getUserId(), admin.getUserId(), "SCHEDULED"));
+        OrientationClassEntity limited = orientationClassRepository.save(orientationClass(
+                "HD-DEMO-02", "Tra cứu tài liệu số và cơ sở dữ liệu", "Phòng máy B2.03",
+                base.plusDays(3).withHour(13), base.plusDays(3).withHour(15), 1,
+                librarian.getUserId(), admin.getUserId(), "SCHEDULED"));
+        OrientationClassEntity completed = orientationClassRepository.save(orientationClass(
+                "HD-DEMO-03", "Nội quy mượn trả và sử dụng thư viện", "Phòng A1.02",
+                base.minusDays(2).withHour(8), base.minusDays(2).withHour(10), 30,
+                librarian.getUserId(), admin.getUserId(), "COMPLETED"));
+
+        userRepository.findByEmail("student@student.huit.edu.vn").ifPresent(student -> {
+            OrientationEnrollmentEntity attended = new OrientationEnrollmentEntity();
+            attended.setClassId(completed.getClassId());
+            attended.setUserId(student.getUserId());
+            attended.setAttendanceStatus("ATTENDED");
+            attended.setNote("Dữ liệu mẫu: đã hoàn thành lớp hướng dẫn");
+            attended.setMarkedBy(librarian.getUserId());
+            attended.setMarkedAt(completed.getEndAt());
+            orientationEnrollmentRepository.save(attended);
+        });
+        System.out.println("Seeded orientation demo classes: " + upcoming.getClassCode() + ", "
+                + limited.getClassCode() + ", " + completed.getClassCode());
+    }
+
+    private OrientationClassEntity orientationClass(String code, String title, String location,
+                                                     LocalDateTime startAt, LocalDateTime endAt,
+                                                     int capacity, UUID facilitatorId,
+                                                     UUID createdBy, String status) {
+        OrientationClassEntity entity = new OrientationClassEntity();
+        entity.setClassCode(code);
+        entity.setTitle(title);
+        entity.setLocation(location);
+        entity.setStartAt(startAt);
+        entity.setEndAt(endAt);
+        entity.setCapacity(capacity);
+        entity.setFacilitatorId(facilitatorId);
+        entity.setCreatedBy(createdBy);
+        entity.setStatus(status);
+        return entity;
     }
 }

@@ -22,17 +22,92 @@ spring:
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   mail:
-    host: smtp.gmail.com
-    port: 465
-    username: ${EMAIL_ADDRESS}
-    password: ${PASSWORD}
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:465}
+    username: ${SPRING_MAIL_USERNAME:${EMAIL_ADDRESS:}}
+    password: ${SPRING_MAIL_PASSWORD:${PASSWORD:}}
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${SPRING_MAIL_SMTP_AUTH:true}
           ssl:
-            enable: true
-            trust: "smtp.gmail.com"
+            enable: ${SPRING_MAIL_SSL_ENABLE:true}
+            trust: ${SPRING_MAIL_SSL_TRUST:smtp.gmail.com}
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 52MB
+
+app:
+  database-seeding:
+    enabled: ${DATABASE_SEEDING_ENABLED:true}
+  jwtSecret: ${JWT_SECRET}
+  jwtExpirationMs: ${JWT_EXPIRATION:86400000}
+  refreshTokenExpirationMs: ${REFRESH_TOKEN_EXPIRATION:2592000000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+library:
+  qr:
+    secret: ${QR_SECRET:huit-library-development-qr-secret-change-in-production}
+    ttl-minutes: ${QR_TTL_MINUTES:10}
+  circulation:
+    due-soon-days: ${DUE_SOON_DAYS:1}
+    academic-year-start-month: ${ACADEMIC_YEAR_START_MONTH:8}
+    academic-year-start-day: ${ACADEMIC_YEAR_START_DAY:1}
+    default-open-time: ${LIBRARY_DEFAULT_OPEN_TIME:07:30}
+    default-close-time: ${LIBRARY_DEFAULT_CLOSE_TIME:17:00}
+    scheduler-cron: "${CIRCULATION_SCHEDULER_CRON:0 */5 * * * *}"
+  digital:
+    storage-path: ${DIGITAL_STORAGE_PATH:./data/digital-assets}
+    max-file-size: ${DIGITAL_MAX_FILE_SIZE:52428800}
+  recommendation:
+    content-weight: ${RECOMMENDATION_CONTENT_WEIGHT:0.50}
+    department-weight: ${RECOMMENDATION_DEPARTMENT_WEIGHT:0.35}
+    popularity-weight: ${RECOMMENDATION_POPULARITY_WEIGHT:0.15}
+    candidate-pool: ${RECOMMENDATION_CANDIDATE_POOL:3000}
+    history-limit: ${RECOMMENDATION_HISTORY_LIMIT:100}
+    popularity-window-days: ${RECOMMENDATION_POPULARITY_WINDOW_DAYS:365}
+    cache-ttl-minutes: ${RECOMMENDATION_CACHE_TTL_MINUTES:30}
+  rag:
+    enabled: ${RAG_ENABLED:true}
+    api-key: ${GEMINI_API_KEY:}
+    api-base-url: ${GEMINI_API_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+    generation-model: ${GEMINI_GENERATION_MODEL:gemini-3.6-flash}
+    embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-2}
+    embedding-provider: ${RAG_EMBEDDING_PROVIDER:auto}
+    embedding-dimension: 768
+    top-k: ${RAG_TOP_K:5}
+    minimum-score: ${RAG_MINIMUM_SCORE:0.60}
+    max-input-characters: ${RAG_MAX_INPUT_CHARACTERS:1000}
+    chunk-size-characters: ${RAG_CHUNK_SIZE_CHARACTERS:900}
+    chunk-overlap-characters: ${RAG_CHUNK_OVERLAP_CHARACTERS:120}
+    connect-timeout-seconds: ${RAG_CONNECT_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${RAG_READ_TIMEOUT_SECONDS:20}
+    requests-per-minute: ${RAG_REQUESTS_PER_MINUTE:10}
+    generation-thinking-budget: ${RAG_GENERATION_THINKING_BUDGET:0}
+  firebase:
+    enabled: ${FIREBASE_PUSH_ENABLED:false}
+    project-id: ${FIREBASE_PROJECT_ID:}
+    service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
+  payment:
+    vnpay:
+      enabled: ${VNPAY_ENABLED:false}
+      payment-url: ${VNPAY_PAYMENT_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      tmn-code: ${VNPAY_TMN_CODE:}
+      hash-secret: ${VNPAY_HASH_SECRET:}
+      return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/online-payments/vnpay-return}
+      frontend-result-url: ${VNPAY_FRONTEND_RESULT_URL:http://localhost:4200/my-penalties}
+      expire-minutes: ${VNPAY_EXPIRE_MINUTES:15}

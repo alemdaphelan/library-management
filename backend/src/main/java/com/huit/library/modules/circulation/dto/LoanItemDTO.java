@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -21,9 +22,13 @@ public class LoanItemDTO {
     private String barcode;
     private String ticketType;
     private String status;
+    private String itemStatus;
+    private String decisionNote;
     private LocalDateTime createdAt;
+    private LocalDateTime pickupDeadline;
     private LocalDateTime dueDate;
     private LocalDateTime returnDate;
     private Long daysRemaining;
     private Integer renewalCount;
+    private BigDecimal lateFineAccrued;
 }

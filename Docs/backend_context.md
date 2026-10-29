@@ -1,78 +1,139 @@
-# BACKEND SYSTEM BLUEPRINT: HUIT LIBRARY MANAGEMENT (V41 FINAL)
-> **MỤC ĐÍCH**: Bản đặc tả toàn diện (Comprehensive Specification) này dùng để feed cho Antigravity IDE build ra hệ thống CHUẨN XÁC ĐẾN TỪNG DÒNG CODE logic, không chỉ là khung khởi tạo (stub). Bám sát 100% 6 file (Business Use Cases, System Use Cases, Technologies, ERD, Analysis, Design).
+# KIẾN TRÚC BACKEND HỆ THỐNG THƯ VIỆN HUIT
 
-## 1. TECHNICAL STACK & DEPENDENCIES (pom.xml / build.gradle)
-- **Core**: Java 17, Spring Boot 3.2+
-- **Database**: `spring-boot-starter-data-jpa` (PostgreSQL), `liquibase-core` (Migration)
-- **Polyglot**: 
-  - `spring-boot-starter-data-mongodb` (Event Log / Telemetry)
-  - `spring-boot-starter-data-elasticsearch` (Full-text Search Books)
-  - `spring-boot-starter-data-redis` (JWT Blacklist, Caching)
-- **Messaging & Real-time**: `spring-kafka`, `spring-boot-starter-websocket` (STOMP)
-- **External Services**: `spring-cloud-starter-openfeign` (Call AI Service)
-- **Security**: `spring-boot-starter-security`, `java-jwt` (Auth0)
-- **Mapper & Utils**: MapStruct, Lombok
+Backend hiện là modular monolith Spring Boot. Tài liệu này phản ánh mã nguồn đang chạy và kiến trúc mục tiêu đã chốt, không xem dependency hoặc container chưa được nối vào nghiệp vụ là chức năng hoàn thành.
 
-## 2. PROJECT STRUCTURE (Chuẩn N-Tier / Modular Monolith)
+## 1 Công nghệ đang hoạt động
+
+- Java 17 và Spring Boot 3.2.5.
+- Spring Web, Spring Security, JWT và Jakarta Validation.
+- Spring Data JPA với PostgreSQL; Hibernate dùng chế độ validate.
+- Liquibase quản lý schema và dữ liệu seed.
+- Redis lưu OTP, trạng thái giới hạn xác thực và token bị thu hồi.
+- Spring Mail với Mailpit trong môi trường phát triển và integration test.
+- springdoc OpenAPI tạo Swagger UI.
+- JUnit 5, Mockito, Spring Security Test và Testcontainers.
+
+MongoDB, Elasticsearch, Kafka, WebSocket và OpenFeign có dependency hoặc hạ tầng phát triển nhưng chưa tạo thành đường nghiệp vụ chính. Search catalog đang dùng PostgreSQL JPA. Điều kiện kích hoạt Elasticsearch nằm trong ADR 001.
+
+## 2 Cấu trúc module
+
 ```text
 com.huit.library
-├── config/             # Cấu hình Security (JWT Filter), RedisCache, KafkaTopic, FeignClient, WebSocketMessageBroker, ElasticConfig
-├── core/               # Chứa các Base class dùng chung
-│   ├── entity/         # BaseEntity (chứa id, createdAt, updatedAt)
-│   ├── exception/      # GlobalExceptionHandler, Custom Exceptions (ResourceNotFound, BusinessLogicException)
-│   └── response/       # ApiResponse<T>
-├── modules/            # Tách biệt theo Domain Driven Design
-│   ├── auth/           # AuthController, UserService, UserRepository, UserEntity, RedisTokenStore
-│   ├── catalog/        # BookController, BookService, BookElasticRepository, BookEntity, Category, Publisher, Author
-│   ├── circulation/    # LoanController, LoanService, LoanTicketEntity, LoanDetailEntity, Waitlist, PenaltyStrategy
-│   ├── finance/        # PaymentController, WalletEntity, TransactionEntity
-│   ├── facilities/     # RoomController, RoomBookingEntity, Kiosk
-│   ├── inventory/      # ShiftController, GoodsReceipt, Supplier, InventoryAudit
-│   ├── interactive/    # Review, Complaint, BookProposal
-│   └── digital/        # DigitalDocument, DigitalUsageLog
-└── integration/        # External Clients
-    ├── ai/             # AiRecommendationClient (FeignClient)
-    └── sync/           # UniversitySyncService
+├── config
+├── core
+│   ├── entity
+│   ├── exception
+│   ├── response
+│   └── security
+└── modules
+    ├── auth
+    ├── catalog
+    ├── circulation
+    ├── dashboard
+    ├── digital
+    ├── finance
+    ├── interactive
+    ├── inventory
+    ├── notification
+    ├── penalty
+    ├── recommendation
+    └── facilities
 ```
 
-## 3. DOMAIN ENTITIES ĐẶC TẢ CHI TIẾT (Khớp 100% 35 Bảng ERD V41)
-*Chú ý: Antigravity IDE khi gen code Entity phải tạo đủ các trường sau, không được thiếu sót.*
+`facilities` là code legacy của đặt phòng đã bị loại khỏi phạm vi. Không phát triển thêm controller, service, UI hoặc test cho module này. Kiosk tự phục vụ được tạm hoãn.
 
-### 3.1. Nhóm Users & Auth
-- **UserEntity**: `userId` (UUID), `roleId`, `passwordHash`, `isFirstLogin`, `fullName`, `studentId` (MSSV - quan trọng cho Sync), `department` (Khoa), `email`, `phone`, `userType`, `cardStatus`, `cardExpiryDate`, `disciplineFlag` (Cờ vi phạm), `roomViolationCount`.
-- **WalletEntity**: `walletId`, `userId`, `depositBalance`, `totalDebt`.
+## 3 Mô hình dữ liệu chính
 
-### 3.2. Nhóm Catalog (Elasticsearch & JPA)
-- **BookEntity (JPA)**: `bookId`, `title`, `isbn`, `ddcCallNumber` (Mã xếp giá), `publishYear`, `language`, `labelColor`, `defaultPrice`, `isDigital`.
-- **BookDocument (Elasticsearch)**: Lưu trữ các index field: `bookId`, `title`, `authorNames`, `isbn`, để search fuzzy tốc độ cao.
-- **BookCopyEntity**: `barcode` (ID vật lý), `bookId`, `conditionNote`, `lockedByUser` (Pessimistic Lock khi đang checkout), `lockedUntil`.
+### Người dùng
 
-### 3.3. Nhóm Circulation (Mượn trả & Phạt)
-- **LoanTicketEntity**: `ticketId`, `userId`, `ticketType` (Tại chỗ/Mang về), `status`, `createdAt`.
-- **LoanDetailEntity**: `detailId`, `ticketId`, `barcode`, `checkoutConditionNote`, `returnConditionNote` (Bắt bẫy rách trang), `returnStatus`, `dueDate`, `returnDate`, `renewalCount`, `isRecalled`, `lateFineAccrued`.
-- **TransactionEntity**: `transactionId`, `parentTransactionId` (Dành cho hoàn tiền), `adminRef`, `proofDocumentUrl`, `amount`, `type`.
+- `UserEntity`: khóa `UUID`, role, hồ sơ, MSSV, khoa, trạng thái và thời hạn thẻ.
+- `StaffRoleEntity`: khóa chuỗi như ADMIN, LIBRARIAN và STUDENT.
+- `WalletEntity`: khóa `Long`, số dư tiền thế chân và tổng nợ. Nghiệp vụ tài chính nâng cao được tạm hoãn; khoản phạt mượn trả vẫn thuộc lõi.
 
-### 3.4. Nhóm Interactive & Inventory (Các bảng vá V41)
-- **ShiftHandoverEntity**: `shiftId`, `posTerminalId`, `startingCash`, `systemRevenue`, `actualCash`, `discrepancyAmount` (Lệch tiền - bắt lỗi thủ quỹ), `status`.
-- **GoodsReceiptEntity** & **ReceiptDetailEntity**: Nhập kho từ `Supplier`.
-- **ComplaintEntity**, **BookProposalEntity**, **ReviewEntity**, **WaitlistEntity**: (Các trường chuẩn theo ERD).
+Trường `roomViolationCount` còn trong `UserEntity` là dữ liệu legacy và phải được loại bằng migration riêng sau khi kiểm tra tham chiếu.
 
-### 3.5. Nhóm Event Log (MongoDB)
-- **UserEventDocument (Mongo)**: `logId`, `userId`, `eventType` (VIEW, CLICK, LOAN), `itemId`, `timestamp`. Dữ liệu này Kafka sẽ consume và đổ vào Mongo.
+### Catalog và vị trí
 
-## 4. CHI TIẾT IMPLEMENTATION BUSINESS LOGIC (DESIGN PATTERNS)
+- `BookEntity`: khóa `Long`; author và publisher hiện được lưu dạng chuỗi; category là quan hệ JPA.
+- `BookCopyEntity`: barcode là khóa nghiệp vụ chuỗi; có `bookId`, `shelf`, trạng thái, tình trạng và khóa tạm.
+- `FloorEntity`, `BookshelfEntity`, `ShelfEntity`: khóa `Long` và tạo cây vị trí tầng, dãy kệ, ngăn.
 
-### 4.1. Pattern 1: Strategy Pattern (Tính phí phạt)
-Hệ thống sử dụng interface `PenaltyStrategy` với method `calculateFine(LoanDetailEntity)`.
-- **OverduePenaltyImpl**: `(Ngày trả thực - Ngày hết hạn) * Đơn giá phạt / ngày`.
-- **DamagePenaltyImpl**: Dựa vào so sánh `checkoutConditionNote` và `returnConditionNote`. Nếu lúc mượn "Nguyên vẹn", lúc trả "Rách trang", phạt = `Book.defaultPrice * tỷ lệ hư hỏng`.
+Không dùng mô hình Author, Publisher và BookAuthor tách bảng trong ERD chính thức khi code và migration chưa triển khai mô hình đó.
 
-### 4.2. Pattern 2: Pessimistic Locking (Chống Double-Booking)
-Khi Sinh viên A và B cùng ấn mượn 1 cuốn sách (cùng 1 `barcode`) trên Web:
-- `BookCopyRepository` sử dụng `@Lock(LockModeType.PESSIMISTIC_WRITE)` trên method `findByBarcode()`. Đảm bảo chỉ 1 thread được update `lockedByUser`.
+### Circulation và phạt
 
-### 4.3. Polyglot & Messaging Architecture
-- **Kafka Producer**: Mọi hành vi `loanBooks()`, `searchBooks()` đều gọi `kafkaEventPublisher.publish("library.telemetry", event)`.
-- **AI Feign Client**: Interface `@FeignClient(name = "ai-service", url = "${ai.service.url}")` định nghĩa `List<String> getRecommendations(@PathVariable String userId)`.
-- **WebSockets / STOMP**: Spring config `@EnableWebSocketMessageBroker`. Client subscribe `/user/queue/alerts`. Spring dùng `SimpMessagingTemplate` để push thông báo (VD: Sách trong Waitlist đã có người trả).
-- **Redis Cache**: TTL = 30 phút. `@Cacheable(value = "book_details", key = "#id")`. JWT khi Logout sẽ bị đẩy vào Redis (blacklist) với TTL = thời gian sống còn lại của token.
+- `LoanTicketEntity`: khóa `Long`, `userId` UUID, loại phiếu, trạng thái, người xử lý, ghi chú quyết định và trường `@Version` để chống ghi đè đồng thời.
+- `LoanDetailEntity`: khóa `Long`, ticket, barcode, ngày hạn, ngày trả, số lần gia hạn và tiền phạt trễ.
+- `LoanStatusHistoryEntity`: lưu trạng thái trước/sau, người thực hiện, lý do và thời điểm cho từng lần chuyển trạng thái.
+- `CirculationOperationEntity`: lưu idempotency key, fingerprint yêu cầu và kết quả checkout/return để chống quét trùng.
+- `WaitlistEntity`: khóa `Long`, book, user và trạng thái hàng đợi.
+- `TransactionEntity`: khóa `Long`, giao dịch cha, số tiền, loại, người dùng/phiếu/chi tiết liên quan, lý do, trạng thái và dedup key.
+
+Gói 9A đã chuẩn hóa state machine `PENDING → RESERVED → BORROWING → OVERDUE/RETURNED`, cùng các nhánh `CANCELLED` và `REJECTED`. Gói 9B đã triển khai checkout/return transactionally trên LoanTicket, LoanDetail và BookCopy; áp dụng tối đa ba tài liệu, hạn và gia hạn mười ngày, chặn quá hạn/nợ, pessimistic lock và idempotency. Lõi 9C đã bổ sung phí trễ 1.000 đồng/ngày, scheduler giữ chỗ/quá hạn, đồng bộ bản sao, ví nợ, giao dịch và thông báo idempotent. Test PostgreSQL thật đã xác nhận commit, rollback, hai checkout đồng thời, migration 14 và các nhánh scheduler.
+
+### Inventory
+
+- `SupplierEntity`, `GoodsReceiptEntity`, `ReceiptDetailEntity`: nhà cung cấp và phiếu nhập.
+- `InventoryAuditEntity`: khóa `Long`, người thực hiện UUID, tổng hệ thống, tổng thực tế và trạng thái.
+- `InventoryDetailEntity`: đang dùng khóa chuỗi. Trường `auditId` trong code cần được đổi về `Long` hoặc ánh xạ rõ ràng để khớp `InventoryAuditEntity` và ERD mục tiêu.
+
+### Interactive và digital
+
+- `BookProposalEntity` đã có luồng service và controller tương đối đầy đủ.
+- Complaint, Review và Wishlist mới ở mức một phần.
+- DigitalDocument và DigitalUsageLog mới có entity/repository; chưa có upload, download và authorization hoàn chỉnh.
+- Notification đã có service, API danh sách cá nhân/đánh dấu đã đọc và scheduler tạo nhắc sắp hạn, quá hạn, giữ chỗ hết hạn với dedup key.
+
+## 4 Dịch vụ đã triển khai
+
+- `AuthService`, `UserService`
+- `BookService`, `BookCopyService`, `LocationService`
+- `InventoryService`, `InventoryAuditService`
+- `DashboardService`
+- `BookProposalService`
+- `LoanService` cho reserve, my loans, danh sách/chi tiết phiếu dành cho staff, cancel và gia hạn 10 ngày
+- `CirculationStateService` và `CirculationStateMachine` cho duyệt, từ chối, hủy, checkout, return, kiểm tra transition, quy tắc mượn và idempotency
+- `CirculationMaintenanceService`, `CirculationScheduler`, `LateFineService` và `NotificationService` cho quá hạn, phí trễ, giải phóng giữ chỗ và nhắc hạn
+- `LibrarianQrService` cho phát hành/xác minh QR HMAC có thời hạn và resolve thẻ bạn đọc/phiếu mượn
+
+Sơ đồ thiết kế không dùng hậu tố `ServiceImpl` vì mã nguồn hiện sử dụng trực tiếp các lớp service trên. Nhập sách nằm trong `InventoryController` và `InventoryService`, không có ImportController riêng.
+
+## 5 Thành phần đã chốt và phần phải bổ sung
+
+### Tuần 9
+
+- Phí trễ hạn, scheduler giữ chỗ/quá hạn, thông báo và integration test đã hoàn thành ở lõi 9C.
+- Quy tắc mất/hỏng HUIT đã được ghi nhận trong `Docs/CHINH_SACH_MAT_HONG_VA_THU_PHAT_9C.md`; code vẫn chưa có hồ sơ mất/hỏng, tính đền bù, miễn giảm và API thu/đối soát giao dịch.
+- Mức sửa chữa nhẹ, phí xử lý kỹ thuật, biểu phí tài liệu không có giá bìa và nguồn/quy tắc làm tròn tỷ giá phải được cấu hình sau khi có số liệu chính thức; không hard-code suy đoán.
+
+### QR thủ thư
+
+- `LibrarianQrService` đã phát hành và xác minh chữ ký HMAC, thời hạn, loại QR và quyền sở hữu.
+- `POST /api/v1/qr/resolve` chỉ cho `ADMIN`/`LIBRARIAN`; Mobile kiểm tra role trước khi mở camera.
+- QR chỉ resolve định danh; state change phải gọi circulation service.
+- Checkout và return dùng idempotency key để chống quét trùng.
+- Không lưu mật khẩu, token đăng nhập hoặc dữ liệu cá nhân dư thừa trong QR.
+
+### Tuần 10
+
+- Gói 10A đã tạo `recommendation_subjects`, `department_subject_affinities` và `book_subject_assignments` mà không ghi đè category catalog.
+- Taxonomy gồm 13 nhóm, ánh xạ đủ 39 ngành HUIT năm 2026 cùng alias khoa đang có trong database.
+- 4.387 sách đã được gắn ít nhất một chủ đề bằng từ khóa ranh giới từ có confidence; không còn dùng phân loại ngẫu nhiên cho tín hiệu chuyên ngành.
+- Gói 10B đã có Popularity Baseline time-decay/log normalization tại `GET /books/recommendations` và `GET /books/recommendations/popular`.
+- `GET /books/{id}/similar` dùng TF-IDF/Cosine trên title, author, publisher, category và taxonomy chủ đề, giới hạn candidate pool 1.500 sách.
+- API 10B trả `method`, `dataSufficient`, `candidateCount`, điểm và lý do; khi lịch sử thưa sẽ trả fallback có nhãn rõ ràng, không giả vờ là kết quả đủ dữ liệu.
+- Gói 10C đã thêm `GET /books/recommendations/personalized` bắt buộc JWT, kết hợp mặc định Content/Department/Popularity theo `0,50/0,35/0,15` và trả từng điểm thành phần.
+- Hồ sơ sở thích tăng trọng số cho lượt mượn gần đây và sách được gia hạn; mọi sách đã mượn được loại khỏi candidate.
+- Sinh viên chưa có lịch sử dùng nhánh `HYBRID_COLD_START` theo chuyên ngành rồi popularity/fallback; sinh viên có lịch sử dùng `HYBRID_PERSONALIZED`.
+- Redis cache mặc định 30 phút và khóa có fingerprint ngành/lịch sử để tự thay đổi khi tương tác mượn trả thay đổi; lỗi cache chạy fail-open.
+- Gói 10D đã tích hợp Web/Mobile. Gói 10E đã bổ sung evaluator Admin, audit split 80/20 theo thời gian và bộ proxy chủ đề có Precision/Recall/HitRate@10, Coverage cùng p50/p95 latency; metric proxy không được mô tả là hành vi mượn thật.
+
+## 6 Quy ước API và bảo mật
+
+Auth dùng `/api/v1/auth`; phần lớn module còn dùng root path. Đây là nợ kỹ thuật đã xác nhận. Không đổi prefix riêng lẻ mà không sửa SecurityConfig, Nginx, Web, Mobile và test.
+
+Các endpoint ghi dữ liệu phải kiểm tra role ở cả SecurityConfig hoặc method security và service. Riêng QR, chỉ `ADMIN`/`LIBRARIAN` được resolve và chuyển tiếp sang checkout hoặc return. Mobile không được tự thay đổi trạng thái phiếu hoặc bản sao.
+
+## 7 Quality gate
+
+Workflow CI hiện chạy Backend test, Web build test và Mobile analyze test. Integration test dùng PostgreSQL, Redis và Mailpit thật trong Testcontainers. Trước khi đóng tuần 11 cần thêm E2E, concurrency, performance, security và smoke test sau triển khai.

@@ -1,0 +1,25 @@
+stateDiagram-v2
+    [*] --> PENDING: Sinh viên đặt giữ
+    PENDING --> RESERVED: Thủ thư duyệt
+    PENDING --> REJECTED: Thủ thư từ chối
+    PENDING --> CANCELLED: Sinh viên hủy / hết hạn giữ
+    RESERVED --> BORROWING: Thủ thư quét QR + barcode và checkout
+    RESERVED --> REJECTED: Thủ thư từ chối
+    RESERVED --> CANCELLED: Hủy / quá 48 giờ giữ
+    BORROWING --> OVERDUE: Quá hạn trả
+    BORROWING --> RETURNED: Trả đủ tại quầy
+    OVERDUE --> RETURNED: Trả đủ tại quầy
+    RETURNED --> [*]
+    CANCELLED --> [*]
+    REJECTED --> [*]
+
+    note right of BORROWING
+      Gia hạn theo từng tài liệu, tối đa 1 lần +10 ngày.
+      Chặn nếu quá hạn, có nợ, thẻ khóa hoặc có hàng đợi.
+    end note
+
+    note right of OVERDUE
+      Scheduler ghi nhận quá hạn, tiền phạt và thông báo.
+      LOST/DAMAGED là trạng thái chi tiết tài liệu và hồ sơ xử lý,
+      không phải trạng thái phiếu trong state machine này.
+    end note

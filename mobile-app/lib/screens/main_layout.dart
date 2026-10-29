@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/screens/home_screen.dart';
 import 'package:mobile_app/screens/search_screen.dart';
-import 'package:mobile_app/screens/borrowed_screen.dart';
+import 'package:mobile_app/screens/profile_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -16,7 +16,7 @@ class _MainLayoutState extends State<MainLayout> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const SearchScreen(),
-    const BorrowedScreen(),
+    const ProfileScreen(),
   ];
 
   @override

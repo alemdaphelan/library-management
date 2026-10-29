@@ -1,0 +1,7 @@
+target
+apache-maven-3.9.9
+.git
+.idea
+.vscode
+*.log
+data

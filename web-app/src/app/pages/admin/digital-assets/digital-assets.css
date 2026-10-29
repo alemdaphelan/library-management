@@ -188,11 +188,7 @@
   position: relative;
 }
 
-.asset-thumb.type-pdf { background: linear-gradient(135deg, #fecaca 0%, #ef4444 100%); }
-.asset-thumb.type-epub { background: linear-gradient(135deg, #bbf7d0 0%, #16a34a 100%); }
-.asset-thumb.type-pptx { background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%); }
-.asset-thumb.type-audio { background: linear-gradient(135deg, #e0f2fe 0%, #0284c7 100%); }
-.asset-thumb.type-unknown { background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%); }
+.asset-thumb { background: linear-gradient(135deg, #e0f2fe 0%, #0284c7 100%); }
 
 .file-extension {
   background: rgba(255, 255, 255, 0.9);
@@ -273,3 +269,53 @@
 .btn-action.view:hover { color: #0284c7; }
 .btn-action.link:hover { color: #16a34a; }
 .btn-action.delete:hover { color: #ef4444; background: #fee2e2; }
+
+.upload-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.upload-options label,
+.edit-dialog label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.upload-options input,
+.upload-options select,
+.edit-dialog input,
+.edit-dialog select {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.message { padding: 11px 14px; border-radius: 8px; margin: 0 0 16px; }
+.message.error { color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; }
+.message.success { color: #075985; background: #f0f9ff; border: 1px solid #bae6fd; }
+.access-badge { display: inline-block; margin-top: 10px; color: #0369a1; font-size: .78rem; font-weight: 700; }
+.empty-state { padding: 32px; text-align: center; background: #fff; border: 1px dashed #bae6fd; border-radius: 12px; color: #64748b; }
+
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(15, 23, 42, .55);
+  display: grid; place-items: center; padding: 20px;
+}
+.edit-dialog {
+  width: min(500px, 100%); background: #fff; border-radius: 14px; padding: 24px;
+  display: grid; gap: 16px; box-shadow: 0 20px 45px rgba(15, 23, 42, .2);
+}
+.edit-dialog h2 { margin: 0; color: #0f172a; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.dialog-actions button { padding: 9px 16px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; }
+.dialog-actions .primary { background: #0284c7; border-color: #0284c7; color: #fff; }
+
+@media (max-width: 640px) {
+  .upload-options { grid-template-columns: 1fr; }
+  .toolbar-section { flex-direction: column; }
+  .search-wrap { max-width: none; }
+}

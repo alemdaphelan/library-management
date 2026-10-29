@@ -2,9 +2,14 @@ import { HttpInterceptorFn } from '@angular/common/http';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem('huit_lib_token');
+  const isPublicRecommendation =
+    req.method === 'GET' &&
+    (req.url.endsWith('/books/recommendations') ||
+      req.url.includes('/books/recommendations/popular'));
 
-  // Không đính kèm Bearer token cho các API bên ngoài như Google Gemini
-  if (token && !req.url.includes('googleapis.com')) {
+  const isExternalGoogleApi = req.url.includes('googleapis.com');
+
+  if (token && !isPublicRecommendation && !isExternalGoogleApi) {
     const cloned = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`

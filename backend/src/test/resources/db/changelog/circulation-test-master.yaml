@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changesets/01-init-schema.yaml
+  - changeSet:
+      id: seed-legacy-circulation-state
+      author: test
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              INSERT INTO loan_tickets (user_id, ticket_type, status, created_at, updated_at)
+              VALUES (NULL, 'NORMAL', 'COMPLETED', NOW(), NOW());
+
+              INSERT INTO loan_details (
+                  ticket_id, barcode, return_status, renewal_count, is_recalled,
+                  late_fine_accrued, created_at, updated_at)
+              SELECT ticket_id, 'LEGACY-001', 'COMPLETED', 0, false, 0, NOW(), NOW()
+              FROM loan_tickets
+              ORDER BY ticket_id
+              LIMIT 1;
+
+              INSERT INTO digital_documents (document_id, book_id, file_url, format, file_size)
+              VALUES (9001, 9999, '/legacy/orphan.pdf', 'PDF', 100);
+
+              INSERT INTO digital_usage_logs (document_id, access_time, pages_read)
+              VALUES
+                  (9001, NOW(), 1),
+                  (9998, NOW(), 1);
+  - include:
+      file: db/changelog/changesets/10-normalize-circulation-state-machine.yaml
+  - include:
+      file: db/changelog/changesets/13-add-circulation-idempotency.yaml
+  - include:
+      file: db/changelog/changesets/14-add-circulation-maintenance.yaml
+  - include:
+      file: db/changelog/changesets/15-complete-week9-policy.yaml
+  - include:
+      file: db/changelog/changesets/16-complete-week7-digital-assets.yaml
+  - include:
+      file: db/changelog/changesets/17-week10a-recommendation-data-foundation.yaml

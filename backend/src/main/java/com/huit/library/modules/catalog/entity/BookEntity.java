@@ -27,6 +27,12 @@ public class BookEntity extends BaseEntity {
 
     private String author;
     private String publisher;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(nullable = false)
+    private Long viewCount = 0L;
     
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id")

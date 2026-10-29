@@ -71,22 +71,59 @@
           <div class="form-row">
             <div class="form-group">
               <label>Tác giả</label>
-              <input type="text" placeholder="VD: Robert C. Martin" [(ngModel)]="suggestion.author" name="author" class="glass-input">
+              <input type="text" maxlength="255" placeholder="VD: Robert C. Martin" [(ngModel)]="suggestion.authorName" name="authorName" class="glass-input">
             </div>
             <div class="form-group">
               <label>Nhà xuất bản</label>
-              <input type="text" placeholder="VD: NXB Thông tin & Truyền thông" [(ngModel)]="suggestion.publisher" name="publisher" class="glass-input">
+              <input type="text" maxlength="255" placeholder="VD: NXB Thông tin & Truyền thông" [(ngModel)]="suggestion.publisher" name="publisher" class="glass-input">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>ISBN</label>
+              <input type="text" maxlength="32" placeholder="VD: 9780132350884" [(ngModel)]="suggestion.isbn" name="isbn" class="glass-input">
+            </div>
+            <div class="form-group">
+              <label>Năm xuất bản</label>
+              <input type="number" min="1000" max="2100" placeholder="VD: 2024" [(ngModel)]="suggestion.publicationYear" name="publicationYear" class="glass-input">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Phiên bản</label>
+              <input type="text" maxlength="100" placeholder="VD: Tái bản lần 3" [(ngModel)]="suggestion.edition" name="edition" class="glass-input">
+            </div>
+            <div class="form-group">
+              <label>Giá dự kiến (VNĐ)</label>
+              <input type="number" min="0" step="1000" placeholder="VD: 150000" [(ngModel)]="suggestion.estimatedPrice" name="estimatedPrice" class="glass-input">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Thể loại</label>
+              <input type="text" maxlength="255" placeholder="VD: Công nghệ thông tin" [(ngModel)]="suggestion.genre" name="genre" class="glass-input">
+            </div>
+            <div class="form-group">
+              <label>Mức độ cần thiết</label>
+              <select [(ngModel)]="suggestion.urgencyLevel" name="urgencyLevel" class="glass-input">
+                <option value="LOW">Thấp</option>
+                <option value="NORMAL">Bình thường</option>
+                <option value="HIGH">Cao</option>
+              </select>
             </div>
           </div>
 
           <div class="form-group">
             <label>Đường dẫn tham khảo (Link bán sách hoặc tài liệu mẫu)</label>
-            <input type="url" placeholder="Link Tiki, Fahasa, Shopee, Amazon..." [(ngModel)]="suggestion.link" name="link" class="glass-input">
+            <input type="url" maxlength="1000" placeholder="Link Tiki, Fahasa, nhà xuất bản..." [(ngModel)]="suggestion.externalUrl" name="externalUrl" class="glass-input">
           </div>
 
           <div class="form-group">
             <label>Lý do đề xuất <span class="required">*</span></label>
-            <textarea rows="3" placeholder="Vì sao cuốn sách này cần thiết cho môn học / nghiên cứu của bạn?" [(ngModel)]="suggestion.reason" name="reason" required class="glass-input"></textarea>
+            <textarea rows="3" maxlength="1000" placeholder="Vì sao cuốn sách này cần thiết cho môn học / nghiên cứu của bạn?" [(ngModel)]="suggestion.reason" name="reason" required class="glass-input"></textarea>
           </div>
 
           <button type="submit" class="btn-submit" [disabled]="isSubmitting">
@@ -137,6 +174,9 @@
             <div class="prop-meta">
               <span *ngIf="item.authorName">Tác giả: <strong>{{ item.authorName }}</strong></span>
               <span *ngIf="item.publisher">NXB: <strong>{{ item.publisher }}</strong></span>
+              <span *ngIf="item.isbn">ISBN: <strong>{{ item.isbn }}</strong></span>
+              <span *ngIf="item.publicationYear">Năm: <strong>{{ item.publicationYear }}</strong></span>
+              <span *ngIf="item.genre">Thể loại: <strong>{{ item.genre }}</strong></span>
               <span *ngIf="item.createdAt">Ngày gửi: {{ item.createdAt | date:'dd/MM/yyyy' }}</span>
             </div>
 
@@ -151,6 +191,9 @@
                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
               </svg>
               <span><strong>Phản hồi từ thủ thư:</strong> {{ item.adminNote }}</span>
+            </div>
+            <div class="prop-admin-note" *ngIf="item.approvedBookId">
+              <span>Đã tạo đầu sách #{{ item.approvedBookId }}; thư viện cần lập phiếu nhập để bổ sung bản sao vào kho.</span>
             </div>
           </div>
         </div>

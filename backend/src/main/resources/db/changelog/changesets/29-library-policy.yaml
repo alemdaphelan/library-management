@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-library-policies
+      author: codex
+      changes:
+        - createTable:
+            tableName: library_policies
+            columns:
+              - column:
+                  name: policy_id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: maximum_open_items
+                  type: integer
+                  constraints: { nullable: false }
+              - column:
+                  name: home_loan_days
+                  type: integer
+                  constraints: { nullable: false }
+              - column:
+                  name: renewal_days
+                  type: integer
+                  constraints: { nullable: false }
+              - column:
+                  name: waitlist_hold_hours
+                  type: integer
+                  constraints: { nullable: false }
+              - column:
+                  name: home_late_fine_per_day
+                  type: decimal(14,2)
+                  constraints: { nullable: false }
+              - column:
+                  name: onsite_late_fine_per_day
+                  type: decimal(14,2)
+                  constraints: { nullable: false }
+              - column:
+                  name: technical_processing_fee
+                  type: decimal(14,2)
+                  constraints: { nullable: false }
+              - column:
+                  name: compensation_settlement_days
+                  type: integer
+                  constraints: { nullable: false }
+              - column:
+                  name: updated_by
+                  type: uuid
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - insert:
+            tableName: library_policies
+            columns:
+              - column: { name: policy_id, valueNumeric: 1 }
+              - column: { name: maximum_open_items, valueNumeric: 3 }
+              - column: { name: home_loan_days, valueNumeric: 10 }
+              - column: { name: renewal_days, valueNumeric: 10 }
+              - column: { name: waitlist_hold_hours, valueNumeric: 48 }
+              - column: { name: home_late_fine_per_day, valueNumeric: 1000 }
+              - column: { name: onsite_late_fine_per_day, valueNumeric: 5000 }
+              - column: { name: technical_processing_fee, valueNumeric: 50000 }
+              - column: { name: compensation_settlement_days, valueNumeric: 30 }

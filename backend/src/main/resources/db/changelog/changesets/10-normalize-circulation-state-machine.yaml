@@ -1,0 +1,143 @@
+databaseChangeLog:
+  - changeSet:
+      id: 10-normalize-circulation-state-machine
+      author: codex
+      changes:
+        - addColumn:
+            tableName: loan_tickets
+            columns:
+              - column:
+                  name: processed_by
+                  type: uuid
+              - column:
+                  name: decision_note
+                  type: varchar(500)
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - sql:
+            dbms: postgresql
+            sql: |
+              UPDATE loan_tickets
+              SET ticket_type = CASE UPPER(COALESCE(ticket_type, 'BORROW'))
+                  WHEN 'NORMAL' THEN 'BORROW'
+                  WHEN 'ONSITE' THEN 'ONSITE'
+                  ELSE 'BORROW'
+              END;
+
+              UPDATE loan_tickets
+              SET status = CASE UPPER(COALESCE(status, 'PENDING'))
+                  WHEN 'COMPLETED' THEN 'RETURNED'
+                  WHEN 'APPROVED' THEN 'RESERVED'
+                  WHEN 'CHECKED_OUT' THEN 'BORROWING'
+                  WHEN 'ACTIVE' THEN 'BORROWING'
+                  ELSE UPPER(COALESCE(status, 'PENDING'))
+              END;
+
+              UPDATE loan_details
+              SET return_status = CASE UPPER(COALESCE(return_status, 'PENDING'))
+                  WHEN 'COMPLETED' THEN 'RETURNED'
+                  WHEN 'CHECKED_OUT' THEN 'BORROWING'
+                  WHEN 'ACTIVE' THEN 'BORROWING'
+                  ELSE UPPER(COALESCE(return_status, 'PENDING'))
+              END;
+        - createTable:
+            tableName: loan_status_history
+            columns:
+              - column:
+                  name: history_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ticket_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: changed_by
+                  type: uuid
+              - column:
+                  name: reason
+                  type: varchar(500)
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: loan_status_history
+            baseColumnNames: ticket_id
+            referencedTableName: loan_tickets
+            referencedColumnNames: ticket_id
+            constraintName: fk_loan_status_history_ticket
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: loan_status_history
+            baseColumnNames: changed_by
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_loan_status_history_user
+        - addForeignKeyConstraint:
+            baseTableName: loan_tickets
+            baseColumnNames: processed_by
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_loan_ticket_processed_by
+        - createIndex:
+            tableName: loan_status_history
+            indexName: idx_loan_status_history_ticket_created
+            columns:
+              - column:
+                  name: ticket_id
+              - column:
+                  name: created_at
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE loan_tickets
+                  ADD CONSTRAINT chk_loan_ticket_type
+                  CHECK (ticket_type IN ('BORROW', 'ONSITE'));
+
+              ALTER TABLE loan_tickets
+                  ADD CONSTRAINT chk_loan_ticket_status
+                  CHECK (status IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE', 'RETURNED', 'CANCELLED', 'REJECTED'));
+
+              ALTER TABLE loan_details
+                  ADD CONSTRAINT chk_loan_detail_status
+                  CHECK (return_status IN ('PENDING', 'BORROWING', 'OVERDUE', 'RETURNED', 'CANCELLED'));
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE loan_details DROP CONSTRAINT IF EXISTS chk_loan_detail_status;
+              ALTER TABLE loan_tickets DROP CONSTRAINT IF EXISTS chk_loan_ticket_status;
+              ALTER TABLE loan_tickets DROP CONSTRAINT IF EXISTS chk_loan_ticket_type;
+        - dropTable:
+            tableName: loan_status_history
+            cascadeConstraints: true
+        - dropColumn:
+            tableName: loan_tickets
+            columnName: processed_by
+        - dropColumn:
+            tableName: loan_tickets
+            columnName: decision_note
+        - dropColumn:
+            tableName: loan_tickets
+            columnName: version

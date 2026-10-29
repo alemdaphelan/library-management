@@ -1,14 +1,36 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
 
 export type Role = 'ADMIN' | 'LIBRARIAN' | 'STUDENT' | 'ACCOUNTANT' | 'TREASURER' | null;
 
 export interface LoginResponse {
+  tokenType?: string;
   accessToken: string;
   refreshToken: string;
   role: string;
+  userId?: string;
+  fullName?: string;
+  email?: string;
+  mssv?: string;
+  isFirstLogin?: boolean;
+  avatarUrl?: string;
+  cardStatus?: string;
+}
+
+export interface LibraryCard {
+  issued: boolean;
+  cardNumber?: string;
+  ownerName: string;
+  department?: string;
+  cardStatus: string;
+  issuedAt?: string;
+  expiryDate?: string;
+  depositBalance: number;
+  totalDebt: number;
+  circulationLockedUntil?: string;
+  circulationLockReason?: string;
 }
 
 import { environment } from '../../environments/environment';
@@ -20,7 +42,10 @@ export class AuthService {
   private roleKey = 'huit_lib_role';
   private userKey = 'huit_lib_user';
   private tokenKey = 'huit_lib_token';
+  private profileKey = 'huit_lib_profile';
   private apiUrl = `${environment.apiUrl}/api/v1/auth`;
+  private profileSubject = new BehaviorSubject<LoginResponse | null>(this.readStoredProfile());
+  readonly profile$ = this.profileSubject.asObservable();
 
   constructor(private http: HttpClient, private router: Router) { }
 
@@ -28,23 +53,25 @@ export class AuthService {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
       tap(response => {
         localStorage.setItem(this.roleKey, response.role);
-        localStorage.setItem(this.userKey, email);
+        localStorage.setItem(this.userKey, response.fullName || response.email || email);
         localStorage.setItem(this.tokenKey, response.accessToken);
+        localStorage.setItem(this.profileKey, JSON.stringify(response));
+        this.profileSubject.next(response);
       })
     );
   }
 
   logout() {
     const token = this.getToken();
+    const refreshToken = this.getUserProfile()?.refreshToken;
+    this.clearLocalData();
     if (token) {
-      this.http.post(`${this.apiUrl}/logout`, {}, {
+      this.http.post(`${this.apiUrl}/logout`, { refreshToken }, {
         headers: { 'Authorization': `Bearer ${token}` }
       }).subscribe({
-        next: () => this.clearLocalData(),
-        error: () => this.clearLocalData()
+        next: () => {},
+        error: () => {}
       });
-    } else {
-      this.clearLocalData();
     }
   }
 
@@ -52,7 +79,9 @@ export class AuthService {
     localStorage.removeItem(this.roleKey);
     localStorage.removeItem(this.userKey);
     localStorage.removeItem(this.tokenKey);
-    this.router.navigate(['/login']);
+    localStorage.removeItem(this.profileKey);
+    this.profileSubject.next(null);
+    this.router.navigate(['/login'], { replaceUrl: true });
   }
 
   getRole(): Role {
@@ -63,6 +92,21 @@ export class AuthService {
     return localStorage.getItem(this.userKey);
   }
 
+  getUserProfile(): LoginResponse | null {
+    return this.readStoredProfile();
+  }
+
+  private readStoredProfile(): LoginResponse | null {
+    const raw = localStorage.getItem(this.profileKey);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      localStorage.removeItem(this.profileKey);
+      return null;
+    }
+  }
+
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
   }
@@ -71,14 +115,18 @@ export class AuthService {
     const token = this.getToken();
     return this.http.get(`${this.apiUrl}/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
-    });
+    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
+  }
+
+  fetchLibraryCard(): Observable<LibraryCard> {
+    return this.http.get<LibraryCard>(`${environment.apiUrl}/api/v1/library-card`);
   }
 
   updateProfile(data: { fullName?: string; phone?: string; avatarUrl?: string }): Observable<any> {
     const token = this.getToken();
     return this.http.put(`${this.apiUrl}/me`, data, {
       headers: { 'Authorization': `Bearer ${token}` }
-    });
+    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
   }
 
   uploadAvatar(file: File): Observable<any> {
@@ -87,38 +135,57 @@ export class AuthService {
     formData.append('file', file);
     return this.http.post(`${this.apiUrl}/avatar`, formData, {
       headers: { 'Authorization': `Bearer ${token}` }
-    });
+    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
+  }
+
+  private mergeStoredProfile(profile: any): void {
+    if (!profile || typeof profile !== 'object') return;
+    const merged = { ...(this.readStoredProfile() || {}), ...profile } as LoginResponse;
+    localStorage.setItem(this.profileKey, JSON.stringify(merged));
+    if (merged.fullName) localStorage.setItem(this.userKey, merged.fullName);
+    this.profileSubject.next(merged);
   }
 
   changePassword(oldPassword: string, newPassword: string): Observable<any> {
-    const email = this.getCurrentUser();
-    return this.http.post(`${this.apiUrl}/change-password`, null, {
-      params: { email: email || '', oldPassword, newPassword },
+    return this.http.post(`${this.apiUrl}/change-password`, {
+      currentPassword: oldPassword,
+      newPassword
+    }, {
       responseType: 'text'
     });
   }
 
   isLoggedIn(): boolean {
-    return !!this.getRole();
+    const role = this.getRole();
+    const token = this.getToken();
+    if (!role || !token) return false;
+
+    try {
+      const payloadPart = token.split('.')[1];
+      if (!payloadPart) return false;
+      const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const payload = JSON.parse(atob(padded));
+      return typeof payload.exp === 'number' && payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
   }
 
   forgotPassword(email: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/forgot-password`, null, {
-      params: { email },
+    return this.http.post(`${this.apiUrl}/forgot-password`, { email }, {
       responseType: 'text'
     });
   }
 
   verifyOtp(email: string, otp: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/verify-otp`, null, {
-      params: { email, otp },
+    return this.http.post(`${this.apiUrl}/verify-otp`, { email, otp }, {
       responseType: 'text'
     });
   }
 
   resetPassword(email: string, otp: string, newPassword: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/reset-password`, null, {
-      params: { email, otp, newPassword },
+    return this.http.post(`${this.apiUrl}/reset-password`, { email, otp, newPassword }, {
       responseType: 'text'
     });
   }

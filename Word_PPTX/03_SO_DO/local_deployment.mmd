@@ -1,0 +1,33 @@
+flowchart TB
+    DEV["Máy phát triển / người kiểm thử"]
+    WEB["Angular dev server\nlocalhost:4200"]
+    MOBILE["Flutter app / emulator"]
+
+    subgraph COMPOSE["Docker Compose - library-network"]
+        NGINX["Nginx :80\nAPI gateway; static Web chỉ là placeholder"]
+        API["Spring Boot Backend :8080\nhealthcheck /actuator/health"]
+        PG[("pgvector/PostgreSQL :5432\nvolume postgres_data")]
+        REDIS[("Redis :6379\nvolume redis_data")]
+        MAIL["Mailpit :1025 / UI :8025"]
+        STORE[("digital_assets_data")]
+        MONGO["MongoDB :27017"]
+        ES["Elasticsearch :9200"]
+        KAFKA["Kafka :9092 + Zookeeper"]
+    end
+
+    GEMINI["Gemini API\nchỉ Backend giữ GEMINI_API_KEY"]
+
+    DEV --> WEB
+    DEV --> MOBILE
+    WEB -->|"HTTP API"| API
+    MOBILE -->|"HTTP API"| API
+    DEV -->|"API qua cổng 80"| NGINX
+    NGINX --> API
+    API --> PG
+    API --> REDIS
+    API --> MAIL
+    API --> STORE
+    API --> GEMINI
+    API -. "đã cấu hình, chưa là dữ liệu chính" .-> MONGO
+    API -. "đã cấu hình, chưa là tìm kiếm chính" .-> ES
+    API -. "đã cấu hình, chưa là luồng nghiệp vụ chính" .-> KAFKA

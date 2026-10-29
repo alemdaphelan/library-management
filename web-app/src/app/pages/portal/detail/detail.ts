@@ -2,18 +2,21 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import * as QRCode from 'qrcode';
-import { BookService } from '../../../services/book.service';
+import { BookReview, BookReviewSummary, BookService } from '../../../services/book.service';
+import { DigitalAsset, DigitalAssetsService } from '../../../services/digital-assets.service';
 import { AuthService } from '../../../services/auth.service';
 import { CirculationService, BorrowResponse } from '../../../services/circulation.service';
+import { BorrowCartService } from '../../../services/borrow-cart.service';
+import { LibraryPolicyService } from '../../../services/library-policy.service';
 
 @Component({
   selector: 'app-detail',
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './detail.html',
-  styleUrls: ['./detail.css']
+  styleUrls: ['./detail.css', './detail-reviews.css']
 })
 export class Detail implements OnInit, OnDestroy {
   isLoading = true;
@@ -22,6 +25,22 @@ export class Detail implements OnInit, OnDestroy {
   bookId: string | null = null;
   book: any = null;
   toastMessage: string | null = null;
+  isBookSaved = false;
+  isWishlistBusy = false;
+  reviews: BookReview[] = [];
+  reviewRating = 5;
+  reviewComment = '';
+  isReviewSubmitting = false;
+  reviewErrorMessage = '';
+  reviewEligible = false;
+  reviewEligibilityMessage = '';
+  areReviewsLoaded = false;
+  digitalAssets: DigitalAsset[] = [];
+  digitalAssetsLoading = false;
+  isPreviewingEbook = false;
+  isCheckingBorrowEligibility = false;
+  homeLoanDays: number | null = null;
+  waitlistHoldHours: number | null = null;
 
   // Reservation / Borrow Modal State
   showBorrowModal = false;
@@ -39,17 +58,32 @@ export class Detail implements OnInit, OnDestroy {
   private routeSub?: Subscription;
   private toastTimer?: any;
 
+  get hasMyReview(): boolean {
+    return this.reviews.some(review => review.mine);
+  }
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private bookService: BookService,
+    private digitalAssetsService: DigitalAssetsService,
     private authService: AuthService,
     private circulationService: CirculationService,
+    private borrowCartService: BorrowCartService,
+    private policyService: LibraryPolicyService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
     window.scrollTo(0, 0);
+    this.policyService.getPublicPolicy().subscribe({
+      next: policy => {
+        this.homeLoanDays = policy.homeLoanDays;
+        this.waitlistHoldHours = policy.waitlistHoldHours;
+        this.cdr.detectChanges();
+      },
+      error: () => { /* Backend vẫn kiểm tra quy định khi tạo phiếu. */ },
+    });
 
     this.routeSub = this.route.paramMap.subscribe(params => {
       const id = params.get('id');
@@ -92,6 +126,11 @@ export class Detail implements OnInit, OnDestroy {
 
         this.book = this.transformBookData(data);
         this.isLoading = false;
+        this.loadReviews(Number(this.book.id));
+        if (this.authService.isLoggedIn()) {
+          this.loadWishlistStatus(Number(this.book.id));
+          this.loadDigitalAssets(Number(this.book.id));
+        }
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -118,30 +157,21 @@ export class Detail implements OnInit, OnDestroy {
       publisherStr += ` (${data.publishYear})`;
     }
 
-    // Call number & Shelf location
+    // Call number & real shelf location returned by the catalog API
     const callNo = data.ddcCallNumber || (data.isbn ? `DDC ${data.isbn.slice(0, 3)}` : 'DDC 004 HUIT');
-    const shelf = catId ? `Kệ K-${catId.toString().padStart(2, '0')}` : `Kệ A-${(rawId % 20) + 100}`;
+    const shelf = data.location || 'Chưa xếp vị trí';
 
-    // Available copies: dynamic realistic distribution
-    const availableCopies = data.availableCopies !== undefined 
-      ? data.availableCopies 
-      : ((rawId % 7) + 2);
+    const availableCopies = Number(data.availableCopies || 0);
 
-    const pages = data.pages || (180 + (rawId % 340));
-    const rating = (4.5 + ((rawId % 5) / 10)).toFixed(1);
-    const reviewsCount = 35 + (rawId % 150);
-    const borrowCount = 120 + (rawId % 1350);
-    const viewCount = 380 + (rawId % 2800);
-
-    const description = data.description || 
-      `Tác phẩm "${data.title}" của tác giả ${data.author || 'nhiều tác giả'}, xuất bản bởi ${data.publisher || 'Nhà xuất bản'}${data.publishYear ? ' năm ' + data.publishYear : ''}. Cuốn sách thuộc chuyên mục "${catName}", là tài liệu học tập, nghiên cứu và tham khảo phục vụ bạn đọc tại Thư viện Đại học Công Thương TP.HCM (HUIT).`;
+    const pages = data.pages || null;
+    const description = data.description || 'Nội dung tài liệu đang được thư viện cập nhật.';
 
     return {
       id: rawId,
       title: data.title,
-      subtitle: data.subtitle || `${catName} - Tài liệu học tập & nghiên cứu HUIT`,
+      subtitle: data.subtitle || catName,
       author: data.author || 'Đang cập nhật',
-      coAuthor: data.coAuthor || (data.publisher ? `Ban biên tập ${data.publisher}` : 'Ban biên soạn HUIT'),
+      coAuthor: data.coAuthor || null,
       category: catName,
       categoryId: catId,
       publisher: publisherStr,
@@ -155,11 +185,12 @@ export class Detail implements OnInit, OnDestroy {
       callNo: callNo,
       shelf: shelf,
       availableCopies: availableCopies,
+      totalCopies: Number(data.copies || 0),
       isDigital: !!data.isDigital,
-      rating: rating,
-      reviewsCount: reviewsCount,
-      borrowCount: borrowCount,
-      viewCount: viewCount,
+      rating: Number(data.rating || 0),
+      reviewsCount: Number(data.reviewsCount || 0),
+      borrowCount: Number(data.borrowCount || 0),
+      viewCount: Number(data.viewCount || 0),
       language: data.language || 'Tiếng Việt'
     };
   }
@@ -183,6 +214,52 @@ export class Detail implements OnInit, OnDestroy {
 
   // --- BORROW / RESERVATION MODAL HANDLING ---
 
+  addToBorrowCart() {
+    if (!this.authService.isLoggedIn()) {
+      this.showLoginPromptModal = true;
+      return;
+    }
+    if (!this.book || this.book.availableCopies <= 0) {
+      this.showToast('Tài liệu hiện hết bản sẵn sàng. Hãy dùng Mượn ngay để đăng ký hàng đợi.');
+      return;
+    }
+    if (this.isCheckingBorrowEligibility) return;
+    this.isCheckingBorrowEligibility = true;
+    this.circulationService.getMyBorrowEligibility().subscribe({
+      next: eligibility => {
+        this.isCheckingBorrowEligibility = false;
+        this.borrowCartService.setMaximumItems(eligibility.maximumItems);
+        if (!eligibility.eligible || this.borrowCartService.count >= eligibility.remainingSlots) {
+          this.showToast(eligibility.message || `Bạn đã đạt giới hạn ${eligibility.maximumItems} tài liệu đang hoạt động.`);
+          return;
+        }
+        const result = this.borrowCartService.add({
+          bookId: Number(this.book.id),
+          title: this.book.title,
+          author: this.book.author,
+          cover: this.book.cover,
+          availableCopies: this.book.availableCopies,
+        });
+        if (result === 'FULL') {
+          this.showToast(`Giỏ mượn đã đủ ${eligibility.maximumItems} tài liệu. Vui lòng hoàn tất phiếu hiện tại.`);
+        } else if (result === 'DUPLICATE') {
+          this.showToast('Đầu sách này đã có trong giỏ mượn.');
+        } else {
+          const slotsAfterAdd = Math.max(0, eligibility.remainingSlots - this.borrowCartService.count);
+          this.showToast(slotsAfterAdd > 0
+            ? `Đã thêm vào giỏ. Bạn còn có thể chọn ${slotsAfterAdd} tài liệu.`
+            : `Đã thêm vào giỏ. Bạn đã dùng hết giới hạn ${eligibility.maximumItems} tài liệu đang hoạt động.`);
+        }
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.isCheckingBorrowEligibility = false;
+        this.showToast(this.extractBorrowError(error, 'Không thể kiểm tra hạn mức mượn. Vui lòng thử lại.'));
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
   openBorrowModal() {
     // 1. Kiểm tra trạng thái đăng nhập
     if (!this.authService.isLoggedIn()) {
@@ -192,17 +269,11 @@ export class Detail implements OnInit, OnDestroy {
 
     // 2. Tính toán ngày nhận sách hợp lệ
     const today = new Date();
-    const minStr = today.toISOString().split('T')[0];
-    
-    const nextDay = new Date(today);
-    nextDay.setDate(today.getDate() + 1);
-    
-    const maxDay = new Date(today);
-    maxDay.setDate(today.getDate() + 3);
+    const minStr = this.formatLocalDate(today);
 
     this.minPickupDate = minStr;
-    this.maxPickupDate = maxDay.toISOString().split('T')[0];
-    this.pickupDate = nextDay.toISOString().split('T')[0];
+    this.maxPickupDate = minStr;
+    this.pickupDate = minStr;
 
     // Reset form state
     this.borrowType = 'BORROW';
@@ -211,6 +282,13 @@ export class Detail implements OnInit, OnDestroy {
     this.borrowErrorMessage = '';
     this.qrCodeDataUrl = null;
     this.showBorrowModal = true;
+  }
+
+  private formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   closeBorrowModal() {
@@ -263,37 +341,54 @@ export class Detail implements OnInit, OnDestroy {
         this.isSubmittingBorrow = false;
         console.error('Error submitting borrow reservation:', err);
 
-        let msg = 'Không thể gửi yêu cầu đặt sách. Vui lòng thử lại!';
-        if (err.error && typeof err.error === 'string') {
-          msg = err.error;
-        } else if (err.error?.message) {
-          msg = err.error.message;
-        } else if (err.status === 401 || err.status === 403) {
-          msg = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại tài khoản sinh viên/bạn đọc.';
-        }
-        
-        this.borrowErrorMessage = msg;
+        this.borrowErrorMessage = this.extractBorrowError(err);
         this.cdr.detectChanges();
       }
     });
   }
 
+  private extractBorrowError(err: any, fallback = 'Không thể gửi yêu cầu đặt sách. Vui lòng thử lại!'): string {
+    if (err?.status === 401 || err?.status === 403) {
+      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại tài khoản sinh viên/bạn đọc.';
+    }
+    const body = err?.error;
+    if (typeof body === 'string' && body.trim()) {
+      return body;
+    }
+    const message = body?.detail ?? body?.message ?? body?.error;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+    if (err?.status === 409) {
+      return 'Yêu cầu mượn không đáp ứng quy định hiện tại. Vui lòng kiểm tra số sách đang mượn, công nợ và trạng thái thẻ.';
+    }
+    return fallback;
+  }
+
   generateQrCode(ticketId: number | string) {
-    const qrPayload = `HUIT-PM-${ticketId}`;
-    QRCode.toDataURL(qrPayload, {
-      width: 220,
-      margin: 1.5,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff'
+    this.circulationService.getTicketQrPayload(Number(ticketId)).subscribe({
+      next: ({ payload }) => {
+        QRCode.toDataURL(payload, {
+          width: 220,
+          margin: 1.5,
+          color: {
+            dark: '#0f172a',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'M'
+        }).then((url: string) => {
+          this.qrCodeDataUrl = url;
+          this.cdr.detectChanges();
+        }).catch((err: any) => this.handleQrError(err));
       },
-      errorCorrectionLevel: 'M'
-    }).then((url: string) => {
-      this.qrCodeDataUrl = url;
-      this.cdr.detectChanges();
-    }).catch((err: any) => {
-      console.error('Lỗi tạo mã QR phiếu mượn:', err);
+      error: (err) => this.handleQrError(err),
     });
+  }
+
+  private handleQrError(err: unknown) {
+    console.error('Lỗi tạo mã QR phiếu mượn:', err);
+    this.borrowErrorMessage = 'Đã tạo phiếu nhưng chưa thể tạo QR bảo mật. Bạn có thể mở lại QR trong Lịch sử mượn.';
+    this.cdr.detectChanges();
   }
 
   downloadQrCode() {
@@ -306,7 +401,138 @@ export class Detail implements OnInit, OnDestroy {
   }
 
   bookmarkBook() {
-    this.showToast('Đã thêm cuốn sách vào Tủ sách cá nhân của bạn!');
+    if (!this.authService.isLoggedIn()) {
+      this.showLoginPromptModal = true;
+      return;
+    }
+    if (!this.book || this.isWishlistBusy) return;
+    this.isWishlistBusy = true;
+    const request: Observable<unknown> = this.isBookSaved
+      ? this.bookService.removeFromWishlist(Number(this.book.id))
+      : this.bookService.addToWishlist(Number(this.book.id));
+    request.subscribe({
+      next: () => {
+        this.isBookSaved = !this.isBookSaved;
+        this.isWishlistBusy = false;
+        this.showToast(this.isBookSaved
+          ? 'Đã thêm cuốn sách vào Tủ sách cá nhân.'
+          : 'Đã bỏ cuốn sách khỏi Tủ sách cá nhân.');
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isWishlistBusy = false;
+        this.showToast('Không thể cập nhật Tủ sách cá nhân. Vui lòng thử lại.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  submitReview() {
+    if (!this.authService.isLoggedIn()) {
+      this.showLoginPromptModal = true;
+      return;
+    }
+    if (!this.book || this.isReviewSubmitting) return;
+    if (!this.reviewEligible || this.hasMyReview) {
+      this.reviewErrorMessage = this.reviewEligibilityMessage || 'Bạn không đủ điều kiện gửi đánh giá này.';
+      return;
+    }
+    this.isReviewSubmitting = true;
+    this.reviewErrorMessage = '';
+    this.bookService.saveReview(Number(this.book.id), this.reviewRating, this.reviewComment.trim()).subscribe({
+      next: summary => {
+        this.applyReviewSummary(summary);
+        this.isReviewSubmitting = false;
+        this.showToast('Đã ghi nhận đánh giá của bạn.');
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.isReviewSubmitting = false;
+        this.reviewErrorMessage = this.resolveApiError(error, 'Không thể lưu đánh giá.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  deleteMyReview() {
+    if (!this.book || this.isReviewSubmitting) return;
+    this.isReviewSubmitting = true;
+    this.bookService.deleteMyReview(Number(this.book.id)).subscribe({
+      next: () => {
+        this.reviewRating = 5;
+        this.reviewComment = '';
+        this.isReviewSubmitting = false;
+        this.loadReviews(Number(this.book.id));
+        this.showToast('Đã xóa đánh giá của bạn.');
+      },
+      error: () => {
+        this.isReviewSubmitting = false;
+        this.reviewErrorMessage = 'Không thể xóa đánh giá.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private loadReviews(bookId: number) {
+    this.areReviewsLoaded = false;
+    this.bookService.getReviews(bookId).subscribe({
+      next: summary => {
+        this.applyReviewSummary(summary);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.reviews = [];
+        this.reviewErrorMessage = 'Chưa thể tải danh sách đánh giá.';
+        this.reviewEligibilityMessage = this.reviewErrorMessage;
+        this.areReviewsLoaded = true;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private applyReviewSummary(summary: BookReviewSummary) {
+    this.reviews = summary.reviews || [];
+    this.reviewEligible = !!summary.reviewEligible;
+    this.reviewEligibilityMessage = summary.reviewEligibilityMessage || '';
+    this.reviewErrorMessage = '';
+    this.areReviewsLoaded = true;
+    if (this.book) {
+      this.book.rating = Number(summary.averageRating || 0);
+      this.book.reviewsCount = Number(summary.reviewCount || 0);
+    }
+    if (summary.myReview) {
+      this.reviewRating = summary.myReview.rating;
+      this.reviewComment = summary.myReview.comment || '';
+    }
+  }
+
+  private resolveApiError(error: any, fallback: string): string {
+    if (typeof error?.error === 'string' && error.error.trim()) {
+      return error.error;
+    }
+    const apiMessage = error?.error?.detail || error?.error?.message;
+    if (apiMessage && apiMessage !== 'No message available') {
+      return apiMessage;
+    }
+    if (error?.status === 409) {
+      return 'Bạn đã đánh giá tài liệu này. Mỗi bạn đọc chỉ được gửi một đánh giá.';
+    }
+    if (error?.status === 403) {
+      return 'Bạn chỉ có thể đánh giá sau khi tài liệu đã được thủ thư giao mượn.';
+    }
+    return fallback;
+  }
+
+  private loadWishlistStatus(bookId: number) {
+    this.bookService.getWishlistStatus(bookId).subscribe({
+      next: result => {
+        this.isBookSaved = !!result.saved;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isBookSaved = false;
+      },
+    });
   }
 
   copyLink() {
@@ -323,7 +549,61 @@ export class Detail implements OnInit, OnDestroy {
   }
 
   previewEbook() {
-    this.showToast('Đang kết nối cổng tài liệu số HUIT E-Library...');
+    if (!this.authService.isLoggedIn()) {
+      this.showLoginPromptModal = true;
+      return;
+    }
+    if (this.digitalAssetsLoading || this.isPreviewingEbook) return;
+    const asset = this.digitalAssets.find(item => item.type?.toUpperCase() === 'PDF'
+      || item.contentType === 'application/pdf');
+    if (!asset) {
+      this.showToast('Đầu sách này chưa có bản PDF được thư viện công bố.');
+      return;
+    }
+    const previewWindow = window.open('', '_blank');
+    if (!previewWindow) {
+      this.showToast('Trình duyệt đang chặn cửa sổ đọc thử. Vui lòng cho phép mở tab mới.');
+      return;
+    }
+    previewWindow.document.title = `Đang mở ${asset.name}`;
+    this.isPreviewingEbook = true;
+    this.digitalAssetsService.previewAsset(asset.id).subscribe({
+      next: response => {
+        this.isPreviewingEbook = false;
+        if (!response.body) {
+          previewWindow.close();
+          this.showToast('Tệp E-book không có dữ liệu để hiển thị.');
+          return;
+        }
+        const url = URL.createObjectURL(response.body);
+        previewWindow.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isPreviewingEbook = false;
+        previewWindow.close();
+        this.showToast('Không thể mở E-book. Vui lòng kiểm tra quyền truy cập hoặc thử lại.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private loadDigitalAssets(bookId: number) {
+    this.digitalAssetsLoading = true;
+    this.digitalAssets = [];
+    this.digitalAssetsService.getAssetsByBook(bookId).subscribe({
+      next: assets => {
+        this.digitalAssets = assets || [];
+        this.digitalAssetsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.digitalAssets = [];
+        this.digitalAssetsLoading = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   citeBook() {

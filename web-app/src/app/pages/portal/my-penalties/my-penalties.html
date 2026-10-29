@@ -1,0 +1,141 @@
+<div class="finance-page">
+  <header class="finance-header">
+    <div>
+      <span class="eyebrow">TÀI KHOẢN SINH VIÊN</span>
+      <h1>Công nợ & Khoản phạt</h1>
+      <p>Theo dõi các khoản quá hạn, đền bù, sửa chữa, phí kỹ thuật và lịch sử thanh toán của bạn.</p>
+    </div>
+    <button type="button" class="refresh-button" (click)="loadFinancials()" [disabled]="loading">Làm mới dữ liệu</button>
+  </header>
+
+  <div class="loading-panel" *ngIf="loading">
+    <span class="spinner"></span>
+    Đang đối soát công nợ từ hệ thống thư viện...
+  </div>
+
+  <div class="error-panel" *ngIf="!loading && errorMessage">
+    <strong>Không tải được công nợ</strong>
+    <span>{{ errorMessage }}</span>
+    <button type="button" (click)="loadFinancials()">Thử lại</button>
+  </div>
+
+  <ng-container *ngIf="!loading && !errorMessage">
+    <section class="summary-grid">
+      <article class="summary-card debt-card">
+        <span>Còn phải thanh toán</span>
+        <strong>{{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ</strong>
+        <small>{{ openDebtEntries.length }} khoản đang mở</small>
+      </article>
+      <article class="summary-card">
+        <span>Tổng khoản đã ghi nhận</span>
+        <strong>{{ totalAssessed | number:'1.0-0':'en-US' }} VNĐ</strong>
+        <small>Không tính giao dịch thanh toán ngược</small>
+      </article>
+      <article class="summary-card paid-card">
+        <span>Đã thanh toán / cấn trừ</span>
+        <strong>{{ totalPaid | number:'1.0-0':'en-US' }} VNĐ</strong>
+        <small>Đối chiếu theo từng khoản thu</small>
+      </article>
+      <article class="summary-card deposit-card">
+        <span>Tiền thế chân hiện có</span>
+        <strong>{{ (libraryCard?.depositBalance || 0) | number:'1.0-0':'en-US' }} VNĐ</strong>
+        <small>Trạng thái thẻ: {{ libraryCard?.cardStatus || 'Chưa cấp thẻ' }}</small>
+      </article>
+      <article class="summary-card">
+        <span>Hồ sơ mất / hỏng</span>
+        <strong>{{ penaltyCases.length }}</strong>
+        <small>Gồm hồ sơ đang xử lý và đã quyết toán</small>
+      </article>
+    </section>
+
+    <section class="payment-panel">
+      <div class="payment-copy">
+        <span class="eyebrow">THANH TOÁN TRỰC TUYẾN</span>
+        <h2>Thanh toán an toàn qua VNPAY</h2>
+        <p>Chọn thanh toán công nợ hoặc nạp tiền thế chân. Giao dịch chỉ được ghi nhận sau khi chữ ký phản hồi từ VNPAY hợp lệ.</p>
+        <div class="payment-purpose">
+          <button type="button" [class.active]="paymentPurpose === 'DEBT'" (click)="selectPaymentPurpose('DEBT')">Thanh toán công nợ</button>
+          <button type="button" [class.active]="paymentPurpose === 'DEPOSIT'" (click)="selectPaymentPurpose('DEPOSIT')">Nạp tiền thế chân</button>
+        </div>
+      </div>
+      <div class="payment-form">
+        <label for="payment-amount">Số tiền (VNĐ)</label>
+        <input id="payment-amount" type="number" min="1000" step="1000" [(ngModel)]="paymentAmount"
+               [max]="paymentPurpose === 'DEBT' ? outstandingDebt : 100000000">
+        <small *ngIf="paymentPurpose === 'DEBT'">Công nợ hiện tại: {{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ</small>
+        <small *ngIf="paymentPurpose === 'DEPOSIT'">Số tiền này được cộng vào tiền thế chân, không tự cấn trừ công nợ.</small>
+        <button type="button" (click)="startOnlinePayment()"
+                [disabled]="paymentSubmitting || (paymentPurpose === 'DEBT' && outstandingDebt === 0)">
+          {{ paymentSubmitting ? 'Đang tạo giao dịch...' : 'Thanh toán với VNPAY' }}
+        </button>
+        <p class="gateway-note">Bạn sẽ được chuyển sang cổng VNPAY và quay lại trang này sau khi hoàn tất.</p>
+      </div>
+    </section>
+
+    <div class="clear-banner" *ngIf="outstandingDebt === 0">
+      <span class="clear-icon">✓</span>
+      <div><strong>Bạn hiện không còn công nợ đến hạn.</strong><p>Quyền mượn vẫn phụ thuộc trạng thái thẻ và việc hoàn trả đầy đủ tài liệu.</p></div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div><h2>Chi tiết các khoản ghi nợ</h2><p>Mỗi dòng tiền được giữ nguyên để phục vụ đối soát và kiểm tra lịch sử.</p></div>
+        <span>{{ debtEntries.length }} khoản</span>
+      </div>
+      <div class="empty-state" *ngIf="debtEntries.length === 0">Chưa phát sinh khoản phạt hoặc đền bù nào.</div>
+      <div class="table-wrap" *ngIf="debtEntries.length > 0">
+        <table>
+          <thead><tr><th>Mã</th><th>Loại phí / lý do</th><th>Phát sinh</th><th>Đã trả</th><th>Còn lại</th><th>Trạng thái</th><th>Ngày ghi nhận</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let entry of debtEntries">
+              <td>#{{ entry.transactionId }}</td>
+              <td><strong>{{ feeTypeLabel(entry.type) }}</strong><small>{{ entry.reason || 'Không có ghi chú' }}</small></td>
+              <td>{{ entry.amount | number:'1.0-0':'en-US' }} VNĐ</td>
+              <td>{{ (entry.paidAmount || 0) | number:'1.0-0':'en-US' }} VNĐ</td>
+              <td class="remaining">{{ remainingAmount(entry) | number:'1.0-0':'en-US' }} VNĐ</td>
+              <td><span class="status" [class.open]="remainingAmount(entry) > 0">{{ statusLabel(entry.status) }}</span></td>
+              <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Hồ sơ mất / hỏng tài liệu</h2><p>Chi tiết cấu thành tiền đền bù và thời hạn xử lý.</p></div><span>{{ penaltyCases.length }} hồ sơ</span></div>
+      <div class="empty-state" *ngIf="penaltyCases.length === 0">Không có hồ sơ mất hoặc hư hỏng tài liệu.</div>
+      <div class="case-grid" *ngIf="penaltyCases.length > 0">
+        <article class="case-card" *ngFor="let item of penaltyCases">
+          <div class="case-top"><div><small>Hồ sơ #{{ item.caseId }}</small><h3>{{ incidentLabel(item.incidentType) }}</h3></div><span class="status">{{ statusLabel(item.status) }}</span></div>
+          <p>{{ item.description || 'Không có mô tả bổ sung.' }}</p>
+          <dl>
+            <div><dt>Mã vạch</dt><dd>{{ item.barcode }}</dd></div>
+            <div><dt>Phạt quá hạn</dt><dd>{{ item.overdueFineSnapshot | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div><dt>Sửa chữa</dt><dd>{{ item.repairFee | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div><dt>Đền bù</dt><dd>{{ item.compensationAmount | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div><dt>Phí kỹ thuật</dt><dd>{{ item.technicalFee | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div class="case-total"><dt>Tổng / còn lại</dt><dd>{{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ / {{ (item.totalAmount - (item.paidAmount || 0)) | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+          </dl>
+          <div class="case-deadline">Hạn xử lý: <strong>{{ item.settlementDueAt | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+          <div class="decision" *ngIf="item.decisionReason"><strong>Kết quả miễn giảm:</strong> {{ item.decisionReason }}</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Lịch sử thanh toán</h2><p>Biên nhận do thủ thư xác nhận; giao dịch đã phát hành không bị xóa.</p></div><span>{{ paymentEntries.length }} giao dịch</span></div>
+      <div class="empty-state" *ngIf="paymentEntries.length === 0">Chưa có giao dịch thanh toán.</div>
+      <div class="payment-list" *ngIf="paymentEntries.length > 0">
+        <article *ngFor="let payment of paymentEntries">
+          <div><strong>{{ payment.receiptNumber || ('Giao dịch #' + payment.transactionId) }}</strong><small>{{ payment.reason }}</small></div>
+          <div><strong>{{ (payment.amount < 0 ? -payment.amount : payment.amount) | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : payment.paymentMethod === 'CASH' ? 'Tiền mặt' : payment.paymentMethod === 'VNPAY' ? 'VNPAY trực tuyến' : payment.paymentMethod || 'Đã ghi nhận' }} · {{ (payment.paidAt || payment.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small></div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="finance-note">
+      Sinh viên có thể thanh toán nhiều đợt. Quyền mượn, đặt giữ và gia hạn chỉ được mở lại khi không còn công nợ đến hạn và đã hoàn trả đủ tài liệu.
+      <a routerLink="/history">Xem lịch sử mượn sách</a>
+    </footer>
+  </ng-container>
+</div>

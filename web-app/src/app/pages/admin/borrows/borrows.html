@@ -1,244 +1,120 @@
 <div class="modern-page">
-  <!-- Page Header -->
   <div class="page-header">
     <div class="ph-left">
-      <span class="ph-branch">Cơ sở Tây Thạnh</span>
+      <span class="ph-branch">Quản lý lưu thông</span>
       <span class="ph-divider">/</span>
-      <span class="ph-mod">Phân hệ Quản trị Bạn đọc</span>
-      <span class="ph-divider">/</span>
-      <span class="ph-title">Xử lý Quá hạn & Nợ phạt</span>
+      <span class="ph-title">Theo dõi đang mượn, quá hạn và lịch sử phiếu</span>
     </div>
-    <div class="ph-right">
-      <div class="ph-status">
-        <span class="dot-online"></span> Cổng VietQR: Hoạt động
-      </div>
-      <div class="ph-version">Phiên bản dữ liệu: K21-K24 v4.2</div>
-    </div>
+    <button class="btn btn-outline-gray" type="button" (click)="loadLoans()" [disabled]="isLoading">
+      {{ isLoading ? 'Đang tải...' : 'Làm mới' }}
+    </button>
   </div>
 
-  <!-- Stat Cards -->
   <div class="stat-grid">
     <div class="stat-card">
-      <div class="st-top">
-        <div class="st-info">
-          <div class="st-label">TỔNG SINH VIÊN KÍCH HOẠT</div>
-          <div class="st-value">28,450</div>
-        </div>
-        <div class="st-icon icon-blue"></div>
-      </div>
-      <div class="st-bottom">
-        <span class="trend-up">&#8599; +340</span>
-        <span class="st-desc">kỳ I năm học 2024 - 2025</span>
-      </div>
+      <div class="st-label">TỔNG PHIẾU</div>
+      <div class="st-value">{{ loans.length | number }}</div>
+      <div class="st-desc">Tổng số phiếu trong hệ thống</div>
     </div>
-
     <div class="stat-card">
-      <div class="st-top">
-        <div class="st-info">
-          <div class="st-label">ĐANG MƯỢN TÀI LIỆU</div>
-          <div class="st-value">4,120</div>
-        </div>
-        <div class="st-icon icon-cyan"></div>
-      </div>
-      <div class="st-bottom st-progress-row">
-        <span class="st-desc">Chiếm 14.5% tổng bạn đọc</span>
-        <div class="mini-progress">
-          <div class="mini-bar" style="width: 14.5%;"></div>
-        </div>
-      </div>
+      <div class="st-label">ĐANG MƯỢN</div>
+      <div class="st-value">{{ activeCount | number }}</div>
+      <div class="st-desc">Bao gồm các phiếu đã quá hạn</div>
     </div>
-
     <div class="stat-card">
-      <div class="st-top">
-        <div class="st-info">
-          <div class="st-label text-danger">CẦN XỬ LÝ QUÁ HẠN</div>
-          <div class="st-value text-danger">86 <span class="st-unit">bạn đọc</span></div>
-        </div>
-        <div class="st-icon icon-red"></div>
-      </div>
-      <div class="st-bottom space-between">
-        <span class="st-desc">18 ca trễ > 14 ngày (Khóa thẻ)</span>
-        <span class="badge-urgent">Cấp thiết</span>
-      </div>
+      <div class="st-label text-danger">CẦN XỬ LÝ QUÁ HẠN</div>
+      <div class="st-value text-danger">{{ overdueCount | number }}</div>
+      <div class="st-desc">Phiếu có ít nhất một tài liệu trễ hạn</div>
     </div>
-
     <div class="stat-card">
-      <div class="st-top">
-        <div class="st-info">
-          <div class="st-label">TỔNG TIỀN PHẠT LŨY KẾ</div>
-          <div class="st-value">18,450,000 <span class="st-unit">đ</span></div>
-        </div>
-        <div class="st-icon icon-dark"></div>
-      </div>
-      <div class="st-bottom space-between">
-        <span class="st-desc">Đã thu hôm nay: 1,240,000 đ</span>
-        <span class="st-desc">Tỉ lệ thu <strong>76%</strong></span>
-      </div>
+      <div class="st-label">NỢ PHẠT ĐÃ GHI NHẬN</div>
+      <div class="st-value">{{ outstandingFine | number:'1.0-0':'en-US' }} <span class="st-unit">VNĐ</span></div>
+      <div class="st-desc">Chưa bao gồm bồi thường mất/hỏng</div>
     </div>
   </div>
 
-  <!-- Actions & Tools -->
-  <div class="toolbar-row">
-    <div class="tb-actions-main">
-      <button class="btn btn-primary">Thêm tài khoản mới</button>
-      <button class="btn btn-outline">Import từ Excel (.xlsx)</button>
-      <button class="btn btn-danger-light">Gửi email nhắc nợ hàng loạt (86)</button>
-    </div>
-    <div class="tb-actions-export">
-      <button class="btn btn-outline-gray">Xuất Excel</button>
-      <button class="btn btn-outline-gray">Xuất PDF</button>
-      <button class="btn btn-outline-gray">Làm mới</button>
-    </div>
-  </div>
-
-  <!-- Filters -->
   <div class="filter-box">
     <div class="filter-controls">
       <div class="search-input">
-        <input type="text" placeholder="Tìm theo MSSV (200121...), Họ tên, Lớp, Số điện th">
+        <input type="search" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" placeholder="Tìm theo mã phiếu, MSSV, họ tên hoặc khoa">
       </div>
-      <select class="form-select"><option>Khoa Công nghệ Thông tin</option></select>
-      <select class="form-select"><option>Khóa 22 (2022-2026)</option></select>
-      <select class="form-select"><option>Có sách quá hạn</option></select>
+      <label class="date-filter">Từ ngày <input type="date" [(ngModel)]="fromDate" (ngModelChange)="applyFilters()"></label>
+      <label class="date-filter">Đến ngày <input type="date" [(ngModel)]="toDate" (ngModelChange)="applyFilters()"></label>
+      <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" aria-label="Lọc trạng thái phiếu">
+        <option value="ALL">Tất cả trạng thái</option>
+        <option value="PENDING">Chờ duyệt</option>
+        <option value="RESERVED">Đã duyệt</option>
+        <option value="BORROWING">Đang mượn</option>
+        <option value="OVERDUE">Quá hạn</option>
+        <option value="RETURNED">Đã trả</option>
+        <option value="CANCELLED">Đã hủy</option>
+        <option value="REJECTED">Từ chối</option>
+      </select>
     </div>
-    <div class="filter-tags">
-      <div class="tags-left">
-        <span class="lbl">ĐANG LỌC THEO:</span>
-        <span class="tag">Khoa CNTT <span class="x">&#10005;</span></span>
-        <span class="tag">Khóa 22 <span class="x">&#10005;</span></span>
-        <span class="tag tag-danger">Có sách quá hạn / Nợ phạt <span class="x">&#10005;</span></span>
-        <a href="#" class="clear-all">Xóa tất cả bộ lọc</a>
-      </div>
-      <div class="tags-right">
-        <span class="paging-info">Hiển thị 1 - 6 trên tổng số <strong>86</strong> kết quả khớp</span>
-        <div class="page-sizes">
-          <span class="sz active">15</span>
-          <span class="sz">30</span>
-          <span class="sz">50</span>
-        </div>
-      </div>
-    </div>
+    <div class="st-desc">Hiển thị {{ filteredLoans.length }} / {{ loans.length }} phiếu</div>
   </div>
 
-  <!-- Data Table -->
-  <div class="modern-table-container">
-    <!-- Selection Bar -->
-    <div class="selection-bar">
-      <div class="sel-left">
-        <input type="checkbox" checked>
-        <div class="sel-count">Đã chọn <strong>2</strong> sinh viên</div>
-        <div class="sel-desc">Có thể thực hiện các thao tác đóng loạt bên dưới</div>
-      </div>
-      <div class="sel-right">
-        <button class="btn btn-outline">Gửi thư nhắc nhở</button>
-        <button class="btn btn-outline-danger">Khóa quyền mượn</button>
-        <button class="btn btn-outline">Xuất danh sách chọn</button>
-      </div>
-    </div>
+  <div class="error-state" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="success-state" *ngIf="successMessage">{{ successMessage }}</div>
+  <div class="loading-state" *ngIf="isLoading">Đang tải dữ liệu lưu thông...</div>
 
-    <table class="modern-table">
+  <div class="modern-table-container" *ngIf="!isLoading">
+    <table class="modern-table" *ngIf="filteredLoans.length; else emptyLoans">
       <thead>
         <tr>
-          <th width="40"><input type="checkbox"></th>
-          <th>SINH VIÊN / MSSV</th>
-          <th>LỚP & CHUYÊN NGÀNH</th>
-          <th>ĐANG MƯỢN</th>
-          <th>TÌNH TRẠNG QUÁ HẠN</th>
-          <th>PHÍ PHẠT PHÁT SINH</th>
-          <th>TRẠNG THÁI THẺ</th>
-          <th>THAO TÁC</th>
+          <th>PHIẾU</th><th>BẠN ĐỌC</th><th>KHOA / ĐƠN VỊ</th><th>TÀI LIỆU</th>
+          <th>HẠN GẦN NHẤT</th><th>PHÍ TRỄ</th><th>TRẠNG THÁI</th><th></th>
         </tr>
       </thead>
       <tbody>
-        <!-- Row 1 -->
-        <tr class="selected-row">
-          <td><input type="checkbox" checked></td>
-          <td>
-            <div class="student-cell">
-              <div class="st-ava"><img src="https://ui-avatars.com/api/?name=Nguyễn+Văn+An&background=random" alt="Ava"></div>
-              <div class="st-details">
-                <div class="st-name">Nguyễn Văn An</div>
-                <div class="st-id">2001210123</div>
-              </div>
-            </div>
-          </td>
-          <td>
-            <div class="cls-details">
-              <div class="cls-name">12DHTH05</div>
-              <div class="cls-sub">Khoa Kỹ thuật Phần mềm (K21)</div>
-            </div>
-          </td>
-          <td class="text-center font-bold">3</td>
-          <td>
-            <div class="overdue-danger">Trễ 12 ngày <span class="fw-normal">(2 cuốn)</span></div>
-            <div class="book-title">Lập trình Web với React & Spring Boo...</div>
-          </td>
-          <td>
-            <div class="fee-danger">60,000 đ</div>
-            <div class="fee-sub">5.000 đ/ngày/cuốn</div>
-          </td>
-          <td><span class="badge badge-locked">Khóa mượn</span></td>
-          <td><button class="btn btn-action-main">Thu phạt</button></td>
-        </tr>
-        
-        <!-- Row 2 -->
-        <tr class="selected-row">
-          <td><input type="checkbox" checked></td>
-          <td>
-            <div class="student-cell">
-              <div class="st-ava"><img src="https://ui-avatars.com/api/?name=Trần+Thị+Mai&background=random" alt="Ava"></div>
-              <div class="st-details">
-                <div class="st-name">Trần Thị Mai Phươ...</div>
-                <div class="st-id">2001220455</div>
-              </div>
-            </div>
-          </td>
-          <td>
-            <div class="cls-details">
-              <div class="cls-name">13DHTP02</div>
-              <div class="cls-sub">Khoa CN Thực phẩm (K22)</div>
-            </div>
-          </td>
-          <td class="text-center font-bold">2</td>
-          <td>
-            <div class="overdue-warn">Trễ 5 ngày <span class="fw-normal">(1 cuốn)</span></div>
-            <div class="book-title">Vi sinh vật học thực phẩm ứng dụng...</div>
-          </td>
-          <td>
-            <div class="fee-warn">25,000 đ</div>
-            <div class="fee-sub">5.000 đ/ngày</div>
-          </td>
-          <td><span class="badge badge-warn">Cảnh báo</span></td>
-          <td><button class="btn btn-action-main">Thu phạt</button></td>
-        </tr>
-
-        <!-- Row 3 -->
-        <tr>
-          <td><input type="checkbox"></td>
-          <td>
-            <div class="student-cell">
-              <div class="st-ava"><img src="https://ui-avatars.com/api/?name=Lê+Hoàng+Nam&background=random" alt="Ava"></div>
-              <div class="st-details">
-                <div class="st-name">Lê Hoàng Nam</div>
-                <div class="st-id">2001230890</div>
-              </div>
-            </div>
-          </td>
-          <td>
-            <div class="cls-details">
-              <div class="cls-name">14DHQT01</div>
-              <div class="cls-sub">Khoa Quản trị Kinh doanh (K23)</div>
-            </div>
-          </td>
-          <td class="text-center font-bold">1</td>
-          <td>
-            <div class="overdue-ok">Còn hạn (14 ngày)</div>
-          </td>
-          <td><div class="fee-ok">0 đ</div></td>
-          <td><span class="badge badge-ok">Hợp lệ</span></td>
-          <td><button class="btn btn-action-sub">+ Mượn thêm</button></td>
+        <tr *ngFor="let loan of pagedLoans">
+          <td><strong>#{{ loan.ticketId }}</strong><div class="st-id">{{ loan.createdAt | date:'dd/MM/yyyy HH:mm' }}</div></td>
+          <td><div class="st-name">{{ loan.readerName || 'Chưa có tên' }}</div><div class="st-id">{{ loan.mssv || loan.userId || '—' }}</div></td>
+          <td>{{ loan.department || '—' }}</td>
+          <td><strong>{{ loan.itemCount }}</strong> cuốn<div class="overdue-danger" *ngIf="loan.overdueItemCount">{{ loan.overdueItemCount }} cuốn quá hạn</div></td>
+          <td>{{ loan.nearestDueDate ? (loan.nearestDueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+          <td [class.fee-danger]="loan.totalLateFine > 0">{{ loan.totalLateFine | number:'1.0-0':'en-US' }} VNĐ</td>
+          <td><span class="badge" [ngClass]="statusClass(loan.status)">{{ statusLabel(loan.status) }}</span></td>
+          <td><button class="btn btn-action-sub" type="button" (click)="viewDetails(loan.ticketId)">Xem chi tiết</button></td>
         </tr>
       </tbody>
     </table>
+    <ng-template #emptyLoans><div class="empty-list">Không có phiếu nào khớp bộ lọc.</div></ng-template>
+    <nav class="table-pagination" *ngIf="filteredLoans.length > pageSize" aria-label="Phân trang phiếu mượn">
+      <button type="button" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">Trước</button>
+      <span>Trang {{ currentPage }} / {{ totalPages }}</span>
+      <button type="button" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">Tiếp</button>
+    </nav>
+  </div>
+
+  <div class="detail-backdrop" *ngIf="selectedLoan || detailLoading" (click)="closeDetails()">
+    <section class="detail-panel" (click)="$event.stopPropagation()">
+      <div *ngIf="detailLoading" class="loading-state">Đang tải chi tiết phiếu...</div>
+      <ng-container *ngIf="selectedLoan && !detailLoading">
+        <div class="detail-header">
+          <div>
+            <div class="st-id">PHIẾU MƯỢN</div>
+            <h2>#{{ selectedLoan.ticketId }} · {{ selectedLoan.readerName || 'Chưa có tên' }}</h2>
+            <p>{{ selectedLoan.mssv || selectedLoan.userId }} · {{ selectedLoan.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+          </div>
+          <button class="detail-close" type="button" (click)="closeDetails()" aria-label="Đóng">×</button>
+        </div>
+        <div class="detail-meta">
+          <span class="badge" [ngClass]="statusClass(selectedLoan.status)">{{ statusLabel(selectedLoan.status) }}</span>
+          <span>Loại phiếu: {{ selectedLoan.ticketType === 'ONSITE' ? 'Đọc tại chỗ' : 'Mượn về' }}</span>
+        </div>
+        <div class="detail-note" *ngIf="selectedLoan.decisionNote">Ghi chú xử lý: {{ selectedLoan.decisionNote }}</div>
+        <div class="detail-items">
+          <article class="detail-item" *ngFor="let item of selectedLoan.items">
+            <div><strong>{{ item.bookTitle }}</strong><p>{{ item.author || 'Chưa có tác giả' }} · Barcode {{ item.barcode }}</p></div>
+            <div class="detail-item-right">
+              <span>Hạn: {{ item.dueDate ? (item.dueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</span>
+              <strong [class.fee-danger]="item.lateFineAccrued > 0">Phạt: {{ item.lateFineAccrued | number:'1.0-0':'en-US' }} VNĐ</strong>
+            </div>
+          </article>
+          <div class="empty-list" *ngIf="!selectedLoan.items.length">Phiếu chưa có tài liệu.</div>
+        </div>
+      </ng-container>
+    </section>
   </div>
 </div>
