@@ -15,6 +15,12 @@ import java.util.Optional;
 
 @Repository
 public interface BookRepository extends JpaRepository<BookEntity, Long> {
+    @Query(value = """
+            select * from books where regexp_replace(upper(coalesce(isbn, '')), '[[:space:]-]', '', 'g') = :isbn13
+               or (:isbn10 <> '' and regexp_replace(upper(coalesce(isbn, '')), '[[:space:]-]', '', 'g') = :isbn10)
+            order by book_id
+            """, nativeQuery = true)
+    List<BookEntity> findInventoryIsbnCandidates(@Param("isbn13") String isbn13, @Param("isbn10") String isbn10);
     Optional<BookEntity> findFirstByIsbn(String isbn);
     Page<BookEntity> findByTitleContainingIgnoreCaseOrIsbnContainingIgnoreCaseOrAuthorContainingIgnoreCase(String title, String isbn, String author, Pageable pageable);
     

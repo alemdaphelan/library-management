@@ -38,6 +38,9 @@ public class CirculationOperationEntity {
     @Column(nullable = false, length = 500)
     private String message;
 
+    @Column(columnDefinition = "text")
+    private String resultPayload;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime processedAt;

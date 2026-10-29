@@ -97,6 +97,8 @@ public class LateFineService {
             transaction.setLoanDetailId(detail.getDetailId());
             transaction.setAmount(additionalFine);
             transaction.setPaidAmount(depositApplied);
+            transaction.setDepositAppliedAmount(depositApplied);
+            transaction.setDepositAppliedAt(depositApplied.signum() > 0 ? calculatedAt : null);
             transaction.setType("FINE");
             transaction.setReason("Phạt trả trễ " + chargeableDays + " ngày cho bản sao " + detail.getBarcode());
             transaction.setStatus(debtAdded.signum() == 0 ? "PAID" :

@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit, Optional } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { StudentObligationReport } from './student-obligation-report';
 import {
   CirculationService,
   LoanTicketDetail,
@@ -12,11 +13,15 @@ import {
 @Component({
   selector: 'app-borrows',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink, StudentObligationReport],
   templateUrl: './borrows.html',
   styleUrl: './borrows.css',
 })
 export class Borrows implements OnInit {
+  activeView: 'loans' | 'report' = 'loans';
+  reportVisited = false;
+  reportInitialQuery = '';
+  reportInitialMode: 'EITHER'|'OVERDUE' = 'EITHER';
   loans: LoanTicketSummary[] = [];
   selectedLoan: LoanTicketDetail | null = null;
   searchTerm = '';
@@ -29,6 +34,7 @@ export class Borrows implements OnInit {
   detailLoading = false;
   actionInProgress = false;
   errorMessage = '';
+  ticketError = '';
   successMessage = '';
   rejectionReason = '';
   requestedTicketId?: number;
@@ -40,12 +46,23 @@ export class Borrows implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    if(this.route?.snapshot.queryParamMap.get('view')==='report') {
+      this.reportInitialQuery=(this.route.snapshot.queryParamMap.get('q')||'').slice(0,100);
+      this.reportInitialMode=this.route.snapshot.queryParamMap.get('reportMode')==='OVERDUE'?'OVERDUE':'EITHER';
+      this.switchView('report');
+    }
     const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
     const referenceId = Number(this.route?.snapshot.queryParamMap.get('referenceId'));
     if (referenceType === 'LOAN_TICKET' && Number.isSafeInteger(referenceId) && referenceId > 0) {
       this.requestedTicketId = referenceId;
     }
     this.loadLoans();
+  }
+
+  switchView(view: 'loans' | 'report'): void {
+    if (this.actionInProgress) return;
+    this.activeView = view;
+    if (view === 'report') this.reportVisited = true;
   }
 
   get filteredLoans(): LoanTicketSummary[] {
@@ -89,7 +106,7 @@ export class Borrows implements OnInit {
     return this.loans.filter(loan => loan.status === 'OVERDUE' || loan.overdueItemCount > 0).length;
   }
 
-  get outstandingFine(): number {
+  get recordedLateFine(): number {
     return this.loans.reduce((sum, loan) => sum + Number(loan.totalLateFine || 0), 0);
   }
 
@@ -117,6 +134,7 @@ export class Borrows implements OnInit {
 
   viewDetails(ticketId: number): void {
     this.detailLoading = true;
+    this.ticketError = '';
     this.errorMessage = '';
     this.rejectionReason = '';
     this.circulationService.getLoan(ticketId).subscribe({
@@ -127,7 +145,7 @@ export class Borrows implements OnInit {
       },
       error: error => {
         this.detailLoading = false;
-        this.errorMessage = this.extractError(error, `Không thể tải phiếu #${ticketId}.`);
+        this.ticketError = this.extractError(error, `Không thể tải phiếu #${ticketId}.`);
         this.cdr.detectChanges();
       },
     });
@@ -136,25 +154,6 @@ export class Borrows implements OnInit {
   closeDetails(): void {
     this.selectedLoan = null;
     this.rejectionReason = '';
-  }
-
-  approveSelected(): void {
-    if (!this.selectedLoan || this.selectedLoan.status !== 'PENDING' || this.actionInProgress) return;
-    const ticketId = this.selectedLoan.ticketId;
-    this.actionInProgress = true;
-    this.errorMessage = '';
-    this.circulationService.approveReservation(ticketId).subscribe({
-      next: result => {
-        this.actionInProgress = false;
-        this.successMessage = result.message || `Đã duyệt phiếu #${ticketId}.`;
-        this.closeDetails();
-        this.loadLoans();
-      },
-      error: error => {
-        this.actionInProgress = false;
-        this.errorMessage = this.extractError(error, `Không thể duyệt phiếu #${ticketId}.`);
-      },
-    });
   }
 
   rejectSelected(): void {
@@ -183,8 +182,8 @@ export class Borrows implements OnInit {
 
   statusLabel(status: LoanTicketStatus | string): string {
     return ({
-      PENDING: 'Chờ duyệt',
-      RESERVED: 'Đã duyệt',
+      PENDING: 'Phiếu cũ cần kiểm tra',
+      RESERVED: 'Đang giữ chỗ',
       BORROWING: 'Đang mượn',
       OVERDUE: 'Quá hạn',
       RETURNED: 'Đã trả',

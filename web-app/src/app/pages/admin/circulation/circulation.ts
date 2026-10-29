@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, Optional, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, of, switchMap } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
+import { ReturnInspection } from './return-inspection';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import {
   BookCopy,
@@ -10,7 +11,6 @@ import {
   CirculationService,
   LoanItem,
   LoanTicketDetail,
-  LoanTicketSummary,
 } from '../../../services/circulation.service';
 
 interface CounterBook extends BookCopy {
@@ -22,21 +22,23 @@ interface CounterBook extends BookCopy {
 @Component({
   selector: 'app-circulation',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReturnInspection],
   templateUrl: './circulation.html',
   styleUrls: ['./circulation.css'],
 })
 export class Circulation implements OnInit, OnDestroy {
   @ViewChild('cameraVideo') cameraVideo?: ElementRef<HTMLVideoElement>;
+  @ViewChild(ReturnInspection) returnDesk?: ReturnInspection;
+  returnLocked = false;
+  returnInitialTicketId: number | null = null;
 
   activeTab: 'borrow' | 'return' = 'borrow';
-  borrowMode: 'approved' | 'manual' | 'pending' = 'approved';
+  borrowMode: 'approved' | 'manual' = 'approved';
   ticketInput = '';
   barcodeInput = '';
   manualMssv = '';
   manualTicketType: 'BORROW' | 'ONSITE' = 'BORROW';
   manualNote = '';
-  returnConditionNote = '';
   selectedTicket: LoanTicketDetail | null = null;
   scannedBooks: CounterBook[] = [];
   isResolvingTicket = false;
@@ -54,11 +56,6 @@ export class Circulation implements OnInit, OnDestroy {
   private detectingFrame = false;
   private counterClock?: number;
   isCounterOpen = this.computeCounterOpen();
-  pendingRequests: LoanTicketSummary[] = [];
-  decisionLoan: LoanTicketDetail | null = null;
-  decisionLoadingTicketId: number | null = null;
-  rejectionReason = '';
-  decisionInProgress = false;
 
   constructor(
     private circulationService: CirculationService,
@@ -71,96 +68,18 @@ export class Circulation implements OnInit, OnDestroy {
       this.isCounterOpen = this.computeCounterOpen();
       this.cdr.detectChanges();
     }, 30_000);
-    this.loadPendingRequests();
     const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
     const referenceId = this.route?.snapshot.queryParamMap.get('referenceId');
     if (referenceType === 'LOAN_TICKET' && referenceId) {
-      this.borrowMode = 'approved';
-      this.ticketInput = referenceId;
-      this.resolveTicket();
+      if (this.route?.snapshot.queryParamMap.get('mode') === 'return') {
+        const ticketId = this.parseTicketId(referenceId);
+        if (ticketId !== null) { this.activeTab = 'return'; this.returnInitialTicketId = ticketId; }
+      } else {
+        this.borrowMode = 'approved';
+        this.ticketInput = referenceId;
+        this.resolveTicket();
+      }
     }
-  }
-
-  loadPendingRequests(): void {
-    this.circulationService.getStaffLoans().subscribe({
-      next: loans => {
-        this.pendingRequests = (loans || []).filter(loan => loan.status === 'PENDING');
-        this.cdr.detectChanges();
-      },
-      error: error => {
-        this.errorMessage = this.extractError(error, 'Không thể tải danh sách yêu cầu chờ duyệt.');
-        this.cdr.detectChanges();
-      },
-    });
-  }
-
-  openDecision(loan: LoanTicketSummary): void {
-    this.decisionLoadingTicketId = loan.ticketId;
-    this.errorMessage = '';
-    this.rejectionReason = '';
-    this.circulationService.getLoan(loan.ticketId).subscribe({
-      next: detail => {
-        this.decisionLoadingTicketId = null;
-        this.decisionLoan = detail;
-        this.cdr.detectChanges();
-      },
-      error: error => {
-        this.decisionLoadingTicketId = null;
-        this.errorMessage = this.extractError(error, `Không thể tải chi tiết phiếu #${loan.ticketId}.`);
-        this.cdr.detectChanges();
-      },
-    });
-  }
-
-  closeDecision(): void {
-    this.decisionLoan = null;
-    this.decisionLoadingTicketId = null;
-    this.rejectionReason = '';
-  }
-
-  approveDecision(): void {
-    if (!this.decisionLoan || this.decisionInProgress) return;
-    const ticketId = this.decisionLoan.ticketId;
-    this.decisionInProgress = true;
-    this.circulationService.approveReservation(ticketId).subscribe({
-      next: result => {
-        this.decisionInProgress = false;
-        this.successMessage = result.message || `Đã duyệt phiếu #${ticketId}.`;
-        this.closeDecision();
-        this.loadPendingRequests();
-        this.cdr.detectChanges();
-      },
-      error: error => {
-        this.decisionInProgress = false;
-        this.errorMessage = this.extractError(error, `Không thể duyệt phiếu #${ticketId}.`);
-        this.cdr.detectChanges();
-      },
-    });
-  }
-
-  rejectDecision(): void {
-    const reason = this.rejectionReason.trim();
-    if (!this.decisionLoan || this.decisionInProgress) return;
-    if (!reason) {
-      this.errorMessage = 'Cần nhập lý do trước khi xác nhận từ chối.';
-      return;
-    }
-    const ticketId = this.decisionLoan.ticketId;
-    this.decisionInProgress = true;
-    this.circulationService.rejectReservation(ticketId, reason).subscribe({
-      next: result => {
-        this.decisionInProgress = false;
-        this.successMessage = result.message || `Đã từ chối phiếu #${ticketId}.`;
-        this.closeDecision();
-        this.loadPendingRequests();
-        this.cdr.detectChanges();
-      },
-      error: error => {
-        this.decisionInProgress = false;
-        this.errorMessage = this.extractError(error, `Không thể từ chối phiếu #${ticketId}.`);
-        this.cdr.detectChanges();
-      },
-    });
   }
 
   get canSubmit(): boolean {
@@ -174,12 +93,12 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   switchTab(tab: 'borrow' | 'return'): void {
+    if (this.isSubmitting || this.returnDesk?.locked) return;
     this.activeTab = tab;
-    if (tab === 'borrow' && this.borrowMode === 'pending') this.borrowMode = 'approved';
     this.resetForm();
   }
 
-  switchBorrowMode(mode: 'approved' | 'manual' | 'pending'): void {
+  switchBorrowMode(mode: 'approved' | 'manual'): void {
     this.borrowMode = mode;
     this.ticketInput = '';
     this.manualMssv = '';
@@ -190,10 +109,10 @@ export class Circulation implements OnInit, OnDestroy {
     this.barcodeInput = '';
     this.errorMessage = '';
     this.successMessage = '';
-    if (mode === 'pending') this.loadPendingRequests();
   }
 
   resolveTicket(): void {
+    if (this.isResolvingTicket || this.isSubmitting) return;
     const ticketId = this.parseTicketId(this.ticketInput);
     if (ticketId === null) {
       this.errorMessage = 'Mã phiếu không hợp lệ. Hãy nhập số phiếu hoặc mã HUIT-PM-{số phiếu}.';
@@ -206,11 +125,17 @@ export class Circulation implements OnInit, OnDestroy {
     this.selectedTicket = null;
     this.scannedBooks = [];
 
-    this.circulationService.getLoan(ticketId).subscribe({
+    this.circulationService.getLoan(ticketId).pipe(
+      switchMap(ticket => ticket.status === 'PENDING'
+        ? this.circulationService.approveReservation(ticketId).pipe(
+            switchMap(() => this.circulationService.getLoan(ticketId)),
+          )
+        : of(ticket)),
+    ).subscribe({
       next: ticket => {
         this.isResolvingTicket = false;
         if (ticket.status !== 'RESERVED') {
-          this.errorMessage = `Phiếu #${ticket.ticketId} đang ở trạng thái ${this.statusLabel(ticket.status)}; chỉ phiếu đã duyệt mới được giao sách.`;
+          this.errorMessage = `Phiếu #${ticket.ticketId} đang ở trạng thái ${this.statusLabel(ticket.status)}; chỉ phiếu đang giữ chỗ hợp lệ mới được giao sách.`;
           this.cdr.detectChanges();
           return;
         }
@@ -227,6 +152,7 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   scanBookBarcode(): void {
+    if (this.activeTab === 'return') { this.returnDesk?.addBarcode(this.barcodeInput); return; }
     const barcode = this.barcodeInput.trim();
     if (!barcode) return;
     if (this.isSubmitting) {
@@ -242,7 +168,7 @@ export class Circulation implements OnInit, OnDestroy {
       return;
     }
     if (this.activeTab === 'borrow' && this.borrowMode === 'approved' && !this.selectedTicket) {
-      this.errorMessage = 'Hãy tải một phiếu đã duyệt trước khi quét sách.';
+      this.errorMessage = 'Hãy tải một phiếu giữ chỗ trước khi quét sách.';
       return;
     }
 
@@ -257,9 +183,7 @@ export class Circulation implements OnInit, OnDestroy {
     this.isScanningBook = true;
     this.errorMessage = '';
     this.successMessage = '';
-    const activeItemRequest = this.activeTab === 'return'
-      ? this.circulationService.getActiveLoanItemByBarcode(barcode)
-      : of(expectedItem);
+    const activeItemRequest = of(expectedItem);
     forkJoin({
       copy: this.circulationService.getBookCopyByBarcode(barcode),
       activeItem: activeItemRequest,
@@ -274,10 +198,6 @@ export class Circulation implements OnInit, OnDestroy {
         }
         const counterBook = this.toCounterBook(copy, activeItem);
         this.barcodeInput = '';
-        if (this.activeTab === 'return') {
-          this.completeAutomaticReturn(counterBook);
-          return;
-        }
         this.scannedBooks = [...this.scannedBooks, counterBook];
         this.cdr.detectChanges();
       },
@@ -317,10 +237,8 @@ export class Circulation implements OnInit, OnDestroy {
         this.ticketInput = '';
         this.barcodeInput = '';
         this.scannedBooks = [];
-        this.returnConditionNote = '';
         this.manualMssv = '';
         this.manualNote = '';
-        this.loadPendingRequests();
         this.cdr.detectChanges();
       },
       error: error => {
@@ -331,41 +249,13 @@ export class Circulation implements OnInit, OnDestroy {
     });
   }
 
-  private completeAutomaticReturn(book: CounterBook): void {
-    this.isSubmitting = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-    this.lastOperation = null;
-    this.circulationService.returnBooks(
-      [book.barcode],
-      crypto.randomUUID(),
-      this.returnConditionNote.trim(),
-    ).subscribe({
-      next: operation => {
-        this.isSubmitting = false;
-        this.lastOperation = operation;
-        this.successMessage = `${operation.message || 'Trả sách thành công.'} Barcode ${book.barcode} đã được cập nhật về kho.`;
-        this.returnConditionNote = '';
-        this.cdr.detectChanges();
-      },
-      error: error => {
-        this.isSubmitting = false;
-        this.errorMessage = this.extractError(
-          error,
-          `Không thể ghi nhận trả sách cho barcode ${book.barcode}.`,
-        );
-        this.cdr.detectChanges();
-      },
-    });
-  }
-
   resetForm(): void {
+    if (this.isSubmitting) return;
     this.ticketInput = '';
     this.barcodeInput = '';
     this.manualMssv = '';
     this.manualTicketType = 'BORROW';
     this.manualNote = '';
-    this.returnConditionNote = '';
     this.selectedTicket = null;
     this.scannedBooks = [];
     this.isResolvingTicket = false;
@@ -378,6 +268,8 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   async startCamera(target: 'ticket' | 'barcode'): Promise<void> {
+    if (this.isSubmitting || this.returnDesk?.locked) return;
+    this.cameraTarget = target;
     if (!navigator.mediaDevices?.getUserMedia) {
       this.cameraError = 'Thiết bị hoặc trình duyệt không cho phép truy cập camera. Bạn vẫn có thể dùng máy quét USB hoặc nhập mã thủ công.';
       this.showCamera = true;
@@ -438,7 +330,7 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   statusLabel(status: string): string {
-    return ({ PENDING: 'chờ duyệt', RESERVED: 'đã duyệt', BORROWING: 'đang mượn', OVERDUE: 'quá hạn', RETURNED: 'đã trả', CANCELLED: 'đã hủy', REJECTED: 'từ chối' } as Record<string, string>)[status] || status;
+    return ({ PENDING: 'phiếu cũ cần kiểm tra', RESERVED: 'đang giữ chỗ', BORROWING: 'đang mượn', OVERDUE: 'quá hạn', RETURNED: 'đã trả', CANCELLED: 'đã hủy', REJECTED: 'từ chối' } as Record<string, string>)[status] || status;
   }
 
   private parseTicketId(raw: string): number | null {
@@ -456,9 +348,6 @@ export class Circulation implements OnInit, OnDestroy {
     }
     if (this.activeTab === 'borrow' && this.borrowMode === 'approved' && status !== 'RESERVED') {
       return `Bản sao ${copy.barcode} đang ở trạng thái ${copy.status}, không còn được đặt giữ.`;
-    }
-    if (this.activeTab === 'return' && status !== 'BORROWING' && status !== 'OVERDUE') {
-      return `Bản sao ${copy.barcode} không ở trạng thái đang mượn hoặc quá hạn.`;
     }
     return null;
   }
@@ -515,6 +404,7 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   private handleScannedValue(target: 'ticket' | 'barcode', value: string): void {
+    if (target === 'barcode' && this.activeTab === 'return') { this.returnDesk?.addBarcode(value); return; }
     if (target === 'barcode') {
       this.barcodeInput = value;
       this.scanBookBarcode();

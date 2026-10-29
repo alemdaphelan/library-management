@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 28-return-inspection-receipts
+      author: codex
+      changes:
+        - addColumn:
+            tableName: circulation_operations
+            columns:
+              - column:
+                  name: result_payload
+                  type: text
+      rollback:
+        - dropColumn:
+            tableName: circulation_operations
+            columnName: result_payload

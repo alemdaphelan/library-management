@@ -14,33 +14,33 @@
   <div class="page-message success" *ngIf="successMessage">{{ successMessage }}</div>
 
   <!-- Quick Stats -->
-  <div class="stats-grid">
+  <div class="stats-grid" *ngIf="stats">
     <div class="stat-card">
       <div class="stat-icon bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>
       <div class="stat-content">
         <p class="stat-title">Tổng phiếu nhập</p>
-        <h3 class="stat-value">{{ stats.totalImports ?? 0 }} phiếu</h3>
+        <h3 class="stat-value">{{ stats.totalImports }} phiếu</h3>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon bg-green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div>
       <div class="stat-content">
         <p class="stat-title">Sách đã nhận</p>
-        <h3 class="stat-value">{{ stats.booksReceived ?? 0 }} cuốn</h3>
+        <h3 class="stat-value">{{ stats.booksReceived }} cuốn</h3>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon bg-purple"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
       <div class="stat-content">
         <p class="stat-title">Tổng giá trị</p>
-        <h3 class="stat-value">{{ (stats.totalSpent ?? 0) | number:'1.0-0':'en-US' }} VNĐ</h3>
+        <h3 class="stat-value">{{ stats.totalSpent | number:'1.0-0':'en-US' }} VNĐ</h3>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon bg-orange"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
       <div class="stat-content">
         <p class="stat-title">Đang xử lý</p>
-        <h3 class="stat-value">{{ stats.pending ?? 0 }} phiếu</h3>
+        <h3 class="stat-value">{{ stats.pending }} phiếu</h3>
       </div>
     </div>
   </div>
@@ -55,7 +55,7 @@
           <th>Nhà Cung Cấp</th>
           <th class="text-center">Số Lượng</th>
           <th class="text-right">Tổng Tiền</th>
-          <th class="text-center">Trạng Thái</th>
+          <th class="text-center">Trạng Thái</th><th>Chi tiết</th>
         </tr>
       </thead>
       <tbody *ngIf="!isLoading">
@@ -70,33 +70,42 @@
               {{ receipt.status === 'COMPLETED' ? 'Hoàn thành' : 'Đang xử lý' }}
             </span>
           </td>
+          <td><button type="button" class="btn-outline btn-sm" (click)="viewReceipt(receipt.receiptId)" [disabled]="detailLoading">Xem phiếu</button></td>
         </tr>
       </tbody>
     </table>
     <div class="table-state" *ngIf="isLoading">Đang tải dữ liệu nhập kho...</div>
-    <div class="table-state" *ngIf="!isLoading && !importReceipts.length">Chưa có phiếu nhập nào.</div>
+    <div class="table-state" *ngIf="!isLoading && !errorMessage && !importReceipts.length">Chưa có phiếu nhập nào.</div>
     
     <div style="margin-top: 15px;">
       <span style="font-size: 0.85rem; color: #64748b;">Đang hiển thị {{ importReceipts.length }} phiếu nhập từ hệ thống.</span>
     </div>
   </div>
+  <p *ngIf="detailLoading" role="status">Đang tải chi tiết phiếu nhập…</p>
+  <section class="receipt-detail" *ngIf="selectedReceipt as receipt" aria-label="Chi tiết phiếu nhập">
+    <header><h2>{{ receipt.receiptCode }} · {{ receipt.supplierName }}</h2><button type="button" class="btn-outline" (click)="selectedReceipt = null">Đóng chi tiết</button></header>
+    <p>Ngày nhập: {{ receipt.createdAt | date:'dd/MM/yyyy HH:mm' }} · {{ receipt.quantity }} bản sao · {{ receipt.totalAmount | number:'1.0-0':'en-US' }} VNĐ</p>
+    <article *ngFor="let line of receipt.lines"><h3>{{ line.title || ('Đầu sách #' + line.bookId) }}</h3><p>{{ line.quantity }} bản sao · Đơn giá {{ line.unitPrice | number:'1.0-0':'en-US' }} VNĐ</p><p><strong>Vị trí lúc nhập:</strong> {{ line.locationPath || 'Phiếu cũ chưa ghi nhận vị trí' }}</p><p *ngIf="line.barcodes.length">Barcode: {{ line.barcodes.join(', ') }}</p><p *ngIf="!line.barcodes.length" class="form-help">Không có liên kết barcode được ghi cho dòng phiếu này.</p></article>
+  </section>
 </div>
 
 <!-- Offcanvas Drawer: Tạo Phiếu Nhập -->
-<div class="drawer-overlay" [class.active]="isDrawerOpen" (click)="closeDrawer()"></div>
-<div class="drawer-panel" [class.open]="isDrawerOpen" style="width: 700px;">
+<div class="drawer-overlay active" *ngIf="isDrawerOpen" (click)="closeDrawer()"></div>
+<div class="drawer-panel open" *ngIf="isDrawerOpen" role="dialog" aria-modal="true" aria-labelledby="import-dialog-title" (keydown.escape)="closeDrawer()">
   <div class="drawer-header">
-    <h2 class="drawer-title">Tạo Phiếu Nhập Sách</h2>
-    <button class="drawer-close" (click)="closeDrawer()">&times;</button>
+    <h2 class="drawer-title" id="import-dialog-title">Tạo Phiếu Nhập Sách</h2>
+    <button type="button" class="drawer-close" (click)="closeDrawer()" [disabled]="isSaving" aria-label="Đóng form nhập">&times;</button>
   </div>
   
   <div class="drawer-body import-form">
+    <div class="page-message error" *ngIf="errorMessage" role="alert">{{ errorMessage }}</div>
+    <fieldset [disabled]="isSaving">
     <div class="form-section">
       <h3>Thông tin chung</h3>
       <div class="form-row">
         <div class="form-group flex-1">
-          <label>Nhà Cung Cấp <span class="required">*</span></label>
-          <select class="form-control" [(ngModel)]="selectedSupplierId">
+          <label for="import-supplier">Nhà Cung Cấp <span class="required">*</span></label>
+          <select id="import-supplier" class="form-control" [(ngModel)]="selectedSupplierId">
             <option [ngValue]="undefined">-- Chọn Nhà cung cấp --</option>
             <option *ngFor="let s of suppliers" [ngValue]="s.supplierId">{{ s.name }}</option>
           </select>
@@ -114,46 +123,36 @@
         </button>
       </div>
       
-      <table class="import-lines-table">
-        <thead>
-          <tr>
-            <th width="20%">ISBN / Mã ĐKCB</th>
-            <th width="40%">Tên sách</th>
-            <th width="15%">Số lượng</th>
-            <th width="20%">Đơn giá (đ)</th>
-            <th width="5%"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let line of newImportLines; let i = index">
-            <td>
-              <input type="text" class="form-control input-sm" name="isbn-{{i}}" [(ngModel)]="line.isbn"
-                     (blur)="lookupIsbn(line)" (keyup.enter)="lookupIsbn(line)" placeholder="ISBN">
-              <small class="lookup-note" [ngClass]="line.lookupState" *ngIf="line.lookupState !== 'idle'">
-                {{ line.lookupState === 'loading' ? 'Đang tra ISBN...' : line.lookupMessage }}
-              </small>
-            </td>
-            <td><input type="text" class="form-control input-sm" name="title-{{i}}" [(ngModel)]="line.title" placeholder="Tự điền theo ISBN" readonly></td>
-            <td><input type="number" class="form-control input-sm text-center" name="qty-{{i}}" [(ngModel)]="line.qty" min="1"></td>
-            <td><input type="number" class="form-control input-sm text-right" name="price-{{i}}" [(ngModel)]="line.price" min="0" placeholder="0"></td>
-            <td>
-              <button class="action-btn delete-btn" (click)="removeLine(i)" title="Xóa dòng" [disabled]="newImportLines.length === 1">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <p class="form-help">Nhập ISBN-10/ISBN-13 hoặc mã đầu sách trong danh mục. Mã đầu sách không phải barcode bản sao.</p>
+      <article class="import-line-card" *ngFor="let line of newImportLines; let i = index">
+        <header><h4>Dòng {{ i + 1 }}</h4><button type="button" class="btn-outline btn-sm" (click)="removeLine(i)" [disabled]="newImportLines.length === 1">Bỏ dòng {{ i + 1 }}</button></header>
+        <div class="line-grid">
+          <label>Tra cứu bằng<select class="form-control" aria-label="Loại định danh" [(ngModel)]="line.mode" (ngModelChange)="clearIdentification(line)"><option value="isbn">ISBN</option><option value="bookId">Mã đầu sách</option></select></label>
+          <label>{{ line.mode === 'isbn' ? 'ISBN' : 'Mã đầu sách' }}<input class="form-control" [attr.aria-label]="'Định danh dòng ' + (i + 1)" [(ngModel)]="line.identifier" (ngModelChange)="clearIdentification(line)" (keyup.enter)="lookupIsbn(line)"></label>
+          <button type="button" class="btn-outline lookup-button" (click)="lookupIsbn(line)" [disabled]="line.lookupState === 'loading'">{{ line.lookupState === 'loading' ? 'Đang tra…' : 'Đối chiếu danh mục' }}</button>
+        </div>
+        <p class="lookup-note" [ngClass]="line.lookupState" *ngIf="line.lookupMessage">{{ line.lookupMessage }}</p>
+        <div class="identified-book" *ngIf="line.identification as book"><strong>{{ book.title }}</strong><p>{{ book.author || 'Chưa có tác giả' }} · {{ book.publisher || 'Chưa có NXB' }} · {{ book.publishYear || 'Chưa có năm' }} · ISBN: {{ book.isbn || 'Chưa có' }}</p><p>Phân loại: {{ book.categoryName || 'Chưa có nhóm danh mục' }} · DDC: {{ book.ddcCallNumber || 'Chưa có' }}</p><ul *ngIf="book.subjects.length"><li *ngFor="let subject of book.subjects">{{ subject.name }} · Nguồn: {{ subject.source }}<small *ngIf="subject.evidence">{{ subject.evidence }}</small></li></ul><p class="form-help" *ngIf="book.classificationStatus === 'MISSING'">Chưa có dữ liệu phân loại. Cần bổ sung danh mục trước khi áp dụng xếp sách tự động.</p><p class="placement-note">{{ book.placementMessage }}</p></div>
+        <div class="line-grid numeric-grid"><label>Số lượng<input type="number" class="form-control" [attr.aria-label]="'Số lượng dòng ' + (i + 1)" [(ngModel)]="line.qty" min="1" step="1"></label><label>Đơn giá (VNĐ)<input type="number" class="form-control" [attr.aria-label]="'Đơn giá dòng ' + (i + 1)" [(ngModel)]="line.price" min="0"></label></div>
+        <div class="line-grid location-grid">
+          <label>Tầng<select class="form-control" [attr.aria-label]="'Tầng dòng ' + (i + 1)" [(ngModel)]="line.floorId" (ngModelChange)="floorChanged(line)" [disabled]="floorsLoading || !!locationError"><option [ngValue]="undefined">Chọn tầng</option><option *ngFor="let floor of floors" [ngValue]="floor.id">{{ floor.name }}</option></select></label>
+          <label>Kệ<select class="form-control" [attr.aria-label]="'Kệ dòng ' + (i + 1)" [(ngModel)]="line.bookshelfId" (ngModelChange)="bookshelfChanged(line)" [disabled]="!line.floorId || line.locationLoading"><option [ngValue]="undefined">Chọn kệ</option><option *ngFor="let item of line.bookshelves" [ngValue]="item.id">{{ item.name }}</option></select></label>
+          <label>Ngăn<select class="form-control" [attr.aria-label]="'Ngăn dòng ' + (i + 1)" [(ngModel)]="line.shelfId" [disabled]="!line.bookshelfId || line.locationLoading"><option [ngValue]="undefined">Chọn ngăn</option><option *ngFor="let item of line.shelves" [ngValue]="item.id">{{ item.name }}</option></select></label>
+        </div>
+        <p class="form-help" *ngIf="line.locationLoading">Đang tải vị trí…</p><p class="page-message error" *ngIf="line.locationError">{{ line.locationError }}</p><p class="location-path" *ngIf="line.shelfId">Vị trí chọn: {{ locationPath(line) }}</p>
+      </article>
+      <p *ngIf="floorsLoading" role="status">Đang tải các tầng…</p><div *ngIf="locationError" class="page-message error">{{ locationError }} <button type="button" class="btn-outline" (click)="loadFloors()">Tải lại vị trí</button></div>
       
       <div class="import-summary">
         <div>Tổng số lượng: <strong>{{ totalQuantity }}</strong></div>
         <div>Tổng tiền: <strong>{{ totalAmount | number:'1.0-0':'en-US' }} VNĐ</strong></div>
       </div>
     </div>
+    </fieldset>
   </div>
   
   <div class="drawer-footer">
-    <button class="btn-outline" (click)="closeDrawer()">Hủy bỏ</button>
+    <button class="btn-outline" (click)="closeDrawer()" [disabled]="isSaving">Hủy bỏ</button>
     <button class="btn-primary" (click)="saveImport()" [disabled]="isSaving">
       {{ isSaving ? 'Đang lưu...' : 'Lưu Phiếu Nhập' }}
     </button>

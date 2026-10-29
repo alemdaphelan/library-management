@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/circulation-test-master.yaml
+  - changeSet:
+      id: test-analytics-book-author-prerequisite
+      author: test
+      changes:
+        # Production migration 04 adds author; skip its large CSV/reset in this focused schema.
+        - addColumn:
+            tableName: books
+            columns:
+              - column:
+                  name: author
+                  type: text
+  - include:
+      file: db/changelog/changesets/33-circulation-business-timestamps.yaml
+  - include:
+      file: db/changelog/changesets/34-academic-material-classification.yaml

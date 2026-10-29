@@ -326,6 +326,8 @@ public class PenaltyCaseService {
         BigDecimal depositApplied = availableDeposit.min(amount);
         BigDecimal debtAdded = amount.subtract(depositApplied);
         transaction.setPaidAmount(depositApplied);
+        transaction.setDepositAppliedAmount(depositApplied);
+        transaction.setDepositAppliedAt(depositApplied.signum() > 0 ? LocalDateTime.now() : null);
         transaction.setType(type);
         transaction.setReason(reason);
         transaction.setStatus(debtAdded.signum() == 0 ? "PAID" :
@@ -404,7 +406,7 @@ public class PenaltyCaseService {
         if ("LOST".equals(incident)) {
             return;
         }
-        if (!List.of("LIGHT", "HEAVY").contains(severity)) {
+        if (severity == null || !List.of("LIGHT", "HEAVY").contains(severity)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hư hỏng phải được phân loại LIGHT hoặc HEAVY");
         }
         if (pagesAffected != null && pagesAffected < 0) {

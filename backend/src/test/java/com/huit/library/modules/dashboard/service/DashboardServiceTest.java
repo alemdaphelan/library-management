@@ -10,7 +10,8 @@ import com.huit.library.modules.circulation.repository.TrendingBookProjection;
 import com.huit.library.modules.dashboard.dto.DashboardStatsDTO;
 import com.huit.library.modules.dashboard.dto.TrendingBookDTO;
 import com.huit.library.modules.dashboard.dto.WeeklyStatDTO;
-import com.huit.library.modules.finance.repository.TransactionRepository;
+import com.huit.library.modules.dashboard.repository.FinanceAnalyticsRepository;
+import com.huit.library.modules.dashboard.repository.CirculationAnalyticsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
@@ -29,22 +30,24 @@ class DashboardServiceTest {
     private BookCopyRepository bookCopyRepository;
     private LoanTicketRepository loanTicketRepository;
     private LoanDetailRepository loanDetailRepository;
-    private TransactionRepository transactionRepository;
+    private FinanceAnalyticsRepository financeAnalytics;
     private DashboardService service;
+    private CirculationAnalyticsRepository analytics;
 
     @BeforeEach
     void setUp() {
         bookCopyRepository = mock(BookCopyRepository.class);
         loanTicketRepository = mock(LoanTicketRepository.class);
         loanDetailRepository = mock(LoanDetailRepository.class);
-        transactionRepository = mock(TransactionRepository.class);
+        financeAnalytics = mock(FinanceAnalyticsRepository.class);
+        analytics = mock(CirculationAnalyticsRepository.class);
         service = new DashboardService(
                 bookCopyRepository,
                 mock(BookRepository.class),
                 loanTicketRepository,
                 loanDetailRepository,
                 mock(UserRepository.class),
-                transactionRepository);
+                financeAnalytics, analytics);
     }
 
     @Test
@@ -53,8 +56,8 @@ class DashboardServiceTest {
         when(bookCopyRepository.countByStatus("AVAILABLE")).thenReturn(12L);
         when(bookCopyRepository.countByStatus("BORROWED")).thenReturn(5L);
         when(bookCopyRepository.countByStatus("RESERVED")).thenReturn(3L);
-        when(loanDetailRepository.countByReturnDateIsNullAndDueDateBefore(any(LocalDateTime.class))).thenReturn(2L);
-        when(transactionRepository.sumAmountByType("FINE")).thenReturn(new BigDecimal("15000"));
+        when(analytics.currentOverdueCount(any(LocalDateTime.class))).thenReturn(2L);
+        when(financeAnalytics.lifetimeMoneyReceived()).thenReturn(new BigDecimal("15000"));
 
         DashboardStatsDTO result = service.getStats();
 
@@ -68,12 +71,7 @@ class DashboardServiceTest {
 
     @Test
     void weeklyStatsAlwaysReturnSevenDaysAndRealCounts() {
-        LoanTicketEntity first = new LoanTicketEntity();
-        first.setCreatedAt(LocalDateTime.now());
-        LoanTicketEntity second = new LoanTicketEntity();
-        second.setCreatedAt(LocalDateTime.now());
-        when(loanTicketRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of(first, second));
+        when(analytics.dailyBorrowCounts(any(LocalDate.class),any(LocalDate.class))).thenReturn(java.util.Map.of(LocalDate.now(),2L));
 
         List<WeeklyStatDTO> result = service.getWeeklyStats();
 

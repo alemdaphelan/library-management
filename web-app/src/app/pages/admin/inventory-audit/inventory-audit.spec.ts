@@ -84,4 +84,9 @@ describe('InventoryAudit', () => {
     expect(component.selectedAudit?.auditId).toBe(9);
     expect(component.successMessage).toContain('Đã bắt đầu');
   });
+
+  it('opens the disposal workspace lazily with the selected audit as its source', () => {
+    expect(component.disposalsLoaded).toBe(false); component.showDisposals(true);
+    expect(component.view).toBe('disposals'); expect(component.disposalAuditId).toBe(9);
+  });
 });

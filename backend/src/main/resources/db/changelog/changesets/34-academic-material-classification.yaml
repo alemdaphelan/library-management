@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: 34-academic-material-classification
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE TABLE academic_majors (
+                major_id varchar(128) PRIMARY KEY, faculty_id varchar(64) NOT NULL REFERENCES academic_faculties(faculty_id),
+                major_name varchar(255) NOT NULL, major_code varchar(32), source_reference varchar(1000) NOT NULL,
+                UNIQUE(faculty_id,major_name)
+              );
+              -- Derive the catalog ONLY from existing explicit B04 mappings; never infer book assignments.
+              INSERT INTO academic_majors(major_id,faculty_id,major_name,major_code,source_reference)
+              SELECT faculty_id||':'||md5(major_name), faculty_id, major_name,
+                min(department_value) FILTER (WHERE department_value ~ '^[0-9]{7}$'),
+                'academic_department_mappings (B04), catalog snapshot'
+              FROM academic_department_mappings WHERE major_name IS NOT NULL AND btrim(major_name)<>''
+              GROUP BY faculty_id,major_name;
+              CREATE TABLE material_classifications (
+                profile_id uuid PRIMARY KEY, material_kind varchar(16) NOT NULL, material_id bigint NOT NULL,
+                version bigint NOT NULL, source_reference varchar(1000) NOT NULL,
+                updated_by uuid NOT NULL, updated_by_name varchar(255) NOT NULL, updated_at timestamp NOT NULL,
+                UNIQUE(material_kind,material_id), CHECK(material_kind IN ('BOOK','DIGITAL')), CHECK(version>0)
+              );
+              -- Upstream IDs intentionally have no FK: retain classification audit after existing catalog deletion.
+              CREATE TABLE material_major_assignments (
+                assignment_id uuid PRIMARY KEY, profile_id uuid NOT NULL REFERENCES material_classifications(profile_id),
+                major_id varchar(128) NOT NULL REFERENCES academic_majors(major_id), UNIQUE(profile_id,major_id)
+              );
+              CREATE INDEX idx_material_major ON material_major_assignments(major_id,profile_id);
+              CREATE TABLE material_classification_history (
+                event_id uuid PRIMARY KEY, profile_id uuid NOT NULL REFERENCES material_classifications(profile_id),
+                version bigint NOT NULL, actor_id uuid NOT NULL, actor_name varchar(255) NOT NULL,
+                recorded_at timestamp NOT NULL, before_snapshot text, after_snapshot text NOT NULL,
+                UNIQUE(profile_id,version)
+              );
+      rollback:
+        - sql:
+            sql: DROP TABLE material_classification_history; DROP TABLE material_major_assignments; DROP TABLE material_classifications; DROP TABLE academic_majors;

@@ -55,6 +55,10 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getAllReceipts());
     }
 
+    @GetMapping("/receipts/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    public ResponseEntity<?> getReceipt(@PathVariable Long id) { return ResponseEntity.ok(inventoryService.getReceipt(id)); }
+
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Get inventory import statistics")

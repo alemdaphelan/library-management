@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/circulation-test-master.yaml
+  - include:
+      file: db/changelog/changesets/12-add-columns-to-book-proposals.yaml
+  - include:
+      file: db/changelog/changesets/23-uat-final-proposal-workflow.yaml

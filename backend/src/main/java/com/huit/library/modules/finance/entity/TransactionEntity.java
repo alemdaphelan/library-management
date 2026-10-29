@@ -34,6 +34,9 @@ public class TransactionEntity extends BaseEntity {
     private UUID confirmedBy;
     private BigDecimal paidAmount = BigDecimal.ZERO;
     private LocalDateTime paidAt;
+    // Captured once when the charge consumes the deposit; later payments must not overwrite it.
+    private BigDecimal depositAppliedAmount;
+    private LocalDateTime depositAppliedAt;
     @Column(unique = true, length = 160)
     private String dedupKey;
 }

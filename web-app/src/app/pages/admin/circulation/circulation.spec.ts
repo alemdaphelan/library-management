@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { provideRouter } from '@angular/router';
 import { CirculationService, LoanTicketDetail } from '../../../services/circulation.service';
 import { Circulation } from './circulation';
 
@@ -52,11 +53,13 @@ describe('Circulation counter', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    service.getLoan.mockReturnValue(of(reservedTicket));
+    service.approveReservation.mockReturnValue(of({ ticketId: 19, status: 'RESERVED', message: 'Đã giữ chỗ' }));
     service.getBookCopyByBarcode.mockReturnValue(of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' }));
     service.getActiveLoanItemByBarcode.mockReturnValue(of(reservedTicket.items[0]));
     await TestBed.configureTestingModule({
       imports: [Circulation],
-      providers: [{ provide: CirculationService, useValue: service }],
+      providers: [provideRouter([]), { provide: CirculationService, useValue: service }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Circulation);
@@ -113,39 +116,34 @@ describe('Circulation counter', () => {
     expect(component.errorMessage).toContain('không thuộc phiếu #19');
   });
 
-  it('automatically records a real return immediately after a valid scan', () => {
+  it('stages a scanned return for inspection without mutating circulation', () => {
     component.switchTab('return');
-    service.getBookCopyByBarcode.mockReturnValue(of({ barcode: 'BC-019', bookId: 9, status: 'BORROWING', location: '' }));
-    component.returnConditionNote = 'Bìa sách nguyên vẹn';
+    service.getActiveLoanItemByBarcode.mockReturnValue(of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }));
     component.barcodeInput = 'BC-019';
     component.scanBookBarcode();
-
-    expect(service.returnBooks).toHaveBeenCalledWith(
-      ['BC-019'],
-      expect.any(String),
-      'Bìa sách nguyên vẹn',
-    );
-    expect(component.successMessage).toContain('Trả thành công');
-    expect(component.scannedBooks).toHaveLength(0);
+    expect(component.returnDesk?.drafts).toHaveLength(1);
+    expect(service.returnBooks).not.toHaveBeenCalled();
+    component.returnDesk?.cancelDraft();
+    expect(component.returnDesk?.drafts).toHaveLength(0);
+    expect(service.returnBooks).not.toHaveBeenCalled();
   });
 
-  it('accepts return barcodes from different active tickets without selecting their tickets', () => {
+  it('forwards a camera return barcode to the inspection form', () => {
     component.switchTab('return');
-    service.getBookCopyByBarcode
-      .mockReturnValueOnce(of({ barcode: 'BC-019', bookId: 9, status: 'BORROWING', location: '' }))
-      .mockReturnValueOnce(of({ barcode: 'BC-020', bookId: 10, status: 'BORROWING', location: '' }));
-    service.getActiveLoanItemByBarcode
-      .mockReturnValueOnce(of({ ...reservedTicket.items[0], ticketId: 19, barcode: 'BC-019' }))
-      .mockReturnValueOnce(of({ ...reservedTicket.items[0], ticketId: 20, detailId: 30, barcode: 'BC-020' }));
+    service.getActiveLoanItemByBarcode.mockReturnValue(of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }));
+    (component as any).handleScannedValue('barcode', 'BC-019');
+    expect(service.getActiveLoanItemByBarcode).toHaveBeenCalledWith('BC-019');
+    expect(component.returnDesk?.drafts[0].loan.detailId).toBe(29);
+    expect(service.returnBooks).not.toHaveBeenCalled();
+  });
 
-    component.barcodeInput = 'BC-019';
-    component.scanBookBarcode();
-    component.barcodeInput = 'BC-020';
-    component.scanBookBarcode();
-
-    expect(service.returnBooks).toHaveBeenNthCalledWith(1, ['BC-019'], expect.any(String), '');
-    expect(service.returnBooks).toHaveBeenNthCalledWith(2, ['BC-020'], expect.any(String), '');
-    expect(component.scannedBooks).toHaveLength(0);
+  it('preserves an unsent inspection draft when switching tabs', () => {
+    component.switchTab('return');
+    service.getActiveLoanItemByBarcode.mockReturnValue(of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }));
+    component.returnDesk?.addBarcode('BC-019');
+    component.switchTab('borrow');
+    component.switchTab('return');
+    expect(component.returnDesk?.drafts).toHaveLength(1);
   });
 
   it('creates and checks out a walk-in loan by MSSV', () => {
@@ -176,23 +174,36 @@ describe('Circulation counter', () => {
     expect(component.selectedTicket?.ticketId).toBe(19);
   });
 
-  it('loads complete ticket items before opening the pending decision modal', () => {
-    const summary = {
-      ticketId: 19,
-      userId: 'user-19',
-      mssv: '2001190019',
-      readerName: 'Nguyễn Văn A',
-      ticketType: 'BORROW' as const,
-      status: 'PENDING' as const,
-      itemCount: 1,
-      overdueItemCount: 0,
-      totalLateFine: 0,
-    };
+  it('does not offer an approval queue or approve newly reserved tickets', () => {
+    component.ticketInput = '19';
+    component.resolveTicket();
+    fixture.detectChanges();
+    expect(service.approveReservation).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('CHỜ DUYỆT');
+    expect(fixture.nativeElement.textContent).not.toContain('Duyệt yêu cầu');
+    expect(fixture.nativeElement.textContent).toContain('Phiếu trực tuyến đã giữ chỗ');
+  });
 
-    component.openDecision(summary);
+  it('automatically revalidates a legacy pending ticket before accepting it at the counter', () => {
+    service.getLoan.mockReturnValueOnce(of({ ...reservedTicket, status: 'PENDING' }));
+    component.ticketInput = '19';
+    component.resolveTicket();
+    expect(service.approveReservation).toHaveBeenCalledWith(19);
+    expect(service.getLoan).toHaveBeenCalledTimes(2);
+    expect(component.selectedTicket?.status).toBe('RESERVED');
+    expect(component.canSubmit).toBe(false);
+    expect(service.checkout).not.toHaveBeenCalled();
+  });
 
-    expect(service.getLoan).toHaveBeenCalledWith(19);
-    expect(component.decisionLoan?.items[0].bookTitle).toBe('Clean Code');
-    expect(component.decisionLoadingTicketId).toBeNull();
+  it('does not allow checkout when legacy validation fails', () => {
+    service.getLoan.mockReturnValueOnce(of({ ...reservedTicket, status: 'PENDING' }));
+    service.approveReservation.mockReturnValueOnce(throwError(() => ({ error: { detail: 'Giữ chỗ đã hết hạn' } })));
+    component.ticketInput = '19';
+    component.resolveTicket();
+    expect(component.selectedTicket).toBeNull();
+    expect(component.isResolvingTicket).toBe(false);
+    expect(component.canSubmit).toBe(false);
+    expect(component.errorMessage).toContain('hết hạn');
+    expect(service.checkout).not.toHaveBeenCalled();
   });
 });

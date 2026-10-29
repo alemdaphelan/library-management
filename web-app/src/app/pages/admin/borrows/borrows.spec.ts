@@ -1,7 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { By } from '@angular/platform-browser';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { CirculationService, LoanTicketDetail, LoanTicketSummary } from '../../../services/circulation.service';
 import { Borrows } from './borrows';
+import { StudentObligationReport } from './student-obligation-report';
+import { StudentObligationReportService } from '../../../services/student-obligation-report.service';
 
 describe('Borrows', () => {
   let component: Borrows;
@@ -31,7 +35,13 @@ describe('Borrows', () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [Borrows],
-      providers: [{ provide: CirculationService, useValue: service }],
+      providers: [provideRouter([]), { provide: CirculationService, useValue: service }, {
+        provide: StudentObligationReportService, useValue: {
+          faculties: () => of([]), coverage: () => of({ totalStudents: 0, classifiedStudents: 0, unclassifiedStudents: 0, complete: true, unmappedDepartments: [] }),
+          preview: () => of({ snapshotAt: '2026-10-29T10:00:00', timezone: 'Asia/Ho_Chi_Minh', currency: 'VND',
+            filter: { mode: 'EITHER', facultyId: null, query: '' }, page: 0, size: 25, totalStudents: 0, students: [], overdueItems: [], ledgerEntries: [] }),
+        },
+      }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Borrows);
@@ -82,13 +92,15 @@ describe('Borrows', () => {
     expect(component.selectedLoan?.ticketId).toBe(24);
   });
 
-  it('approves a pending ticket using its real transition endpoint', () => {
+  it('routes a legacy ticket to the counter without offering a manual approval action', () => {
     component.selectedLoan = { ...detail, status: 'PENDING' };
-    component.approveSelected();
-
-    expect(service.approveReservation).toHaveBeenCalledWith(24);
-    expect(service.getStaffLoans).toHaveBeenCalledTimes(2);
-    expect(component.successMessage).toBe('Đã duyệt');
+    fixture.detectChanges();
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a');
+    expect(link.textContent).toContain('Mở phiếu tại quầy');
+    expect(link.getAttribute('href')).toContain('/admin/circulation');
+    expect(link.getAttribute('href')).toContain('referenceId=24');
+    expect(fixture.nativeElement.textContent).not.toContain('Duyệt yêu cầu');
+    expect(service.approveReservation).not.toHaveBeenCalled();
   });
 
   it('requires and submits a rejection reason', () => {
@@ -100,5 +112,41 @@ describe('Borrows', () => {
     component.rejectionReason = 'Thẻ thư viện hết hạn';
     component.rejectSelected();
     expect(service.rejectReservation).toHaveBeenCalledWith(24, 'Thẻ thư viện hết hạn');
+  });
+
+  it('loads the report lazily and retains its filters when switching to the loan list and back', async () => {
+    expect(fixture.debugElement.query(By.directive(StudentObligationReport))).toBeNull();
+    fixture.nativeElement.querySelectorAll('.view-tabs button')[1].click(); await fixture.whenStable(); fixture.detectChanges();
+    const report = fixture.debugElement.query(By.directive(StudentObligationReport)).componentInstance as StudentObligationReport;
+    const search: HTMLInputElement = fixture.nativeElement.querySelector('input[name="obligation-query"]')
+      || fixture.nativeElement.querySelector('app-student-obligation-report input[type="search"]');
+    search.value = '2001'; search.dispatchEvent(new Event('input', { bubbles: true })); await fixture.whenStable();
+    fixture.nativeElement.querySelectorAll('.view-tabs button')[0].click(); await fixture.whenStable();
+    fixture.nativeElement.querySelectorAll('.view-tabs button')[1].click(); await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.debugElement.query(By.directive(StudentObligationReport)).componentInstance).toBe(report);
+    expect(report.filters.q).toBe('2001'); expect(component.loans).toEqual([summary]);
+  });
+
+  it('opens a ticket from the report in the existing detail panel without losing the report view', async () => {
+    component.switchView('report'); fixture.detectChanges(); await fixture.whenStable();
+    const report = fixture.debugElement.query(By.directive(StudentObligationReport)).componentInstance as StudentObligationReport;
+    report.ticketRequested.emit(24); fixture.detectChanges();
+    expect(service.getLoan).toHaveBeenCalledWith(24); expect(component.activeView).toBe('report');
+    expect(fixture.nativeElement.querySelector('.detail-panel').textContent).toContain('Clean Architecture');
+    component.closeDetails(); expect(component.activeView).toBe('report');
+  });
+
+  it('opens the dashboard deep link directly in the filtered overdue report', async () => {
+    const route=TestBed.inject(ActivatedRoute);
+    vi.spyOn(route.snapshot,'queryParamMap','get').mockReturnValue(convertToParamMap({view:'report',q:'2001240001',reportMode:'OVERDUE'}));
+    component.ngOnInit();fixture.detectChanges();await fixture.whenStable();fixture.detectChanges();
+    const report=fixture.debugElement.query(By.directive(StudentObligationReport)).componentInstance as StudentObligationReport;
+    expect(component.activeView).toBe('report');expect(report.filters.q).toBe('2001240001');expect(report.filters.mode).toBe('OVERDUE');
+  });
+
+  it('shows ticket lookup errors while the report tab is active', () => {
+    service.getLoan.mockReturnValueOnce(throwError(() => ({ error: { message: 'Phiếu không tồn tại' } })));
+    component.switchView('report'); component.viewDetails(999); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('Phiếu không tồn tại');
   });
 });

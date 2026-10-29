@@ -2,6 +2,20 @@ databaseChangeLog:
   - include:
       file: db/changelog/changesets/01-init-schema.yaml
   - changeSet:
+      id: test-location-book-publisher-prerequisite
+      author: test
+      changes:
+        # Migration 04 adds this before 05 in production. Keep the focused test schema
+        # independent of 04's large CSV import and destructive demo-data reset.
+        - addColumn:
+            tableName: books
+            columns:
+              - column:
+                  name: publisher
+                  type: text
+  - include:
+      file: db/changelog/changesets/05-normalize-locations.yaml
+  - changeSet:
       id: seed-legacy-circulation-state
       author: test
       changes:
@@ -38,3 +52,11 @@ databaseChangeLog:
       file: db/changelog/changesets/16-complete-week7-digital-assets.yaml
   - include:
       file: db/changelog/changesets/17-week10a-recommendation-data-foundation.yaml
+  - include:
+      file: db/changelog/changesets/28-return-inspection-receipts.yaml
+  - include:
+      file: db/changelog/changesets/29-academic-report-mapping.yaml
+  - include:
+      file: db/changelog/changesets/30-seed-huit-academic-classification.yaml
+  - include:
+      file: db/changelog/changesets/31-import-copy-locations.yaml

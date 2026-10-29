@@ -20,4 +20,5 @@ public class GoodsReceiptEntity extends BaseEntity {
     private String receiptCode;
     private BigDecimal totalAmount;
     private String status;
+    private java.time.LocalDateTime completedAt;
 }

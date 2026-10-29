@@ -135,6 +135,7 @@
 /* Main Content */
 .admin-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -334,4 +335,19 @@
 }
 .user-dropdown a.logout:hover {
   background-color: #fef2f2;
+}
+
+@media (max-width: 800px) {
+  .admin-sidebar { width: 60px; flex-shrink: 0; }
+  .admin-sidebar.collapsed { width: 0; }
+  .admin-sidebar .logo-text, .admin-sidebar .nav-section-title { display: none; }
+  .admin-sidebar .nav-item-text { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .admin-sidebar .nav-item { padding: 12px 0; justify-content: center; }
+  .admin-sidebar .nav-item.active { margin-right: 0; border-radius: 0; }
+  .admin-sidebar .sidebar-header { padding: 0; justify-content: center; }
+  .admin-topbar { padding: 0 12px; gap: 12px; }
+  .tb-left { gap: 10px; }
+  .branch-selector { max-width: 130px; padding: 6px; font-size: .7rem; }
+  .user-info { display: none; }
+  .admin-content { padding: 20px 12px; }
 }

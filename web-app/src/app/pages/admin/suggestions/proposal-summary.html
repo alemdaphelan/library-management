@@ -1,0 +1,45 @@
+<section class="proposal-summary" aria-label="Tổng hợp đề xuất mua">
+  <h2>Tổng hợp đề xuất mua</h2>
+  <p>Gộp để đối chiếu nhu cầu; số lượt gửi không phải số bản cần mua. Giữ nguyên từng đề xuất để xử lý riêng.</p>
+  <fieldset class="summary-filters" [disabled]="busy">
+    <label>Khoa<select [(ngModel)]="filters.facultyId" aria-label="Khoa tổng hợp"><option value="">Mọi khoa</option><option *ngFor="let f of faculties" [value]="f.facultyId">{{ f.facultyName }}</option></select></label>
+    <label>Từ ngày<input type="date" [(ngModel)]="filters.from" aria-label="Từ ngày tổng hợp"></label>
+    <label>Đến ngày<input type="date" [(ngModel)]="filters.to" aria-label="Đến ngày tổng hợp"></label>
+    <label>Trạng thái<select [(ngModel)]="filters.status" aria-label="Trạng thái tổng hợp"><option value="ALL">Mọi trạng thái</option><option value="PENDING">Chờ duyệt</option><option value="APPROVED">Đã duyệt</option><option value="REJECTED">Từ chối</option></select></label>
+    <label>Nhóm/trang<select [(ngModel)]="pageSize" aria-label="Nhóm mỗi trang"><option [ngValue]="10">10</option><option [ngValue]="25">25</option><option [ngValue]="50">50</option><option [ngValue]="100">100</option></select></label>
+    <div class="actions"><button (click)="applyFilters()">Áp dụng / Làm mới</button><button (click)="resetFilters()">Đặt lại</button></div>
+  </fieldset>
+  <p *ngIf="facultyError" class="error" role="alert">{{ facultyError }} <button (click)="loadFaculties()" [disabled]="facultiesLoading">Tải lại khoa</button></p>
+  <p *ngIf="dirty" class="notice">Bộ lọc đã đổi. Áp dụng để xem và xuất đúng kết quả mới.</p>
+  <p *ngIf="loading" role="status">Đang tổng hợp đề xuất…</p>
+  <p *ngIf="error" class="error" role="alert">{{ error }}</p>
+  <ng-container *ngIf="report as r">
+    <div class="summary-heading">
+      <div><strong>{{ r.totalGroups }} nhóm · {{ r.totalProposals }} lượt · {{ r.totalPeople }} người</strong>
+        <p>Chốt {{ r.snapshotAt | date:'dd/MM/yyyy HH:mm:ss' }} ({{ r.timezone }}). {{ facultyLabel(r.filter.facultyId) }} · {{ statusLabel(r.filter.status) }} · {{ r.filter.from || 'Từ trước đến nay' }} → {{ r.filter.to || 'Không giới hạn ngày cuối' }}</p>
+      </div>
+      <button class="export-button" (click)="exportReport()" [disabled]="busy || dirty">{{ exporting ? 'Đang xuất…' : 'Tải Excel toàn bộ' }}</button>
+    </div>
+    <p>Khoa lấy theo hồ sơ và ánh xạ hiện tại. “Chưa phân loại” cần bổ sung dữ liệu nguồn. Số người tổng đếm riêng, không cộng số người các nhóm.</p>
+    <div class="summary-scroll">
+      <table><thead><tr><th>Sách / Ấn bản</th><th>Số lượt / người</th><th>Phân bố theo khoa</th><th>Đề xuất gốc</th></tr></thead>
+        <tbody><tr *ngFor="let g of r.groups">
+          <td><strong>{{ g.title }}</strong><div>{{ g.authorName || 'Chưa rõ tác giả' }} · {{ g.publisher || 'Chưa rõ NXB' }}</div>
+            <div>{{ g.edition || 'Chưa ghi ấn bản' }} · {{ g.publicationYear || 'Chưa rõ năm' }}</div><div>{{ identityLabel(g.identityType) }}<span *ngIf="g.canonicalIsbn">: {{ g.canonicalIsbn }}</span></div>
+            <div *ngFor="let warning of g.warnings" class="notice">{{ warning }}</div>
+          </td>
+          <td>{{ g.proposalCount }} lượt<br>{{ g.peopleCount }} người</td>
+          <td><div *ngFor="let f of g.faculties">{{ f.facultyName }}: {{ f.proposalCount }} lượt / {{ f.peopleCount }} người</div></td>
+          <td><details><summary>Xem {{ g.sources.length }} đề xuất</summary><div *ngFor="let s of g.sources" class="source">
+            <button (click)="openProposal.emit(s.proposalId)">#{{ s.proposalId }}</button> {{ s.userName || 'Không còn hồ sơ' }} <span *ngIf="s.mssv">({{ s.mssv }})</span>
+            <div>{{ s.facultyName }} · {{ statusLabel(s.status) }} · {{ s.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+            <div>{{ s.title }} · {{ s.edition || 'Chưa ghi ấn bản' }} · {{ s.publicationYear || 'Chưa rõ năm' }} · ISBN {{ s.isbn || 'Không có' }}</div>
+          </div></details></td>
+        </tr><tr *ngIf="!r.groups.length"><td colspan="4">Không có đề xuất phù hợp. Vẫn có thể tải file Excel có tiêu đề và bộ lọc.</td></tr></tbody>
+      </table>
+    </div>
+    <nav class="pagination" aria-label="Trang tổng hợp"><button (click)="changePage(r.page - 1)" [disabled]="busy || dirty || r.page === 0">Trước</button><span>Trang {{ r.page + 1 }} / {{ totalPages }}</span><button (click)="changePage(r.page + 1)" [disabled]="busy || dirty || r.page + 1 >= totalPages">Sau</button></nav>
+  </ng-container>
+  <p *ngIf="exportError" class="error" role="alert">{{ exportError }}</p>
+  <p *ngIf="exportMessage" role="status">{{ exportMessage }}</p>
+</section>

@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 35-finance-import-analytics-evidence
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE transactions ADD COLUMN deposit_applied_amount numeric(19,2);
+              ALTER TABLE transactions ADD COLUMN deposit_applied_at timestamp;
+              -- A zero satisfied balance proves no deposit has been consumed. Positive legacy
+              -- paid_amount mixes deposits, payments and reductions: do not guess its provenance.
+              UPDATE transactions SET deposit_applied_amount=0 WHERE paid_amount=0 AND amount>0
+                AND type IN ('FINE','REPAIR_FEE','COMPENSATION','TECHNICAL_FEE');
+              ALTER TABLE goods_receipts ADD COLUMN completed_at timestamp;
+              -- No historical completion event exists. Keep old COMPLETED rows undated.
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE goods_receipts DROP COLUMN completed_at;
+              ALTER TABLE transactions DROP COLUMN deposit_applied_at, DROP COLUMN deposit_applied_amount;

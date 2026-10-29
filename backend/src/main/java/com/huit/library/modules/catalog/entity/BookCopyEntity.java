@@ -17,6 +17,7 @@ public class BookCopyEntity extends BaseEntity {
     private String barcode;
 
     private Long bookId;
+    private Long receiptDetailId;
     private String conditionNote;
     
     private UUID lockedByUser;

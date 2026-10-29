@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 33-circulation-business-timestamps
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE loan_details ADD COLUMN checkout_at timestamp;
+              ALTER TABLE loan_details ADD COLUMN checkout_time_source varchar(255);
+              ALTER TABLE loan_details ADD COLUMN physical_return_at timestamp;
+              ALTER TABLE loan_details ADD COLUMN physical_return_time_source varchar(255);
+              ALTER TABLE loan_details ADD COLUMN circulation_book_id bigint;
+              -- Only an actual BORROWING transition proves checkout, never reservation creation/due date.
+              WITH evidence AS (
+                SELECT d.detail_id, min(h.created_at) AS at FROM loan_details d
+                JOIN loan_status_history h ON h.ticket_id=d.ticket_id AND h.to_status='BORROWING'
+                WHERE d.return_status IN ('BORROWING','BORROWED','OVERDUE','RETURNED','LOST','DAMAGED','SETTLED')
+                  AND d.created_at IS NOT NULL AND h.created_at >= d.created_at
+                GROUP BY d.detail_id
+              )
+              UPDATE loan_details d SET checkout_at=e.at, checkout_time_source='LEGACY_BORROWING_HISTORY'
+                FROM evidence e WHERE e.detail_id=d.detail_id;
+              -- A settled lost/damaged case's return_date is not proof of physical receipt.
+              UPDATE loan_details d SET physical_return_at=return_date, physical_return_time_source='LEGACY_NORMAL_RETURN'
+                WHERE return_status='RETURNED' AND return_date IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM penalty_cases p WHERE p.loan_detail_id=d.detail_id);
+              UPDATE loan_details d SET circulation_book_id=c.book_id FROM book_copies c
+                WHERE c.barcode=d.barcode AND d.checkout_at IS NOT NULL;
+              CREATE INDEX idx_analytics_checkout_at ON loan_details(checkout_at) WHERE checkout_at IS NOT NULL;
+              CREATE INDEX idx_analytics_physical_return_at ON loan_details(physical_return_at) WHERE physical_return_at IS NOT NULL;
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE loan_details DROP COLUMN checkout_at, DROP COLUMN checkout_time_source,
+                DROP COLUMN physical_return_at, DROP COLUMN physical_return_time_source, DROP COLUMN circulation_book_id;

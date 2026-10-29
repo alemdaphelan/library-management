@@ -15,6 +15,7 @@ import com.huit.library.modules.catalog.dto.ShelfBookDTO;
 
 @Repository
 public interface BookCopyRepository extends JpaRepository<BookCopyEntity, String> {
+    List<BookCopyEntity> findByReceiptDetailIdIn(java.util.Collection<Long> receiptDetailIds);
     List<BookCopyEntity> findByBookId(Long bookId);
     List<BookCopyEntity> findByBookIdAndStatus(Long bookId, String status);
     Optional<BookCopyEntity> findFirstByBookIdAndStatus(Long bookId, String status);

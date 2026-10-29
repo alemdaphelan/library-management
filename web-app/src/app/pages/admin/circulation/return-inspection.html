@@ -1,0 +1,103 @@
+<section class="return-desk" aria-label="Kiểm tra trả sách và báo mất">
+  <header class="desk-heading"><h2>Kiểm tra trả sách</h2><p>Thêm tài liệu, xác nhận tình trạng rồi ghi nhận một lượt. Quét mã chưa thay đổi trạng thái sách.</p></header>
+  <p class="notice error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <p class="notice" role="status" *ngIf="storageMessage">{{ storageMessage }}</p>
+  <div class="pending-box" *ngIf="hasPending">
+    <strong>{{ submitting ? 'Đang ghi nhận lượt kiểm tra…' : 'Lượt này đang chờ xác nhận kết quả' }}</strong>
+    <p>Giữ nguyên tài liệu và thông tin để thử lại, tránh lập thêm hồ sơ hoặc cấn cọc lần nữa.</p>
+    <button type="button" *ngIf="editableFailure" (click)="editRejectedRequest()">Chỉnh sửa lượt bị từ chối</button>
+  </div>
+
+  <div class="lookup-grid">
+    <fieldset class="panel" [disabled]="busy">
+      <legend>1. Thêm sách đang có tại quầy</legend>
+      <label for="return-barcode">Barcode bản sao</label>
+      <div class="input-actions">
+        <input id="return-barcode" [(ngModel)]="barcodeInput" (keydown.enter)="addBarcode(); $event.preventDefault()" placeholder="Quét hoặc nhập barcode" autocomplete="off">
+        <button type="button" (click)="addBarcode()">Thêm</button>
+        <button type="button" (click)="scanRequested.emit()">Camera</button>
+      </div>
+      <p class="hint">Có thể kiểm tra tài liệu từ nhiều phiếu trong cùng một lượt, tối đa 3 cuốn.</p>
+    </fieldset>
+    <fieldset class="panel" [disabled]="busy">
+      <legend>Hoặc tìm phiếu để báo mất</legend>
+      <label for="return-lookup-mode">Tra cứu bằng</label>
+      <select id="return-lookup-mode" [(ngModel)]="lookupMode"><option value="ticket">Mã phiếu</option><option value="reader">MSSV / họ tên người mượn</option></select>
+      <label for="return-lookup">{{ lookupMode === 'ticket' ? 'Mã phiếu mượn' : 'MSSV hoặc họ tên' }}</label>
+      <div class="input-actions"><input id="return-lookup" [(ngModel)]="lookupInput" (keydown.enter)="lookup(); $event.preventDefault()" [placeholder]="lookupMode === 'ticket' ? 'Số phiếu hoặc HUIT-PM-123' : 'Nhập thông tin người mượn'"><button type="button" (click)="lookup()">Tìm</button></div>
+      <p class="hint">Báo mất từ tài liệu trong phiếu; không cần có sách để quét và không cần nhập mã chi tiết mượn.</p>
+    </fieldset>
+  </div>
+  <p role="status" *ngIf="loading">Đang tra cứu dữ liệu mượn…</p>
+  <div class="matching-loans" *ngIf="matchingLoans.length">
+    <article *ngFor="let loan of matchingLoans"><span><strong>{{ loan.readerName || loan.mssv }}</strong> · {{ loan.mssv }} · Phiếu #{{ loan.ticketId }} · {{ loan.itemCount }} tài liệu</span><button type="button" (click)="loadTicket(loan.ticketId)" [disabled]="busy">Xem tài liệu</button></article>
+  </div>
+  <section class="panel ticket-items" *ngIf="selectedTicket as ticket">
+    <h3>Phiếu #{{ ticket.ticketId }} · {{ ticket.readerName || ticket.mssv }}</h3>
+    <article *ngFor="let item of ticket.items">
+      <div><strong>{{ item.bookTitle }}</strong><p>{{ item.barcode }} · {{ statusLabel(item.itemStatus || '') }}</p></div>
+      <div class="input-actions" *ngIf="isActiveItem(item); else unavailableItem"><button type="button" (click)="addItem(item)" [disabled]="busy">Kiểm tra trả</button><button type="button" (click)="addItem(item, true)" [disabled]="busy">Báo mất</button></div>
+      <ng-template #unavailableItem><span class="hint">Không thể thêm vào lượt trả</span></ng-template>
+    </article>
+  </section>
+
+  <form (ngSubmit)="submitInspection()" aria-label="Xác nhận tình trạng tài liệu">
+    <div class="draft-list">
+      <p class="panel hint" *ngIf="!drafts.length && !receipt">Chưa có tài liệu trong lượt kiểm tra. Quét barcode hoặc chọn tài liệu từ phiếu.</p>
+      <fieldset class="panel item-form" *ngFor="let draft of drafts" [disabled]="locked || loading">
+        <legend>{{ draft.loan.bookTitle }}</legend>
+        <div class="item-heading"><p>{{ draft.readerLabel }} · {{ draft.loan.barcode }}</p><button type="button" class="remove" (click)="removeItem(draft.loan.detailId)" [attr.aria-label]="'Bỏ ' + draft.loan.bookTitle">Bỏ khỏi lượt</button></div>
+        <div class="field-grid">
+          <label>Tình trạng khi tiếp nhận<select [name]="'condition-' + draft.loan.detailId" [(ngModel)]="draft.condition" (ngModelChange)="changeCondition(draft)"><option value="NORMAL">Bình thường</option><option value="DAMAGED">Hư hỏng</option><option value="LOST">Báo mất</option></select></label>
+          <label>Ghi chú khi trả<textarea [name]="'note-' + draft.loan.detailId" [(ngModel)]="draft.note" maxlength="500" rows="2"></textarea></label>
+        </div>
+        <ng-container *ngIf="draft.condition !== 'NORMAL'">
+          <div class="field-grid" *ngIf="draft.condition === 'DAMAGED'">
+            <label>Mức hư hỏng<select [name]="'severity-' + draft.loan.detailId" [(ngModel)]="draft.penalty.damageSeverity" (ngModelChange)="changeCondition(draft)"><option value="LIGHT">Nhẹ</option><option value="HEAVY">Nặng, xử lý như mất</option></select></label>
+            <label>Số trang ảnh hưởng<input type="number" [name]="'pages-' + draft.loan.detailId" [(ngModel)]="draft.penalty.pagesAffected" min="0" step="1"><small>Trên 10 trang cần chọn hỏng nặng.</small></label>
+          </div>
+          <label>Mô tả sự cố <span aria-hidden="true">*</span><textarea [name]="'description-' + draft.loan.detailId" [(ngModel)]="draft.penalty.description" maxlength="1000" rows="3" required></textarea></label>
+          <label>Đường dẫn chứng cứ (nếu có)<input type="url" [name]="'evidence-' + draft.loan.detailId" [(ngModel)]="draft.penalty.evidenceUrl" maxlength="500" placeholder="https://…"></label>
+          <div class="field-grid">
+            <label>Loại tài liệu<select [name]="'material-' + draft.loan.detailId" [(ngModel)]="draft.penalty.materialType"><option value="BOOK">Sách</option><option value="CD_DVD">CD/DVD</option><option value="MAP">Bản đồ</option></select></label>
+            <label>Ngôn ngữ<select [name]="'language-' + draft.loan.detailId" [(ngModel)]="draft.penalty.languageCategory"><option value="VIETNAMESE">Việt ngữ</option><option value="FOREIGN">Ngoại văn</option></select></label>
+          </div>
+          <label *ngIf="!isLoss(draft)">Chi phí sửa chữa (VNĐ) <span aria-hidden="true">*</span><input type="number" [name]="'repair-' + draft.loan.detailId" [(ngModel)]="draft.penalty.repairFee" min="1" required></label>
+          <ng-container *ngIf="isLoss(draft)">
+            <div class="field-grid">
+              <label>Tài liệu còn lưu hành? <span aria-hidden="true">*</span><select [name]="'market-' + draft.loan.detailId" [(ngModel)]="draft.market" (ngModelChange)="changeCondition(draft)" required><option value="">Chọn sau khi xác minh</option><option value="YES">Có</option><option value="NO">Không</option></select></label>
+              <label>Phương thức đền bù<select [name]="'settlement-' + draft.loan.detailId" [(ngModel)]="draft.penalty.settlementMethod" [disabled]="draft.market !== 'NO'"><option value="REPLACEMENT">Nộp sách thay thế</option><option value="CASH" *ngIf="draft.market === 'NO'">Đền bù bằng tiền</option></select></label>
+            </div>
+            <p class="hint" *ngIf="draft.penalty.settlementMethod === 'REPLACEMENT'">Phiếu phạt sẽ tiếp tục chờ nộp và nghiệm thu sách thay thế, kể cả khi đã thanh toán đủ phí.</p>
+            <ng-container *ngIf="draft.penalty.settlementMethod === 'CASH'">
+              <div class="field-grid"><label>Giá bìa<input type="number" [name]="'price-' + draft.loan.detailId" [(ngModel)]="draft.penalty.coverPrice" min="0"><small>Để trống/0 nếu không có giá bìa; hệ thống áp dụng biểu phí có hiệu lực.</small></label><label>Mã tiền tệ của giá bìa<input [name]="'currency-' + draft.loan.detailId" [(ngModel)]="draft.penalty.originalCurrency" maxlength="3" placeholder="VND / USD / …"></label></div>
+              <div class="field-grid" *ngIf="draft.penalty.languageCategory === 'FOREIGN' && (draft.penalty.coverPrice || 0) > 0"><label>Tỷ giá sang VNĐ <span aria-hidden="true">*</span><input type="number" [name]="'fx-' + draft.loan.detailId" [(ngModel)]="draft.penalty.fxRate" min="0.000001" step="any" required></label><label>Nguồn tỷ giá <span aria-hidden="true">*</span><input [name]="'fx-source-' + draft.loan.detailId" [(ngModel)]="draft.penalty.fxSource" maxlength="255" required></label></div>
+            </ng-container>
+          </ng-container>
+          <p class="hint">Hệ thống xác định mức phạt, phí trễ và cấn cọc theo quy định khi ghi nhận. Kết quả tiền và mã hồ sơ sẽ hiển thị trong biên nhận.</p>
+        </ng-container>
+      </fieldset>
+    </div>
+    <footer class="desk-actions" *ngIf="drafts.length">
+      <span>{{ drafts.length }} / 3 tài liệu</span>
+      <button type="button" (click)="cancelDraft()" [disabled]="busy">Hủy lượt chưa gửi</button>
+      <button class="primary" type="submit" [disabled]="loading || submitting || (!counterOpen && !hasPending)">{{ submitting ? 'Đang ghi nhận…' : (hasPending ? 'Thử lại lượt này' : 'Xác nhận tình trạng & ghi nhận') }}</button>
+    </footer>
+  </form>
+
+  <section class="panel receipt" *ngIf="receipt as result" aria-live="polite">
+    <h2>{{ result.replayed ? 'Biên nhận đã ghi nhận trước đó' : 'Đã ghi nhận kiểm tra trả sách' }}</h2>
+    <p>Biên nhận {{ result.operationId }} · {{ result.processedAt | date:'dd/MM/yyyy HH:mm:ss' }}</p>
+    <p class="hint">Số liệu tại thời điểm ghi nhận; mở hồ sơ để xem tình trạng và công nợ mới nhất.</p>
+    <dl class="receipt-totals"><div><dt>Tổng phí mới (gồm phí trễ)</dt><dd>{{ total('lateFineAdded') + total('penaltyAmount') | number:'1.0-2':'en-US' }} VNĐ</dd></div><div><dt>Đã cấn cọc</dt><dd>{{ total('depositApplied') | number:'1.0-2':'en-US' }} VNĐ</dd></div><div><dt>Nợ tăng trong lượt</dt><dd>{{ total('debtAdded') | number:'1.0-2':'en-US' }} VNĐ</dd></div></dl>
+    <article *ngFor="let item of result.items" class="receipt-item">
+      <h3>{{ receiptTitles[item.loanDetailId] || item.barcode }}</h3><p>Phiếu #{{ item.ticketId }} · {{ item.barcode }}</p>
+      <p><strong>{{ statusLabel(item.detailStatus) }}</strong> · Bản sao: {{ statusLabel(item.copyStatus) }}</p>
+      <p>Phí trễ mới: {{ item.lateFineAdded | number:'1.0-2':'en-US' }} VNĐ · Phí mất/hỏng: {{ item.penaltyAmount | number:'1.0-2':'en-US' }} VNĐ</p>
+      <p>Cấn cọc: {{ item.depositApplied | number:'1.0-2':'en-US' }} VNĐ · Nợ tăng: {{ item.debtAdded | number:'1.0-2':'en-US' }} VNĐ</p>
+      <ng-container *ngIf="item.penaltyCaseId"><p>Hồ sơ #{{ item.penaltyCaseId }} · {{ statusLabel(item.penaltyStatus) }} · Còn phải thanh toán trong hồ sơ: {{ item.penaltyOutstanding | number:'1.0-2':'en-US' }} VNĐ</p><a [routerLink]="['/admin/penalties']" [queryParams]="{ referenceType: 'PENALTY_CASE', referenceId: item.penaltyCaseId }">Mở hồ sơ #{{ item.penaltyCaseId }}</a></ng-container>
+    </article>
+    <p *ngFor="let ticket of result.tickets">Phiếu #{{ ticket.ticketId }}: {{ statusLabel(ticket.status) }}</p>
+    <div *ngFor="let balance of result.balances" class="balance"><span>Bạn đọc của phiếu {{ readerTickets(balance.userId) }} · Công nợ (gồm các khoản trước): <strong>{{ balance.totalDebt | number:'1.0-2':'en-US' }} VNĐ</strong> · Cọc còn: {{ balance.depositBalance | number:'1.0-2':'en-US' }} VNĐ</span><a [routerLink]="['/admin/penalties']" [queryParams]="{ referenceType: 'USER', referenceId: balance.userId }">Xem / thu công nợ</a></div>
+  </section>
+</section>

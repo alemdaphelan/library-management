@@ -17,4 +17,5 @@ public class GoodsReceiptResponseDTO {
     private int quantity;
     private BigDecimal totalAmount;
     private String status;
+    private java.util.List<ReceiptLineResponseDTO> lines;
 }

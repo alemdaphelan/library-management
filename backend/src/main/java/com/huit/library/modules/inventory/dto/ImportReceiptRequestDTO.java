@@ -23,6 +23,11 @@ public class ImportReceiptRequestDTO {
     public static class Line {
         private Long bookId;
         private String isbn;
+        @NotNull
+        @Min(1)
+        private Long shelfId;
+        private Long floorId;
+        private Long bookshelfId;
 
         @NotNull
         @Min(1)

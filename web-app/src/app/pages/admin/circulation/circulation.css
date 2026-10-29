@@ -27,6 +27,12 @@
   gap: 10px;
 }
 
+@media (max-width: 800px) {
+  .pos-header { align-items: flex-start; flex-direction: column; gap: 14px; padding: 12px; }
+  .pos-tabs { width: 100%; }
+  .pos-tab { flex: 1; justify-content: center; padding: 10px 8px; font-size: .85rem; }
+}
+
 .pos-tab {
   background: #f1f5f9;
   border: 1px solid transparent;
@@ -81,7 +87,6 @@
   grid-template-columns: 1fr; /* Trả sách không cần cột Sinh viên */
 }
 
-.pos-grid.pending-mode { grid-template-columns: 1fr; }
 
 .pos-panel {
   background: white;
@@ -402,22 +407,6 @@
 @keyframes scan { from { transform: translateY(-100px); } to { transform: translateY(100px); } }
 .camera-error { margin: 0 20px; padding: 16px; border-radius: 10px; background: #fef2f2; color: #991b1b; }
 .camera-fallback { margin: 0; padding: 16px 20px 20px; color: #64748b; font-size: .86rem; line-height: 1.45; }
-
-.pending-requests { margin-top: 20px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
-.pending-requests.embedded { margin: 18px 20px 20px; overflow-y: auto; }
-.pending-heading, .pending-card { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.pending-heading h2 { margin: 0 0 4px; }.pending-heading p, .pending-card p { margin: 0; color: #64748b; }
-.pending-list { display: grid; gap: 10px; margin-top: 16px; }
-.pending-card { padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; }
-.decision-dialog { padding-bottom: 20px; }
-.decision-items { display: grid; gap: 8px; max-height: 240px; overflow-y: auto; margin: 0 20px 18px; padding: 12px; border: 1px solid #dbeafe; border-radius: 10px; background: #f8fafc; }
-.decision-items article { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px; border-radius: 8px; background: #fff; border: 1px solid #e2e8f0; }
-.decision-items small { display: block; margin-top: 3px; color: #64748b; }
-.decision-items code { color: #0369a1; font-weight: 700; }
-.decision-dialog > label, .decision-dialog > textarea { display: block; width: calc(100% - 40px); margin: 0 20px; }
-.decision-dialog > label { margin-bottom: 8px; font-weight: 700; color: #334155; }
-.decision-dialog > textarea { min-height: 100px; box-sizing: border-box; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; resize: vertical; }
-.decision-dialog .pos-actions { padding: 18px 20px 0; }
 
 @media (max-width: 980px) {
   .pos-grid { grid-template-columns: 1fr; }

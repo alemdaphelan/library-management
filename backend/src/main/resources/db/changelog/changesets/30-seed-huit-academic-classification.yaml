@@ -1,0 +1,103 @@
+databaseChangeLog:
+  - changeSet:
+      id: 30-seed-huit-academic-classification
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              -- Verified 2026-10-29 against https://huit.edu.vn/ (faculty directory) and
+              -- https://ts.huit.edu.vn/thong-bao/danh-muc-nganh-dao-tao-trinh-do-dai-hoc
+              -- (2026-07-03; each major links to its owning faculty).
+              -- Faculty IDs below are internal stable IDs, not claimed official university codes.
+              -- Existing explicit mappings win; normalization never uses fuzzy/keyword matching.
+              CREATE UNIQUE INDEX uk_academic_department_normalized ON academic_department_mappings (
+                (btrim(regexp_replace(translate(lower(regexp_replace(normalize(department_value, NFD),
+                  U&'[\0300-\036f]', '', 'g')), 'đ', 'd'), '[^a-z0-9]+', ' ', 'g')))
+              );
+
+              INSERT INTO academic_faculties (faculty_id, faculty_name) VALUES
+                ('MECHANICAL', 'Khoa Công nghệ Cơ khí'),
+                ('EEE', 'Khoa Công nghệ Điện - Điện tử'),
+                ('CHEMISTRY', 'Khoa Công nghệ Hóa học'),
+                ('TEXTILE', 'Khoa Công nghệ May và Thời trang'),
+                ('FIT', 'Khoa Công nghệ Thông tin'),
+                ('FOODTECH', 'Khoa Công nghệ Thực phẩm'),
+                ('TOURISM_CULINARY', 'Khoa Du lịch và Ẩm thực'),
+                ('PHYSICAL_DEFENSE', 'Khoa Giáo dục thể chất và Quốc phòng An ninh'),
+                ('APPLIED_SCIENCE', 'Khoa Khoa học ứng dụng'),
+                ('INDUSTRIAL_ECONOMICS', 'Khoa Kinh tế và Quản lý công nghiệp'),
+                ('LAW', 'Khoa Luật'),
+                ('POLITICAL_THEORY', 'Khoa Lý luận Chính trị'),
+                ('LANGUAGES', 'Khoa Ngoại ngữ'),
+                ('BUSINESS', 'Khoa Quản trị Kinh doanh'),
+                ('BIO_ENV', 'Khoa Sinh học và Môi trường'),
+                ('FINANCE_ACCOUNTING', 'Khoa Tài chính - Kế toán'),
+                ('COMMERCE', 'Khoa Thương mại')
+              ON CONFLICT DO NOTHING;
+
+              WITH majors (code, major_name, faculty_id) AS (VALUES
+                ('7220201', 'Ngôn ngữ Anh', 'LANGUAGES'),
+                ('7220204', 'Ngôn ngữ Trung Quốc', 'LANGUAGES'),
+                ('7340101', 'Quản trị kinh doanh', 'BUSINESS'),
+                ('7340115', 'Marketing', 'COMMERCE'),
+                ('7340120', 'Kinh doanh quốc tế', 'BUSINESS'),
+                ('7340122', 'Thương mại điện tử', 'COMMERCE'),
+                ('7340123', 'Kinh doanh thời trang và dệt may', 'TEXTILE'),
+                ('7340129', 'Quản trị kinh doanh thực phẩm', 'FOODTECH'),
+                ('7340201', 'Tài chính - Ngân hàng', 'FINANCE_ACCOUNTING'),
+                ('7340205', 'Công nghệ tài chính', 'FINANCE_ACCOUNTING'),
+                ('7340301', 'Kế toán', 'FINANCE_ACCOUNTING'),
+                ('7380107', 'Luật kinh tế', 'LAW'),
+                ('7420201', 'Công nghệ sinh học', 'BIO_ENV'),
+                ('7460108', 'Khoa học dữ liệu', 'FIT'),
+                ('7480201', 'Công nghệ thông tin', 'FIT'),
+                ('7480202', 'An toàn thông tin', 'FIT'),
+                ('7510202', 'Công nghệ chế tạo máy', 'MECHANICAL'),
+                ('7510203', 'Công nghệ kỹ thuật cơ điện tử', 'MECHANICAL'),
+                ('7510301', 'Công nghệ kỹ thuật điện, điện tử', 'EEE'),
+                ('7510303', 'Công nghệ kỹ thuật điều khiển và tự động hóa', 'EEE'),
+                ('7510401', 'Công nghệ kỹ thuật hóa học', 'CHEMISTRY'),
+                ('7510402', 'Công nghệ vật liệu', 'CHEMISTRY'),
+                ('7510406', 'Công nghệ kỹ thuật môi trường', 'BIO_ENV'),
+                ('7520115', 'Kỹ thuật nhiệt', 'MECHANICAL'),
+                ('7540101', 'Công nghệ thực phẩm', 'FOODTECH'),
+                ('7540105', 'Công nghệ chế biến thủy sản', 'FOODTECH'),
+                ('7540106', 'Đảm bảo chất lượng và an toàn thực phẩm', 'FOODTECH'),
+                ('7540204', 'Công nghệ dệt, may', 'TEXTILE'),
+                ('7810103', 'Quản trị dịch vụ du lịch và lữ hành', 'TOURISM_CULINARY'),
+                ('7810201', 'Quản trị khách sạn', 'TOURISM_CULINARY'),
+                ('7810202', 'Quản trị nhà hàng và dịch vụ ăn uống', 'TOURISM_CULINARY'),
+                ('7850101', 'Quản lý tài nguyên và môi trường', 'BIO_ENV'),
+                ('7819009', 'Khoa học dinh dưỡng và ẩm thực', 'TOURISM_CULINARY'),
+                ('7819010', 'Khoa học chế biến món ăn', 'TOURISM_CULINARY'),
+                ('7510605', 'Logistics và Quản lý chuỗi cung ứng', 'INDUSTRIAL_ECONOMICS'),
+                ('7810101', 'Du lịch', 'TOURISM_CULINARY'),
+                ('7380101', 'Luật', 'LAW'),
+                ('7480107', 'Trí tuệ nhân tạo', 'FIT'),
+                ('7510601', 'Quản lý công nghiệp', 'INDUSTRIAL_ECONOMICS')
+              ), aliases AS (
+                SELECT major_name AS department_value, faculty_id, major_name FROM majors
+                UNION ALL SELECT 'Ngành ' || major_name, faculty_id, major_name FROM majors
+                UNION ALL SELECT code, faculty_id, major_name FROM majors
+              )
+              INSERT INTO academic_department_mappings (department_value, faculty_id, major_name)
+              SELECT department_value, faculty_id, major_name FROM aliases
+              ON CONFLICT DO NOTHING;
+
+              INSERT INTO academic_department_mappings (department_value, faculty_id, major_name)
+              SELECT faculty_name, faculty_id, NULL FROM academic_faculties
+              WHERE faculty_id IN ('MECHANICAL','EEE','CHEMISTRY','TEXTILE','FIT','FOODTECH','TOURISM_CULINARY',
+                'PHYSICAL_DEFENSE','APPLIED_SCIENCE','INDUSTRIAL_ECONOMICS','LAW','POLITICAL_THEORY',
+                'LANGUAGES','BUSINESS','BIO_ENV','FINANCE_ACCOUNTING','COMMERCE')
+              ON CONFLICT DO NOTHING;
+
+              -- CNTT / the faculty's full name occur in migrations 03/09/11 and DatabaseSeeder;
+              -- CNTT identifies the faculty,
+              -- and does not establish a student's particular major within that faculty.
+              INSERT INTO academic_department_mappings (department_value, faculty_id, major_name) VALUES
+                ('CNTT', 'FIT', NULL),
+                ('Khoa CNTT', 'FIT', NULL),
+                ('Ngành CNTT', 'FIT', 'Công nghệ thông tin'),
+                ('Đảm bảo chất lượng và ATTP', 'FOODTECH', 'Đảm bảo chất lượng và an toàn thực phẩm')
+              ON CONFLICT DO NOTHING;
