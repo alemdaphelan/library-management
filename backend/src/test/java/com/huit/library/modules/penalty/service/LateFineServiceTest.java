@@ -103,6 +103,8 @@ class LateFineServiceTest {
         assertThat(wallet.getTotalDebt()).isEqualByComparingTo("500");
         verify(transactionRepository).save(argThat(transaction ->
                 transaction.getPaidAmount().compareTo(new BigDecimal("1500")) == 0
+                        && transaction.getDepositAppliedAmount().compareTo(new BigDecimal("1500")) == 0
+                        && calculatedAt.equals(transaction.getDepositAppliedAt())
                         && "PARTIALLY_PAID".equals(transaction.getStatus())
                         && "SECURITY_DEPOSIT".equals(transaction.getPaymentMethod())));
     }

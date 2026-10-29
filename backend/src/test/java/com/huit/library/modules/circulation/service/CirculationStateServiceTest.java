@@ -27,6 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import com.huit.library.modules.finance.entity.WalletEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,7 +77,7 @@ class CirculationStateServiceTest {
     }
 
     @Test
-    void approveMovesPendingReservationAndWritesAuditHistory() {
+    void legacyPendingReservationIsRevalidatedAndAutomaticallyAudited() {
         UUID librarianId = UUID.randomUUID();
         UUID readerId = UUID.randomUUID();
         LoanTicketEntity ticket = ticket(10L, "PENDING");
@@ -84,13 +87,14 @@ class CirculationStateServiceTest {
         when(ticketRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(ticket));
         when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
         when(detailRepository.countOpenItemsByUserId(eq(readerId), any())).thenReturn(1L);
+        stubHeldDetail(ticket, LocalDateTime.now().plusHours(2));
 
         LoanStateResponseDTO result = service.approveReservation(10L, librarianId);
 
         assertThat(result.getPreviousStatus()).isEqualTo(LoanTicketStatus.PENDING);
         assertThat(result.getStatus()).isEqualTo(LoanTicketStatus.RESERVED);
         assertThat(ticket.getStatus()).isEqualTo("RESERVED");
-        assertThat(ticket.getProcessedBy()).isEqualTo(librarianId);
+        assertThat(ticket.getProcessedBy()).isNull();
 
         ArgumentCaptor<LoanStatusHistoryEntity> historyCaptor =
                 ArgumentCaptor.forClass(LoanStatusHistoryEntity.class);
@@ -98,7 +102,111 @@ class CirculationStateServiceTest {
         assertThat(historyCaptor.getValue().getTicketId()).isEqualTo(10L);
         assertThat(historyCaptor.getValue().getFromStatus()).isEqualTo(LoanTicketStatus.PENDING);
         assertThat(historyCaptor.getValue().getToStatus()).isEqualTo(LoanTicketStatus.RESERVED);
-        assertThat(historyCaptor.getValue().getChangedBy()).isEqualTo(librarianId);
+        assertThat(historyCaptor.getValue().getChangedBy()).isNull();
+        assertThat(historyCaptor.getValue().getReason()).contains("Hệ thống tự động");
+    }
+
+    @Test
+    void newlyCreatedReservationUsesStateMachineAndSystemActor() {
+        LoanTicketEntity ticket = ticket(14L, "PENDING");
+        var result = service.autoApproveReservation(ticket);
+        assertThat(result.getStatus()).isEqualTo(LoanTicketStatus.RESERVED);
+        assertThat(ticket.getProcessedBy()).isNull();
+        ArgumentCaptor<LoanStatusHistoryEntity> audit = ArgumentCaptor.forClass(LoanStatusHistoryEntity.class);
+        verify(historyRepository).save(audit.capture());
+        assertThat(audit.getValue().getFromStatus()).isEqualTo(LoanTicketStatus.PENDING);
+        assertThat(audit.getValue().getToStatus()).isEqualTo(LoanTicketStatus.RESERVED);
+        assertThat(audit.getValue().getChangedBy()).isNull();
+        assertThat(audit.getValue().getReason()).contains("Hệ thống tự động");
+    }
+
+    @Test
+    void legacyValidationRejectsExpiredHoldWithoutChangingState() {
+        LoanTicketEntity ticket = legacyTicket();
+        stubHeldDetail(ticket, LocalDateTime.now().minusSeconds(1));
+        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+                .hasMessageContaining("hết hạn");
+        assertThat(ticket.getStatus()).isEqualTo("PENDING");
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void legacyValidationRejectsACopyHeldForAnotherReader() {
+        LoanTicketEntity ticket = legacyTicket();
+        BookCopyEntity copy = stubHeldDetail(ticket, LocalDateTime.now().plusHours(2));
+        copy.setLockedByUser(UUID.randomUUID());
+        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+                .hasMessageContaining("bản sao");
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void legacyValidationRejectsEmptyTicket() {
+        LoanTicketEntity ticket = legacyTicket();
+        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+                .hasMessageContaining("đủ tài liệu");
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void compatibilityApprovalOfReservedTicketDoesNotWriteAnotherHistoryRow() {
+        LoanTicketEntity ticket = legacyTicket();
+        ticket.setStatus("RESERVED");
+        stubHeldDetail(ticket, LocalDateTime.now().plusHours(2));
+        assertThat(service.approveReservation(ticket.getTicketId(), UUID.randomUUID()).getStatus())
+                .isEqualTo(LoanTicketStatus.RESERVED);
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void legacyValidationRejectsDebtAndLockedOrExpiredCards() {
+        LoanTicketEntity ticket = legacyTicket();
+        UserEntity reader = userRepository.findByIdForUpdate(ticket.getUserId()).orElseThrow();
+        WalletEntity wallet = new WalletEntity();
+        wallet.setTotalDebt(new BigDecimal("150000"));
+        when(walletRepository.findByUserId(ticket.getUserId())).thenReturn(Optional.of(wallet));
+        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+                .hasMessageContaining("còn nợ");
+        wallet.setTotalDebt(BigDecimal.ZERO);
+        reader.setCardStatus("LOCKED");
+        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+                .hasMessageContaining("bị khóa");
+        reader.setCardStatus("ACTIVE");
+        reader.setCardExpiryDate(LocalDateTime.now().minusDays(1));
+        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+                .hasMessageContaining("hết hạn");
+        reader.setCardExpiryDate(LocalDateTime.now().plusDays(1));
+        when(detailRepository.countOverdueItemsByUserId(eq(ticket.getUserId()), any())).thenReturn(1L);
+        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+                .hasMessageContaining("quá hạn");
+        verify(historyRepository, never()).save(any());
+    }
+
+    private LoanTicketEntity legacyTicket() {
+        LoanTicketEntity ticket = ticket(15L, "PENDING");
+        ticket.setUserId(UUID.randomUUID());
+        UserEntity reader = new UserEntity();
+        reader.setUserId(ticket.getUserId());
+        reader.setCardStatus("ACTIVE");
+        when(ticketRepository.findByIdForUpdate(ticket.getTicketId())).thenReturn(Optional.of(ticket));
+        when(userRepository.findByIdForUpdate(ticket.getUserId())).thenReturn(Optional.of(reader));
+        when(detailRepository.countOpenItemsByUserId(eq(ticket.getUserId()), any())).thenReturn(1L);
+        return ticket;
+    }
+
+    private BookCopyEntity stubHeldDetail(LoanTicketEntity ticket, LocalDateTime deadline) {
+        LoanDetailEntity detail = new LoanDetailEntity();
+        detail.setTicketId(ticket.getTicketId());
+        detail.setBarcode("LEGACY-COPY");
+        detail.setReturnStatus("PENDING");
+        BookCopyEntity copy = new BookCopyEntity();
+        copy.setBarcode("LEGACY-COPY");
+        copy.setStatus("RESERVED");
+        copy.setLockedByUser(ticket.getUserId());
+        copy.setLockedUntil(deadline);
+        when(detailRepository.findByTicketIdForUpdate(ticket.getTicketId())).thenReturn(List.of(detail));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("LEGACY-COPY"))).thenReturn(List.of(copy));
+        return copy;
     }
 
     @Test

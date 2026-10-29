@@ -37,7 +37,7 @@ public class LoanController {
     }
 
     @PostMapping("/reserve")
-    @Operation(summary = "Reserve / Borrow Book", description = "Reader requests to reserve or borrow a book from OPAC.")
+    @Operation(summary = "Automatically reserve a book", description = "An eligible reader receives a RESERVED hold immediately, or joins WAITLIST when no copy is available. Checkout still happens at the desk.")
     public ResponseEntity<BorrowResponseDTO> reserveBook(
             @Valid @RequestBody BorrowRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -46,7 +46,7 @@ public class LoanController {
     }
 
     @PostMapping("/reserve-batch")
-    @Operation(summary = "Reserve multiple books in one ticket", description = "Creates one reservation ticket containing up to three available books.")
+    @Operation(summary = "Reserve multiple books in one ticket", description = "Automatically creates a RESERVED ticket for up to three books, including valid waitlist holds owned by the reader. The batch is atomic.")
     public ResponseEntity<BatchBorrowResponseDTO> reserveBooks(
             @Valid @RequestBody BatchBorrowRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -78,7 +78,7 @@ public class LoanController {
 
     @GetMapping("/{ticketId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Get loan ticket detail", description = "Returns reader and copy details required for reservation review at the circulation desk.")
+    @Operation(summary = "Get loan ticket detail", description = "Returns reader and copy details required for checkout at the circulation desk.")
     public ResponseEntity<?> getLoan(@PathVariable Long ticketId) {
         return ResponseEntity.ok(loanService.getLoan(ticketId));
     }
@@ -121,7 +121,7 @@ public class LoanController {
 
     @PostMapping("/{ticketId}/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Approve reservation", description = "Moves a pending reservation to RESERVED and records the staff transition.")
+    @Operation(summary = "Revalidate a legacy reservation", description = "Compatibility endpoint: checks eligibility, held copies and expiry before automatically moving PENDING to RESERVED. A valid RESERVED ticket is returned without another transition.")
     public ResponseEntity<LoanStateResponseDTO> approveReservation(
             @PathVariable Long ticketId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

@@ -3,15 +3,18 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProposalService, BookProposal } from '../../../services/proposal.service';
 import { ActivatedRoute } from '@angular/router';
+import { ProposalSummary } from './proposal-summary';
 
 @Component({
   selector: 'app-admin-suggestions',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ProposalSummary],
   templateUrl: './suggestions.html',
   styleUrls: ['./suggestions.css']
 })
 export class AdminSuggestions implements OnInit {
+  view: 'individual' | 'summary' = 'individual';
+  summaryLoaded = false;
   activeTab: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL' = 'PENDING';
   selectedSuggestion: BookProposal | null = null;
   isDrawerOpen = false;
@@ -98,6 +101,13 @@ export class AdminSuggestions implements OnInit {
 
   setTab(tab: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'): void {
     this.activeTab = tab;
+  }
+
+  showSummary(): void { this.summaryLoaded = true; this.view = 'summary'; }
+  openSummaryProposal(id: number): void {
+    const proposal = this.proposals.find(p => p.proposalId === id);
+    if (!proposal) { this.showAlert('error', 'Đề xuất chưa có trong danh sách hiện tại. Làm mới danh sách để xem.'); return; }
+    this.view = 'individual'; this.activeTab = 'ALL'; this.searchTerm = ''; this.openDrawer(proposal);
   }
 
   openDrawer(suggestion: BookProposal): void {

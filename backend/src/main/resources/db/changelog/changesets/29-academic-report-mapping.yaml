@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 29-academic-report-mapping
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE TABLE academic_faculties (
+                faculty_id varchar(64) PRIMARY KEY,
+                faculty_name varchar(255) NOT NULL,
+                CONSTRAINT chk_academic_faculty_id CHECK (
+                  faculty_id ~ '^[A-Za-z0-9_-]+$' AND faculty_id <> 'UNCLASSIFIED'),
+                CONSTRAINT chk_academic_faculty_name CHECK (btrim(faculty_name) <> '')
+              );
+              CREATE TABLE academic_department_mappings (
+                department_value varchar(255) PRIMARY KEY,
+                faculty_id varchar(64) NOT NULL REFERENCES academic_faculties(faculty_id),
+                major_name varchar(255),
+                CONSTRAINT chk_academic_department_value CHECK (
+                  department_value = btrim(department_value) AND department_value <> '')
+              );
+              CREATE INDEX idx_academic_department_faculty ON academic_department_mappings(faculty_id);
+              CREATE INDEX idx_report_open_due ON loan_details(due_date, ticket_id)
+                WHERE return_date IS NULL AND return_status IN ('BORROWING', 'OVERDUE');
+              CREATE INDEX idx_report_transactions_user ON transactions(user_id, transaction_id);
+              CREATE INDEX idx_report_student_department ON users(department) WHERE user_type = 'STUDENT';
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX idx_report_student_department;
+              DROP INDEX idx_report_transactions_user;
+              DROP INDEX idx_report_open_due;
+              DROP TABLE academic_department_mappings;
+              DROP TABLE academic_faculties;

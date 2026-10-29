@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 31-import-copy-locations
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE receipt_details ADD COLUMN shelf_id bigint REFERENCES shelves(shelf_id) ON DELETE SET NULL;
+              ALTER TABLE receipt_details ADD COLUMN location_path varchar(1000);
+              ALTER TABLE book_copies ADD COLUMN receipt_detail_id bigint REFERENCES receipt_details(detail_id) ON DELETE SET NULL;
+              CREATE INDEX idx_copy_receipt_detail ON book_copies(receipt_detail_id);
+              CREATE INDEX idx_inventory_normalized_isbn ON books ((regexp_replace(upper(coalesce(isbn, '')), '[[:space:]-]', '', 'g')));
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX idx_inventory_normalized_isbn;
+              DROP INDEX idx_copy_receipt_detail;
+              ALTER TABLE book_copies DROP COLUMN receipt_detail_id;
+              ALTER TABLE receipt_details DROP COLUMN location_path;
+              ALTER TABLE receipt_details DROP COLUMN shelf_id;

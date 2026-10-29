@@ -146,6 +146,8 @@ class PenaltyCaseServiceTest {
         assertThat(result.getPaidAmount()).isEqualByComparingTo("50000");
         verify(transactions).save(argThat(transaction ->
                 transaction.getPaidAmount().compareTo(new BigDecimal("50000")) == 0
+                        && transaction.getDepositAppliedAmount().compareTo(new BigDecimal("50000")) == 0
+                        && transaction.getDepositAppliedAt() != null
                         && "PARTIALLY_PAID".equals(transaction.getStatus())));
     }
 

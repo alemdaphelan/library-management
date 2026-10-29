@@ -35,6 +35,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.math.BigDecimal;
 
@@ -99,14 +100,8 @@ public class LoanService {
         // Người đứng đầu hàng đợi có thể nhận đúng bản sao đã được khóa cho mình.
         WaitlistEntity notifiedEntry = waitlistRepository
                 .findFirstByBookIdAndUserIdAndStatus(book.getBookId(), userId, "NOTIFIED")
-                .filter(entry -> entry.getReservedBarcode() != null)
-                .filter(entry -> entry.getExpiresAt() != null && entry.getExpiresAt().isAfter(LocalDateTime.now()))
                 .orElse(null);
-        java.util.Optional<BookCopyEntity> availableCopy = notifiedEntry == null
-                ? bookCopyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(book.getBookId(), "AVAILABLE")
-                : bookCopyRepository.findById(notifiedEntry.getReservedBarcode())
-                        .filter(copy -> "RESERVED".equalsIgnoreCase(copy.getStatus()))
-                        .filter(copy -> userId.equals(copy.getLockedByUser()));
+        Optional<BookCopyEntity> availableCopy = findReservableCopy(book.getBookId(), userId, notifiedEntry);
 
         // If no available copies, join waitlist
         if (availableCopy.isEmpty()) {
@@ -186,12 +181,13 @@ public class LoanService {
             waitlistRepository.save(notifiedEntry);
         }
 
+        circulationStateService.autoApproveReservation(ticket);
         staffNotificationService.notifyAll(
-                "LOAN_REQUEST_PENDING",
-                "Bạn đọc " + displayReader(user) + " vừa gửi yêu cầu mượn ‘" + book.getTitle()
-                        + "’ (phiếu #" + ticket.getTicketId() + ").",
+                "LOAN_RESERVED",
+                "Hệ thống đã giữ chỗ ‘" + book.getTitle() + "’ cho bạn đọc " + displayReader(user)
+                        + " (phiếu #" + ticket.getTicketId() + "). Có thể giao sách tại quầy.",
                 "LOAN_TICKET", ticket.getTicketId().toString(),
-                "LOAN_REQUEST_PENDING:" + ticket.getTicketId(), LocalDateTime.now());
+                "LOAN_RESERVED:" + ticket.getTicketId(), LocalDateTime.now());
 
         return BorrowResponseDTO.builder()
                 .success(true)
@@ -232,8 +228,10 @@ public class LoanService {
 
         List<BookEntity> books = new ArrayList<>();
         List<BookCopyEntity> copies = new ArrayList<>();
+        List<WaitlistEntity> notifiedEntries = new ArrayList<>();
         List<String> unavailableTitles = new ArrayList<>();
-        for (Long bookId : bookIds) {
+        // Every reservation locks books in the same order to avoid opposite-order batch deadlocks.
+        for (Long bookId : bookIds.stream().sorted().toList()) {
             BookEntity book = bookRepository.findById(bookId)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND, "Không tìm thấy đầu sách #" + bookId));
@@ -243,12 +241,14 @@ public class LoanService {
                         "Bạn đã có đầu sách \"" + book.getTitle()
                                 + "\" trong một phiếu đặt giữ hoặc mượn đang hoạt động");
             }
-            var copy = bookCopyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(bookId, "AVAILABLE");
+            var notified = waitlistRepository.findFirstByBookIdAndUserIdAndStatus(bookId, userId, "NOTIFIED");
+            var copy = findReservableCopy(bookId, userId, notified.orElse(null));
             if (copy.isEmpty()) {
                 unavailableTitles.add(book.getTitle());
             } else {
                 books.add(book);
                 copies.add(copy.get());
+                notified.ifPresent(notifiedEntries::add);
             }
         }
         if (!unavailableTitles.isEmpty()) {
@@ -262,8 +262,12 @@ public class LoanService {
         LocalDate pickupDate = request.getPickupDate() != null
                 ? request.getPickupDate()
                 : LocalDate.now();
-        LocalDateTime pickupDeadline = waitlistService.calculateDirectReservationDeadline(
-                pickupDate, LocalDateTime.now());
+        LocalDateTime pickupDeadline = notifiedEntries.size() == copies.size()
+                ? notifiedEntries.stream().map(WaitlistEntity::getExpiresAt).min(LocalDateTime::compareTo).orElseThrow()
+                : waitlistService.calculateDirectReservationDeadline(pickupDate, LocalDateTime.now());
+        for (WaitlistEntity entry : notifiedEntries) {
+            if (entry.getExpiresAt().isBefore(pickupDeadline)) pickupDeadline = entry.getExpiresAt();
+        }
         LoanTicketType ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
         LocalDateTime dueDate = ticketType == LoanTicketType.ONSITE
                 ? pickupDeadline
@@ -293,12 +297,17 @@ public class LoanService {
             bookCopyRepository.save(copy);
         }
 
+        for (WaitlistEntity entry : notifiedEntries) {
+            entry.setStatus("FULFILLED");
+            waitlistRepository.save(entry);
+        }
+        circulationStateService.autoApproveReservation(ticket);
         staffNotificationService.notifyAll(
-                "LOAN_REQUEST_PENDING",
-                "Bạn đọc " + displayReader(user) + " vừa gửi phiếu #" + ticket.getTicketId()
-                        + " gồm " + books.size() + " tài liệu.",
+                "LOAN_RESERVED",
+                "Hệ thống đã giữ chỗ phiếu #" + ticket.getTicketId() + " cho bạn đọc " + displayReader(user)
+                        + " gồm " + books.size() + " tài liệu. Có thể giao sách tại quầy.",
                 "LOAN_TICKET", ticket.getTicketId().toString(),
-                "LOAN_REQUEST_PENDING:" + ticket.getTicketId(), LocalDateTime.now());
+                "LOAN_RESERVED:" + ticket.getTicketId(), LocalDateTime.now());
 
         return BatchBorrowResponseDTO.builder()
                 .success(true)
@@ -313,6 +322,23 @@ public class LoanService {
                 .bookTitles(books.stream().map(BookEntity::getTitle).toList())
                 .barcodes(copies.stream().map(BookCopyEntity::getBarcode).toList())
                 .build();
+    }
+
+    private Optional<BookCopyEntity> findReservableCopy(Long bookId, UUID userId, WaitlistEntity notified) {
+        if (notified == null) {
+            return bookCopyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(bookId, "AVAILABLE");
+        }
+        if (notified.getReservedBarcode() == null || notified.getExpiresAt() == null) {
+            return Optional.empty();
+        }
+        // Never substitute another reader's hold or revive an expired waitlist notification.
+        return bookCopyRepository.findAllByBarcodeInForUpdate(List.of(notified.getReservedBarcode())).stream()
+                .findFirst()
+                .filter(copy -> bookId.equals(copy.getBookId()))
+                .filter(copy -> "RESERVED".equalsIgnoreCase(copy.getStatus()))
+                .filter(copy -> userId.equals(copy.getLockedByUser()))
+                .filter(copy -> copy.getLockedUntil() != null && copy.getLockedUntil().isAfter(LocalDateTime.now()))
+                .filter(copy -> notified.getExpiresAt().isAfter(LocalDateTime.now()));
     }
 
     @Transactional(readOnly = true)

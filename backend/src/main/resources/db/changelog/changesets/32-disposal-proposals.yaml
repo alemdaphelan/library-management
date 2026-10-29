@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 32-disposal-proposals
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              CREATE TABLE disposal_batches (
+                request_id uuid PRIMARY KEY, created_by uuid NOT NULL, request_payload text NOT NULL,
+                created_at timestamp, updated_at timestamp
+              );
+              CREATE TABLE disposal_proposals (
+                proposal_id uuid PRIMARY KEY, request_id uuid NOT NULL REFERENCES disposal_batches(request_id),
+                barcode varchar(255) NOT NULL REFERENCES book_copies(barcode),
+                book_id bigint NOT NULL REFERENCES books(book_id), book_title varchar(255) NOT NULL,
+                audit_id bigint NOT NULL REFERENCES inventory_audits(audit_id),
+                source_detail_id varchar(255) NOT NULL REFERENCES inventory_details(detail_id),
+                source_fingerprint varchar(64) NOT NULL, source_snapshot text NOT NULL,
+                observed_condition varchar(1000) NOT NULL, reason_code varchar(20) NOT NULL,
+                reason varchar(1000) NOT NULL, proposed_action varchar(20) NOT NULL, evidence_url varchar(1000),
+                status varchar(20) NOT NULL DEFAULT 'DRAFT', version bigint NOT NULL DEFAULT 0,
+                created_by uuid NOT NULL, created_by_name varchar(255) NOT NULL, created_at timestamp, updated_at timestamp,
+                CONSTRAINT ck_disposal_status CHECK (status IN ('DRAFT','SUBMITTED','CANCELLED')),
+                CONSTRAINT ck_disposal_reason CHECK (reason_code IN ('WORN','OBSOLETE','UNUSED','DAMAGED')),
+                CONSTRAINT ck_disposal_action CHECK (proposed_action IN ('REPAIR','TRANSFER','LIQUIDATE','DESTROY')),
+                CONSTRAINT ck_disposal_version CHECK (version >= 0)
+              );
+              CREATE UNIQUE INDEX uq_disposal_active_barcode ON disposal_proposals(barcode) WHERE status IN ('DRAFT','SUBMITTED');
+              CREATE INDEX idx_disposal_list ON disposal_proposals(created_at DESC, proposal_id);
+              CREATE INDEX idx_disposal_audit ON disposal_proposals(audit_id);
+              CREATE INDEX idx_disposal_request ON disposal_proposals(request_id);
+              CREATE TABLE disposal_history (
+                event_id uuid PRIMARY KEY, proposal_id uuid NOT NULL REFERENCES disposal_proposals(proposal_id),
+                proposal_version bigint NOT NULL, event_type varchar(20) NOT NULL,
+                actor_id uuid NOT NULL, actor_name varchar(255) NOT NULL,
+                before_snapshot text, after_snapshot text NOT NULL, created_at timestamp, updated_at timestamp,
+                CONSTRAINT uq_disposal_history_version UNIQUE(proposal_id, proposal_version),
+                CONSTRAINT ck_disposal_event CHECK (event_type IN ('CREATED','UPDATED','SUBMITTED','CANCELLED'))
+              );
+      rollback:
+        - sql:
+            sql: DROP TABLE disposal_history; DROP TABLE disposal_proposals; DROP TABLE disposal_batches;

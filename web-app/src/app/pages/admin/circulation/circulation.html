@@ -1,9 +1,8 @@
 <div class="circulation-page">
   <div class="pos-header">
     <div class="pos-tabs">
-      <button class="pos-tab" [class.active]="activeTab === 'borrow' && borrowMode !== 'pending'" (click)="switchTab('borrow')">MƯỢN SÁCH</button>
-      <button class="pos-tab" [class.active]="activeTab === 'return'" (click)="switchTab('return')">TRẢ SÁCH</button>
-      <button class="pos-tab" [class.active]="activeTab === 'borrow' && borrowMode === 'pending'" (click)="switchTab('borrow'); switchBorrowMode('pending')">CHỜ DUYỆT ({{ pendingRequests.length }})</button>
+      <button class="pos-tab" [class.active]="activeTab === 'borrow'" (click)="switchTab('borrow')" [disabled]="isSubmitting || returnLocked">MƯỢN SÁCH</button>
+      <button class="pos-tab" [class.active]="activeTab === 'return'" (click)="switchTab('return')" [disabled]="isSubmitting || returnLocked">TRẢ SÁCH</button>
     </div>
     <div class="pos-status" [class.closed]="!isCounterOpen"><span class="status-indicator"></span> {{ isCounterOpen ? 'Quầy đang hoạt động' : 'Quầy đã đóng cửa' }}</div>
   </div>
@@ -14,15 +13,16 @@
     <span *ngIf="lastOperation">Mã giao dịch: {{ lastOperation.operationId }}</span>
   </div>
 
-  <div class="pos-grid" [class.return-mode]="activeTab === 'return'" [class.pending-mode]="activeTab === 'borrow' && borrowMode === 'pending'">
+  <div class="pos-grid" *ngIf="activeTab === 'borrow'">
     <div class="pos-panel student-panel" *ngIf="activeTab === 'borrow'">
       <div class="panel-title">1. Chọn cách tiếp nhận bạn đọc</div>
       <div class="borrow-mode-tabs">
-        <button type="button" [class.active]="borrowMode === 'approved'" (click)="switchBorrowMode('approved')">Phiếu trực tuyến đã duyệt</button>
+        <button type="button" [class.active]="borrowMode === 'approved'" (click)="switchBorrowMode('approved')">Phiếu trực tuyến đã giữ chỗ</button>
         <button type="button" [class.active]="borrowMode === 'manual'" (click)="switchBorrowMode('manual')">Lập phiếu trực tiếp tại quầy</button>
       </div>
 
       <ng-container *ngIf="borrowMode === 'approved'">
+      <p class="manual-hint">Phiếu mới được hệ thống tự động giữ chỗ. Phiếu cũ được kiểm tra lại điều kiện khi tải; thủ thư chỉ thực hiện giao sách.</p>
       <div class="scanner-input-wrapper scanner-with-camera">
         <input
           type="text"
@@ -37,7 +37,7 @@
       </div>
 
       <div class="empty-state" *ngIf="!selectedTicket">
-        <p>Nhập hoặc quét mã phiếu. Hệ thống chỉ cho phép giao sách đối với phiếu đã được thủ thư duyệt và đang chờ nhận.</p>
+        <p>Nhập hoặc quét mã phiếu. Hệ thống chỉ cho phép giao sách đối với phiếu đã được giữ chỗ và đang chờ nhận.</p>
       </div>
 
       <div class="student-card" *ngIf="selectedTicket">
@@ -49,7 +49,7 @@
           </div>
         </div>
         <div class="student-stats">
-          <div class="stat-item"><span class="stat-label">Trạng thái phiếu</span><span class="badge badge-available">Đã duyệt</span></div>
+          <div class="stat-item"><span class="stat-label">Trạng thái phiếu</span><span class="badge badge-available">Đang giữ chỗ</span></div>
           <div class="stat-item"><span class="stat-label">Loại phiếu</span><span class="stat-val">{{ selectedTicket.ticketType === 'ONSITE' ? 'Đọc tại chỗ' : 'Mượn về' }}</span></div>
           <div class="stat-item"><span class="stat-label">Cần giao đủ</span><span class="stat-val">{{ selectedTicket.items.length }} cuốn</span></div>
         </div>
@@ -80,26 +80,11 @@
         <textarea id="manual-note" maxlength="500" [(ngModel)]="manualNote" placeholder="Ví dụ: Bìa và trang sách nguyên vẹn"></textarea>
       </div>
 
-      <section class="pending-requests embedded" *ngIf="borrowMode === 'pending'">
-        <div class="pending-heading">
-          <div><h2>Yêu cầu mượn chờ duyệt</h2><p>Chọn phiếu để xem đầy đủ các tài liệu trước khi xử lý.</p></div>
-          <button type="button" class="btn-camera" (click)="loadPendingRequests()">Làm mới</button>
-        </div>
-        <div class="pending-list" *ngIf="pendingRequests.length; else noPendingRequests">
-          <article class="pending-card" *ngFor="let loan of pendingRequests">
-            <div><strong>Phiếu #{{ loan.ticketId }} · {{ loan.readerName || loan.mssv }}</strong>
-              <p>{{ loan.itemCount }} tài liệu · tạo lúc {{ loan.createdAt | date:'dd/MM/yyyy HH:mm' }}</p></div>
-            <button type="button" class="btn-scan" (click)="openDecision(loan)" [disabled]="decisionLoadingTicketId === loan.ticketId">
-              {{ decisionLoadingTicketId === loan.ticketId ? 'Đang tải...' : 'Xem & xử lý' }}
-            </button>
-          </article>
-        </div>
-        <ng-template #noPendingRequests><p class="empty-state">Không có yêu cầu nào đang chờ duyệt.</p></ng-template>
-      </section>
+
     </div>
 
-    <div class="pos-panel cart-panel" *ngIf="activeTab === 'return' || borrowMode !== 'pending'">
-      <div class="panel-title">{{ activeTab === 'borrow' ? '2. Quét barcode các bản sao trong phiếu' : '1. Quét barcode sách trả' }}</div>
+    <div class="pos-panel cart-panel">
+      <div class="panel-title">2. Quét barcode các bản sao trong phiếu</div>
       <div class="scanner-input-wrapper scanner-with-camera">
         <input
           type="text"
@@ -109,7 +94,7 @@
           [disabled]="isScanningBook || isSubmitting"
           placeholder="Quét hoặc nhập barcode bản sao">
         <button class="btn-scan" type="button" (click)="scanBookBarcode()" [disabled]="isScanningBook || isSubmitting">
-          {{ isSubmitting && activeTab === 'return' ? 'Đang lập phiếu trả...' : (isScanningBook ? 'Đang kiểm tra...' : 'Thêm') }}
+          {{ isScanningBook ? 'Đang kiểm tra...' : 'Thêm' }}
         </button>
         <button class="btn-camera" type="button" (click)="startCamera('barcode')" [disabled]="isSubmitting" title="Quét barcode bằng camera">Camera</button>
       </div>
@@ -117,14 +102,12 @@
       <div class="cart-container">
         <div class="empty-state" *ngIf="scannedBooks.length === 0">
           <p *ngIf="activeTab === 'borrow'">Chưa có bản sao hợp lệ nào trong giao dịch.</p>
-          <p *ngIf="activeTab === 'return'">Mỗi barcode hợp lệ sẽ được tự động lập phiếu trả và cập nhật về kho ngay sau khi quét.</p>
         </div>
         <div class="cart-items" *ngIf="scannedBooks.length > 0">
           <div class="cart-item" *ngFor="let item of scannedBooks">
             <div class="item-info">
               <h4>{{ item.displayTitle }}</h4>
               <p>Barcode: {{ item.barcode }} · Trạng thái: {{ item.status }}</p>
-              <p *ngIf="activeTab === 'return' && item.loanTicketId">Thuộc phiếu mượn #{{ item.loanTicketId }}</p>
               <p *ngIf="item.location">Vị trí: {{ item.location }}</p>
             </div>
             <button class="remove-btn" type="button" (click)="removeBook(item.barcode)">Xóa</button>
@@ -132,16 +115,10 @@
         </div>
       </div>
 
-      <div class="return-note" *ngIf="activeTab === 'return'">
-        <label for="return-note">Ghi chú tình trạng khi trả</label>
-        <textarea id="return-note" maxlength="500" [(ngModel)]="returnConditionNote" placeholder="Ví dụ: Bìa và trang sách nguyên vẹn"></textarea>
-      </div>
-
       <div class="pos-footer">
         <div class="pos-summary" *ngIf="activeTab === 'borrow'"><span>Tổng số lượng tài liệu:</span><span class="summary-total">{{ scannedBooks.length }} cuốn</span></div>
-        <div class="pos-summary" *ngIf="activeTab === 'return'"><span>Chế độ:</span><span class="summary-total">Tự động ghi nhận từng cuốn</span></div>
         <div class="pos-actions">
-          <button class="btn-cancel" type="button" (click)="resetForm()">Hủy bỏ</button>
+          <button class="btn-cancel" type="button" (click)="resetForm()" [disabled]="isSubmitting">Hủy bỏ</button>
           <button class="btn-checkout" type="button" *ngIf="activeTab === 'borrow'" [disabled]="!canSubmit || !isCounterOpen" (click)="completeTransaction()">
             {{ isSubmitting ? 'ĐANG XỬ LÝ...' : (borrowMode === 'manual' ? 'LẬP PHIẾU & CHO MƯỢN' : 'HOÀN TẤT MƯỢN SÁCH') }}
           </button>
@@ -150,24 +127,7 @@
     </div>
   </div>
 
-  <div class="camera-backdrop" *ngIf="decisionLoan" (click)="closeDecision()">
-    <section class="camera-dialog decision-dialog" (click)="$event.stopPropagation()">
-      <div class="camera-heading"><div><h3>Xử lý phiếu #{{ decisionLoan.ticketId }}</h3><p>{{ decisionLoan.readerName || decisionLoan.mssv }} · {{ decisionLoan.items.length }} tài liệu</p></div><button type="button" (click)="closeDecision()">×</button></div>
-      <div class="decision-items">
-        <article *ngFor="let item of decisionLoan.items">
-          <div><strong>{{ item.bookTitle }}</strong><small>{{ item.author || 'Chưa có tác giả' }}</small></div>
-          <code>{{ item.barcode }}</code>
-        </article>
-        <p *ngIf="!decisionLoan.items.length">Phiếu chưa có tài liệu để xử lý.</p>
-      </div>
-      <label for="circulation-rejection">Lý do từ chối (chỉ bắt buộc khi từ chối)</label>
-      <textarea id="circulation-rejection" maxlength="500" [(ngModel)]="rejectionReason" placeholder="Nhập lý do để sinh viên nhận được thông báo rõ ràng"></textarea>
-      <div class="pos-actions">
-        <button type="button" class="btn-cancel" (click)="rejectDecision()" [disabled]="decisionInProgress">Xác nhận từ chối</button>
-        <button type="button" class="btn-checkout" (click)="approveDecision()" [disabled]="decisionInProgress || !isCounterOpen">Duyệt yêu cầu</button>
-      </div>
-    </section>
-  </div>
+  <app-return-inspection [hidden]="activeTab !== 'return'" [counterOpen]="isCounterOpen" [initialTicketId]="returnInitialTicketId" (scanRequested)="startCamera('barcode')" (lockChanged)="returnLocked = $event"></app-return-inspection>
 
   <div class="camera-backdrop" *ngIf="showCamera" (click)="stopCamera()">
     <section class="camera-dialog" (click)="$event.stopPropagation()">

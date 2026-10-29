@@ -88,3 +88,8 @@ td small { margin-top: 4px; color: #64748b; }
 @media (max-width: 520px) {
   .history-panel, .summary-grid { grid-template-columns: 1fr; }
 }
+.workspace-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0; }
+.workspace-tabs button, .disposal-entry button { font: inherit; background: white; border: 1px solid #94a3b8; border-radius: 6px; padding: 9px 12px; cursor: pointer; }
+.workspace-tabs button[aria-pressed="true"] { background: #e0f2fe; border-color: #0284c7; color: #075985; }
+.disposal-entry { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px; }
+.disposal-entry button:disabled { opacity: .5; cursor: default; }

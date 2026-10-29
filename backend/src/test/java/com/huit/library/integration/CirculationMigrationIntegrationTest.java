@@ -41,6 +41,27 @@ class CirculationMigrationIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
+    void importLocationMigrationPreservesLegacyNullsAndCreatesForeignKeyLinks() {
+        assertThat(jdbcTemplate.queryForObject("SELECT is_nullable FROM information_schema.columns WHERE table_name='receipt_details' AND column_name='shelf_id'", String.class)).isEqualTo("YES");
+        assertThat(jdbcTemplate.queryForObject("SELECT character_maximum_length FROM information_schema.columns WHERE table_name='receipt_details' AND column_name='location_path'", Integer.class)).isEqualTo(1000);
+        assertThat(jdbcTemplate.queryForObject("SELECT is_nullable FROM information_schema.columns WHERE table_name='book_copies' AND column_name='receipt_detail_id'", String.class)).isEqualTo("YES");
+        assertThatThrownBy(() -> jdbcTemplate.update("INSERT INTO receipt_details (shelf_id) VALUES (9223372036854775807)"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void inspectionReceiptMigrationAddsNullableTextWithoutChangingLegacyOperations() {
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT data_type FROM information_schema.columns
+                WHERE table_name = 'circulation_operations' AND column_name = 'result_payload'
+                """, String.class)).isEqualTo("text");
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_name = 'circulation_operations' AND column_name = 'result_payload'
+                """, String.class)).isEqualTo("YES");
+    }
+
+    @Test
     void migrationNormalizesLegacyValuesAndCreatesAuditSchema() {
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT ticket_type FROM loan_tickets LIMIT 1", String.class)).isEqualTo("BORROW");

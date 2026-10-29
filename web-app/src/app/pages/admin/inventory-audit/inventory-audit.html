@@ -10,6 +10,12 @@
     </button>
   </header>
 
+  <div class="workspace-tabs" role="group" aria-label="Chế độ kiểm kê">
+    <button (click)="view = 'audit'" [attr.aria-pressed]="view === 'audit'">Kiểm kê</button>
+    <button (click)="showDisposals()" [attr.aria-pressed]="view === 'disposals'">Hồ sơ xử lý sách cũ</button>
+  </div>
+  <app-disposal-workspace *ngIf="disposalsLoaded" [hidden]="view !== 'disposals'" [auditId]="disposalAuditId"></app-disposal-workspace>
+  <div [hidden]="view !== 'audit'">
   <div *ngIf="successMessage" class="message success">{{ successMessage }}</div>
   <div *ngIf="errorMessage" class="message error">{{ errorMessage }}</div>
 
@@ -96,6 +102,7 @@
         </div>
 
         <section class="results-panel">
+          <div class="disposal-entry"><button (click)="showDisposals(true)" [disabled]="isLoading || isSubmitting || audit.status !== 'COMPLETED'">Lập đề xuất xử lý từ phiên này</button><small *ngIf="audit.status !== 'COMPLETED'">Hoàn tất phiên kiểm kê để khóa nguồn trước khi lập đề xuất.</small></div>
           <div class="panel-title">
             <h2>Chi tiết đã quét</h2>
             <span>{{ audit.details.length }}</span>
@@ -137,5 +144,6 @@
         </div>
       </ng-template>
     </main>
+  </div>
   </div>
 </section>

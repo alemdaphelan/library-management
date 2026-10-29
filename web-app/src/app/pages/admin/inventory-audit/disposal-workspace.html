@@ -1,0 +1,89 @@
+<section class="disposals" aria-label="Hồ sơ xử lý sách cũ">
+  <h2>Đề xuất xử lý sách cũ</h2>
+  <p class="notice">Phần quyết định Admin đang chờ triển khai. Lập/gửi hồ sơ không sửa, chuyển, thanh lý hay hủy thực tế bản sao.</p>
+  <section class="card">
+    <h3>Lập từ kết quả kiểm kê</h3>
+    <p>Chọn bản sao từ phiên đã hoàn tất; nhập tình trạng/lý do riêng từng bản. Chứng cứ dùng URL http/https, không tải tệp lên ở bước này.</p>
+    <fieldset class="source-toolbar" [disabled]="busy || !!pending">
+      <label>Phiên kiểm kê nguồn<select [(ngModel)]="sourceAuditId" aria-label="Phiên nguồn xử lý"><option [ngValue]="0">Chọn phiên kiểm kê</option><option *ngFor="let a of audits" [ngValue]="a.auditId">#{{ a.auditId }} — {{ a.status === 'COMPLETED' ? 'Hoàn tất' : 'Đang kiểm kê' }}</option></select></label>
+      <button type="button" (click)="loadSources()" [disabled]="!sourceAuditId">Tải lại nguồn / chọn lại</button>
+    </fieldset>
+    <p *ngIf="auditError" class="error" role="alert">{{ auditError }} <button (click)="loadAudits()" [disabled]="loadingAudits">Tải lại phiên</button></p>
+    <p *ngIf="loadingSources" role="status">Đang kiểm tra nguồn và trạng thái bản sao…</p>
+    <p *ngIf="sourceError" class="error" role="alert">{{ sourceError }}</p>
+    <div *ngIf="pending as request" class="notice pending-request" role="status">
+      <strong>Yêu cầu lập nháp chưa rõ kết quả</strong><div>Phiên #{{ request.auditId }} · {{ request.lines.length }} bản sao · mã {{ request.requestId }}</div>
+      <div *ngFor="let line of request.lines">{{ line.barcode }} — {{ actionLabel(line.proposedAction) }}</div>
+      <button (click)="sendPending()" [disabled]="busy">Gửi lại nguyên yêu cầu lập nháp</button>
+    </div>
+    <fieldset [disabled]="busy || !!pending" class="draft-lines">
+      <p *ngIf="loadedAuditId">Nguồn phiên #{{ loadedAuditId }} · đã chọn {{ selectedCount }} / 50. Đổi phiên cần tải nguồn lại.</p>
+      <article *ngFor="let row of rows; let i = index" class="draft-row" [class.blocked]="!row.candidate.eligible">
+        <label class="choose"><input type="checkbox" [(ngModel)]="row.selected" [disabled]="!row.candidate.eligible" [attr.aria-label]="'Chọn ' + row.candidate.source.barcode">
+          <strong>{{ row.candidate.source.barcode }}</strong> — {{ row.candidate.source.bookTitle || 'Không nhận diện đầu sách' }}</label>
+        <p>Trạng thái hiện tại: {{ row.candidate.source.copyStatus || 'Không có bản sao' }} · {{ row.candidate.source.location || 'Chưa xếp vị trí' }} · quét {{ row.candidate.source.scannedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+        <div *ngFor="let blocker of row.candidate.blockers" class="error">{{ blocker }}</div>
+        <button *ngIf="row.candidate.activeProposalId" (click)="openDetail(row.candidate.activeProposalId)">Mở hồ sơ đang hoạt động</button>
+        <div *ngIf="row.selected" class="line-fields">
+          <label>Tình trạng thực tế *<textarea [(ngModel)]="row.observedCondition" maxlength="1000" rows="2" [attr.aria-label]="'Tình trạng ' + row.candidate.source.barcode"></textarea></label>
+          <label>Nhóm lý do<select [(ngModel)]="row.reasonCode" [attr.aria-label]="'Lý do nhóm ' + row.candidate.source.barcode"><option *ngFor="let r of reasons" [value]="r.code">{{ r.label }}</option></select></label>
+          <label>Phương án đề xuất<select [(ngModel)]="row.proposedAction" [attr.aria-label]="'Phương án ' + row.candidate.source.barcode"><option *ngFor="let a of actions" [value]="a.code">{{ a.label }}</option></select></label>
+          <label>Lý do chi tiết *<textarea [(ngModel)]="row.reason" maxlength="1000" rows="2" [attr.aria-label]="'Lý do ' + row.candidate.source.barcode"></textarea></label>
+          <label class="wide">URL chứng cứ (tùy chọn)<input type="url" [(ngModel)]="row.evidenceUrl" maxlength="1000" [attr.aria-label]="'Chứng cứ ' + row.candidate.source.barcode" placeholder="https://…"></label>
+        </div>
+      </article>
+      <p *ngIf="loadedAuditId && !rows.length">Phiên này chưa có dòng quét nào để đề xuất.</p>
+      <div class="actions" *ngIf="rows.length"><button class="primary" (click)="saveDrafts()" [disabled]="!selectedCount || selectedCount > 50 || sourceAuditId !== loadedAuditId">Lập hồ sơ nháp đã chọn</button><button (click)="cancelForm()">Hủy form chưa gửi</button></div>
+    </fieldset>
+    <p *ngIf="formError" class="error" role="alert">{{ formError }}</p>
+  </section>
+  <p *ngIf="message" class="success" role="status">{{ message }}</p>
+  <section class="card">
+    <h3>Danh sách hồ sơ</h3>
+    <fieldset class="list-filters" [disabled]="loadingList || saving">
+      <label>Trạng thái<select [(ngModel)]="filters.status" aria-label="Lọc trạng thái hồ sơ"><option value="">Tất cả</option><option value="DRAFT">Nháp</option><option value="SUBMITTED">Đã gửi</option><option value="CANCELLED">Đã hủy hồ sơ</option></select></label>
+      <label>Mã phiên<input [(ngModel)]="filters.auditId" inputmode="numeric" aria-label="Lọc phiên hồ sơ"></label>
+      <label>Barcode chính xác<input [(ngModel)]="filters.barcode" maxlength="255" aria-label="Lọc barcode hồ sơ"></label>
+      <button (click)="applyFilters()">Lọc / Làm mới hồ sơ</button>
+    </fieldset>
+    <p *ngIf="listDirty" class="notice">Áp dụng bộ lọc mới trước khi chuyển trang.</p>
+    <p *ngIf="loadingList" role="status">Đang tải hồ sơ…</p><p *ngIf="listError" class="error" role="alert">{{ listError }}</p>
+    <ng-container *ngIf="list as result">
+      <p>{{ result.total }} hồ sơ</p>
+      <div class="table-scroll"><table><thead><tr><th>Barcode / Sách</th><th>Đề xuất / Trạng thái</th><th>Người lập / Ngày</th><th>Chi tiết</th></tr></thead><tbody>
+        <tr *ngFor="let p of result.items"><td><strong>{{ p.barcode }}</strong><div>{{ p.bookTitle }}</div><small>Phiên #{{ p.auditId }}</small></td><td>{{ actionLabel(p.proposedAction) }}<div>{{ statusLabel(p.status) }}</div></td><td>{{ p.createdByName }}<div>{{ p.createdAt | date:'dd/MM/yyyy HH:mm' }}</div></td><td><button (click)="openDetail(p.proposalId)" [disabled]="busy">Xem hồ sơ {{ p.barcode }}</button></td></tr>
+        <tr *ngIf="!result.items.length"><td colspan="4">Không có hồ sơ phù hợp.</td></tr>
+      </tbody></table></div>
+      <nav class="actions" aria-label="Trang hồ sơ"><button (click)="changePage(result.page - 1)" [disabled]="loadingList || listDirty || result.page === 0">Trước</button><span>Trang {{ result.page + 1 }} / {{ totalPages }}</span><button (click)="changePage(result.page + 1)" [disabled]="loadingList || listDirty || result.page + 1 >= totalPages">Sau</button></nav>
+    </ng-container>
+  </section>
+  <section class="card detail-card" *ngIf="selectedDetailId">
+    <div class="detail-heading"><h3>Chi tiết hồ sơ</h3><button (click)="reloadDetail()" [disabled]="busy">Tải lại chi tiết</button></div>
+    <p *ngIf="loadingDetail" role="status">Đang đọc hồ sơ đã lưu…</p><p *ngIf="detailError" class="error" role="alert">{{ detailError }}</p>
+    <ng-container *ngIf="detail as d">
+      <p class="reference">{{ d.item.proposalId }}</p><h4>{{ d.item.barcode }} — {{ d.item.bookTitle }}</h4>
+      <p>{{ statusLabel(d.item.status) }} · phiên bản {{ d.item.version }} · {{ d.item.createdByName }} · {{ d.item.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+      <div class="notice">Chưa ghi nhận kết quả sửa/chuyển/thanh lý/hủy thực tế có thẩm quyền. Luồng quyết định Admin đang chờ triển khai.</div>
+      <h4>Nguồn đã lưu khi lập/xác nhận nháp</h4>
+      <p>Phiên #{{ d.saved.source.auditId }} · dòng {{ d.saved.source.detailId }} · {{ d.saved.source.scanStatus }} · quét {{ d.saved.source.scannedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+      <p>Vị trí: {{ d.saved.source.location || 'Chưa có' }} · trạng thái: {{ d.saved.source.copyStatus }} · ghi chú bản sao: {{ d.saved.source.conditionNote || 'Không có' }}</p>
+      <p *ngFor="let blocker of d.current.blockers" class="error">Hiện tại: {{ blocker }}</p>
+      <p *ngIf="d.canEdit && d.current.eligible && !d.canSubmit" class="notice">Nguồn kiểm kê/bản sao đã đổi. Đối chiếu dữ liệu hiện tại, lưu nháp để xác nhận lại trước khi gửi.</p>
+      <details><summary>Dữ liệu nguồn hiện tại</summary><p>{{ d.current.source.copyStatus }} · {{ d.current.source.location || 'Chưa xếp vị trí' }} · {{ d.current.source.conditionNote || 'Không có ghi chú' }} · vị trí quét {{ d.current.source.scannedLocation || 'Không nhập' }}</p></details>
+      <fieldset class="line-fields" [disabled]="busy || !d.canEdit || !d.current.eligible || detailUncertain">
+        <label>Tình trạng thực tế *<textarea [(ngModel)]="editFields.observedCondition" maxlength="1000" rows="3" aria-label="Sửa tình trạng hồ sơ"></textarea></label>
+        <label>Nhóm lý do<select [(ngModel)]="editFields.reasonCode" aria-label="Sửa nhóm lý do"><option *ngFor="let r of reasons" [value]="r.code">{{ r.label }}</option></select></label>
+        <label>Phương án đề xuất<select [(ngModel)]="editFields.proposedAction" aria-label="Sửa phương án"><option *ngFor="let a of actions" [value]="a.code">{{ a.label }}</option></select></label>
+        <label>Lý do chi tiết *<textarea [(ngModel)]="editFields.reason" maxlength="1000" rows="3" aria-label="Sửa lý do hồ sơ"></textarea></label>
+        <label class="wide">URL chứng cứ<input type="url" [(ngModel)]="editFields.evidenceUrl" maxlength="1000" aria-label="Sửa chứng cứ hồ sơ"></label>
+      </fieldset>
+      <a *ngIf="d.saved.evidenceUrl" [href]="d.saved.evidenceUrl" target="_blank" rel="noopener noreferrer">Mở chứng cứ đã lưu</a>
+      <div class="actions"><button *ngIf="d.canEdit" (click)="saveEdit()" [disabled]="busy || !d.current.eligible || detailUncertain">Lưu nháp / xác nhận nguồn</button><button class="primary" *ngIf="d.canEdit" (click)="transition(true)" [disabled]="busy || !d.canSubmit || detailUncertain || editDirty">Gửi đề xuất đã lưu</button><button *ngIf="d.canCancel" (click)="transition(false)" [disabled]="busy || detailUncertain">Hủy hồ sơ</button></div>
+      <p *ngIf="d.canEdit">Nút gửi dùng nội dung đã lưu. Nếu sửa các ô trên, lưu nháp trước khi gửi.</p>
+      <h4>Lịch sử hồ sơ</h4>
+      <ol class="history"><li *ngFor="let h of d.history"><strong>{{ eventLabel(h.eventType) }}</strong> · v{{ h.version }} · {{ h.actorName }} · {{ h.at | date:'dd/MM/yyyy HH:mm:ss' }}
+        <details><summary>Xem nội dung và nguồn của lần này</summary><p>{{ actionLabel(h.after.proposedAction) }} · {{ reasonLabel(h.after.reasonCode) }} · {{ h.after.observedCondition }} · {{ h.after.reason }}</p><p>Nguồn phiên #{{ h.after.source.auditId }} · {{ h.after.source.barcode }} · {{ h.after.source.copyStatus }} · {{ h.after.source.location || 'Chưa xếp vị trí' }}</p><p *ngIf="h.before">Trước: {{ h.before.observedCondition }} · {{ h.before.reason }} · {{ statusLabel(h.before.status) }}</p></details>
+      </li></ol>
+    </ng-container>
+  </section>
+</section>

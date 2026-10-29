@@ -1,6 +1,7 @@
 package com.huit.library.modules.circulation.service;
 
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
+import com.huit.library.modules.catalog.entity.BookCopyEntity;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.BorrowEligibilityDTO;
@@ -90,24 +91,52 @@ public class CirculationStateService {
 
     @Transactional
     public LoanStateResponseDTO approveReservation(Long ticketId, UUID operatorId) {
-        libraryHoursService.requireCounterOpen("duyệt yêu cầu mượn");
+        // Compatibility endpoint for old clients and tickets. Approval is now automatic;
+        // the authenticated caller triggers validation, not a discretionary staff decision.
         LoanTicketEntity ticket = findTicket(ticketId);
         LoanTicketStatus currentStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
-        if (!stateMachine.canTransition(currentStatus, LoanTicketStatus.RESERVED)) {
+        if (currentStatus != LoanTicketStatus.PENDING && currentStatus != LoanTicketStatus.RESERVED) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Không thể chuyển phiếu mượn từ " + currentStatus + " sang " + LoanTicketStatus.RESERVED);
         }
-        userRepository.findByIdForUpdate(ticket.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
+        ensureNoDebtOrOverdue(ticket.getUserId());
         ensureCurrentOpenItemsWithinLimit(ticket.getUserId());
+        List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticketId);
+        if (details.isEmpty() || details.size() > MAX_OPEN_ITEMS
+                || details.stream().anyMatch(detail -> detail.getBarcode() == null
+                    || detail.getReturnDate() != null
+                    || LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus()) != LoanDetailStatus.PENDING)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phiếu cũ không còn đủ tài liệu hợp lệ để giữ chỗ");
+        }
+        List<String> barcodes = details.stream().map(LoanDetailEntity::getBarcode).sorted().toList();
+        var copies = bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
+        LocalDateTime now = LocalDateTime.now();
+        if (new LinkedHashSet<>(barcodes).size() != details.size() || copies.size() != details.size()
+                || copies.stream().anyMatch(copy -> !"RESERVED".equalsIgnoreCase(copy.getStatus())
+                    || !Objects.equals(copy.getLockedByUser(), ticket.getUserId())
+                    || copy.getLockedUntil() == null || !copy.getLockedUntil().isAfter(now))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Giữ chỗ đã hết hạn hoặc bản sao không còn được giữ cho phiếu");
+        }
+        if (currentStatus == LoanTicketStatus.RESERVED) {
+            return LoanStateResponseDTO.builder()
+                    .ticketId(ticketId).previousStatus(currentStatus).status(currentStatus)
+                    .message("Phiếu đã được hệ thống giữ chỗ; có thể giao sách tại quầy.")
+                    .changedAt(now).build();
+        }
+        return autoApproveReservation(ticket);
+    }
+
+    /** Called inside the reservation transaction after eligibility and copy locks are established. */
+    @Transactional
+    public LoanStateResponseDTO autoApproveReservation(LoanTicketEntity ticket) {
         LoanStateResponseDTO response = transition(
-                ticket, LoanTicketStatus.RESERVED, operatorId, "Đã duyệt yêu cầu đặt giữ");
+                ticket, LoanTicketStatus.RESERVED, null, "Hệ thống tự động duyệt và giữ chỗ");
         notificationService.createOnce(
                 ticket.getUserId(),
                 "LOAN_APPROVED",
                 "Yêu cầu mượn #" + ticket.getTicketId()
-                        + " đã được duyệt. Vui lòng đến quầy nhận tài liệu trong thời hạn giữ chỗ.",
+                        + " đã được hệ thống tự động giữ chỗ. Vui lòng đến quầy nhận tài liệu trong thời hạn giữ chỗ.",
                 "LOAN_TICKET",
                 ticket.getTicketId().toString(),
                 "LOAN_APPROVED:" + ticket.getTicketId(),
@@ -272,6 +301,9 @@ public class CirculationStateService {
 
         transition(ticket, LoanTicketStatus.BORROWING, operatorId, "Đã giao sách tại quầy");
         for (LoanDetailEntity detail : detailsByBarcode.values()) {
+            detail.setCheckoutAt(checkoutAt);
+            detail.setCheckoutTimeSource("LIVE_CHECKOUT");
+            detail.setCirculationBookId(copies.stream().filter(c -> c.getBarcode().equals(detail.getBarcode())).findFirst().orElseThrow().getBookId());
             detail.setReturnStatus(LoanDetailStatus.BORROWING.name());
             detail.setDueDate(dueAt);
             loanDetailRepository.save(detail);
@@ -358,6 +390,9 @@ public class CirculationStateService {
             detail.setTicketId(ticket.getTicketId());
             detail.setBarcode(copy.getBarcode());
             detail.setCheckoutConditionNote(conditionNote);
+            detail.setCheckoutAt(checkoutAt);
+            detail.setCheckoutTimeSource("LIVE_CHECKOUT");
+            detail.setCirculationBookId(copy.getBookId());
             detail.setReturnStatus(LoanDetailStatus.BORROWING.name());
             detail.setDueDate(dueAt);
             loanDetailRepository.save(detail);
@@ -388,76 +423,51 @@ public class CirculationStateService {
             return replay;
         }
 
-        List<com.huit.library.modules.catalog.entity.BookCopyEntity> copies =
-                bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
-        replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
-        if (replay != null) {
-            return replay;
-        }
-        if (copies.size() != barcodes.size()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ bản sao cần trả");
-        }
-
-        List<LoanDetailEntity> activeDetails = loanDetailRepository.findActiveByBarcodesForUpdate(barcodes);
-        if (activeDetails.size() != barcodes.size()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
+        // Discover identifiers without loading stale mutable entities before waiting for locks.
+        var targets = loanDetailRepository.findActiveReturnTargets(barcodes);
+        if (targets.size() != barcodes.size()) {
+            replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
+            if (replay != null) return replay;
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Một hoặc nhiều barcode không có lượt mượn đang hoạt động");
+        }
+        List<Long> ticketIds = targets.stream().map(com.huit.library.modules.circulation.dto.ReturnTarget::ticketId)
+                .distinct().sorted().toList();
+        Map<Long, LoanTicketEntity> tickets = new java.util.LinkedHashMap<>();
+        for (Long ticketId : ticketIds) tickets.put(ticketId, findTicket(ticketId));
+        replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
+        if (replay != null) return replay;
+
+        List<LoanDetailEntity> activeDetails = new java.util.ArrayList<>();
+        for (Long ticketId : ticketIds) {
+            if (!List.of("BORROWING", "OVERDUE").contains(tickets.get(ticketId).getStatus())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phiếu không ở trạng thái đang mượn");
+            }
+            loanDetailRepository.findByTicketIdForUpdate(ticketId).stream()
+                    .filter(detail -> barcodes.contains(detail.getBarcode()) && detail.getReturnDate() == null
+                            && List.of("BORROWING", "OVERDUE").contains(detail.getReturnStatus()))
+                    .forEach(activeDetails::add);
+        }
+        if (activeDetails.size() != barcodes.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã được xử lý bởi giao dịch khác");
         }
         Map<String, LoanDetailEntity> detailsByBarcode = activeDetails.stream()
                 .collect(Collectors.toMap(LoanDetailEntity::getBarcode, Function.identity()));
-        for (var copy : copies) {
-            if (!detailsByBarcode.containsKey(copy.getBarcode())
-                    || !("BORROWING".equalsIgnoreCase(copy.getStatus())
-                    || "OVERDUE".equalsIgnoreCase(copy.getStatus()))) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "Bản sao " + copy.getBarcode() + " không ở trạng thái đang mượn");
-            }
+        List<BookCopyEntity> copies = bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
+        if (copies.size() != barcodes.size() || copies.stream().anyMatch(copy ->
+                !detailsByBarcode.containsKey(copy.getBarcode())
+                || !List.of("BORROWING", "OVERDUE").contains(copy.getStatus()))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bản sao không ở trạng thái đang mượn");
         }
-
-        List<Long> ticketIds = activeDetails.stream()
-                .map(LoanDetailEntity::getTicketId)
-                .distinct()
-                .sorted()
-                .toList();
-        Map<Long, LoanTicketEntity> tickets = ticketIds.stream()
-                .map(ticketId -> loanTicketRepository.findByIdForUpdate(ticketId)
-                        .orElseThrow(() -> new ResponseStatusException(
-                                HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + ticketId)))
-                .collect(Collectors.toMap(LoanTicketEntity::getTicketId, Function.identity()));
 
         LocalDateTime returnedAt = LocalDateTime.now();
         BigDecimal totalAdditionalFine = BigDecimal.ZERO;
-        for (LoanDetailEntity detail : activeDetails) {
-            totalAdditionalFine = totalAdditionalFine.add(
-                    lateFineService.accrueLateFine(tickets.get(detail.getTicketId()), detail, returnedAt));
-            detail.setReturnStatus(LoanDetailStatus.RETURNED.name());
-            detail.setReturnDate(returnedAt);
-            detail.setReturnConditionNote(note.isBlank() ? null : note);
-            loanDetailRepository.save(detail);
+        for (BookCopyEntity copy : copies) {
+            LoanDetailEntity detail = detailsByBarcode.get(copy.getBarcode());
+            totalAdditionalFine = totalAdditionalFine.add(receiveNormalReturn(
+                    tickets.get(detail.getTicketId()), detail, copy, note, returnedAt));
         }
-        for (var copy : copies) {
-            copy.setStatus("AVAILABLE");
-            copy.setLockedByUser(null);
-            copy.setLockedUntil(null);
-            if (!note.isBlank()) {
-                copy.setConditionNote(note);
-            }
-            bookCopyRepository.save(copy);
-            waitlistService.promoteNext(copy, returnedAt);
-        }
-
-        for (Long ticketId : ticketIds) {
-            List<LoanDetailEntity> ticketDetails = loanDetailRepository.findByTicketIdForUpdate(ticketId);
-            boolean fullyReturned = ticketDetails.stream().allMatch(detail -> {
-                LoanDetailStatus detailStatus = LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus());
-                return detailStatus == LoanDetailStatus.RETURNED || detailStatus == LoanDetailStatus.CANCELLED;
-            });
-            if (fullyReturned) {
-                transition(tickets.get(ticketId), LoanTicketStatus.RETURNED, operatorId, "Đã nhận đủ sách trả tại quầy");
-            }
-        }
+        completeReturnedTickets(tickets.values().stream().toList(), operatorId);
 
         return recordOperation(
                 request.getIdempotencyKey(), requestHash, "RETURN",
@@ -466,6 +476,37 @@ public class CirculationStateService {
                         + (totalAdditionalFine.signum() > 0
                         ? "; phát sinh phí trễ " + totalAdditionalFine.toPlainString() + " đồng"
                         : ""));
+    }
+
+    /** Caller has locked the ticket, details and copy in that order inside a transaction. */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public BigDecimal receiveNormalReturn(LoanTicketEntity ticket, LoanDetailEntity detail,
+            BookCopyEntity copy, String note, LocalDateTime returnedAt) {
+        BigDecimal additionalFine = lateFineService.accrueLateFine(ticket, detail, returnedAt);
+        detail.setReturnStatus(LoanDetailStatus.RETURNED.name());
+        detail.setReturnDate(returnedAt);
+        detail.setPhysicalReturnAt(returnedAt);
+        detail.setPhysicalReturnTimeSource("LIVE_COUNTER_RETURN");
+        detail.setReturnConditionNote(note == null || note.isBlank() ? null : note.trim());
+        loanDetailRepository.save(detail);
+        copy.setStatus("AVAILABLE");
+        copy.setLockedByUser(null);
+        copy.setLockedUntil(null);
+        if (note != null && !note.isBlank()) copy.setConditionNote(note.trim());
+        bookCopyRepository.save(copy);
+        waitlistService.promoteNext(copy, returnedAt);
+        return additionalFine;
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void completeReturnedTickets(List<LoanTicketEntity> tickets, UUID operatorId) {
+        for (LoanTicketEntity ticket : tickets) {
+            boolean completed = loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId()).stream()
+                    .allMatch(detail -> List.of("RETURNED", "CANCELLED", "SETTLED").contains(detail.getReturnStatus()));
+            if (completed && !"RETURNED".equals(ticket.getStatus())) {
+                transition(ticket, LoanTicketStatus.RETURNED, operatorId, "Đã nhận đủ sách trả tại quầy");
+            }
+        }
     }
 
     private LoanStateResponseDTO transition(

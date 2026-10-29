@@ -121,6 +121,19 @@ describe('CirculationService', () => {
     returnRequest.flush({});
   });
 
+  it('submits the complete inspection once with the caller-owned retry key', () => {
+    const payload = {
+      idempotencyKey: 'inspection-key',
+      items: [{ loanDetailId: 29, condition: 'NORMAL' as const, returnConditionNote: 'Nguyên vẹn' }],
+    };
+    service.inspectReturn(payload).subscribe();
+    const request = httpTesting.expectOne(`${apiUrl}/return-inspection`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(payload);
+    httpTesting.expectNone(`${apiUrl}/return`);
+    request.flush({ operationId: 'receipt-1', items: [], tickets: [], balances: [] });
+  });
+
   it('encodes a physical copy barcode before lookup', () => {
     service.getBookCopyByBarcode('BC/001').subscribe();
 

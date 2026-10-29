@@ -13,7 +13,8 @@ import com.huit.library.modules.dashboard.dto.DashboardStatsDTO;
 import com.huit.library.modules.dashboard.dto.RecentActivityDTO;
 import com.huit.library.modules.dashboard.dto.TrendingBookDTO;
 import com.huit.library.modules.dashboard.dto.WeeklyStatDTO;
-import com.huit.library.modules.finance.repository.TransactionRepository;
+import com.huit.library.modules.dashboard.repository.FinanceAnalyticsRepository;
+import com.huit.library.modules.dashboard.repository.CirculationAnalyticsRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +36,8 @@ public class DashboardService {
     private final LoanTicketRepository loanTicketRepository;
     private final LoanDetailRepository loanDetailRepository;
     private final UserRepository userRepository;
-    private final TransactionRepository transactionRepository;
+    private final FinanceAnalyticsRepository financeAnalytics;
+    private final CirculationAnalyticsRepository analytics;
 
     public DashboardService(
             BookCopyRepository bookCopyRepository,
@@ -43,24 +45,25 @@ public class DashboardService {
             LoanTicketRepository loanTicketRepository,
             LoanDetailRepository loanDetailRepository,
             UserRepository userRepository,
-            TransactionRepository transactionRepository) {
+            FinanceAnalyticsRepository financeAnalytics, CirculationAnalyticsRepository analytics) {
         this.bookCopyRepository = bookCopyRepository;
         this.bookRepository = bookRepository;
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.userRepository = userRepository;
-        this.transactionRepository = transactionRepository;
+        this.financeAnalytics = financeAnalytics;
+        this.analytics = analytics;
     }
 
     public DashboardStatsDTO getStats() {
         LocalDateTime now = LocalDateTime.now();
-        BigDecimal fineCollected = transactionRepository.sumAmountByType("FINE");
+        BigDecimal fineCollected = financeAnalytics.lifetimeMoneyReceived();
         return new DashboardStatsDTO(
                 bookCopyRepository.count(),
                 bookCopyRepository.countByStatus("AVAILABLE"),
-                bookCopyRepository.countByStatus("BORROWED"),
+                bookCopyRepository.countByStatus("BORROWED") + bookCopyRepository.countByStatus("BORROWING") + bookCopyRepository.countByStatus("OVERDUE"),
                 bookCopyRepository.countByStatus("RESERVED"),
-                loanDetailRepository.countByReturnDateIsNullAndDueDateBefore(now),
+                analytics.currentOverdueCount(now),
                 fineCollected == null ? BigDecimal.ZERO : fineCollected,
                 now);
     }
@@ -68,13 +71,7 @@ public class DashboardService {
     public List<WeeklyStatDTO> getWeeklyStats() {
         LocalDate today = LocalDate.now();
         LocalDate firstDay = today.minusDays(6);
-        List<LoanTicketEntity> tickets = loanTicketRepository
-                .findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                        firstDay.atStartOfDay(), today.plusDays(1).atStartOfDay());
-
-        Map<LocalDate, Long> countByDate = tickets.stream()
-                .filter(ticket -> ticket.getCreatedAt() != null)
-                .collect(Collectors.groupingBy(ticket -> ticket.getCreatedAt().toLocalDate(), Collectors.counting()));
+        Map<LocalDate, Long> countByDate = analytics.dailyBorrowCounts(firstDay, today.plusDays(1));
         long maximum = Math.max(1, countByDate.values().stream().mapToLong(Long::longValue).max().orElse(0));
 
         List<WeeklyStatDTO> result = new ArrayList<>();

@@ -1,0 +1,19 @@
+:host { display: block; min-width: 0; }
+.proposal-summary { background: white; padding: 22px; border: 1px solid #dbe3ed; border-radius: 12px; color: #1e293b; }
+h2 { margin-top: 0; font-size: 1.25rem; } p { color: #475569; line-height: 1.5; }
+.summary-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 0; border: 0; min-width: 0; }
+label { display: grid; gap: 6px; font-size: .9rem; flex: 1 1 150px; min-width: 0; }
+select, input, button { font: inherit; border: 1px solid #94a3b8; border-radius: 6px; padding: 9px 12px; background: white; color: #1e293b; }
+select, input { min-width: 0; width: 100%; box-sizing: border-box; }
+button { cursor: pointer; } button:disabled { opacity: .55; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid #38bdf8; outline-offset: 2px; }
+.actions, .pagination { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; }
+.export-button { background: #075985; color: white; flex-shrink: 0; }
+.summary-scroll { overflow-x: auto; } table { border-collapse: collapse; width: 100%; min-width: 820px; text-align: left; font-size: .9rem; }
+th, td { padding: 14px 10px; border-bottom: 1px solid #dbe3ed; vertical-align: top; line-height: 1.6; overflow-wrap: anywhere; }
+th { background: #f1f5f9; } td:first-child { width: 30%; } td:last-child { width: 32%; }
+.notice { color: #92400e; } .error { color: #b91c1c; } .source { border-top: 1px solid #e2e8f0; padding: 9px 0; }
+summary { cursor: pointer; color: #075985; } .source button { padding: 3px 8px; color: #075985; }
+.pagination { justify-content: end; margin-top: 16px; }
+@media (max-width: 600px) { .proposal-summary { padding: 14px; } label { flex-basis: 100%; } .summary-heading { flex-direction: column; align-items: stretch; } .actions button { flex: 1; } }

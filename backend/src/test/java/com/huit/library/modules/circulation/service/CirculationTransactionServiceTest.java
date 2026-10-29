@@ -5,6 +5,7 @@ import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.CirculationOperationResponseDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
+import com.huit.library.modules.circulation.dto.ReturnTarget;
 import com.huit.library.modules.circulation.entity.CirculationOperationEntity;
 import com.huit.library.modules.circulation.entity.LoanDetailEntity;
 import com.huit.library.modules.circulation.entity.LoanTicketEntity;
@@ -157,7 +158,8 @@ class CirculationTransactionServiceTest {
 
         when(operationRepository.findByIdempotencyKey("return-12")).thenReturn(Optional.empty());
         when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-012"))).thenReturn(List.of(copy));
-        when(detailRepository.findActiveByBarcodesForUpdate(List.of("BC-012"))).thenReturn(List.of(detail));
+        when(detailRepository.findActiveReturnTargets(List.of("BC-012")))
+                .thenReturn(List.of(new ReturnTarget(12L, 12L, "BC-012", ticket.getUserId())));
         when(ticketRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(ticket));
         when(detailRepository.findByTicketIdForUpdate(12L)).thenReturn(List.of(detail));
         saveOperationWithTimestamp();
@@ -189,8 +191,9 @@ class CirculationTransactionServiceTest {
         when(operationRepository.findByIdempotencyKey("return-multi-ticket")).thenReturn(Optional.empty());
         when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-021", "BC-022")))
                 .thenReturn(List.of(firstCopy, secondCopy));
-        when(detailRepository.findActiveByBarcodesForUpdate(List.of("BC-021", "BC-022")))
-                .thenReturn(List.of(firstDetail, secondDetail));
+        when(detailRepository.findActiveReturnTargets(List.of("BC-021", "BC-022")))
+                .thenReturn(List.of(new ReturnTarget(21L, 21L, "BC-021", firstTicket.getUserId()),
+                        new ReturnTarget(22L, 22L, "BC-022", secondTicket.getUserId())));
         when(ticketRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(firstTicket));
         when(ticketRepository.findByIdForUpdate(22L)).thenReturn(Optional.of(secondTicket));
         when(detailRepository.findByTicketIdForUpdate(21L)).thenReturn(List.of(firstDetail));

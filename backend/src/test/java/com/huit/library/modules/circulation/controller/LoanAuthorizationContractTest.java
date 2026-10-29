@@ -4,6 +4,7 @@ import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.ManualCheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
+import com.huit.library.modules.circulation.dto.ReturnInspectionRequestDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -23,5 +24,8 @@ class LoanAuthorizationContractTest {
         assertThat(checkout.getAnnotation(PreAuthorize.class).value()).contains("ADMIN", "LIBRARIAN");
         assertThat(manualCheckout.getAnnotation(PreAuthorize.class).value()).contains("ADMIN", "LIBRARIAN");
         assertThat(returns.getAnnotation(PreAuthorize.class).value()).contains("ADMIN", "LIBRARIAN");
+        var inspection = ReturnInspectionController.class.getMethod(
+                "inspect", ReturnInspectionRequestDTO.class, CustomUserDetails.class);
+        assertThat(inspection.getAnnotation(PreAuthorize.class).value()).contains("ADMIN", "LIBRARIAN");
     }
 }

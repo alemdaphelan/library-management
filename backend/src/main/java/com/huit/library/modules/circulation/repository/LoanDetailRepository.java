@@ -17,6 +17,34 @@ import jakarta.persistence.LockModeType;
 
 @Repository
 public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Long> {
+    @Query("""
+            select distinct d.barcode from LoanDetailEntity d, LoanTicketEntity t
+            where d.ticketId = t.ticketId and d.barcode in :barcodes and d.returnDate is null
+              and d.returnStatus in ('PENDING', 'RESERVED', 'BORROWING', 'BORROWED', 'OVERDUE')
+              and t.status in ('PENDING', 'RESERVED', 'BORROWING', 'BORROWED', 'OVERDUE')
+            """)
+    java.util.Set<String> findCommittedBarcodes(@Param("barcodes") Collection<String> barcodes);
+    @Query("""
+            select new com.huit.library.modules.circulation.dto.ReturnTarget(
+                detail.detailId, detail.ticketId, detail.barcode, ticket.userId)
+            from LoanDetailEntity detail, LoanTicketEntity ticket
+            where detail.ticketId = ticket.ticketId and detail.detailId in :detailIds
+            order by detail.detailId
+            """)
+    List<com.huit.library.modules.circulation.dto.ReturnTarget> findReturnTargets(
+            @Param("detailIds") Collection<Long> detailIds);
+
+    @Query("""
+            select new com.huit.library.modules.circulation.dto.ReturnTarget(
+                detail.detailId, detail.ticketId, detail.barcode, ticket.userId)
+            from LoanDetailEntity detail, LoanTicketEntity ticket
+            where detail.ticketId = ticket.ticketId and detail.barcode in :barcodes
+              and detail.returnDate is null and detail.returnStatus in ('BORROWING', 'OVERDUE')
+            order by detail.barcode
+            """)
+    List<com.huit.library.modules.circulation.dto.ReturnTarget> findActiveReturnTargets(
+            @Param("barcodes") Collection<String> barcodes);
+
     List<LoanDetailEntity> findByTicketId(Long ticketId);
     Optional<LoanDetailEntity> findFirstByTicketId(Long ticketId);
     Optional<LoanDetailEntity> findFirstByBarcodeAndReturnDateIsNull(String barcode);
@@ -148,11 +176,11 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             SELECT b.book_id AS bookId, b.title AS title, b.author AS author,
                    COUNT(ld.detail_id) AS borrows
             FROM loan_details ld
-            JOIN book_copies bc ON bc.barcode = ld.barcode
-            JOIN books b ON b.book_id = bc.book_id
-            WHERE COALESCE(ld.return_status, '') <> 'CANCELLED'
+            LEFT JOIN book_copies bc ON bc.barcode = ld.barcode
+            JOIN books b ON b.book_id = COALESCE(ld.circulation_book_id,bc.book_id)
+            WHERE ld.checkout_at IS NOT NULL OR ld.return_status IN ('BORROWING','BORROWED','OVERDUE','RETURNED','LOST','DAMAGED','SETTLED')
             GROUP BY b.book_id, b.title, b.author
-            ORDER BY COUNT(ld.detail_id) DESC, b.title ASC
+            ORDER BY COUNT(ld.detail_id) DESC, b.title ASC, b.book_id ASC
             """, nativeQuery = true)
     List<TrendingBookProjection> findTrendingBooks(Pageable pageable);
 

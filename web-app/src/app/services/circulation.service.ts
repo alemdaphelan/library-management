@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import type { ReturnInspectionReceipt, ReturnInspectionRequest } from './return-inspection.models';
 
 export interface BorrowRequest {
   bookId: number;
@@ -72,6 +73,7 @@ export interface LoanItem {
   barcode: string;
   ticketType: string;
   status: LoanTicketStatus;
+  itemStatus?: string;
   createdAt?: string;
   pickupDeadline?: string;
   dueDate?: string;
@@ -193,7 +195,7 @@ export class CirculationService {
   }
 
   /**
-   * Thủ thư/Admin lấy chi tiết một phiếu trước khi duyệt hoặc từ chối.
+   * Thủ thư/Admin lấy chi tiết phiếu để giao sách hoặc xem lịch sử.
    */
   getLoan(ticketId: number): Observable<LoanTicketDetail> {
     return this.http.get<LoanTicketDetail>(`${this.apiUrl}/${ticketId}`);
@@ -220,6 +222,7 @@ export class CirculationService {
     return this.http.post<any>(url, {});
   }
 
+  /** Tương thích phiếu PENDING cũ: kiểm tra lại điều kiện và tự động giữ chỗ. */
   approveReservation(ticketId: number): Observable<LoanStateResponse> {
     return this.http.post<LoanStateResponse>(`${this.apiUrl}/${ticketId}/approve`, {});
   }
@@ -268,6 +271,10 @@ export class CirculationService {
       barcodes,
       returnConditionNote: returnConditionNote?.trim() || undefined,
     });
+  }
+
+  inspectReturn(request: ReturnInspectionRequest): Observable<ReturnInspectionReceipt> {
+    return this.http.post<ReturnInspectionReceipt>(`${this.apiUrl}/return-inspection`, request);
   }
   
   /**

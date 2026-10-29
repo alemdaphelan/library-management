@@ -7,15 +7,23 @@ import {
   InventoryScanStatus,
 } from '../../../services/inventory-audit.service';
 import { DialogService } from '../../../services/dialog.service';
+import { DisposalWorkspace } from './disposal-workspace';
 
 @Component({
   selector: 'app-inventory-audit',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DisposalWorkspace],
   templateUrl: './inventory-audit.html',
   styleUrl: './inventory-audit.css',
 })
 export class InventoryAudit implements OnInit {
+  view: 'audit' | 'disposals' = 'audit';
+  disposalsLoaded = false;
+  disposalAuditId?: number;
+  showDisposals(fromSelected = false): void {
+    this.disposalsLoaded = true; this.view = 'disposals';
+    if (fromSelected) this.disposalAuditId = this.selectedAudit?.auditId;
+  }
   @ViewChild('barcodeInput') barcodeInput?: ElementRef<HTMLInputElement>;
 
   audits: InventoryAuditModel[] = [];

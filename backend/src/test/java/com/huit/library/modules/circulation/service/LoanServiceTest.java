@@ -11,6 +11,7 @@ import com.huit.library.modules.circulation.dto.BorrowRequestDTO;
 import com.huit.library.modules.circulation.dto.BatchBorrowRequestDTO;
 import com.huit.library.modules.circulation.entity.LoanDetailEntity;
 import com.huit.library.modules.circulation.entity.LoanTicketEntity;
+import com.huit.library.modules.circulation.entity.WaitlistEntity;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.circulation.repository.WaitlistRepository;
@@ -30,6 +31,9 @@ import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,6 +66,11 @@ class LoanServiceTest {
         when(policyService.homeLoanDays()).thenReturn(10);
         when(policyService.renewalDays()).thenReturn(10);
         when(policyService.maximumRenewalCount()).thenReturn(1);
+        doAnswer(invocation -> {
+            LoanTicketEntity ticket = invocation.getArgument(0);
+            ticket.setStatus("RESERVED");
+            return null;
+        }).when(circulationStateService).autoApproveReservation(any(LoanTicketEntity.class));
         service = new LoanService(
                 ticketRepository,
                 detailRepository,
@@ -146,12 +155,147 @@ class LoanServiceTest {
         var result = service.reserveBooks(request, userId);
 
         assertThat(result.getTicketId()).isEqualTo(91L);
+        assertThat(result.getStatus()).isEqualTo("RESERVED");
+        verify(circulationStateService).autoApproveReservation(any(LoanTicketEntity.class));
         assertThat(result.getBookIds()).containsExactly(51L, 52L);
         assertThat(result.getBarcodes()).containsExactly("BC-051", "BC-052");
         assertThat(result.getPickupDeadline()).isEqualTo(deadline);
         verify(circulationStateService).ensureEligibleForReservation(userId, 2);
         verify(detailRepository, org.mockito.Mockito.times(2)).save(any(LoanDetailEntity.class));
         verify(copyRepository, org.mockito.Mockito.times(2)).save(any(BookCopyEntity.class));
+    }
+
+    @Test
+    void singleReservationAutomaticallyReservesInsteadOfWaitingForStaff() {
+        UUID userId = UUID.randomUUID();
+        BookCopyEntity copy = setupReservation(userId);
+        when(copyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(41L, "AVAILABLE"))
+                .thenReturn(Optional.of(copy));
+        var result = service.reserveOrBorrowBook(reservationRequest(), userId);
+        assertThat(result.getStatus()).isEqualTo("RESERVED");
+        assertThat(copy.getStatus()).isEqualTo("RESERVED");
+        assertThat(copy.getLockedByUser()).isEqualTo(userId);
+        verify(circulationStateService).ensureEligibleForReservation(userId);
+        verify(circulationStateService).autoApproveReservation(any(LoanTicketEntity.class));
+    }
+
+    @Test
+    void notifiedWaiterClaimsOnlyTheirHeldCopyAndKeepsItsDeadline() {
+        UUID userId = UUID.randomUUID();
+        BookCopyEntity copy = setupReservation(userId);
+        copy.setStatus("RESERVED");
+        copy.setLockedByUser(userId);
+        copy.setLockedUntil(LocalDateTime.now().plusHours(30));
+        WaitlistEntity entry = new WaitlistEntity();
+        entry.setReservedBarcode(copy.getBarcode());
+        entry.setExpiresAt(LocalDateTime.now().plusHours(30));
+        entry.setStatus("NOTIFIED");
+        when(waitlistRepository.findFirstByBookIdAndUserIdAndStatus(41L, userId, "NOTIFIED"))
+                .thenReturn(Optional.of(entry));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of(copy.getBarcode()))).thenReturn(List.of(copy));
+        var result = service.reserveOrBorrowBook(reservationRequest(), userId);
+        assertThat(result.getStatus()).isEqualTo("RESERVED");
+        assertThat(result.getPickupDate()).isEqualTo(entry.getExpiresAt());
+        assertThat(entry.getStatus()).isEqualTo("FULFILLED");
+        verify(copyRepository, never()).findFirstByBookIdAndStatusOrderByBarcodeAsc(41L, "AVAILABLE");
+    }
+
+    @Test
+    void expiredWaitlistHoldCannotBeRevivedOrReplacedWithAnotherCopy() {
+        UUID userId = UUID.randomUUID();
+        BookCopyEntity copy = setupReservation(userId);
+        copy.setStatus("RESERVED");
+        copy.setLockedByUser(userId);
+        copy.setLockedUntil(LocalDateTime.now().minusHours(1));
+        WaitlistEntity entry = new WaitlistEntity();
+        entry.setReservedBarcode(copy.getBarcode());
+        entry.setExpiresAt(LocalDateTime.now().minusHours(1));
+        entry.setStatus("NOTIFIED");
+        when(waitlistRepository.findFirstByBookIdAndUserIdAndStatus(41L, userId, "NOTIFIED"))
+                .thenReturn(Optional.of(entry));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of(copy.getBarcode()))).thenReturn(List.of(copy));
+        var result = service.reserveOrBorrowBook(reservationRequest(), userId);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getStatus()).isEqualTo("WAITLIST");
+        assertThat(entry.getStatus()).isEqualTo("NOTIFIED");
+        verify(copyRepository, never()).findFirstByBookIdAndStatusOrderByBarcodeAsc(41L, "AVAILABLE");
+        verify(ticketRepository, never()).save(any(LoanTicketEntity.class));
+    }
+
+    @Test
+    void unavailableCopyJoinsWaitlistWithoutCreatingOrApprovingATicket() {
+        UUID userId = UUID.randomUUID();
+        setupReservation(userId);
+        var result = service.reserveOrBorrowBook(reservationRequest(), userId);
+        assertThat(result.getStatus()).isEqualTo("WAITLIST");
+        verify(waitlistRepository).save(any(WaitlistEntity.class));
+        verify(ticketRepository, never()).save(any(LoanTicketEntity.class));
+        verify(circulationStateService, never()).autoApproveReservation(any());
+    }
+
+    @Test
+    void reservationEligibilityFailureDoesNotCreateOrApproveTicket() {
+        UUID userId = UUID.randomUUID();
+        setupReservation(userId);
+        doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Giới hạn ba tài liệu"))
+                .when(circulationStateService).ensureEligibleForReservation(userId);
+        assertThatThrownBy(() -> service.reserveOrBorrowBook(reservationRequest(), userId))
+                .hasMessageContaining("Giới hạn ba tài liệu");
+        verify(ticketRepository, never()).save(any(LoanTicketEntity.class));
+        verify(circulationStateService, never()).autoApproveReservation(any());
+    }
+
+    @Test
+    void batchCanClaimNotifiedWaitlistHoldWithoutRequiringAnAvailableCopy() {
+        UUID userId = UUID.randomUUID();
+        BookCopyEntity copy = setupReservation(userId);
+        copy.setStatus("RESERVED");
+        copy.setLockedByUser(userId);
+        copy.setLockedUntil(LocalDateTime.now().plusHours(30));
+        WaitlistEntity entry = new WaitlistEntity();
+        entry.setReservedBarcode(copy.getBarcode());
+        entry.setExpiresAt(LocalDateTime.now().plusHours(30));
+        entry.setStatus("NOTIFIED");
+        when(waitlistRepository.findFirstByBookIdAndUserIdAndStatus(41L, userId, "NOTIFIED"))
+                .thenReturn(Optional.of(entry));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of(copy.getBarcode()))).thenReturn(List.of(copy));
+        BatchBorrowRequestDTO request = new BatchBorrowRequestDTO();
+        request.setBookIds(List.of(41L));
+        request.setTicketType("BORROW");
+        var result = service.reserveBooks(request, userId);
+        assertThat(result.getStatus()).isEqualTo("RESERVED");
+        assertThat(result.getPickupDeadline()).isEqualTo(entry.getExpiresAt());
+        assertThat(entry.getStatus()).isEqualTo("FULFILLED");
+    }
+
+    private BookCopyEntity setupReservation(UUID userId) {
+        UserEntity user = new UserEntity();
+        user.setUserId(userId);
+        user.setCardStatus("ACTIVE");
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+        BookEntity book = new BookEntity();
+        book.setBookId(41L);
+        book.setTitle("Clean Architecture");
+        when(bookRepository.findById(41L)).thenReturn(Optional.of(book));
+        when(ticketRepository.save(any(LoanTicketEntity.class))).thenAnswer(invocation -> {
+            LoanTicketEntity ticket = invocation.getArgument(0);
+            ticket.setTicketId(92L);
+            return ticket;
+        });
+        when(waitlistService.calculateDirectReservationDeadline(any(), any()))
+                .thenReturn(LocalDateTime.now().plusHours(3));
+        BookCopyEntity copy = new BookCopyEntity();
+        copy.setBarcode("BC-041");
+        copy.setBookId(41L);
+        copy.setStatus("AVAILABLE");
+        return copy;
+    }
+
+    private BorrowRequestDTO reservationRequest() {
+        BorrowRequestDTO request = new BorrowRequestDTO();
+        request.setBookId(41L);
+        request.setTicketType("BORROW");
+        return request;
     }
 
     @Test

@@ -1,0 +1,71 @@
+<section class="obligation-report" aria-label="Báo cáo quá hạn và công nợ">
+  <header class="report-heading">
+    <div><h2>Báo cáo quá hạn & công nợ</h2><p>Một sinh viên một dòng. Chọn sinh viên để xem tài liệu quá hạn và các khoản đã ghi sổ.</p></div>
+    <button type="button" class="primary" (click)="exportReport()" [disabled]="busy || dirty || !report?.totalStudents">{{ exporting ? 'Đang xuất Excel…' : 'Tải Excel toàn bộ kết quả' }}</button>
+  </header>
+
+  <section class="coverage" aria-label="Kiểm tra phân loại sinh viên">
+    <div class="coverage-heading"><strong>Phân loại khoa/ngành toàn bộ sinh viên</strong><button type="button" (click)="loadCoverage()" [disabled]="coverageLoading">{{ coverageLoading ? 'Đang kiểm tra…' : 'Kiểm tra lại' }}</button></div>
+    <p *ngIf="coverageLoading" role="status">Đang kiểm tra dữ liệu phân loại…</p>
+    <p *ngIf="coverageError" class="error" role="alert">{{ coverageError }}</p>
+    <ng-container *ngIf="coverage as checked">
+      <p *ngIf="checked.complete && checked.totalStudents > 0" class="positive">Đã phân loại {{ checked.classifiedStudents | number }} / {{ checked.totalStudents | number }} sinh viên.</p>
+      <p *ngIf="checked.totalStudents === 0">Chưa có sinh viên để kiểm tra phân loại.</p>
+      <details *ngIf="!checked.complete" class="warning"><summary>Còn {{ checked.unclassifiedStudents | number }} / {{ checked.totalStudents | number }} sinh viên cần bổ sung phân loại</summary><p>Cần sửa thông tin khoa/ngành còn thiếu để phân loại đủ sinh viên.</p><ul><li *ngFor="let group of checked.unmappedDepartments">{{ group.rawDepartment || 'Chưa có thông tin khoa/ngành' }}: {{ group.studentCount | number }} sinh viên</li></ul></details>
+    </ng-container>
+  </section>
+
+  <form (ngSubmit)="applyFilters()" aria-label="Bộ lọc báo cáo">
+    <fieldset [disabled]="busy">
+      <div class="report-filters">
+        <label>Loại báo cáo<select name="obligation-mode" aria-label="Loại báo cáo" [(ngModel)]="filters.mode"><option value="EITHER">Quá hạn hoặc còn nợ</option><option value="OVERDUE">Còn tài liệu quá hạn</option><option value="DEBT">Còn công nợ</option></select></label>
+        <label>Khoa<select name="obligation-faculty" aria-label="Khoa" [(ngModel)]="filters.facultyId" [disabled]="facultiesLoading || !!facultyError"><option value="">Mọi khoa</option><option *ngFor="let faculty of faculties" [value]="faculty.facultyId">{{ faculty.facultyName }}</option><option *ngIf="showUnclassified" value="UNCLASSIFIED">Cần bổ sung phân loại</option></select></label>
+        <label>MSSV hoặc họ tên<input type="search" name="obligation-query" [(ngModel)]="filters.q" maxlength="100" placeholder="Tìm sinh viên" autocomplete="off"></label>
+        <label>Số dòng mỗi trang<select name="obligation-size" aria-label="Số dòng mỗi trang" [(ngModel)]="pageSize"><option [ngValue]="10">10</option><option [ngValue]="25">25</option><option [ngValue]="50">50</option><option [ngValue]="100">100</option></select></label>
+      </div>
+      <div class="filter-actions"><button class="primary" type="submit">{{ loading ? 'Đang xem…' : 'Xem báo cáo' }}</button><button type="button" (click)="resetFilters()">Đặt lại bộ lọc</button></div>
+    </fieldset>
+  </form>
+  <div *ngIf="facultyError" class="warning" role="alert">{{ facultyError }} <button type="button" (click)="loadFaculties()" [disabled]="facultiesLoading">Tải lại danh mục khoa</button></div>
+  <p *ngIf="facultiesLoading" role="status">Đang tải danh mục khoa…</p>
+  <p *ngIf="dirty" class="warning" role="status">Bộ lọc đã thay đổi. Bấm “Xem báo cáo” trước khi chuyển trang hoặc tải Excel.</p>
+  <p *ngIf="loading" role="status">Đang tải báo cáo từ máy chủ…</p>
+  <div *ngIf="errorMessage" class="error" role="alert">{{ errorMessage }} <button type="button" (click)="retryPreview()" [disabled]="busy">Thử tải lại báo cáo</button></div>
+  <p *ngIf="exportError" class="error" role="alert">{{ exportError }}</p>
+  <p *ngIf="exportMessage" class="positive" role="status">{{ exportMessage }}</p>
+
+  <ng-container *ngIf="report as result">
+    <div class="report-meta" aria-live="polite">
+      <strong>{{ result.totalStudents | number }} sinh viên · {{ modeLabel(result.filter.mode) }}</strong>
+      <span>{{ facultyLabel(result.filter.facultyId) }}<ng-container *ngIf="result.filter.query"> · Tìm: {{ result.filter.query }}</ng-container></span>
+      <span>Chốt dữ liệu: {{ result.snapshotAt | date:'dd/MM/yyyy HH:mm:ss' }} ({{ result.timezone }}) · Đơn vị: {{ result.currency }}</span>
+    </div>
+    <p class="note">Tiền đã ghi sổ, gồm cả các khoản trước đây. Miễn giảm và điều chỉnh không phải tiền đã thu. Excel lấy toàn bộ kết quả tại thời điểm xuất; số liệu có thể thay đổi sau lúc xem.</p>
+    <div class="empty" *ngIf="!result.totalStudents">Không có sinh viên khớp bộ lọc. Có thể đặt lại bộ lọc hoặc chọn loại báo cáo khác.</div>
+    <p class="empty" *ngIf="result.totalStudents > 0 && !result.students.length">Trang này không còn dữ liệu. Bấm “Xem báo cáo” để quay về trang đầu.</p>
+    <div class="table-scroll" tabindex="0" aria-label="Bảng báo cáo sinh viên, có thể cuộn ngang" *ngIf="result.students.length">
+      <table class="report-table">
+        <thead><tr><th scope="col">Sinh viên</th><th scope="col">Khoa / ngành</th><th scope="col">Còn quá hạn</th><th scope="col">Nghĩa vụ đã ghi sổ</th><th scope="col">Đã thanh toán / cấn cọc</th><th scope="col">Miễn giảm</th><th scope="col">Điều chỉnh giảm</th><th scope="col">Dư nợ ledger</th><th scope="col">Dư nợ ví / đối soát</th><th scope="col">Thao tác</th></tr></thead>
+        <tbody><tr *ngFor="let student of result.students" [class.selected]="selectedUserId === student.userId">
+          <td><strong>{{ student.fullName || 'Chưa có họ tên' }}</strong><small>{{ student.mssv || student.userId }}</small></td>
+          <td>{{ student.facultyName }}<small>{{ student.majorName || 'Chưa có thông tin ngành' }}</small><small class="warning-text" *ngIf="student.mappingStatus !== 'MAPPED'">Cần sửa phân loại · {{ student.rawDepartment || 'Thiếu thông tin' }}</small></td>
+          <td><strong>{{ student.overdueItemCount }} tài liệu</strong><small *ngIf="student.earliestDueDate">Hạn sớm nhất: {{ student.earliestDueDate | date:'dd/MM/yyyy HH:mm' }}<br>{{ student.overdueDays }} ngày lịch (có thể trễ trong ngày)</small></td>
+          <td class="money">{{ student.chargedAmount | number:'1.0-2':'en-US' }}</td><td class="money">{{ student.paidOrDepositAmount | number:'1.0-2':'en-US' }}</td><td class="money">{{ student.waivedAmount | number:'1.0-2':'en-US' }}</td><td class="money">{{ student.adjustedAmount | number:'1.0-2':'en-US' }}</td><td class="money debt">{{ student.outstandingAmount | number:'1.0-2':'en-US' }}</td>
+          <td><span *ngIf="student.walletDebt !== null; else noWallet">{{ student.walletDebt | number:'1.0-2':'en-US' }}</span><ng-template #noWallet>Chưa có ví</ng-template><small class="warning-text" *ngIf="hasDiscrepancy(student)">Cần đối soát<br>Chênh ví − ledger: {{ student.walletDifference === null ? 'Chưa có ví' : (student.walletDifference | number:'1.0-2':'en-US') }}<br>Chênh ledger: {{ student.reconciliationDifference | number:'1.0-2':'en-US' }}</small></td>
+          <td><div class="row-actions"><button type="button" (click)="selectStudent(student)" [attr.aria-expanded]="selectedUserId === student.userId" [attr.aria-label]="'Chi tiết báo cáo ' + (student.mssv || student.fullName)">{{ selectedUserId === student.userId ? 'Ẩn chi tiết' : 'Chi tiết' }}</button><a [routerLink]="['/admin/penalties']" [queryParams]="{referenceType: 'USER', referenceId: student.userId}">Xem / thu nợ</a></div></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <nav class="pagination" aria-label="Phân trang báo cáo" *ngIf="result.totalStudents">
+      <span>Đang xem {{ result.students.length }} / {{ result.totalStudents | number }} sinh viên · Trang {{ result.page + 1 }} / {{ totalPages }}</span><div><button type="button" (click)="changePage(result.page - 1)" [disabled]="busy || dirty || result.page === 0">Trang trước</button><button type="button" (click)="changePage(result.page + 1)" [disabled]="busy || dirty || result.page + 1 >= totalPages">Trang tiếp</button></div>
+    </nav>
+
+    <section class="student-detail" *ngIf="selectedStudent as student" aria-label="Chi tiết báo cáo sinh viên">
+      <header><h3>{{ student.fullName || student.mssv }} · {{ student.mssv }}</h3><button type="button" (click)="selectedUserId = null">Đóng chi tiết báo cáo</button></header>
+      <h4>Tài liệu còn quá hạn</h4><p *ngIf="!selectedOverdue.length" class="note">Không còn tài liệu quá hạn trong báo cáo này. Sinh viên có thể vẫn còn công nợ sau khi trả sách.</p>
+      <article class="overdue-item" *ngFor="let item of selectedOverdue"><div><strong>{{ item.bookTitle || 'Tài liệu thiếu thông tin tên' }}</strong><p>{{ item.barcode }} · Hạn {{ item.dueDate | date:'dd/MM/yyyy HH:mm' }} · {{ item.overdueDays }} ngày lịch</p></div><div class="row-actions"><button type="button" (click)="ticketRequested.emit(item.ticketId)">Xem phiếu #{{ item.ticketId }}</button><a [routerLink]="['/admin/circulation']" [queryParams]="{referenceType: 'LOAN_TICKET', referenceId: item.ticketId, mode: 'return'}">Quầy trả / báo mất</a></div></article>
+      <h4>Các khoản đã ghi sổ</h4><p class="note">“Đã đáp ứng” gồm cả thanh toán, cọc, miễn giảm và điều chỉnh. Dòng thanh toán/miễn/điều chỉnh âm dùng để đối chiếu, không cộng lại thành phí.</p><p *ngIf="!selectedLedger.length" class="note">Không có khoản ghi sổ trong báo cáo này.</p>
+      <div class="table-scroll" tabindex="0" aria-label="Chi tiết sổ nợ, có thể cuộn ngang" *ngIf="selectedLedger.length"><table class="ledger-table"><thead><tr><th>Giao dịch</th><th>Loại / lý do</th><th>Ngày ghi</th><th>Giá trị (VND)</th><th>Đã đáp ứng (VND)</th><th>Còn nợ (VND)</th><th>Liên kết</th></tr></thead><tbody><tr *ngFor="let entry of selectedLedger"><td>#{{ entry.transactionId }}<small>{{ entry.status }}</small></td><td>{{ feeLabel(entry.type) }}<small>{{ entry.reason || '—' }}</small></td><td>{{ entry.createdAt ? (entry.createdAt | date:'dd/MM/yyyy HH:mm') : 'Chưa có ngày ghi' }}</td><td class="money">{{ entry.amount | number:'1.0-2':'en-US' }}</td><td class="money">{{ entry.satisfiedAmount === null ? '—' : (entry.satisfiedAmount | number:'1.0-2':'en-US') }}</td><td class="money">{{ entry.outstandingAmount | number:'1.0-2':'en-US' }}</td><td><div class="row-actions"><button type="button" *ngIf="entry.ticketId" (click)="ticketRequested.emit(entry.ticketId)">Xem phiếu #{{ entry.ticketId }}</button><a *ngIf="entry.penaltyCaseId" [routerLink]="['/admin/penalties']" [queryParams]="{referenceType: 'PENALTY_CASE', referenceId: entry.penaltyCaseId}">Hồ sơ #{{ entry.penaltyCaseId }}</a></div></td></tr></tbody></table></div>
+    </section>
+  </ng-container>
+</section>

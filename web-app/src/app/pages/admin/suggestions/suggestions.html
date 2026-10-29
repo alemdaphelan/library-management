@@ -14,6 +14,12 @@
     <span>{{ alertMessage.text }}</span>
   </div>
 
+  <div class="view-tabs" role="group" aria-label="Chế độ đề xuất">
+    <button class="btn-outline" [attr.aria-pressed]="view === 'individual'" (click)="view = 'individual'">Từng đề xuất</button>
+    <button class="btn-outline" [attr.aria-pressed]="view === 'summary'" (click)="showSummary()">Tổng hợp / Excel</button>
+  </div>
+  <app-proposal-summary *ngIf="summaryLoaded" [hidden]="view !== 'summary'" (openProposal)="openSummaryProposal($event)"></app-proposal-summary>
+  <div [hidden]="view !== 'individual'">
   <!-- Custom Tabs -->
   <div class="custom-tabs">
     <button class="tab-btn" [class.active]="activeTab === 'PENDING'" (click)="setTab('PENDING')">
@@ -92,6 +98,7 @@
         </tr>
       </tbody>
     </table>
+  </div>
   </div>
 </div>
 
