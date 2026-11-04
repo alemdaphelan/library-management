@@ -51,6 +51,18 @@ public class LibraryPolicyHistoryEntity {
     @Column(nullable = false)
     private Integer compensationSettlementDays;
 
+    @Column(nullable = false, precision = 14, scale = 2)
+    private BigDecimal minimumSecurityDeposit;
+
+    @Column(nullable = false, precision = 14, scale = 2)
+    private BigDecimal borrowingValueMargin;
+
+    @Column(nullable = false)
+    private Integer recallReturnDays;
+
+    @Column(nullable = false)
+    private Integer overdueDebtProcessingDays;
+
     private UUID changedBy;
 
     @CreationTimestamp

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/screens/detail_screen.dart';
 import '../services/api_service.dart';
+import '../services/loan_service.dart';
+import '../services/wishlist_service.dart';
 import '../widgets/book_cover.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -16,9 +18,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool isLoading = true;
   bool isFetchingMore = false;
   String searchQuery = '';
-  int? selectedCategoryId;
   String? selectedDepartment;
-  List<Map<String, dynamic>> categories = [];
   List<Map<String, dynamic>> departments = [];
 
   int currentPage = 0;
@@ -29,7 +29,11 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    fetchCategories();
+    LoanService.loanRevision.addListener(_handleLoanRevisionChanged);
+    WishlistService.wishlistRevision.addListener(_handleWishlistRevisionChanged);
+    if (!WishlistService.hasLoadedSnapshot) {
+      WishlistService.getMine().catchError((_) => <Map<String, dynamic>>[]);
+    }
     fetchDepartments();
     fetchBooks(reset: true);
 
@@ -41,6 +45,26 @@ class _SearchScreenState extends State<SearchScreen> {
         }
       }
     });
+  }
+
+  @override
+  void dispose() {
+    LoanService.loanRevision.removeListener(_handleLoanRevisionChanged);
+    WishlistService.wishlistRevision.removeListener(_handleWishlistRevisionChanged);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleWishlistRevisionChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _handleLoanRevisionChanged() {
+    if (mounted) {
+      fetchBooks(reset: true);
+    }
   }
 
   Future<void> fetchDepartments() async {
@@ -57,21 +81,8 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  Future<void> fetchCategories() async {
-    try {
-      final data = await ApiService.get('/categories');
-      if (!mounted || data is! List) return;
-      setState(() {
-        categories = data
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList();
-      });
-    } catch (e) {
-      debugPrint('Error fetching categories: $e');
-    }
-  }
-
   Future<void> fetchBooks({bool reset = false}) async {
+    if (!mounted) return;
     if (reset) {
       setState(() {
         isLoading = true;
@@ -93,15 +104,13 @@ class _SearchScreenState extends State<SearchScreen> {
       if (searchQuery.trim().isNotEmpty) {
         params['query'] = searchQuery.trim();
       }
-      if (selectedCategoryId != null) {
-        params['categoryId'] = '$selectedCategoryId';
-      }
       if (selectedDepartment != null && selectedDepartment!.isNotEmpty) {
         params['department'] = selectedDepartment!;
       }
       final queryParam = '?${Uri(queryParameters: params).query}';
       final data = await ApiService.get('/books$queryParam');
 
+      if (!mounted) return;
       setState(() {
         if (data != null && data['content'] != null) {
           allBooks.addAll(data['content']);
@@ -113,6 +122,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     } catch (e) {
       debugPrint('Error fetching books: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         isFetchingMore = false;
@@ -128,6 +138,13 @@ class _SearchScreenState extends State<SearchScreen> {
           'Tra cứu tài liệu',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Làm mới danh sách',
+            icon: const Icon(Icons.refresh),
+            onPressed: () => fetchBooks(reset: true),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -154,61 +171,24 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
 
-          // Categories Horizontal List
+          // Khoa / chuyên ngành
           SizedBox(
             height: 40,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                _buildChip('Tất cả', null, selectedCategoryId == null),
-                ...categories.map(
-                  (category) => _buildChip(
-                    category['name']?.toString() ?? 'Khác',
-                    category['categoryId'] as int?,
-                    selectedCategoryId == category['categoryId'],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: DropdownButtonFormField<String?>(
-              initialValue: selectedDepartment,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Lọc theo khoa / chuyên ngành',
-                prefixIcon: const Icon(Icons.school_outlined),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Tất cả chuyên ngành'),
-                ),
+                _buildChip('Tất cả', null, selectedDepartment == null),
                 ...departments.map(
-                  (department) => DropdownMenuItem<String?>(
-                    value: department['key']?.toString(),
-                    child: Text(
-                      department['displayName']?.toString() ??
-                          department['key']?.toString() ??
-                          'Chuyên ngành',
-                    ),
+                  (department) => _buildChip(
+                    department['displayName']?.toString() ??
+                        department['key']?.toString() ??
+                        'Chuyên ngành',
+                    department['key']?.toString(),
+                    selectedDepartment == department['key']?.toString(),
                   ),
                 ),
               ],
-              onChanged: (value) {
-                setState(() => selectedDepartment = value);
-                fetchBooks(reset: true);
-              },
             ),
           ),
           const SizedBox(height: 12),
@@ -219,104 +199,139 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : books.isEmpty
                 ? const Center(child: Text('Không tìm thấy kết quả.'))
-                : ListView.separated(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    itemCount: books.length + (isFetchingMore ? 1 : 0),
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 24),
-                    itemBuilder: (context, index) {
-                      if (index == books.length) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-                      final book = books[index];
-                      final bool isAvailable =
-                          ((book['availableCopies'] as num?)?.toInt() ?? 0) > 0;
-
-                      return InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DetailScreen(book: book),
+                : RefreshIndicator(
+                    onRefresh: () => fetchBooks(reset: true),
+                    child: ListView.separated(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: books.length + (isFetchingMore ? 1 : 0),
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 24),
+                      itemBuilder: (context, index) {
+                        if (index == books.length) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(),
                             ),
                           );
-                        },
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            BookCover(
-                              imageUrl:
-                                  book['imageUrlM'] ??
-                                  book['imageUrlL'] ??
-                                  book['imageUrlS'] ??
-                                  book['coverUrl'],
-                              title: book['title'] ?? 'Unknown',
-                              author: book['author'] ?? 'Unknown',
-                              width: 70,
-                              height: 100,
-                              borderRadius: 8,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    book['title'] ?? 'Unknown',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                        }
+                        final book = Map<String, dynamic>.from(
+                          books[index] as Map,
+                        );
+                        final rawBookId = book['bookId'] ?? book['id'];
+                        final bookId = rawBookId is num
+                            ? rawBookId.toInt()
+                            : int.tryParse(rawBookId?.toString() ?? '');
+                        final isSaved = WishlistService.isSavedSync(bookId);
+                        final availableCopies =
+                            (book['availableCopies'] as num?)?.toInt() ?? 0;
+                        final totalCopies =
+                            (book['copies'] as num?)?.toInt() ??
+                            availableCopies;
+                        final bool isAvailable = availableCopies > 0;
+
+                        return InkWell(
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailScreen(book: book),
+                              ),
+                            );
+                            if (mounted) {
+                              await fetchBooks(reset: true);
+                            }
+                          },
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              BookCover(
+                                imageUrl:
+                                    book['imageUrlM'] ??
+                                    book['imageUrlL'] ??
+                                    book['imageUrlS'] ??
+                                    book['coverUrl'],
+                                title: book['title'] ?? 'Unknown',
+                                author: book['author'] ?? 'Unknown',
+                                width: 70,
+                                height: 100,
+                                borderRadius: 8,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            book['title'] ?? 'Unknown',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (isSaved) ...[
+                                          const SizedBox(width: 6),
+                                          const Icon(
+                                            Icons.bookmark,
+                                            color: Color(0xFF0284c7),
+                                            size: 20,
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    book['author'] ?? 'Unknown',
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isAvailable
-                                          ? Colors.green.shade50
-                                          : Colors.red.shade50,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      isAvailable ? 'Có sẵn' : 'Đã mượn hết',
-                                      style: TextStyle(
-                                        color: isAvailable
-                                            ? Colors.green.shade700
-                                            : Colors.red.shade700,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      book['author'] ?? 'Unknown',
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 14,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isAvailable
+                                            ? Colors.green.shade50
+                                            : Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        isAvailable
+                                            ? 'Có sẵn ($availableCopies/$totalCopies)'
+                                            : 'Đã mượn hết (0/$totalCopies)',
+                                        style: TextStyle(
+                                          color: isAvailable
+                                              ? Colors.green.shade700
+                                              : Colors.red.shade700,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
@@ -324,11 +339,11 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildChip(String label, int? categoryId, bool isSelected) {
+  Widget _buildChip(String label, String? department, bool isSelected) {
     return InkWell(
       onTap: () {
         setState(() {
-          selectedCategoryId = categoryId;
+          selectedDepartment = department;
         });
         fetchBooks(reset: true);
       },

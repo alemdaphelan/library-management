@@ -36,4 +36,16 @@ public class LibraryPolicyRequestDTO {
 
     @NotNull @Min(1) @Max(365)
     private Integer compensationSettlementDays;
+
+    @NotNull @DecimalMin("100000")
+    private BigDecimal minimumSecurityDeposit;
+
+    @NotNull @DecimalMin("0")
+    private BigDecimal borrowingValueMargin;
+
+    @NotNull @Min(1) @Max(30)
+    private Integer recallReturnDays;
+
+    @NotNull @Min(1) @Max(365)
+    private Integer overdueDebtProcessingDays;
 }

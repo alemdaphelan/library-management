@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -23,6 +24,11 @@ public class BookEntity extends BaseEntity {
     private String language;
     private String labelColor;
     private BigDecimal defaultPrice;
+    private String priceCurrency;
+    private String priceSource;
+    private LocalDateTime priceUpdatedAt;
+    private String priceStatus;
+    private String materialType;
     private Boolean isDigital;
 
     private String author;

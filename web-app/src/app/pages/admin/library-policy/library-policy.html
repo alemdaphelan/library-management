@@ -41,6 +41,10 @@
           <input type="number" name="waitlistHoldHours" [(ngModel)]="policy.waitlistHoldHours" min="1" max="336" required>
           <small>Nếu hết hạn lúc thư viện đóng cửa, hệ thống dời đến lần mở cửa kế tiếp.</small>
         </label>
+        <label>Thời hạn trả sách khi bị thu hồi (ngày)
+          <input type="number" name="recallReturnDays" [(ngModel)]="policy.recallReturnDays" min="1" max="30" required>
+          <small>Người mượn phải hoàn trả trong số ngày này kể từ lúc nhận thông báo thu hồi.</small>
+        </label>
       </article>
 
       <article class="policy-card">
@@ -56,6 +60,18 @@
         </label>
         <label>Phí xử lý kỹ thuật / tài liệu (VNĐ)
           <input type="number" name="technicalProcessingFee" [(ngModel)]="policy.technicalProcessingFee" min="0" step="1000" required>
+        </label>
+        <label>Tiền thế chân tối thiểu của sinh viên (VNĐ)
+          <input type="number" name="minimumSecurityDeposit" [(ngModel)]="policy.minimumSecurityDeposit" min="100000" step="10000" required>
+          <small>Tài khoản có số dư thế chân thấp hơn mức này không được tạo yêu cầu mượn mới.</small>
+        </label>
+        <label>Mức giá trị sách được vượt tiền thế chân (VNĐ)
+          <input type="number" name="borrowingValueMargin" [(ngModel)]="policy.borrowingValueMargin" min="0" step="10000" required>
+          <small>Tổng giá trị tài liệu đang giữ không được vượt tiền thế chân cộng khoản này.</small>
+        </label>
+        <label>Xử lý công nợ sau quá hạn (ngày)
+          <input type="number" name="overdueDebtProcessingDays" [(ngModel)]="policy.overdueDebtProcessingDays" min="1" max="365" required>
+          <small>Quá thời hạn này, quyền mượn/đặt giữ/gia hạn bị khóa cho đến khi hết nợ.</small>
         </label>
         <label>Thời hạn hoàn tất đền bù (ngày)
           <input type="number" name="compensationSettlementDays" [(ngModel)]="policy.compensationSettlementDays" min="1" max="365" required>

@@ -5,6 +5,7 @@ import com.huit.library.modules.circulation.service.WaitlistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,6 +24,7 @@ public class WaitlistController {
     }
 
     @PostMapping("/join")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Join Waitlist", description = "Join queue for a borrowed book.")
     public ResponseEntity<?> joinWaitlist(
             @RequestParam Long bookId,
@@ -31,6 +33,7 @@ public class WaitlistController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<?> getMyWaitlist(@AuthenticationPrincipal CustomUserDetails user) {
         return ResponseEntity.ok(waitlistService.getMine(user.getUser().getUserId()));
     }

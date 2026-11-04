@@ -79,7 +79,7 @@ public class AuthController {
         try {
             authService.changePassword(userDetails.getUser().getUserId(),
                     request.getCurrentPassword(), request.getNewPassword());
-            return ResponseEntity.ok().body("Password changed successfully!");
+            return ResponseEntity.ok().body("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

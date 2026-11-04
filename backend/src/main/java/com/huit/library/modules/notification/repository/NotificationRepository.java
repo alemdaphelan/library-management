@@ -15,6 +15,10 @@ import java.util.UUID;
 public interface NotificationRepository extends JpaRepository<NotificationEntity, UUID> {
     List<NotificationEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE NotificationEntity n SET n.isRead = true WHERE n.userId = :userId AND n.isRead = false")
+    int markAllAsReadByUserId(@Param("userId") UUID userId);
+
     @Modifying
     @Query(value = """
             INSERT INTO notifications (

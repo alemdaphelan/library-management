@@ -523,6 +523,7 @@ class Week6IntegrationTest {
     @Test
     void circulationCheckoutAndReturnCommitAllAggregateChanges() {
         UserEntity reader = createUser("reader");
+        createEligibleWallet(reader);
         UserEntity librarian = createUser("librarian");
         BookEntity book = createBook();
         BookCopyEntity copy = null;
@@ -569,6 +570,7 @@ class Week6IntegrationTest {
         } finally {
             cleanupCirculation(ticket, copy, book, List.of(checkoutKey, returnKey));
             userRepository.deleteById(librarian.getUserId());
+            walletRepository.findByUserId(reader.getUserId()).ifPresent(walletRepository::delete);
             userRepository.deleteById(reader.getUserId());
         }
     }
@@ -576,6 +578,7 @@ class Week6IntegrationTest {
     @Test
     void concurrentCheckoutCannotCreateDoubleLoanForSameTicketAndBarcode() throws Exception {
         UserEntity reader = createUser("reader-race");
+        createEligibleWallet(reader);
         UserEntity librarian = createUser("librarian-race");
         BookEntity book = createBook();
         BookCopyEntity copy = null;
@@ -605,6 +608,7 @@ class Week6IntegrationTest {
             executor.shutdownNow();
             cleanupCirculation(ticket, copy, book, List.of(firstKey, secondKey));
             userRepository.deleteById(librarian.getUserId());
+            walletRepository.findByUserId(reader.getUserId()).ifPresent(walletRepository::delete);
             userRepository.deleteById(reader.getUserId());
         }
     }
@@ -744,6 +748,7 @@ class Week6IntegrationTest {
     void week11HttpE2eCoversLoginSearchReservationQrCheckoutOverdueFineAndReturn() throws Exception {
         String password = "Week11@123";
         UserEntity reader = createUserWithRole("week11-reader", "STUDENT", password);
+        createEligibleWallet(reader);
         UserEntity librarian = createUserWithRole("week11-librarian", "LIBRARIAN", password);
         BookEntity book = createBook();
         BookCopyEntity copy = null;
@@ -811,10 +816,13 @@ class Week6IntegrationTest {
             loanDetailRepository.saveAndFlush(detail);
             circulationMaintenanceService.processAt(processedAt);
 
-            assertThat(walletRepository.findByUserId(reader.getUserId()).orElseThrow().getTotalDebt())
-                    .isEqualByComparingTo("2000");
+            WalletEntity finedWallet = walletRepository.findByUserId(reader.getUserId()).orElseThrow();
+            assertThat(finedWallet.getDepositBalance()).isEqualByComparingTo("98000");
+            assertThat(finedWallet.getTotalDebt()).isEqualByComparingTo("0");
             assertThat(transactionRepository.findByUserIdOrderByCreatedAtAsc(reader.getUserId()))
-                    .anyMatch(transaction -> transaction.getAmount().compareTo(new BigDecimal("2000")) == 0);
+                    .anyMatch(transaction -> transaction.getAmount().compareTo(new BigDecimal("2000")) == 0
+                            && transaction.getDepositAppliedAmount().compareTo(new BigDecimal("2000")) == 0
+                            && "PAID".equals(transaction.getStatus()));
 
             mockMvc.perform(post("/loans/return")
                             .header("Authorization", "Bearer " + librarianToken)
@@ -859,6 +867,8 @@ class Week6IntegrationTest {
     void concurrentReservationsOfLastCopyCreateExactlyOneAutomaticallyApprovedTicket() throws Exception {
         UserEntity firstReader = createUser("reservation-race-a");
         UserEntity secondReader = createUser("reservation-race-b");
+        createEligibleWallet(firstReader);
+        createEligibleWallet(secondReader);
         BookEntity book = createBook();
         BookCopyEntity copy = createCopy(book.getBookId(), "RESERVE-" + UUID.randomUUID(), "AVAILABLE", null);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -896,6 +906,7 @@ class Week6IntegrationTest {
     @Test
     void batchReservationCommitsReservedCopiesAndAuditAndRollsBackWhenOneBookIsUnavailable() {
         UserEntity reader = createUser("reservation-batch");
+        createEligibleWallet(reader);
         BookEntity first = createBook();
         BookEntity second = createBook();
         BookCopyEntity firstCopy = createCopy(first.getBookId(), "BATCH-A-" + UUID.randomUUID(), "AVAILABLE", null);
@@ -938,6 +949,7 @@ class Week6IntegrationTest {
         }
         jdbcTemplate.update("DELETE FROM waitlists WHERE user_id = ?", reader.getUserId());
         notificationRepository.deleteAll(notificationRepository.findByUserIdOrderByCreatedAtDesc(reader.getUserId()));
+        walletRepository.findByUserId(reader.getUserId()).ifPresent(walletRepository::delete);
         userRepository.deleteById(reader.getUserId());
     }
 
@@ -1244,6 +1256,14 @@ class Week6IntegrationTest {
         user.setPasswordHash("not-used");
         user.setCardStatus("ACTIVE");
         return userRepository.saveAndFlush(user);
+    }
+
+    private WalletEntity createEligibleWallet(UserEntity user) {
+        WalletEntity wallet = new WalletEntity();
+        wallet.setUserId(user.getUserId());
+        wallet.setDepositBalance(new BigDecimal("100000"));
+        wallet.setTotalDebt(BigDecimal.ZERO);
+        return walletRepository.saveAndFlush(wallet);
     }
 
     private UserEntity createUserWithRole(String prefix, String role, String password) {

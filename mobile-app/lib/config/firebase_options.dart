@@ -25,6 +25,13 @@ class DefaultFirebaseOptions {
       _senderId.isNotEmpty &&
       _projectId.isNotEmpty;
 
+  /// Android reads its Firebase client identifiers from
+  /// android/app/google-services.json. Other platforms still require the
+  /// FIREBASE_* build variables (or a future `flutterfire configure` run).
+  static bool get canInitialize =>
+      isConfigured ||
+      (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+
   static FirebaseOptions get currentPlatform {
     if (!isConfigured) {
       throw StateError(

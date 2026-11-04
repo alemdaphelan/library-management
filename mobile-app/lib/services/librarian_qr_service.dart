@@ -3,6 +3,18 @@ import 'dart:math';
 import 'api_service.dart';
 
 class LibrarianQrService {
+  static const String signedPayloadPrefix = 'HUITQR1';
+
+  /// Chỉ kiểm tra cấu trúc công khai của QR trước khi gửi lên Backend.
+  /// Chữ ký và thời hạn vẫn phải được Backend xác thực.
+  static bool isSignedPayloadFormat(String payload) {
+    final parts = payload.trim().split('.');
+    return parts.length == 3 &&
+        parts.first == signedPayloadPrefix &&
+        parts[1].isNotEmpty &&
+        parts[2].isNotEmpty;
+  }
+
   static Future<Map<String, dynamic>> issueMyCard() async {
     final data = await ApiService.get('/api/v1/qr/cards/me');
     return Map<String, dynamic>.from(data as Map);
@@ -41,6 +53,16 @@ class LibrarianQrService {
       'barcodes': _normalizeBarcodes(barcodes),
       if (note != null && note.trim().isNotEmpty)
         'returnConditionNote': note.trim(),
+    });
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  static Future<Map<String, dynamic>> inspectAndReturn(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final data = await ApiService.post('/loans/return-inspection', {
+      'idempotencyKey': _operationKey('return-inspection'),
+      'items': items,
     });
     return Map<String, dynamic>.from(data as Map);
   }

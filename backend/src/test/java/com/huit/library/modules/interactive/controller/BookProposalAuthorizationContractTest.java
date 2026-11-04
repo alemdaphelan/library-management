@@ -10,13 +10,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BookProposalAuthorizationContractTest {
 
     @Test
-    void readerProposalOperationsRequireAuthentication() throws Exception {
+    void readerProposalOperationsRequireStudentRole() throws Exception {
         var submit = BookProposalController.class.getMethod(
                 "submitProposal", CustomUserDetails.class, CreateProposalRequestDTO.class);
         var mine = BookProposalController.class.getMethod(
                 "getMyProposals", CustomUserDetails.class);
 
-        assertThat(submit.getAnnotation(PreAuthorize.class).value()).isEqualTo("isAuthenticated()");
-        assertThat(mine.getAnnotation(PreAuthorize.class).value()).isEqualTo("isAuthenticated()");
+        assertThat(submit.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
+        assertThat(mine.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
     }
 }

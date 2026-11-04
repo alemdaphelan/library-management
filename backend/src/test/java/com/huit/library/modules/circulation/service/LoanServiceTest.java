@@ -81,7 +81,8 @@ class LoanServiceTest {
                 circulationStateService,
                 waitlistService,
                 mock(StaffNotificationService.class),
-                policyService);
+                policyService,
+                mock(BorrowingValuePolicyService.class));
     }
 
     @Test
@@ -288,6 +289,8 @@ class LoanServiceTest {
         copy.setBarcode("BC-041");
         copy.setBookId(41L);
         copy.setStatus("AVAILABLE");
+        copy.setStatus("AVAILABLE");
+        when(copyRepository.findByBookId(41L)).thenReturn(List.of(copy));
         return copy;
     }
 
@@ -468,6 +471,65 @@ class LoanServiceTest {
             assertThat(summary.getItemCount()).isEqualTo(2);
             assertThat(summary.getOverdueItemCount()).isEqualTo(1);
             assertThat(summary.getTotalLateFine()).isEqualByComparingTo("3000");
+        });
+    }
+
+    @Test
+    void zeroCopyOrDigitalBookRejectsBorrowAndWaitlist() {
+        UUID userId = UUID.randomUUID();
+        setupReservation(userId);
+        when(copyRepository.findByBookId(41L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.reserveOrBorrowBook(reservationRequest(), userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("không có bản sao lưu thông");
+        verify(waitlistRepository, never()).save(any(WaitlistEntity.class));
+        verify(ticketRepository, never()).save(any(LoanTicketEntity.class));
+    }
+
+    @Test
+    void batchReservationRejectsWhenTotalItemsExceedThreeDocumentLimit() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setUserId(userId);
+        user.setCardStatus("ACTIVE");
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+        doThrow(new ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Yêu cầu có 2 tài liệu nhưng bạn đọc hiện đã có 2; mỗi bạn đọc được đặt giữ hoặc mượn tối đa 3 tài liệu"))
+                .when(circulationStateService).ensureEligibleForReservation(userId, 2);
+
+        BatchBorrowRequestDTO request = new BatchBorrowRequestDTO();
+        request.setBookIds(List.of(51L, 52L));
+        request.setTicketType("BORROW");
+
+        assertThatThrownBy(() -> service.reserveBooks(request, userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("tối đa 3 tài liệu");
+        verify(ticketRepository, never()).save(any(LoanTicketEntity.class));
+    }
+
+    @Test
+    void cancelReservationDelegatesToStateServiceAndRejectsOtherUsers() {
+        UUID ownerId = UUID.randomUUID();
+        UUID otherId = UUID.randomUUID();
+        LoanTicketEntity ticket = new LoanTicketEntity();
+        ticket.setTicketId(77L);
+        ticket.setUserId(ownerId);
+        ticket.setStatus("RESERVED");
+        when(ticketRepository.findByIdForUpdate(77L)).thenReturn(Optional.of(ticket));
+
+        assertThatThrownBy(() -> service.cancelReservation(77L, otherId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("không có quyền hủy");
+
+        service.cancelReservation(77L, ownerId);
+        verify(circulationStateService).cancelReservation(ticket, ownerId);
+    }
+
+    private void unusedEndHelper() {
+        org.assertj.core.api.Assertions.assertThat(List.of(new LoanTicketEntity())).noneSatisfy(summary -> {
+            assertThat(summary.getTicketId()).isEqualTo(-1L);
         });
     }
 }

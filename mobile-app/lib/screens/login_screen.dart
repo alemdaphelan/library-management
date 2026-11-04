@@ -3,8 +3,10 @@ import 'package:mobile_app/screens/main_layout.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:mobile_app/services/api_service.dart';
 import 'package:mobile_app/services/auth_service.dart';
 import 'package:mobile_app/screens/change_password_screen.dart';
+import 'package:mobile_app/screens/forgot_password_screen.dart';
 import 'package:mobile_app/services/push_notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -29,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Uri.parse('${AuthService.baseUrl}/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'email': _usernameController.text,
+          'email': _usernameController.text.trim(),
           'password': _passwordController.text,
         }),
       );
@@ -60,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sai tên đăng nhập hoặc mật khẩu!')),
+          SnackBar(content: Text(ApiService.extractErrorMessage(response))),
         );
       }
     } catch (e) {
@@ -181,7 +183,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           fillColor: Colors.grey.shade50,
                         ),
                       ),
-                      const SizedBox(height: 25),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ForgotPasswordScreen(),
+                                  ),
+                                ),
+                          child: const Text('Quên mật khẩu?'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
 
                       // Buttons
                       SizedBox(

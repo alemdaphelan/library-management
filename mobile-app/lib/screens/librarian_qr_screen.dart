@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../services/auth_service.dart';
 import '../services/librarian_qr_service.dart';
+import '../services/loan_service.dart';
 
 class LibrarianQrScreen extends StatefulWidget {
   const LibrarianQrScreen({super.key});
@@ -18,13 +19,12 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
     formats: const [BarcodeFormat.qrCode],
   );
   final TextEditingController _barcodesController = TextEditingController();
-  final TextEditingController _returnNoteController = TextEditingController();
+  final Map<int, _ReturnInspectionDraft> _returnDrafts = {};
 
   bool _checkingRole = true;
   bool _authorized = false;
   bool _resolving = false;
   bool _submitting = false;
-  String? _payload;
   String? _error;
   String? _success;
   Map<String, dynamic>? _resolved;
@@ -71,63 +71,59 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
           .map((item) => item is Map ? item['barcode']?.toString() : null)
           .whereType<String>()
           .where((value) => value.isNotEmpty)
-          .join(', ');
+          .join('\n');
       if (!mounted) return;
       setState(() {
-        _payload = payload;
         _resolved = result;
         _barcodesController.text = barcodes;
+        _returnDrafts
+          ..clear()
+          ..addEntries(
+            items.whereType<Map>().map((item) {
+              final detailId = (item['detailId'] as num?)?.toInt();
+              return detailId == null
+                  ? null
+                  : MapEntry(detailId, _ReturnInspectionDraft());
+            }).whereType<MapEntry<int, _ReturnInspectionDraft>>(),
+          );
       });
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = _friendlyError(error));
     } finally {
-      if (mounted) setState(() => _resolving = false);
+      if (mounted) {
+        setState(() => _resolving = false);
+        if (_resolved == null) await _scannerController.start();
+      }
     }
   }
 
   Future<void> _resetScanner() async {
     setState(() {
-      _payload = null;
       _resolved = null;
       _error = null;
       _success = null;
       _barcodesController.clear();
-      _returnNoteController.clear();
+      _returnDrafts.clear();
     });
     await _scannerController.start();
   }
 
   Future<void> _showManualInput() async {
-    final controller = TextEditingController();
+    await _scannerController.stop();
+    if (!mounted) return;
+
     final payload = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nhập dữ liệu QR'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          minLines: 2,
-          maxLines: 5,
-          decoration: const InputDecoration(
-            hintText: 'Dán chuỗi HUITQR1...',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Xác thực'),
-          ),
-        ],
-      ),
+      builder: (context) => const LibrarianQrManualInputDialog(),
     );
-    controller.dispose();
-    if (payload != null && payload.isNotEmpty) await _resolve(payload);
+    if (!mounted) return;
+
+    if (payload == null) {
+      await _scannerController.start();
+      return;
+    }
+    await _resolve(payload);
   }
 
   List<String> get _barcodes => _barcodesController.text
@@ -140,7 +136,7 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
   Future<void> _performAction(String action) async {
     if (_submitting || _resolved == null) return;
     final barcodes = _barcodes;
-    if (barcodes.isEmpty) {
+    if (action == 'CHECKOUT' && barcodes.isEmpty) {
       setState(() => _error = 'Cần ít nhất một barcode sách để xử lý.');
       return;
     }
@@ -156,23 +152,42 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
         if (ticketId == null) throw Exception('Phiếu mượn không hợp lệ.');
         response = await LibrarianQrService.checkout(ticketId, barcodes);
       } else {
-        response = await LibrarianQrService.returnBooks(
-          barcodes,
-          note: _returnNoteController.text,
-        );
+        final inspectionItems = _buildReturnInspectionPayload();
+        response = await LibrarianQrService.inspectAndReturn(inspectionItems);
       }
       if (!mounted) return;
+      LoanService.notifyLoansChanged();
+      final successMessage = action == 'CHECKOUT'
+          ? response['message']?.toString() ??
+                'Đã giao sách và chuyển phiếu sang trạng thái đang mượn.'
+          : _returnReceiptMessage(response);
       setState(() {
-        _success =
-            response['message']?.toString() ??
-            (action == 'CHECKOUT'
-                ? 'Checkout thành công.'
-                : 'Trả sách thành công.');
+        _resolved = null;
+        _success = successMessage;
+        _barcodesController.clear();
+        _returnDrafts.clear();
       });
-      if (_payload != null) await _resolve(_payload!);
+      await _scannerController.start();
     } catch (error) {
       if (!mounted) return;
-      setState(() => _error = _friendlyError(error));
+      final message = _friendlyError(error);
+      final staleCheckout =
+          action == 'CHECKOUT' &&
+          (message.toUpperCase().contains('BORROWING') ||
+              message.toLowerCase().contains('đã được giao'));
+      if (staleCheckout) {
+        LoanService.notifyLoansChanged();
+        setState(() {
+          _resolved = null;
+          _barcodesController.clear();
+          _error =
+              'Phiếu đã được giao sách trước đó và hiện ở trạng thái đang mượn. '
+              'Vui lòng quét phiếu khác.';
+        });
+        await _scannerController.start();
+      } else {
+        setState(() => _error = message);
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -186,11 +201,95 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
     return message.isEmpty ? 'Không thể xác thực mã QR.' : message;
   }
 
+  List<Map<String, dynamic>> _buildReturnInspectionPayload() {
+    final result = <Map<String, dynamic>>[];
+    for (final entry in _returnDrafts.entries) {
+      final draft = entry.value;
+      final note = draft.note.trim();
+      if (draft.condition != 'NORMAL' && note.isEmpty) {
+        throw Exception(
+          'Vui lòng ghi rõ tình trạng hư hỏng/mất cho từng tài liệu.',
+        );
+      }
+      if (draft.condition == 'DAMAGED_LIGHT' && draft.repairFee <= 0) {
+        throw Exception('Hư hỏng nhẹ phải có mức phí sửa chữa lớn hơn 0.');
+      }
+      if (draft.condition == 'DAMAGED_LIGHT' &&
+          draft.pagesAffected != null &&
+          (draft.pagesAffected! < 1 || draft.pagesAffected! > 10)) {
+        throw Exception('Hư hỏng nhẹ chỉ áp dụng từ 1 đến 10 trang.');
+      }
+      final cashForeign =
+          draft.isLossLike &&
+          draft.stillInMarket == 'NO' &&
+          draft.settlement == 'CASH' &&
+          draft.languageCategory == 'FOREIGN' &&
+          (draft.coverPrice ?? 0) > 0;
+      if (cashForeign &&
+          (draft.originalCurrency.trim().isEmpty ||
+              (draft.fxRate ?? 0) <= 0 ||
+              draft.fxSource.trim().isEmpty)) {
+        throw Exception(
+          'Tài liệu ngoại văn có giá bìa cần mã tiền tệ, tỷ giá và nguồn tỷ giá.',
+        );
+      }
+
+      final item = <String, dynamic>{
+        'loanDetailId': entry.key,
+        'condition': draft.backendCondition,
+        if (note.isNotEmpty) 'returnConditionNote': note,
+      };
+      if (draft.condition != 'NORMAL') {
+        item['penalty'] = draft.toPenalty(entry.key);
+      }
+      result.add(item);
+    }
+    if (result.isEmpty) {
+      throw Exception('Phiếu không có tài liệu hợp lệ để nhận trả.');
+    }
+    return result;
+  }
+
+  String _returnReceiptMessage(Map<String, dynamic> response) {
+    final items = (response['items'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .toList();
+    num lateFine = 0;
+    num penalty = 0;
+    num depositApplied = 0;
+    num debtAdded = 0;
+    for (final item in items) {
+      lateFine += (item['lateFineAdded'] as num?) ?? 0;
+      penalty += (item['penaltyAmount'] as num?) ?? 0;
+      depositApplied += (item['depositApplied'] as num?) ?? 0;
+      debtAdded += (item['debtAdded'] as num?) ?? 0;
+    }
+    final details = <String>[
+      if (lateFine > 0) 'phạt quá hạn ${_money(lateFine)}',
+      if (penalty > 0) 'phạt/đền bù ${_money(penalty)}',
+      if (depositApplied > 0) 'đã trừ thế chân ${_money(depositApplied)}',
+      if (debtAdded > 0) 'công nợ tăng ${_money(debtAdded)}',
+    ];
+    return 'Đã nhận trả ${items.length} tài liệu'
+        '${details.isEmpty ? '.' : ': ${details.join(', ')}.'}';
+  }
+
+  String _money(num value) => '${value.toStringAsFixed(0)} đ';
+
+  String _formatDate(dynamic value) {
+    final parsed = DateTime.tryParse(value?.toString() ?? '');
+    if (parsed == null) return '—';
+    final local = parsed.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/${local.year} '
+        '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
+  }
+
   @override
   void dispose() {
     _scannerController.dispose();
     _barcodesController.dispose();
-    _returnNoteController.dispose();
     super.dispose();
   }
 
@@ -338,12 +437,46 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
               ),
               ...items.map((item) {
                 final map = Map<String, dynamic>.from(item as Map);
-                return ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.menu_book_outlined),
-                  title: Text(map['bookTitle']?.toString() ?? 'Tài liệu'),
-                  subtitle: Text('Barcode: ${map['barcode'] ?? '—'}'),
+                final detailId = (map['detailId'] as num?)?.toInt();
+                return Card.outlined(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.menu_book_outlined),
+                          title: Text(
+                            map['bookTitle']?.toString() ?? 'Tài liệu',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text('Barcode: ${map['barcode'] ?? '—'}'),
+                        ),
+                        _InfoRow(
+                          label: map['borrowedAt'] != null
+                              ? 'Ngày mượn'
+                              : 'Ngày đăng ký',
+                          value: _formatDate(
+                            map['borrowedAt'] ?? map['createdAt'],
+                          ),
+                        ),
+                        _InfoRow(
+                          label: 'Hạn trả',
+                          value: _formatDate(map['dueDate']),
+                        ),
+                        if (map['returnDate'] != null)
+                          _InfoRow(
+                            label: 'Ngày trả',
+                            value: _formatDate(map['returnDate']),
+                          ),
+                        if (actions.contains('RETURN') && detailId != null)
+                          _buildReturnInspectionEditor(detailId),
+                      ],
+                    ),
+                  ),
                 );
               }),
             ],
@@ -351,20 +484,14 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: _barcodesController,
-                decoration: const InputDecoration(
-                  labelText: 'Barcode sách (ngăn cách bằng dấu phẩy)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-            if (actions.contains('RETURN')) ...[
-              const SizedBox(height: 10),
-              TextField(
-                controller: _returnNoteController,
-                maxLength: 500,
-                decoration: const InputDecoration(
-                  labelText: 'Tình trạng khi trả (không bắt buộc)',
-                  border: OutlineInputBorder(),
+                minLines: 1,
+                maxLines: items.length > 1 ? items.length : 1,
+                decoration: InputDecoration(
+                  labelText: items.length > 1
+                      ? 'Barcode các sách'
+                      : 'Barcode sách',
+                  helperText: items.length > 1 ? 'Mỗi barcode một dòng.' : null,
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ],
@@ -404,6 +531,359 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
       ),
     );
   }
+
+  Widget _buildReturnInspectionEditor(int detailId) {
+    final draft = _returnDrafts.putIfAbsent(
+      detailId,
+      _ReturnInspectionDraft.new,
+    );
+    final incident = draft.condition != 'NORMAL';
+    final lostLike =
+        draft.condition == 'LOST' || draft.condition == 'DAMAGED_HEAVY';
+    final needsCashDetails =
+        lostLike && draft.stillInMarket == 'NO' && draft.settlement == 'CASH';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 24),
+        DropdownButtonFormField<String>(
+          initialValue: draft.condition,
+          decoration: const InputDecoration(
+            labelText: 'Tình trạng tài liệu khi trả',
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'NORMAL', child: Text('Bình thường')),
+            DropdownMenuItem(
+              value: 'DAMAGED_LIGHT',
+              child: Text('Hư hỏng nhẹ (phí sửa chữa)'),
+            ),
+            DropdownMenuItem(
+              value: 'DAMAGED_HEAVY',
+              child: Text('Hư hỏng nặng (xử lý như mất)'),
+            ),
+            DropdownMenuItem(value: 'LOST', child: Text('Mất tài liệu')),
+          ],
+          onChanged: _submitting
+              ? null
+              : (value) => setState(() {
+                  draft.condition = value ?? 'NORMAL';
+                  draft.resetDependentFields();
+                }),
+        ),
+        if (draft.condition == 'DAMAGED_LIGHT') ...[
+          const SizedBox(height: 10),
+          TextFormField(
+            initialValue: draft.repairFee == 0
+                ? ''
+                : draft.repairFee.toStringAsFixed(0),
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Phí sửa chữa (VNĐ)',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) =>
+                draft.repairFee = double.tryParse(value.trim()) ?? 0,
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            initialValue: draft.pagesAffected?.toString() ?? '',
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Số trang bị ảnh hưởng (nếu có)',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) =>
+                draft.pagesAffected = int.tryParse(value.trim()),
+          ),
+        ],
+        if (lostLike) ...[
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: draft.stillInMarket,
+            decoration: const InputDecoration(
+              labelText: 'Tài liệu còn lưu hành trên thị trường?',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'YES', child: Text('Có')),
+              DropdownMenuItem(value: 'NO', child: Text('Không')),
+            ],
+            onChanged: (value) => setState(() {
+              draft.stillInMarket = value ?? 'YES';
+              if (draft.stillInMarket == 'YES') {
+                draft.settlement = 'REPLACEMENT';
+              }
+            }),
+          ),
+          if (draft.stillInMarket == 'NO') ...[
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: draft.settlement,
+              decoration: const InputDecoration(
+                labelText: 'Cách đền bù',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'REPLACEMENT',
+                  child: Text('Mua tài liệu thay thế'),
+                ),
+                DropdownMenuItem(
+                  value: 'CASH',
+                  child: Text('Đền bù bằng tiền'),
+                ),
+              ],
+              onChanged: (value) =>
+                  setState(() => draft.settlement = value ?? 'REPLACEMENT'),
+            ),
+          ],
+        ],
+        if (needsCashDetails) ...[
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: draft.languageCategory,
+            decoration: const InputDecoration(
+              labelText: 'Phân loại ngôn ngữ',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'VIETNAMESE', child: Text('Việt ngữ')),
+              DropdownMenuItem(value: 'FOREIGN', child: Text('Ngoại văn')),
+            ],
+            onChanged: (value) =>
+                setState(() => draft.languageCategory = value ?? 'VIETNAMESE'),
+          ),
+          const SizedBox(height: 10),
+          TextFormField(
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Giá bìa (để trống nếu không có)',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) =>
+                draft.coverPrice = double.tryParse(value.trim()),
+          ),
+          if (draft.languageCategory == 'FOREIGN') ...[
+            const SizedBox(height: 10),
+            TextFormField(
+              decoration: const InputDecoration(
+                labelText: 'Mã tiền tệ (ví dụ USD)',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) => draft.originalCurrency = value.trim(),
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Tỷ giá quy đổi',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) =>
+                  draft.fxRate = double.tryParse(value.trim()),
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              decoration: const InputDecoration(
+                labelText: 'Nguồn tỷ giá',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) => draft.fxSource = value.trim(),
+            ),
+          ],
+        ],
+        const SizedBox(height: 10),
+        TextFormField(
+          initialValue: draft.note,
+          maxLength: 500,
+          decoration: InputDecoration(
+            labelText: incident
+                ? 'Ghi chú tình trạng (bắt buộc)'
+                : 'Ghi chú khi trả (không bắt buộc)',
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: (value) => draft.note = value,
+        ),
+        const Text(
+          'Tiền quá hạn được hệ thống tự tính. Khoản hư hỏng/mất sẽ tự trừ '
+          'tiền thế chân trước, phần còn lại ghi vào công nợ bạn đọc.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReturnInspectionDraft {
+  String condition = 'NORMAL';
+  String note = '';
+  double repairFee = 0;
+  int? pagesAffected;
+  String stillInMarket = 'YES';
+  String settlement = 'REPLACEMENT';
+  String languageCategory = 'VIETNAMESE';
+  double? coverPrice;
+  String originalCurrency = '';
+  double? fxRate;
+  String fxSource = '';
+
+  bool get isLossLike => condition == 'LOST' || condition == 'DAMAGED_HEAVY';
+
+  String get backendCondition {
+    if (condition == 'LOST') return 'LOST';
+    if (condition.startsWith('DAMAGED')) return 'DAMAGED';
+    return 'NORMAL';
+  }
+
+  void resetDependentFields() {
+    repairFee = 0;
+    pagesAffected = null;
+    stillInMarket = 'YES';
+    settlement = 'REPLACEMENT';
+    languageCategory = 'VIETNAMESE';
+    coverPrice = null;
+    originalCurrency = '';
+    fxRate = null;
+    fxSource = '';
+  }
+
+  Map<String, dynamic> toPenalty(int detailId) {
+    final lightDamage = condition == 'DAMAGED_LIGHT';
+    final cashSettlement =
+        isLossLike && stillInMarket == 'NO' && settlement == 'CASH';
+    return <String, dynamic>{
+      'loanDetailId': detailId,
+      'incidentType': condition == 'LOST' ? 'LOST' : 'DAMAGED',
+      if (condition.startsWith('DAMAGED'))
+        'damageSeverity': lightDamage ? 'LIGHT' : 'HEAVY',
+      if (pagesAffected != null) 'pagesAffected': pagesAffected,
+      'description': note.trim(),
+      'materialType': 'BOOK',
+      'languageCategory': languageCategory,
+      if (isLossLike) 'stillInMarket': stillInMarket == 'YES',
+      'settlementMethod': lightDamage ? 'REPAIR' : settlement,
+      if (lightDamage) 'repairFee': repairFee,
+      if (cashSettlement && coverPrice != null) 'coverPrice': coverPrice,
+      if (cashSettlement && languageCategory == 'FOREIGN') ...{
+        if (originalCurrency.trim().isNotEmpty)
+          'originalCurrency': originalCurrency.trim().toUpperCase(),
+        if (fxRate != null) 'fxRate': fxRate,
+        if (fxSource.trim().isNotEmpty) 'fxSource': fxSource.trim(),
+      },
+    };
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 95,
+          child: Text(label, style: const TextStyle(color: Colors.black54)),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Dialog nhập dự phòng khi thiết bị không quét được camera.
+///
+/// Controller thuộc vòng đời của dialog để tránh dispose trong lúc hiệu ứng
+/// đóng route vẫn đang sử dụng TextField.
+class LibrarianQrManualInputDialog extends StatefulWidget {
+  const LibrarianQrManualInputDialog({super.key});
+
+  @override
+  State<LibrarianQrManualInputDialog> createState() =>
+      _LibrarianQrManualInputDialogState();
+}
+
+class _LibrarianQrManualInputDialogState
+    extends State<LibrarianQrManualInputDialog> {
+  final TextEditingController _controller = TextEditingController();
+  String? _errorText;
+
+  void _submit() {
+    final payload = _controller.text.trim();
+    if (payload.isEmpty) {
+      setState(() => _errorText = 'Vui lòng nhập dữ liệu QR.');
+      return;
+    }
+    if (!LibrarianQrService.isSignedPayloadFormat(payload)) {
+      setState(
+        () => _errorText = payload.toUpperCase().startsWith('BC-')
+            ? 'Đây là barcode bản sao sách, không phải QR phiếu/thẻ HUIT.'
+            : 'QR phải có định dạng HUITQR1.dữ-liệu.chữ-ký.',
+      );
+      return;
+    }
+    Navigator.of(context).pop(payload);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Nhập dữ liệu QR'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          key: const Key('librarianQrManualInput'),
+          controller: _controller,
+          autofocus: true,
+          minLines: 2,
+          maxLines: 5,
+          decoration: InputDecoration(
+            hintText: 'Dán chuỗi HUITQR1...',
+            errorText: _errorText,
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (_) => _submit(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'HUITQR1 là QR có chữ ký của phiếu mượn hoặc thẻ bạn đọc. '
+          'Barcode bản sao sách có dạng BC-... và không nhập tại đây.',
+          style: TextStyle(fontSize: 12),
+        ),
+      ],
+    ),
+    actions: [
+      TextButton(
+        key: const Key('librarianQrManualCancel'),
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Hủy'),
+      ),
+      FilledButton(
+        key: const Key('librarianQrManualSubmit'),
+        onPressed: _submit,
+        child: const Text('Xác thực'),
+      ),
+    ],
+  );
 }
 
 class _AccessDenied extends StatelessWidget {

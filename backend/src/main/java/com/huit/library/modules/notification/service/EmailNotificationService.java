@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -16,14 +17,17 @@ public class EmailNotificationService {
     private final NotificationPreferenceService preferenceService;
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
+    private final String fromEmail;
 
     public EmailNotificationService(
             NotificationPreferenceService preferenceService,
             UserRepository userRepository,
-            JavaMailSender mailSender) {
+            JavaMailSender mailSender,
+            @Value("${spring.mail.username:}") String fromEmail) {
         this.preferenceService = preferenceService;
         this.userRepository = userRepository;
         this.mailSender = mailSender;
+        this.fromEmail = fromEmail;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
@@ -37,6 +41,9 @@ public class EmailNotificationService {
             }
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
+                if (fromEmail != null && !fromEmail.isBlank()) {
+                    message.setFrom(fromEmail);
+                }
                 message.setTo(user.getEmail());
                 message.setSubject(titleFor(event.type()));
                 message.setText(event.content());

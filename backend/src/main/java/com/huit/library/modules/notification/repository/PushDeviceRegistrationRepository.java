@@ -14,4 +14,6 @@ public interface PushDeviceRegistrationRepository
     Optional<PushDeviceRegistrationEntity> findByUserIdAndToken(UUID userId, String token);
 
     List<PushDeviceRegistrationEntity> findByUserIdAndActiveTrue(UUID userId);
+
+    List<PushDeviceRegistrationEntity> findByDeviceIdAndActiveTrue(String deviceId);
 }

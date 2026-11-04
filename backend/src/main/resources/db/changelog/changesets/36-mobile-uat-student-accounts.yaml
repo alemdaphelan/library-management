@@ -1,0 +1,87 @@
+databaseChangeLog:
+  - changeSet:
+      id: mobile-uat-student-accounts
+      author: codex
+      comment: Replace generic/dummy student logins with the three thesis-team student accounts used for UAT.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- Preserve historical foreign keys while removing generic/dummy accounts
+              -- from the active student directory and from usable login identifiers.
+              UPDATE users
+                 SET email = 'archived-' || replace(user_id::text, '-', '') || '@invalid.local',
+                     mssv = NULL,
+                     user_type = 'ARCHIVED',
+                     card_status = 'LOCKED',
+                     discipline_flag = TRUE,
+                     updated_at = CURRENT_TIMESTAMP
+               WHERE (email = 'student@student.huit.edu.vn'
+                      OR mssv = '20012001'
+                      OR email ~ '^student1[0-9]@student\.huit\.edu\.vn$')
+                 AND mssv NOT IN ('2001230219', '2001230430', '2001230914');
+
+              INSERT INTO users (
+                  user_id, role_id, password_hash, is_first_login, full_name,
+                  mssv, department, email, phone, user_type, card_status,
+                  card_expiry_date, discipline_flag, created_at, updated_at
+              )
+              SELECT
+                  '00000000-0000-0000-0000-002001230219'::uuid,
+                  'STUDENT',
+                  '$2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696',
+                  FALSE,
+                  'Nguyễn Bảo Hân',
+                  '2001230219',
+                  'Khoa Công nghệ thông tin',
+                  '2001230219@student.huit.edu.vn',
+                  NULL,
+                  'STUDENT',
+                  'ACTIVE',
+                  CURRENT_TIMESTAMP + INTERVAL '2 years',
+                  FALSE,
+                  CURRENT_TIMESTAMP,
+                  CURRENT_TIMESTAMP
+              WHERE NOT EXISTS (SELECT 1 FROM users WHERE mssv = '2001230219');
+
+              INSERT INTO users (
+                  user_id, role_id, password_hash, is_first_login, full_name,
+                  mssv, department, email, phone, user_type, card_status,
+                  card_expiry_date, discipline_flag, created_at, updated_at
+              )
+              SELECT
+                  '00000000-0000-0000-0000-002001230914'::uuid,
+                  'STUDENT',
+                  '$2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696',
+                  FALSE,
+                  'Nguyễn Tất Thắng',
+                  '2001230914',
+                  'Khoa Công nghệ thông tin',
+                  '2001230914@student.huit.edu.vn',
+                  NULL,
+                  'STUDENT',
+                  'ACTIVE',
+                  CURRENT_TIMESTAMP + INTERVAL '2 years',
+                  FALSE,
+                  CURRENT_TIMESTAMP,
+                  CURRENT_TIMESTAMP
+              WHERE NOT EXISTS (SELECT 1 FROM users WHERE mssv = '2001230914');
+
+              UPDATE users
+                 SET role_id = 'STUDENT',
+                     password_hash = '$2a$10$nAobncneBOBo8WPs3Km9rOfFIdhQsG4STRmLjKipBLl9IkYkc/696',
+                     is_first_login = FALSE,
+                     full_name = CASE mssv
+                         WHEN '2001230219' THEN 'Nguyễn Bảo Hân'
+                         WHEN '2001230430' THEN 'Tô Khiết Lâm'
+                         WHEN '2001230914' THEN 'Nguyễn Tất Thắng'
+                     END,
+                     department = 'Khoa Công nghệ thông tin',
+                     user_type = 'STUDENT',
+                     card_status = 'ACTIVE',
+                     card_expiry_date = CURRENT_TIMESTAMP + INTERVAL '2 years',
+                     discipline_flag = FALSE,
+                     circulation_locked_until = NULL,
+                     circulation_lock_reason = NULL,
+                     updated_at = CURRENT_TIMESTAMP
+               WHERE mssv IN ('2001230219', '2001230430', '2001230914');

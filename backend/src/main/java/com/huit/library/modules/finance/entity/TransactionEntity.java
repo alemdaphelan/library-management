@@ -37,6 +37,7 @@ public class TransactionEntity extends BaseEntity {
     // Captured once when the charge consumes the deposit; later payments must not overwrite it.
     private BigDecimal depositAppliedAmount;
     private LocalDateTime depositAppliedAt;
+    private LocalDateTime overdueProcessedAt;
     @Column(unique = true, length = 160)
     private String dedupKey;
 }

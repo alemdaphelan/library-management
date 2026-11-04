@@ -2,11 +2,13 @@ package com.huit.library.modules.circulation.service;
 
 import com.huit.library.modules.circulation.entity.HolidayCalendarEntity;
 import com.huit.library.modules.circulation.repository.HolidayCalendarRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -16,14 +18,25 @@ public class LibraryHoursService {
     private final HolidayCalendarRepository holidayRepository;
     private final LocalTime defaultOpenTime;
     private final LocalTime defaultCloseTime;
+    private final Clock clock;
 
+    @Autowired
     public LibraryHoursService(
             HolidayCalendarRepository holidayRepository,
             @Value("${library.circulation.default-open-time:07:30}") String defaultOpenTime,
             @Value("${library.circulation.default-close-time:17:00}") String defaultCloseTime) {
+        this(holidayRepository, defaultOpenTime, defaultCloseTime, Clock.systemDefaultZone());
+    }
+
+    LibraryHoursService(
+            HolidayCalendarRepository holidayRepository,
+            String defaultOpenTime,
+            String defaultCloseTime,
+            Clock clock) {
         this.holidayRepository = holidayRepository;
         this.defaultOpenTime = LocalTime.parse(defaultOpenTime);
         this.defaultCloseTime = LocalTime.parse(defaultCloseTime);
+        this.clock = clock;
     }
 
     public boolean isCounterOpen(LocalDateTime at) {
@@ -34,7 +47,7 @@ public class LibraryHoursService {
     }
 
     public void requireCounterOpen(String operation) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         if (!isCounterOpen(now)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,

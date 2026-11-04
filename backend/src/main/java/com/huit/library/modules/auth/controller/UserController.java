@@ -10,10 +10,12 @@ import com.huit.library.modules.interactive.service.BookInteractionService;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -88,35 +90,48 @@ public class UserController {
     }
 
     @GetMapping("/wishlist")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get my wishlist", description = "Lists books saved by the current user.")
     public ResponseEntity<?> getWishlist(@AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(bookInteractionService.getWishlist(principal.getUser().getUserId()));
+        return ResponseEntity.ok(bookInteractionService.getWishlist(requireUserId(principal)));
     }
 
     @GetMapping("/wishlist/{bookId}/status")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Check wishlist status")
     public ResponseEntity<?> getWishlistStatus(
             @PathVariable Long bookId,
             @AuthenticationPrincipal CustomUserDetails principal) {
         return ResponseEntity.ok(java.util.Map.of(
-                "saved", bookInteractionService.isSaved(principal.getUser().getUserId(), bookId)));
+                "saved", bookInteractionService.isSaved(requireUserId(principal), bookId)));
     }
 
     @PostMapping("/wishlist")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Add to Wishlist", description = "Add a specific book to the user's wishlist.")
     public ResponseEntity<?> addToWishlist(
             @Valid @RequestBody WishlistRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails principal) {
         return ResponseEntity.ok(bookInteractionService.addToWishlist(
-                principal.getUser().getUserId(), request.getBookId()));
+                requireUserId(principal), request.getBookId()));
     }
 
     @DeleteMapping("/wishlist/{bookId}")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Remove from Wishlist")
     public ResponseEntity<Void> removeFromWishlist(
             @PathVariable Long bookId,
             @AuthenticationPrincipal CustomUserDetails principal) {
-        bookInteractionService.removeFromWishlist(principal.getUser().getUserId(), bookId);
+        bookInteractionService.removeFromWishlist(requireUserId(principal), bookId);
         return ResponseEntity.noContent().build();
+    }
+
+    private UUID requireUserId(CustomUserDetails principal) {
+        if (principal == null || principal.getUser() == null || principal.getUser().getUserId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Vui lòng đăng nhập để sử dụng danh sách sách đã lưu");
+        }
+        return principal.getUser().getUserId();
     }
 }

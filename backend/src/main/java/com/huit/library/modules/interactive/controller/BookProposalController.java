@@ -27,7 +27,7 @@ public class BookProposalController {
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Submit book proposal", description = "Student/reader submits a recommendation to buy new book")
     public ResponseEntity<ProposalResponseDTO> submitProposal(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -37,7 +37,7 @@ public class BookProposalController {
     }
 
     @GetMapping("/my")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get my proposals", description = "Reader views their submitted proposals and approval status")
     public ResponseEntity<List<ProposalResponseDTO>> getMyProposals(
             @AuthenticationPrincipal CustomUserDetails userDetails) {

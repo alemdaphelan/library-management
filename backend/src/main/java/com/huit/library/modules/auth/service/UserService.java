@@ -5,6 +5,8 @@ import com.huit.library.modules.auth.dto.StudentUpsertRequestDTO;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.finance.entity.WalletEntity;
 import com.huit.library.modules.finance.repository.WalletRepository;
+import com.huit.library.modules.notification.service.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,18 +24,30 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final WalletRepository walletRepository;
+    private final NotificationService notificationService;
     private final BigDecimal defaultDeposit;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             WalletRepository walletRepository,
+            BigDecimal defaultDeposit) {
+        this(userRepository, passwordEncoder, walletRepository, null, defaultDeposit);
+    }
+
+    @Autowired
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            WalletRepository walletRepository,
+            NotificationService notificationService,
             @org.springframework.beans.factory.annotation.Value(
-                    "${library.circulation.default-security-deposit:50000}") BigDecimal defaultDeposit) {
+                    "${library.circulation.default-security-deposit:0}") BigDecimal defaultDeposit) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.walletRepository = walletRepository;
-        this.defaultDeposit = defaultDeposit;
+        this.notificationService = notificationService;
+        this.defaultDeposit = defaultDeposit == null ? BigDecimal.ZERO : defaultDeposit.max(BigDecimal.ZERO);
     }
 
     public List<UserEntity> getAllStudents() {
@@ -62,9 +76,45 @@ public class UserService {
     @Transactional
     public UserEntity updateStudent(String mssv, StudentUpsertRequestDTO request) {
         UserEntity existing = getStudentByMssv(mssv);
+        String previousCardStatus = existing.getCardStatus();
         ensureUnique(request.mssv(), request.email(), existing);
         apply(existing, request, false);
-        return userRepository.save(existing);
+        UserEntity saved = userRepository.save(existing);
+        notifyCardStatusChangeIfNeeded(saved, previousCardStatus);
+        return saved;
+    }
+
+    private void notifyCardStatusChangeIfNeeded(UserEntity saved, String previousCardStatus) {
+        if (notificationService == null || saved == null || saved.getUserId() == null) {
+            return;
+        }
+        String prev = previousCardStatus == null || previousCardStatus.isBlank()
+                ? "ACTIVE" : previousCardStatus.trim().toUpperCase();
+        String current = saved.getCardStatus() == null || saved.getCardStatus().isBlank()
+                ? "ACTIVE" : saved.getCardStatus().trim().toUpperCase();
+        if (prev.equals(current)) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (!"ACTIVE".equals(current)) {
+            notificationService.createOnce(
+                    saved.getUserId(),
+                    "CIRCULATION_LOCKED",
+                    "Tài khoản/thẻ thư viện của bạn đã bị khóa (trạng thái: " + current + ").",
+                    "USER",
+                    saved.getUserId().toString(),
+                    "ACCOUNT_LOCKED:" + saved.getUserId() + ":" + current + ":" + now.toLocalDate(),
+                    now);
+        } else {
+            notificationService.createOnce(
+                    saved.getUserId(),
+                    "CIRCULATION_UNLOCKED",
+                    "Tài khoản/thẻ thư viện của bạn đã được mở lại và hoạt động bình thường.",
+                    "USER",
+                    saved.getUserId().toString(),
+                    "ACCOUNT_UNLOCKED:" + saved.getUserId() + ":ACTIVE:" + now.toLocalDate(),
+                    now);
+        }
     }
 
     @Transactional

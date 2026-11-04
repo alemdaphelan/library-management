@@ -43,7 +43,7 @@ public class PenaltyCaseController {
     }
 
     @GetMapping("/my")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<?> listMyCases(@AuthenticationPrincipal CustomUserDetails user) {
         return ResponseEntity.ok(penaltyCaseService.listMyCases(user.getUser().getUserId()));
     }

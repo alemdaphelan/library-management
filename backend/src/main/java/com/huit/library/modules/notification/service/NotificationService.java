@@ -59,4 +59,9 @@ public class NotificationService {
         notification.setIsRead(true);
         return notificationRepository.save(notification);
     }
+
+    @Transactional
+    public int markAllAsRead(UUID userId) {
+        return notificationRepository.markAllAsReadByUserId(userId);
+    }
 }

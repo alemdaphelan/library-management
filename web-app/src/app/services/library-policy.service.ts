@@ -8,6 +8,10 @@ export interface LibraryPolicy {
   homeLoanDays: number;
   renewalDays: number;
   maximumRenewalCount: number;
+  minimumSecurityDeposit: number;
+  borrowingValueMargin: number;
+  recallReturnDays: number;
+  overdueDebtProcessingDays: number;
   waitlistHoldHours: number;
   homeLateFinePerDay: number;
   onsiteLateFinePerDay: number;

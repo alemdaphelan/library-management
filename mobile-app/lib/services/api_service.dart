@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 
 class ApiService {
   static String get baseUrl => ApiConfig.baseUrl;
+  static http.Client? testClient;
 
   static Future<Map<String, String>> _getHeaders() async {
     final token = await AuthService.getToken();
@@ -17,10 +18,10 @@ class ApiService {
 
   static Future<dynamic> get(String endpoint) async {
     final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-    );
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final response = testClient != null
+        ? await testClient!.get(uri, headers: headers)
+        : await http.get(uri, headers: headers);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     } else {
@@ -29,10 +30,11 @@ class ApiService {
   }
 
   static Future<dynamic> getPublic(String endpoint) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: const {'Content-Type': 'application/json'},
-    );
+    final uri = Uri.parse('$baseUrl$endpoint');
+    const headers = {'Content-Type': 'application/json'};
+    final response = testClient != null
+        ? await testClient!.get(uri, headers: headers)
+        : await http.get(uri, headers: headers);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }
@@ -44,11 +46,11 @@ class ApiService {
     Map<String, dynamic> data,
   ) async {
     final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: json.encode(data),
-    );
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final body = json.encode(data);
+    final response = testClient != null
+        ? await testClient!.post(uri, headers: headers, body: body)
+        : await http.post(uri, headers: headers, body: body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     } else {
@@ -61,11 +63,11 @@ class ApiService {
     Map<String, dynamic>? data,
   ]) async {
     final headers = await _getHeaders();
-    final response = await http.patch(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: json.encode(data ?? const <String, dynamic>{}),
-    );
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final body = json.encode(data ?? const <String, dynamic>{});
+    final response = testClient != null
+        ? await testClient!.patch(uri, headers: headers, body: body)
+        : await http.patch(uri, headers: headers, body: body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }
@@ -74,11 +76,11 @@ class ApiService {
 
   static Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     final headers = await _getHeaders();
-    final response = await http.put(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: json.encode(data),
-    );
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final body = json.encode(data);
+    final response = testClient != null
+        ? await testClient!.put(uri, headers: headers, body: body)
+        : await http.put(uri, headers: headers, body: body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }
@@ -90,11 +92,11 @@ class ApiService {
     Map<String, dynamic>? data,
   ]) async {
     final headers = await _getHeaders();
-    final response = await http.delete(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: json.encode(data ?? const <String, dynamic>{}),
-    );
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final body = json.encode(data ?? const <String, dynamic>{});
+    final response = testClient != null
+        ? await testClient!.delete(uri, headers: headers, body: body)
+        : await http.delete(uri, headers: headers, body: body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decodeSuccessBody(response);
     }

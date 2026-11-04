@@ -1,6 +1,9 @@
 package com.huit.library.modules.auth.controller;
 
+import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.core.security.TokenService;
+import com.huit.library.modules.auth.dto.UpdateProfileRequestDTO;
+import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.dto.LogoutRequestDTO;
 import com.huit.library.modules.auth.dto.RefreshTokenRequestDTO;
 import com.huit.library.modules.auth.dto.ForgotPasswordRequestDTO;
@@ -10,6 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+
+import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -62,5 +68,29 @@ class AuthControllerTest {
                 .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         org.assertj.core.api.Assertions.assertThat(response.getBody())
                 .isEqualTo("Không thể gửi mã OTP lúc này. Vui lòng thử lại sau.");
+    }
+
+    @Test
+    void updateProfileAlwaysUsesAuthenticatedUsersOwnId() {
+        AuthService authService = mock(AuthService.class);
+        AuthController controller = new AuthController(authService, mock(TokenService.class));
+        UUID authenticatedUserId = UUID.randomUUID();
+        UserEntity authenticatedUser = new UserEntity();
+        authenticatedUser.setUserId(authenticatedUserId);
+        authenticatedUser.setEmail("student@huit.edu.vn");
+        authenticatedUser.setRoleId("STUDENT");
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(new CustomUserDetails(authenticatedUser));
+
+        UpdateProfileRequestDTO request = new UpdateProfileRequestDTO();
+        request.setFullName("Nguyễn Bảo Hân");
+        request.setPhone("0912345678");
+        when(authService.updateProfile(authenticatedUserId, request)).thenReturn(authenticatedUser);
+
+        ResponseEntity<?> response = controller.updateProfile(authentication, request);
+
+        org.assertj.core.api.Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(authService).updateProfile(authenticatedUserId, request);
     }
 }

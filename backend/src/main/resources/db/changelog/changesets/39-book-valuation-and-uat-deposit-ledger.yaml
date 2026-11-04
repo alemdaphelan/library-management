@@ -1,0 +1,187 @@
+databaseChangeLog:
+  - changeSet:
+      id: 39-book-valuation-metadata
+      author: codex
+      changes:
+        - addColumn:
+            tableName: books
+            columns:
+              - column:
+                  name: price_currency
+                  type: varchar(10)
+                  defaultValue: VND
+              - column:
+                  name: price_source
+                  type: varchar(40)
+              - column:
+                  name: price_updated_at
+                  type: timestamp
+              - column:
+                  name: price_status
+                  type: varchar(20)
+                  defaultValue: UNKNOWN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: material_type
+                  type: varchar(40)
+                  defaultValue: BOOK
+                  constraints:
+                    nullable: false
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE books
+                 SET price_currency = COALESCE(NULLIF(price_currency, ''), 'VND'),
+                     price_source = COALESCE(NULLIF(price_source, ''), 'CATALOG'),
+                     price_updated_at = COALESCE(price_updated_at, updated_at, created_at, CURRENT_TIMESTAMP),
+                     price_status = 'KNOWN',
+                     material_type = COALESCE(NULLIF(material_type, ''), 'BOOK')
+               WHERE default_price IS NOT NULL
+                 AND default_price > 0;
+
+  - changeSet:
+      id: 39-configured-book-fallback-rates
+      author: codex
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              INSERT INTO compensation_rates
+                    (material_type, language_category, amount, valid_from, active,
+                     configured_by, note, created_at, updated_at)
+              SELECT seed.material_type,
+                     seed.language_category,
+                     seed.amount,
+                     CURRENT_DATE,
+                     TRUE,
+                     admin_user.user_id,
+                     'Biểu giá dự phòng dùng để xác định giá trị mượn khi tài liệu chưa có giá bìa/giá nhập',
+                     CURRENT_TIMESTAMP,
+                     CURRENT_TIMESTAMP
+                FROM (VALUES
+                        ('BOOK', 'VIETNAMESE', CAST(100000 AS numeric(19,2))),
+                        ('BOOK', 'FOREIGN',    CAST(150000 AS numeric(19,2))),
+                        ('CD_DVD', 'VIETNAMESE', CAST(150000 AS numeric(19,2))),
+                        ('CD_DVD', 'FOREIGN',    CAST(200000 AS numeric(19,2)))
+                     ) AS seed(material_type, language_category, amount)
+                CROSS JOIN LATERAL (
+                     SELECT u.user_id
+                       FROM users u
+                      WHERE UPPER(COALESCE(u.user_type, '')) = 'ADMIN'
+                      ORDER BY u.created_at NULLS LAST, u.user_id
+                      LIMIT 1
+                ) admin_user
+               WHERE NOT EXISTS (
+                     SELECT 1
+                       FROM compensation_rates current_rate
+                      WHERE current_rate.material_type = seed.material_type
+                        AND current_rate.language_category = seed.language_category
+                        AND current_rate.active = TRUE
+                        AND current_rate.valid_from <= CURRENT_DATE
+                        AND (current_rate.valid_until IS NULL OR current_rate.valid_until >= CURRENT_DATE)
+               );
+
+  - changeSet:
+      id: 39-backfill-missing-book-prices-from-configured-rates
+      author: codex
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              WITH applicable_rate AS (
+                  SELECT DISTINCT ON (cr.material_type, cr.language_category)
+                         cr.material_type,
+                         cr.language_category,
+                         cr.amount
+                    FROM compensation_rates cr
+                   WHERE cr.active = TRUE
+                     AND cr.valid_from <= CURRENT_DATE
+                     AND (cr.valid_until IS NULL OR cr.valid_until >= CURRENT_DATE)
+                   ORDER BY cr.material_type, cr.language_category, cr.valid_from DESC, cr.rate_id DESC
+              )
+              UPDATE books b
+                 SET default_price = rate.amount,
+                     price_currency = 'VND',
+                     price_source = 'CONFIGURED_FALLBACK',
+                     price_updated_at = CURRENT_TIMESTAMP,
+                     price_status = 'ESTIMATED',
+                     material_type = COALESCE(NULLIF(b.material_type, ''), 'BOOK'),
+                     updated_at = CURRENT_TIMESTAMP
+                FROM applicable_rate rate
+               WHERE COALESCE(b.is_digital, FALSE) = FALSE
+                 AND (b.default_price IS NULL OR b.default_price <= 0)
+                 AND rate.material_type = COALESCE(NULLIF(b.material_type, ''), 'BOOK')
+                 AND rate.language_category = CASE
+                       WHEN UPPER(COALESCE(b.language, '')) IN ('VI', 'VIE', 'VIETNAMESE', 'TIENG VIET', 'TIẾNG VIỆT')
+                         THEN 'VIETNAMESE'
+                       ELSE 'FOREIGN'
+                     END;
+
+              UPDATE books
+                 SET default_price = CAST(0 AS numeric(19,2)),
+                     price_currency = 'VND',
+                     price_source = 'DIGITAL',
+                     price_updated_at = COALESCE(price_updated_at, CURRENT_TIMESTAMP),
+                     price_status = 'KNOWN',
+                     material_type = COALESCE(NULLIF(material_type, ''), 'DIGITAL'),
+                     updated_at = CURRENT_TIMESTAMP
+               WHERE COALESCE(is_digital, FALSE) = TRUE
+                 AND (default_price IS NULL OR default_price < 0);
+
+  - changeSet:
+      id: 39-uat-student-deposit-ledger
+      author: codex
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              INSERT INTO wallets (user_id, deposit_balance, total_debt, created_at, updated_at)
+              SELECT u.user_id, CAST(0 AS numeric(19,2)), CAST(0 AS numeric(19,2)), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                FROM users u
+               WHERE u.mssv IN ('2001230219', '2001230430', '2001230914')
+                 AND NOT EXISTS (SELECT 1 FROM wallets w WHERE w.user_id = u.user_id);
+
+              INSERT INTO transactions
+                    (amount, type, user_id, reason, status, payment_method, receipt_number,
+                     confirmed_by, paid_amount, paid_at, dedup_key, created_at, updated_at)
+              SELECT (COALESCE(w.deposit_balance, 0) - CAST(100000 AS numeric(19,2))),
+                     CASE WHEN COALESCE(w.deposit_balance, 0) <= 100000
+                          THEN 'DEPOSIT_TOPUP' ELSE 'DEPOSIT_ADJUSTMENT' END,
+                     u.user_id,
+                     'Thiết lập tiền thế chân 100.000đ cho tài khoản kiểm thử Mobile/UAT',
+                     'COMPLETED',
+                     'CASH',
+                     'UAT-DEPOSIT-' || u.mssv,
+                     admin_user.user_id,
+                     CAST(0 AS numeric(19,2)),
+                     CURRENT_TIMESTAMP,
+                     'UAT-DEPOSIT-100000-' || u.mssv,
+                     CURRENT_TIMESTAMP,
+                     CURRENT_TIMESTAMP
+                FROM users u
+                JOIN wallets w ON w.user_id = u.user_id
+                CROSS JOIN LATERAL (
+                     SELECT admin.user_id
+                       FROM users admin
+                      WHERE UPPER(COALESCE(admin.user_type, '')) = 'ADMIN'
+                      ORDER BY admin.created_at NULLS LAST, admin.user_id
+                      LIMIT 1
+                ) admin_user
+               WHERE u.mssv IN ('2001230219', '2001230430', '2001230914')
+                 AND COALESCE(w.deposit_balance, 0) <> 100000
+                 AND NOT EXISTS (
+                     SELECT 1 FROM transactions tx
+                      WHERE tx.dedup_key = 'UAT-DEPOSIT-100000-' || u.mssv
+                 );
+
+              UPDATE wallets w
+                 SET deposit_balance = CAST(100000 AS numeric(19,2)),
+                     updated_at = CURRENT_TIMESTAMP
+                FROM users u
+               WHERE w.user_id = u.user_id
+                 AND u.mssv IN ('2001230219', '2001230430', '2001230914')
+                 AND EXISTS (
+                     SELECT 1 FROM transactions tx
+                      WHERE tx.dedup_key = 'UAT-DEPOSIT-100000-' || u.mssv
+                 );

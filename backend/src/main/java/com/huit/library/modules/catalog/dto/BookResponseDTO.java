@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -17,11 +18,17 @@ public class BookResponseDTO {
     private String language;
     private String labelColor;
     private BigDecimal defaultPrice;
+    private String priceCurrency;
+    private String priceSource;
+    private LocalDateTime priceUpdatedAt;
+    private String priceStatus;
+    private String materialType;
     private Boolean isDigital;
     private String author;
     private String publisher;
     private String description;
     private CategoryEntity category;
+    private String department;
     private String imageUrlS;
     private String imageUrlM;
     private String imageUrlL;

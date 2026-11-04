@@ -4,12 +4,19 @@ import com.huit.library.modules.circulation.entity.HolidayCalendarEntity;
 import com.huit.library.modules.circulation.repository.HolidayCalendarRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -60,5 +67,35 @@ class LibraryHoursServiceTest {
         assertThat(service.isCounterOpen(LocalDateTime.of(date, java.time.LocalTime.of(15, 29)))).isTrue();
         assertThat(service.isCounterOpen(LocalDateTime.of(date, java.time.LocalTime.of(15, 30)))).isFalse();
         assertThat(service.closingTime(date)).isEqualTo(java.time.LocalTime.of(15, 30));
+    }
+
+    @Test
+    void requireCounterOpenUsesConfiguredHoursWithDeterministicClock() {
+        Clock openClock = fixedClock("2026-11-03T08:00:00+07:00");
+        service = new LibraryHoursService(holidayRepository, "07:30", "17:00", openClock);
+        when(holidayRepository.findById("2026-11-03")).thenReturn(Optional.empty());
+
+        assertThatCode(() -> service.requireCounterOpen("giao sách")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void requireCounterOpenReportsConfiguredHoursAfterClosingTime() {
+        Clock closedClock = fixedClock("2026-11-03T17:00:00+07:00");
+        service = new LibraryHoursService(holidayRepository, "07:30", "17:00", closedClock);
+        when(holidayRepository.findById("2026-11-03")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.requireCounterOpen("nhận sách"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getReason())
+                            .isEqualTo("Quầy thư viện đã đóng cửa. Không thể nhận sách "
+                                    + "ngoài giờ phục vụ 07:30 - 17:00.");
+                });
+    }
+
+    private Clock fixedClock(String instantWithOffset) {
+        return Clock.fixed(
+                OffsetDateTime.parse(instantWithOffset).toInstant(),
+                ZoneId.of("Asia/Ho_Chi_Minh"));
     }
 }

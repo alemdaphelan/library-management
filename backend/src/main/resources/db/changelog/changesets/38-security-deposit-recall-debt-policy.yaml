@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-security-deposit-recall-debt-policy
+      author: codex
+      changes:
+        - addColumn:
+            tableName: library_policies
+            columns:
+              - column: { name: minimum_security_deposit, type: "decimal(14,2)", defaultValueNumeric: 100000, constraints: { nullable: false } }
+              - column: { name: borrowing_value_margin, type: "decimal(14,2)", defaultValueNumeric: 50000, constraints: { nullable: false } }
+              - column: { name: recall_return_days, type: integer, defaultValueNumeric: 7, constraints: { nullable: false } }
+              - column: { name: overdue_debt_processing_days, type: integer, defaultValueNumeric: 30, constraints: { nullable: false } }
+        - addColumn:
+            tableName: library_policy_history
+            columns:
+              - column: { name: minimum_security_deposit, type: "decimal(14,2)", defaultValueNumeric: 100000, constraints: { nullable: false } }
+              - column: { name: borrowing_value_margin, type: "decimal(14,2)", defaultValueNumeric: 50000, constraints: { nullable: false } }
+              - column: { name: recall_return_days, type: integer, defaultValueNumeric: 7, constraints: { nullable: false } }
+              - column: { name: overdue_debt_processing_days, type: integer, defaultValueNumeric: 30, constraints: { nullable: false } }
+        - addColumn:
+            tableName: loan_details
+            columns:
+              - column: { name: recalled_at, type: timestamp }
+              - column: { name: recall_due_at, type: timestamp }
+              - column: { name: original_due_date_before_recall, type: timestamp }
+        - addColumn:
+            tableName: transactions
+            columns:
+              - column: { name: overdue_processed_at, type: timestamp }
+        - createIndex:
+            tableName: transactions
+            indexName: idx_transactions_overdue_processing
+            columns:
+              - column: { name: overdue_processed_at }
+              - column: { name: created_at }

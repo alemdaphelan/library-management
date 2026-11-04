@@ -39,6 +39,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
                 
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
+                long sessionVersion = jwtUtils.getSessionVersionFromJwtToken(jwt);
+                if (!tokenService.isSessionVersionCurrent(username, sessionVersion)) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                            "Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.");
+                    return;
+                }
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

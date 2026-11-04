@@ -32,7 +32,7 @@ class AuthDtoValidationTest {
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
-                .containsExactlyInAnyOrder("otp", "newPassword");
+                .containsOnly("otp", "newPassword");
     }
 
     @Test
@@ -40,8 +40,20 @@ class AuthDtoValidationTest {
         ResetPasswordRequestDTO request = new ResetPasswordRequestDTO();
         request.setEmail("student@huit.edu.vn");
         request.setOtp("123456");
-        request.setNewPassword("new-password");
+        request.setNewPassword("New-password!");
 
         assertThat(validator.validate(request)).isEmpty();
+    }
+
+    @Test
+    void resetPasswordRejectsPasswordWithoutRequiredCharacterGroups() {
+        ResetPasswordRequestDTO request = new ResetPasswordRequestDTO();
+        request.setEmail("student@huit.edu.vn");
+        request.setOtp("123456");
+        request.setNewPassword("new-password");
+
+        assertThat(validator.validate(request))
+                .extracting(violation -> violation.getPropertyPath().toString())
+                .contains("newPassword");
     }
 }

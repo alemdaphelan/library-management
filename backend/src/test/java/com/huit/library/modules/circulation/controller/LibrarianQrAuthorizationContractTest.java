@@ -1,5 +1,6 @@
 package com.huit.library.modules.circulation.controller;
 
+import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.modules.circulation.dto.QrResolveRequestDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9,6 +10,19 @@ import java.lang.reflect.Method;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class LibrarianQrAuthorizationContractTest {
+    @Test
+    void issuingReaderQrRequiresStudentRole() throws Exception {
+        Method ticket = LibrarianQrController.class.getMethod(
+                "issueTicketQr", Long.class, CustomUserDetails.class);
+        Method card = LibrarianQrController.class.getMethod(
+                "issueMyCardQr", CustomUserDetails.class);
+
+        assertThat(ticket.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasRole('STUDENT')");
+        assertThat(card.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasRole('STUDENT')");
+    }
+
     @Test
     void resolvingQrIsRestrictedToAdminAndLibrarian() throws Exception {
         Method method = LibrarianQrController.class.getMethod("resolve", QrResolveRequestDTO.class);

@@ -5,8 +5,11 @@ import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.circulation.dto.LoanItemDTO;
 import com.huit.library.modules.circulation.dto.LoanTicketDetailDTO;
+import com.huit.library.modules.circulation.entity.LoanStatusHistoryEntity;
 import com.huit.library.modules.circulation.entity.LoanTicketEntity;
+import com.huit.library.modules.circulation.model.LoanTicketStatus;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
+import com.huit.library.modules.circulation.repository.LoanStatusHistoryRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +35,7 @@ class LibrarianQrServiceTest {
 
     private LoanService loanService;
     private LoanTicketRepository loanTicketRepository;
+    private LoanStatusHistoryRepository loanStatusHistoryRepository;
     private UserRepository userRepository;
     private WalletRepository walletRepository;
     private LibrarianQrService service;
@@ -39,6 +44,7 @@ class LibrarianQrServiceTest {
     void setUp() {
         loanService = mock(LoanService.class);
         loanTicketRepository = mock(LoanTicketRepository.class);
+        loanStatusHistoryRepository = mock(LoanStatusHistoryRepository.class);
         userRepository = mock(UserRepository.class);
         walletRepository = mock(WalletRepository.class);
         service = createService(Clock.fixed(NOW, ZoneOffset.UTC));
@@ -110,29 +116,55 @@ class LibrarianQrServiceTest {
     }
 
     @Test
-    void rejectsTicketQrAfterBooksWereHandedToReader() {
+    void resolvesBorrowingTicketForReturn() {
         UUID userId = UUID.randomUUID();
         UserEntity reader = user(userId, "READER");
+        LocalDateTime borrowedAt = LocalDateTime.of(2026, 10, 18, 14, 30);
+        LoanStatusHistoryEntity borrowingHistory = new LoanStatusHistoryEntity();
+        borrowingHistory.setTicketId(92L);
+        borrowingHistory.setToStatus(LoanTicketStatus.BORROWING);
+        borrowingHistory.setCreatedAt(borrowedAt);
         when(loanTicketRepository.findById(92L)).thenReturn(Optional.of(ticket(92L, userId, "BORROWING")));
+        when(loanStatusHistoryRepository.findFirstByTicketIdAndToStatusOrderByCreatedAtAsc(
+                92L, LoanTicketStatus.BORROWING)).thenReturn(Optional.of(borrowingHistory));
         when(loanService.getLoan(92L)).thenReturn(LoanTicketDetailDTO.builder()
                 .ticketId(92L)
                 .userId(userId)
+                .readerName("Nguyen Van A")
+                .mssv("20010001")
                 .status("BORROWING")
-                .items(List.of())
+                .items(List.of(LoanItemDTO.builder()
+                        .barcode("BC-RETURN-001")
+                        .itemStatus("BORROWING")
+                        .build()))
                 .build());
 
-        String payload = service.issueTicketPayload(92L, reader).getPayload();
+        var issued = service.issueTicketPayload(92L, reader);
+        var resolved = service.resolve(issued.getPayload());
 
-        assertThatThrownBy(() -> service.resolve(payload))
+        assertThat(resolved.getAllowedActions()).containsExactly("RETURN");
+        assertThat(resolved.getItems()).extracting(LoanItemDTO::getBarcode)
+                .containsExactly("BC-RETURN-001");
+        assertThat(resolved.getItems()).extracting(LoanItemDTO::getBorrowedAt)
+                .containsExactly(borrowedAt);
+    }
+
+    @Test
+    void rejectsTicketQrAfterTicketWasReturned() {
+        UUID userId = UUID.randomUUID();
+        UserEntity reader = user(userId, "READER");
+        when(loanTicketRepository.findById(93L)).thenReturn(Optional.of(ticket(93L, userId, "RETURNED")));
+
+        assertThatThrownBy(() -> service.issueTicketPayload(93L, reader))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.CONFLICT))
-                .hasMessageContaining("không còn hiệu lực");
+                .hasMessageContaining("không còn thao tác tại quầy hợp lệ");
     }
 
     private LibrarianQrService createService(Clock clock) {
         return new LibrarianQrService(new ObjectMapper(), loanService, loanTicketRepository,
-                userRepository, walletRepository, SECRET, 10, clock);
+                loanStatusHistoryRepository, userRepository, walletRepository, SECRET, 10, clock);
     }
 
     private UserEntity user(UUID userId, String role) {

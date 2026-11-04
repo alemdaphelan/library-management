@@ -29,6 +29,7 @@ public class LibrarianQrController {
     }
 
     @GetMapping("/tickets/{ticketId}")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Create a short-lived signed QR for a loan ticket")
     public ResponseEntity<QrPayloadResponseDTO> issueTicketQr(
             @PathVariable Long ticketId,
@@ -37,6 +38,7 @@ public class LibrarianQrController {
     }
 
     @GetMapping("/cards/me")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Create a short-lived signed QR for the current library card")
     public ResponseEntity<QrPayloadResponseDTO> issueMyCardQr(
             @AuthenticationPrincipal CustomUserDetails userDetails) {

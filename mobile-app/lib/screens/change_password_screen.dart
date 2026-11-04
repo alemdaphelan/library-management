@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mobile_app/services/api_service.dart';
 import 'package:mobile_app/services/auth_service.dart';
-import 'package:mobile_app/screens/main_layout.dart';
 import 'package:mobile_app/screens/login_screen.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -21,10 +21,26 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _isLoading = false;
 
   Future<void> _handleChangePassword() async {
-    if (_newPasswordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mật khẩu xác nhận không khớp!')),
+    final currentPassword = _oldPasswordController.text;
+    final newPassword = _newPasswordController.text;
+    if (currentPassword.isEmpty) {
+      _showMessage('Vui lòng nhập mật khẩu hiện tại.');
+      return;
+    }
+    if (!RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9\s]).{8,128}$',
+    ).hasMatch(newPassword)) {
+      _showMessage(
+        'Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và ký tự đặc biệt.',
       );
+      return;
+    }
+    if (newPassword == currentPassword) {
+      _showMessage('Mật khẩu mới phải khác mật khẩu hiện tại.');
+      return;
+    }
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      _showMessage('Mật khẩu xác nhận không khớp!');
       return;
     }
 
@@ -39,30 +55,40 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'currentPassword': _oldPasswordController.text,
-          'newPassword': _newPasswordController.text,
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
         }),
       );
 
       if (response.statusCode == 200) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đổi mật khẩu thành công!')),
+        await AuthService.clearLocalSession();
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Đổi mật khẩu thành công'),
+            content: const Text(
+              'Tất cả phiên đăng nhập cũ đã bị khóa. Vui lòng đăng nhập lại bằng mật khẩu mới.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Đăng nhập lại'),
+              ),
+            ],
+          ),
         );
-
-        if (widget.isFirstLogin) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MainLayout()),
-          );
-        } else {
-          Navigator.pop(context);
-        }
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: ${response.body}')));
+        _showMessage(ApiService.extractErrorMessage(response));
       }
     } catch (e) {
       if (!mounted) return;
@@ -72,6 +98,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -118,6 +151,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Mật khẩu mới',
+                  helperText:
+                      'Ít nhất 8 ký tự: chữ hoa, chữ thường và ký tự đặc biệt',
                   border: OutlineInputBorder(),
                 ),
               ),

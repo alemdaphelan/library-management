@@ -112,7 +112,7 @@ public class BookController {
     }
 
     @GetMapping("/recommendations/personalized")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get Personalized Recommendations", description = "Hybrid ranking using borrowing history, department affinity, and popularity with cold-start support.")
     public ResponseEntity<?> getPersonalizedRecommendations(
             @AuthenticationPrincipal CustomUserDetails principal,
@@ -130,7 +130,7 @@ public class BookController {
     }
 
     @PostMapping("/{id}/reviews")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Add Review", description = "Creates one review after the reader has actually borrowed the book.")
     public ResponseEntity<?> addReview(
             @Parameter(description = "Book ID") @PathVariable Long id,
@@ -150,7 +150,7 @@ public class BookController {
     }
 
     @DeleteMapping("/{id}/reviews/me")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Delete my book review")
     public ResponseEntity<Void> deleteMyReview(
             @PathVariable Long id,

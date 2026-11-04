@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.Optional;
+import java.time.LocalDateTime;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
 
@@ -37,4 +38,15 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select entry from TransactionEntity entry where entry.transactionId = :transactionId")
     Optional<TransactionEntity> findByIdForUpdate(@Param("transactionId") Long transactionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select entry from TransactionEntity entry
+            where entry.amount > coalesce(entry.paidAmount, 0)
+              and entry.status in ('OUTSTANDING', 'PARTIALLY_PAID', 'PARTIALLY_ADJUSTED', 'PARTIALLY_WAIVED')
+              and entry.createdAt <= :cutoff
+              and entry.overdueProcessedAt is null
+            order by entry.userId, entry.createdAt, entry.transactionId
+            """)
+    List<TransactionEntity> findUnprocessedOverdueDebtForUpdate(@Param("cutoff") LocalDateTime cutoff);
 }

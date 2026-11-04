@@ -91,13 +91,15 @@ public class BookService {
     }
 
     private BookEntity getBookEntity(Long id) {
-        return bookRepository.findById(id).orElseThrow(() -> new RuntimeException("Book not found"));
+        return bookRepository.findById(id).orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu yêu cầu."));
     }
 
     @Transactional
     public BookResponseDTO getBookById(Long id) {
         if (bookRepository.incrementViewCount(id) == 0) {
-            throw new RuntimeException("Book not found");
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu yêu cầu.");
         }
         return toResponse(getBookEntity(id));
     }
@@ -132,6 +134,11 @@ public class BookService {
         existing.setLanguage(updatedBook.getLanguage());
         existing.setLabelColor(updatedBook.getLabelColor());
         existing.setDefaultPrice(updatedBook.getDefaultPrice());
+        existing.setPriceCurrency(updatedBook.getPriceCurrency());
+        existing.setPriceSource(updatedBook.getPriceSource());
+        existing.setPriceUpdatedAt(updatedBook.getPriceUpdatedAt());
+        existing.setPriceStatus(updatedBook.getPriceStatus());
+        existing.setMaterialType(updatedBook.getMaterialType());
         existing.setIsDigital(updatedBook.getIsDigital());
         existing.setAuthor(updatedBook.getAuthor());
         existing.setPublisher(updatedBook.getPublisher());
@@ -187,11 +194,17 @@ public class BookService {
                 .language(book.getLanguage())
                 .labelColor(book.getLabelColor())
                 .defaultPrice(book.getDefaultPrice())
+                .priceCurrency(book.getPriceCurrency())
+                .priceSource(book.getPriceSource())
+                .priceUpdatedAt(book.getPriceUpdatedAt())
+                .priceStatus(book.getPriceStatus())
+                .materialType(book.getMaterialType())
                 .isDigital(book.getIsDigital())
                 .author(book.getAuthor())
                 .publisher(book.getPublisher())
                 .description(resolveDescription(book))
                 .category(book.getCategory())
+                .department(resolveDepartment(book))
                 .imageUrlS(book.getImageUrlS())
                 .imageUrlM(book.getImageUrlM())
                 .imageUrlL(book.getImageUrlL())
@@ -236,6 +249,27 @@ public class BookService {
             }
         }
         return false;
+    }
+
+    private String resolveDepartment(BookEntity book) {
+        if (book.getBookId() != null) {
+            List<String> names = bookRepository.findDepartmentNamesByBookId(book.getBookId());
+            if (names != null && !names.isEmpty()) {
+                String joined = names.stream()
+                        .filter(value -> value != null && !value.isBlank())
+                        .distinct()
+                        .limit(2)
+                        .collect(java.util.stream.Collectors.joining(", "));
+                if (!joined.isBlank()) {
+                    return joined;
+                }
+            }
+        }
+        if (book.getCategory() != null && book.getCategory().getName() != null
+                && !book.getCategory().getName().isBlank()) {
+            return book.getCategory().getName();
+        }
+        return "Tài liệu đại cương & chuyên ngành";
     }
 
     private String resolveDescription(BookEntity book) {

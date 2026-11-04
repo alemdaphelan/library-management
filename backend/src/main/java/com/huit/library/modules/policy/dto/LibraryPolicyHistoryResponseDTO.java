@@ -20,6 +20,10 @@ public class LibraryPolicyHistoryResponseDTO {
     private BigDecimal onsiteLateFinePerDay;
     private BigDecimal technicalProcessingFee;
     private Integer compensationSettlementDays;
+    private BigDecimal minimumSecurityDeposit;
+    private BigDecimal borrowingValueMargin;
+    private Integer recallReturnDays;
+    private Integer overdueDebtProcessingDays;
     private UUID changedBy;
     private String changedByName;
     private String changedByEmail;

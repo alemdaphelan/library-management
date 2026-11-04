@@ -324,7 +324,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                 base.minusDays(2).withHour(8), base.minusDays(2).withHour(10), 30,
                 librarian.getUserId(), admin.getUserId(), "COMPLETED"));
 
-        userRepository.findByEmail("student@student.huit.edu.vn").ifPresent(student -> {
+        userRepository.findFirstByEmailOrMssv("2001230219", "2001230219").ifPresent(student -> {
             OrientationEnrollmentEntity attended = new OrientationEnrollmentEntity();
             attended.setClassId(completed.getClassId());
             attended.setUserId(student.getUserId());

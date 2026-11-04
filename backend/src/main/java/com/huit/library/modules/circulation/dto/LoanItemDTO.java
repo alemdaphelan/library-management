@@ -25,10 +25,15 @@ public class LoanItemDTO {
     private String itemStatus;
     private String decisionNote;
     private LocalDateTime createdAt;
+    private LocalDateTime borrowedAt;
     private LocalDateTime pickupDeadline;
     private LocalDateTime dueDate;
     private LocalDateTime returnDate;
     private Long daysRemaining;
     private Integer renewalCount;
+    private Boolean recalled;
+    private LocalDateTime recalledAt;
+    private LocalDateTime recallDueAt;
+    private LocalDateTime originalDueDateBeforeRecall;
     private BigDecimal lateFineAccrued;
 }

@@ -64,6 +64,7 @@ library:
     secret: ${QR_SECRET:huit-library-development-qr-secret-change-in-production}
     ttl-minutes: ${QR_TTL_MINUTES:10}
   circulation:
+    default-security-deposit: ${DEFAULT_SECURITY_DEPOSIT:0}
     due-soon-days: ${DUE_SOON_DAYS:1}
     academic-year-start-month: ${ACADEMIC_YEAR_START_MONTH:8}
     academic-year-start-day: ${ACADEMIC_YEAR_START_DAY:1}
@@ -81,6 +82,13 @@ library:
     history-limit: ${RECOMMENDATION_HISTORY_LIMIT:100}
     popularity-window-days: ${RECOMMENDATION_POPULARITY_WINDOW_DAYS:365}
     cache-ttl-minutes: ${RECOMMENDATION_CACHE_TTL_MINUTES:30}
+    experiment:
+      export-enabled: ${RECOMMENDATION_EXPERIMENT_EXPORT_ENABLED:false}
+      output-dir: ${RECOMMENDATION_EXPERIMENT_OUTPUT_DIR:target/recommendation-alg1}
+      alg2:
+        export-enabled: ${RECOMMENDATION_ALG2_EXPORT_ENABLED:false}
+        output-dir: ${RECOMMENDATION_ALG2_OUTPUT_DIR:target/recommendation-alg2}
+        top-k: ${RECOMMENDATION_ALG2_TOP_K:10}
   rag:
     enabled: ${RAG_ENABLED:true}
     api-key: ${GEMINI_API_KEY:}
@@ -101,6 +109,7 @@ library:
   firebase:
     enabled: ${FIREBASE_PUSH_ENABLED:false}
     project-id: ${FIREBASE_PROJECT_ID:}
+    service-account-path: ${FIREBASE_SERVICE_ACCOUNT_CONTAINER_PATH:${GOOGLE_APPLICATION_CREDENTIALS:}}
     service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
   payment:
     vnpay:

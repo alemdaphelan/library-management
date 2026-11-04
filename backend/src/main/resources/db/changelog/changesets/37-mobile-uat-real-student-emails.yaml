@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: mobile-uat-real-student-emails
+      author: codex
+      comment: Use the thesis-team members' real recovery email addresses for Mobile OTP testing.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              BEGIN
+                  IF EXISTS (
+                      SELECT 1
+                        FROM users
+                       WHERE lower(email) IN (
+                           'nguyenbaohan8910@gmail.com',
+                           'lamto20050505@gmail.com',
+                           'thang28102005@gmail.com'
+                       )
+                         AND mssv NOT IN ('2001230219', '2001230430', '2001230914')
+                  ) THEN
+                      RAISE EXCEPTION 'A recovery email is already assigned to another account';
+                  END IF;
+
+                  UPDATE users
+                     SET email = CASE mssv
+                         WHEN '2001230219' THEN 'nguyenbaohan8910@gmail.com'
+                         WHEN '2001230430' THEN 'lamto20050505@gmail.com'
+                         WHEN '2001230914' THEN 'thang28102005@gmail.com'
+                     END,
+                         updated_at = CURRENT_TIMESTAMP
+                   WHERE mssv IN ('2001230219', '2001230430', '2001230914');
+
+                  IF (SELECT count(*) FROM users
+                       WHERE mssv IN ('2001230219', '2001230430', '2001230914')) <> 3 THEN
+                      RAISE EXCEPTION 'All three Mobile UAT student accounts must exist before assigning recovery emails';
+                  END IF;
+              END $$;

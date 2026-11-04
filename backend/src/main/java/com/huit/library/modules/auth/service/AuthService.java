@@ -21,6 +21,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -29,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthService {
+    private static final java.util.regex.Pattern STRONG_PASSWORD = java.util.regex.Pattern.compile(
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9\\s]).{8,128}$");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -40,6 +45,9 @@ public class AuthService {
     private static final long OTP_RESEND_SECONDS = 10;
     private static final long OTP_LOCK_MINUTES = 15;
     private static final long OTP_MAX_ATTEMPTS = 5;
+    private static final DateTimeFormatter SECURITY_EVENT_TIME =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final ZoneId LIBRARY_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
@@ -94,6 +102,7 @@ public class AuthService {
     }
 
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
+        ensureStrongPassword(newPassword);
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Tài khoản không tồn tại"));
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
@@ -105,6 +114,8 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setIsFirstLogin(false);
         userRepository.save(user);
+        tokenService.invalidateAllSessions(user.getEmail());
+        sendPasswordChangedAlert(user);
     }
 
     public JwtResponseDTO refreshToken(String refreshToken) {
@@ -173,7 +184,7 @@ public class AuthService {
             message.setFrom(fromEmail);
         }
         message.setTo(user.getEmail() != null && !user.getEmail().isEmpty() ? user.getEmail() : email);
-        message.setSubject("Mã xác nhận khôi phục mật khẩu (Library Management)");
+        message.setSubject("Mã xác nhận khôi phục mật khẩu – Thư viện HUIT");
         message.setText("Xin chào " + user.getFullName() + ",\n\n" +
                 "Mã xác nhận (OTP) của bạn là: " + otp + "\n" +
                 "Mã này có hiệu lực trong 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n" +
@@ -244,11 +255,15 @@ public class AuthService {
     }
 
     public void resetPassword(String email, String otp, String newPassword) {
+        ensureStrongPassword(newPassword);
         if (verifyOtp(email, otp)) {
-            UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
+            UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim())
                     .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
             user.setPasswordHash(passwordEncoder.encode(newPassword));
+            user.setIsFirstLogin(false);
             userRepository.save(user);
+            tokenService.invalidateAllSessions(user.getEmail());
+            sendPasswordChangedAlert(user);
 
             // Delete all password-recovery state after a successful reset.
             for (String identifier : identifiers(normalizeIdentifier(email), normalizeIdentifier(user.getEmail()))) {
@@ -288,15 +303,70 @@ public class AuthService {
 
     public UserEntity updateProfile(UUID userId, com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
         UserEntity user = getFreshUser(userId);
-        if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
-            user.setFullName(request.getFullName().trim());
+        if (request.getFullName() != null) {
+            String fullName = request.getFullName().trim();
+            if (fullName.isEmpty()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST,
+                        "Họ tên không được để trống");
+            }
+            user.setFullName(fullName);
         }
         if (request.getPhone() != null) {
-            user.setPhone(request.getPhone().trim());
+            user.setPhone(normalizeVietnamesePhone(request.getPhone()));
         }
         if (request.getAvatarUrl() != null && !request.getAvatarUrl().trim().isEmpty()) {
             user.setAvatarUrl(request.getAvatarUrl());
         }
         return userRepository.save(user);
+    }
+
+    private String normalizeVietnamesePhone(String rawPhone) {
+        String phone = rawPhone.trim().replaceAll("[\\s().-]", "");
+        if (phone.isEmpty()) {
+            return "";
+        }
+        if (phone.startsWith("+84")) {
+            phone = "0" + phone.substring(3);
+        }
+        if (!phone.matches("^0\\d{9}$")) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Số điện thoại phải gồm 10 chữ số bắt đầu bằng 0 hoặc mã quốc gia +84");
+        }
+        return phone;
+    }
+
+    private void ensureStrongPassword(String password) {
+        if (password == null || !STRONG_PASSWORD.matcher(password).matches()) {
+            throw new IllegalArgumentException(
+                    "Mật khẩu mới phải dài 8-128 ký tự, có chữ hoa, chữ thường và ký tự đặc biệt");
+        }
+    }
+
+    private void sendPasswordChangedAlert(UserEntity user) {
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            if (fromEmail != null && !fromEmail.isBlank()) {
+                message.setFrom(fromEmail);
+            }
+            message.setTo(user.getEmail());
+            message.setSubject("Mật khẩu tài khoản đã được thay đổi – Thư viện HUIT");
+            message.setText("Xin chào " + user.getFullName() + ",\n\n"
+                    + "Mật khẩu tài khoản Thư viện HUIT của bạn đã được thay đổi lúc "
+                    + ZonedDateTime.now(LIBRARY_TIME_ZONE).format(SECURITY_EVENT_TIME) + ".\n"
+                    + "Tất cả phiên đăng nhập cũ đã bị khóa. Bạn cần đăng nhập lại bằng mật khẩu mới.\n\n"
+                    + "Nếu bạn không thực hiện thay đổi này, vui lòng liên hệ Thư viện HUIT ngay.\n\n"
+                    + "Trân trọng,\nThư viện HUIT.");
+            mailSender.send(message);
+        } catch (RuntimeException exception) {
+            // Password/session security must remain effective even when the optional
+            // security-alert email provider is temporarily unavailable.
+            LOGGER.warn("Không thể gửi email cảnh báo đổi mật khẩu cho {}: {}",
+                    user.getEmail(), exception.getMessage());
+        }
     }
 }

@@ -56,6 +56,10 @@ public class LibraryPolicyService {
                 .onsiteLateFinePerDay(policy.getOnsiteLateFinePerDay())
                 .technicalProcessingFee(policy.getTechnicalProcessingFee())
                 .compensationSettlementDays(policy.getCompensationSettlementDays())
+                .minimumSecurityDeposit(policy.getMinimumSecurityDeposit())
+                .borrowingValueMargin(policy.getBorrowingValueMargin())
+                .recallReturnDays(policy.getRecallReturnDays())
+                .overdueDebtProcessingDays(policy.getOverdueDebtProcessingDays())
                 .build();
     }
 
@@ -86,6 +90,10 @@ public class LibraryPolicyService {
         policy.setOnsiteLateFinePerDay(request.getOnsiteLateFinePerDay());
         policy.setTechnicalProcessingFee(request.getTechnicalProcessingFee());
         policy.setCompensationSettlementDays(request.getCompensationSettlementDays());
+        policy.setMinimumSecurityDeposit(request.getMinimumSecurityDeposit());
+        policy.setBorrowingValueMargin(request.getBorrowingValueMargin());
+        policy.setRecallReturnDays(request.getRecallReturnDays());
+        policy.setOverdueDebtProcessingDays(request.getOverdueDebtProcessingDays());
         policy.setUpdatedBy(actorId);
         LibraryPolicyEntity saved = repository.save(policy);
         historyRepository.save(snapshot(saved, actorId));
@@ -101,6 +109,10 @@ public class LibraryPolicyService {
     public BigDecimal onsiteLateFinePerDay() { return current().getOnsiteLateFinePerDay(); }
     public BigDecimal technicalProcessingFee() { return current().getTechnicalProcessingFee(); }
     public int compensationSettlementDays() { return current().getCompensationSettlementDays(); }
+    public BigDecimal minimumSecurityDeposit() { return current().getMinimumSecurityDeposit(); }
+    public BigDecimal borrowingValueMargin() { return current().getBorrowingValueMargin(); }
+    public int recallReturnDays() { return current().getRecallReturnDays(); }
+    public int overdueDebtProcessingDays() { return current().getOverdueDebtProcessingDays(); }
 
     private LibraryPolicyEntity current() {
         return repository.findById(POLICY_ID).orElseGet(this::defaults);
@@ -118,6 +130,10 @@ public class LibraryPolicyService {
         policy.setOnsiteLateFinePerDay(new BigDecimal("5000"));
         policy.setTechnicalProcessingFee(new BigDecimal("50000"));
         policy.setCompensationSettlementDays(30);
+        policy.setMinimumSecurityDeposit(new BigDecimal("100000"));
+        policy.setBorrowingValueMargin(new BigDecimal("50000"));
+        policy.setRecallReturnDays(7);
+        policy.setOverdueDebtProcessingDays(30);
         return policy;
     }
 
@@ -132,6 +148,10 @@ public class LibraryPolicyService {
                 .onsiteLateFinePerDay(policy.getOnsiteLateFinePerDay())
                 .technicalProcessingFee(policy.getTechnicalProcessingFee())
                 .compensationSettlementDays(policy.getCompensationSettlementDays())
+                .minimumSecurityDeposit(policy.getMinimumSecurityDeposit())
+                .borrowingValueMargin(policy.getBorrowingValueMargin())
+                .recallReturnDays(policy.getRecallReturnDays())
+                .overdueDebtProcessingDays(policy.getOverdueDebtProcessingDays())
                 .updatedBy(policy.getUpdatedBy())
                 .updatedAt(policy.getUpdatedAt())
                 .build();
@@ -149,6 +169,10 @@ public class LibraryPolicyService {
         history.setOnsiteLateFinePerDay(policy.getOnsiteLateFinePerDay());
         history.setTechnicalProcessingFee(policy.getTechnicalProcessingFee());
         history.setCompensationSettlementDays(policy.getCompensationSettlementDays());
+        history.setMinimumSecurityDeposit(policy.getMinimumSecurityDeposit());
+        history.setBorrowingValueMargin(policy.getBorrowingValueMargin());
+        history.setRecallReturnDays(policy.getRecallReturnDays());
+        history.setOverdueDebtProcessingDays(policy.getOverdueDebtProcessingDays());
         history.setChangedBy(actorId);
         return history;
     }
@@ -167,6 +191,10 @@ public class LibraryPolicyService {
                 .onsiteLateFinePerDay(history.getOnsiteLateFinePerDay())
                 .technicalProcessingFee(history.getTechnicalProcessingFee())
                 .compensationSettlementDays(history.getCompensationSettlementDays())
+                .minimumSecurityDeposit(history.getMinimumSecurityDeposit())
+                .borrowingValueMargin(history.getBorrowingValueMargin())
+                .recallReturnDays(history.getRecallReturnDays())
+                .overdueDebtProcessingDays(history.getOverdueDebtProcessingDays())
                 .changedBy(history.getChangedBy())
                 .changedByName(actor == null
                         ? (history.getChangedBy() == null ? "Hệ thống" : "Quản trị viên")

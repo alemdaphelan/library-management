@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -20,19 +23,49 @@ public class PushDeviceService {
 
     @Transactional
     public PushDeviceResponseDTO register(UUID userId, RegisterPushDeviceRequestDTO request) {
-        PushDeviceRegistrationEntity registration = repository.findByToken(request.token().trim())
-                .orElseGet(PushDeviceRegistrationEntity::new);
+        String normalizedToken = request.token().trim();
+        String normalizedPlatform = request.platform().trim().toUpperCase();
+        String normalizedDeviceId = trimToNull(request.deviceId());
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<PushDeviceRegistrationEntity> existingByToken = repository.findByToken(normalizedToken);
+        PushDeviceRegistrationEntity registration = existingByToken.orElse(null);
+
+        if (normalizedDeviceId != null) {
+            List<PushDeviceRegistrationEntity> activeOnSameDevice =
+                    repository.findByDeviceIdAndActiveTrue(normalizedDeviceId);
+            if (activeOnSameDevice != null) {
+                for (PushDeviceRegistrationEntity other : activeOnSameDevice) {
+                    if (registration == null && Objects.equals(other.getUserId(), userId)) {
+                        registration = other;
+                        continue;
+                    }
+                    if (registration == null || !Objects.equals(other.getRegistrationId(), registration.getRegistrationId())) {
+                        other.setActive(false);
+                        other.setLastSeenAt(now);
+                        repository.save(other);
+                    }
+                }
+            }
+        }
+
+        if (registration == null) {
+            registration = new PushDeviceRegistrationEntity();
+        }
         registration.setUserId(userId);
-        registration.setToken(request.token().trim());
-        registration.setPlatform(request.platform().trim().toUpperCase());
-        registration.setDeviceId(trimToNull(request.deviceId()));
+        registration.setToken(normalizedToken);
+        registration.setPlatform(normalizedPlatform);
+        registration.setDeviceId(normalizedDeviceId);
         registration.setActive(true);
-        registration.setLastSeenAt(LocalDateTime.now());
+        registration.setLastSeenAt(now);
         return toResponse(repository.save(registration));
     }
 
     @Transactional
     public void unregister(UUID userId, String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
         repository.findByUserIdAndToken(userId, token.trim()).ifPresent(registration -> {
             registration.setActive(false);
             registration.setLastSeenAt(LocalDateTime.now());

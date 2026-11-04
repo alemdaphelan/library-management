@@ -2,17 +2,21 @@ package com.huit.library.modules.auth.service;
 
 import com.huit.library.core.security.JwtUtils;
 import com.huit.library.core.security.TokenService;
+import com.huit.library.modules.auth.dto.UpdateProfileRequestDTO;
 import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.exception.OtpDeliveryException;
 import com.huit.library.modules.auth.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.MailSendException;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +30,7 @@ class AuthServiceTest {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private JavaMailSender mailSender;
+    private TokenService tokenService;
     private StringRedisTemplate redisTemplate;
     private ValueOperations<String, String> valueOperations;
     private AuthService authService;
@@ -35,12 +40,13 @@ class AuthServiceTest {
         userRepository = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         mailSender = mock(JavaMailSender.class);
+        tokenService = mock(TokenService.class);
         redisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         authService = new AuthService(
                 mock(AuthenticationManager.class), mock(JwtUtils.class), userRepository,
-                passwordEncoder, mock(TokenService.class), mailSender, redisTemplate, "no-reply@huit.edu.vn");
+                passwordEncoder, tokenService, mailSender, redisTemplate, "no-reply@huit.edu.vn");
     }
 
     @Test
@@ -50,16 +56,25 @@ class AuthServiceTest {
         user.setUserId(userId);
         user.setPasswordHash("old-hash");
         user.setIsFirstLogin(true);
+        user.setEmail("student@huit.edu.vn");
+        user.setFullName("Nguyen Van A");
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("current-password", "old-hash")).thenReturn(true);
-        when(passwordEncoder.matches("new-password", "old-hash")).thenReturn(false);
-        when(passwordEncoder.encode("new-password")).thenReturn("new-hash");
+        when(passwordEncoder.matches("New-password!", "old-hash")).thenReturn(false);
+        when(passwordEncoder.encode("New-password!")).thenReturn("new-hash");
 
-        authService.changePassword(userId, "current-password", "new-password");
+        authService.changePassword(userId, "current-password", "New-password!");
 
         assertThat(user.getPasswordHash()).isEqualTo("new-hash");
         assertThat(user.getIsFirstLogin()).isFalse();
         verify(userRepository).save(user);
+        verify(tokenService).invalidateAllSessions("student@huit.edu.vn");
+        var messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(messageCaptor.capture());
+        assertThat(messageCaptor.getValue().getFrom()).isEqualTo("no-reply@huit.edu.vn");
+        assertThat(messageCaptor.getValue().getTo()).containsExactly("student@huit.edu.vn");
+        assertThat(messageCaptor.getValue().getSubject())
+                .isEqualTo("Mật khẩu tài khoản đã được thay đổi – Thư viện HUIT");
     }
 
     @Test
@@ -70,10 +85,18 @@ class AuthServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "stored-hash")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.changePassword(userId, "wrong", "new-password"))
+        assertThatThrownBy(() -> authService.changePassword(userId, "wrong", "New-password!"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("không chính xác");
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void changePasswordRejectsPasswordWithoutUppercaseOrSpecialCharacter() {
+        assertThatThrownBy(() -> authService.changePassword(UUID.randomUUID(), "old", "new-password"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("chữ hoa");
+        verifyNoInteractions(userRepository);
     }
 
     @Test
@@ -136,5 +159,71 @@ class AuthServiceTest {
 
         verify(valueOperations).set("auth:otp:lock:user@huit.edu.vn", "1", 15L, TimeUnit.MINUTES);
         verify(redisTemplate).delete("auth:otp:user@huit.edu.vn");
+    }
+
+    @Test
+    void resetPasswordRequiresOtpAndInvalidatesAllExistingSessions() {
+        UserEntity user = new UserEntity();
+        user.setEmail("user@huit.edu.vn");
+        user.setFullName("Nguyen Van A");
+        user.setIsFirstLogin(true);
+        when(userRepository.findFirstByEmailOrMssv("user@huit.edu.vn", "user@huit.edu.vn"))
+                .thenReturn(Optional.of(user));
+        when(redisTemplate.hasKey("auth:otp:lock:user@huit.edu.vn")).thenReturn(false);
+        when(valueOperations.get("auth:otp:user@huit.edu.vn")).thenReturn("123456");
+        when(passwordEncoder.encode("New-password!")).thenReturn("new-hash");
+
+        authService.resetPassword("user@huit.edu.vn", "123456", "New-password!");
+
+        assertThat(user.getPasswordHash()).isEqualTo("new-hash");
+        assertThat(user.getIsFirstLogin()).isFalse();
+        verify(userRepository).save(user);
+        verify(tokenService).invalidateAllSessions("user@huit.edu.vn");
+        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify(redisTemplate).delete("auth:otp:user@huit.edu.vn");
+        verify(redisTemplate).delete("auth:otp:resend:user@huit.edu.vn");
+    }
+
+    @Test
+    void updateProfileLetsStudentChangeOnlyNameAndPhone() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setUserId(userId);
+        user.setRoleId("STUDENT");
+        user.setMssv("2001230219");
+        user.setEmail("student@huit.edu.vn");
+        user.setFullName("Tên cũ");
+        user.setPhone("0900000000");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+
+        UpdateProfileRequestDTO request = new UpdateProfileRequestDTO();
+        request.setFullName("  Nguyễn Bảo Hân  ");
+        request.setPhone("(+84) 912-345-678");
+
+        UserEntity updated = authService.updateProfile(userId, request);
+
+        assertThat(updated.getFullName()).isEqualTo("Nguyễn Bảo Hân");
+        assertThat(updated.getPhone()).isEqualTo("0912345678");
+        assertThat(updated.getMssv()).isEqualTo("2001230219");
+        assertThat(updated.getEmail()).isEqualTo("student@huit.edu.vn");
+        assertThat(updated.getRoleId()).isEqualTo("STUDENT");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void updateProfileRejectsInvalidPhoneWithoutSaving() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setUserId(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UpdateProfileRequestDTO request = new UpdateProfileRequestDTO();
+        request.setPhone("12345");
+
+        assertThatThrownBy(() -> authService.updateProfile(userId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Số điện thoại");
+        verify(userRepository, never()).save(any());
     }
 }

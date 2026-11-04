@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -66,6 +67,13 @@ public class NotificationController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(notificationService.markAsRead(
                 notificationId, userDetails.getUser().getUserId()));
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<Map<String, Integer>> markAllAsRead(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        int updated = notificationService.markAllAsRead(userDetails.getUser().getUserId());
+        return ResponseEntity.ok(Map.of("updatedCount", updated));
     }
 
     @PostMapping("/devices")

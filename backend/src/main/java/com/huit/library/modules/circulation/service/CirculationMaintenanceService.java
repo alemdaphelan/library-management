@@ -11,6 +11,7 @@ import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanStatusHistoryRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.finance.service.OverdueDebtService;
 import com.huit.library.modules.penalty.service.LateFineService;
 import com.huit.library.modules.penalty.service.OverdueViolationService;
 import com.huit.library.modules.penalty.entity.PenaltyCaseEntity;
@@ -37,6 +38,7 @@ public class CirculationMaintenanceService {
     private final ReservationNoShowService reservationNoShowService;
     private final WaitlistService waitlistService;
     private final PenaltyCaseRepository penaltyCaseRepository;
+    private final OverdueDebtService overdueDebtService;
     private final int dueSoonDays;
 
     public CirculationMaintenanceService(
@@ -51,6 +53,7 @@ public class CirculationMaintenanceService {
             ReservationNoShowService reservationNoShowService,
             WaitlistService waitlistService,
             PenaltyCaseRepository penaltyCaseRepository,
+            OverdueDebtService overdueDebtService,
             @Value("${library.circulation.due-soon-days:2}") int dueSoonDays) {
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
@@ -63,6 +66,7 @@ public class CirculationMaintenanceService {
         this.reservationNoShowService = reservationNoShowService;
         this.waitlistService = waitlistService;
         this.penaltyCaseRepository = penaltyCaseRepository;
+        this.overdueDebtService = overdueDebtService;
         this.dueSoonDays = dueSoonDays;
     }
 
@@ -84,6 +88,7 @@ public class CirculationMaintenanceService {
         }
 
         int dueSoonNotifications = createDueSoonNotifications(now) + createPenaltyCaseReminders(now);
+        overdueDebtService.processAt(now);
         return new CirculationMaintenanceResult(
                 expiredReservations, overdueTickets, dueSoonNotifications);
     }
@@ -201,16 +206,28 @@ public class CirculationMaintenanceService {
         LocalDateTime until = now.plusDays(dueSoonDays);
         for (LoanDetailEntity detail : loanDetailRepository.findDueSoon(now, until)) {
             LoanTicketEntity ticket = loanTicketRepository.findById(detail.getTicketId()).orElse(null);
-            if (ticket == null || ticket.getUserId() == null) {
+            if (ticket == null || ticket.getUserId() == null || detail.getDueDate() == null) {
                 continue;
             }
-            String dueKey = detail.getDueDate().toString();
-            if (notificationService.createOnce(
-                    ticket.getUserId(), "LOAN_DUE_SOON",
-                    "Tài liệu " + detail.getBarcode() + " sẽ đến hạn vào " + detail.getDueDate() + ".",
-                    "LOAN_DETAIL", detail.getDetailId().toString(),
-                    "LOAN_DUE_SOON:" + detail.getDetailId() + ":" + dueKey, now)) {
-                created++;
+            long daysUntilDue = ChronoUnit.DAYS.between(now.toLocalDate(), detail.getDueDate().toLocalDate());
+            if (daysUntilDue == 0) {
+                if (notificationService.createOnce(
+                        ticket.getUserId(), "DUE_TODAY",
+                        "Tài liệu " + detail.getBarcode() + " đến hạn trả hôm nay ("
+                                + detail.getDueDate().toLocalDate() + "). Vui lòng hoàn trả đúng hạn.",
+                        "LOAN_DETAIL", detail.getDetailId().toString(),
+                        "LOAN_DUE_TODAY:" + detail.getDetailId() + ":" + detail.getDueDate().toLocalDate(), now)) {
+                    created++;
+                }
+            } else {
+                String dueKey = detail.getDueDate().toString();
+                if (notificationService.createOnce(
+                        ticket.getUserId(), "LOAN_DUE_SOON",
+                        "Tài liệu " + detail.getBarcode() + " sẽ đến hạn vào " + detail.getDueDate() + ".",
+                        "LOAN_DETAIL", detail.getDetailId().toString(),
+                        "LOAN_DUE_SOON:" + detail.getDetailId() + ":" + dueKey, now)) {
+                    created++;
+                }
             }
         }
         return created;

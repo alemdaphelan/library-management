@@ -42,7 +42,7 @@ public class PaymentController {
     }
 
     @GetMapping("/my-ledger")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<?> getMyLedger(@AuthenticationPrincipal CustomUserDetails user) {
         return ResponseEntity.ok(debtLedgerService.getUserLedger(
                 user.getUser().getUserId()));

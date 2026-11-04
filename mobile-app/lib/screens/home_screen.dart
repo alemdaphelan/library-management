@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/screens/notifications_screen.dart';
 import 'package:mobile_app/screens/detail_screen.dart';
+import 'package:mobile_app/screens/borrowed_screen.dart';
 import 'package:mobile_app/screens/librarian_qr_screen.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
@@ -8,6 +9,7 @@ import '../services/loan_service.dart';
 import '../services/notification_service.dart';
 import '../services/push_notification_service.dart';
 import '../services/recommendation_service.dart';
+import '../services/wishlist_service.dart';
 import '../widgets/book_cover.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,11 +37,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     PushNotificationService.notificationRevision.addListener(
       _refreshNotificationCount,
     );
+    LoanService.loanRevision.addListener(_handleLoanRevisionChanged);
+    WishlistService.wishlistRevision.addListener(
+      _handleWishlistRevisionChanged,
+    );
+    AuthService.profileRevision.addListener(_handleProfileRevisionChanged);
     fetchHomeData();
   }
 
   @override
   void dispose() {
+    LoanService.loanRevision.removeListener(_handleLoanRevisionChanged);
+    WishlistService.wishlistRevision.removeListener(
+      _handleWishlistRevisionChanged,
+    );
+    AuthService.profileRevision.removeListener(_handleProfileRevisionChanged);
     PushNotificationService.notificationRevision.removeListener(
       _refreshNotificationCount,
     );
@@ -47,10 +59,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  void _handleWishlistRevisionChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _handleProfileRevisionChanged() async {
+    final user = await AuthService.getCachedUser();
+    if (!mounted || user == null) return;
+    setState(() => userInfo = user);
+  }
+
+  void _handleLoanRevisionChanged() {
+    if (mounted) {
+      fetchHomeData();
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshNotificationCount();
+      fetchHomeData();
     }
   }
 
@@ -76,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ApiService.get('/books?page=0&size=3'),
         NotificationService.getMyNotifications(),
         _loadRecommendationsSafely(),
+        WishlistService.getMine().catchError((_) => <Map<String, dynamic>>[]),
       ]);
       final loans = results[0] as List<Map<String, dynamic>>;
       final catalog = results[1] as Map<String, dynamic>;
@@ -151,6 +183,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context,
       MaterialPageRoute(builder: (context) => DetailScreen(book: book)),
     );
+    if (mounted) {
+      await fetchHomeData();
+    }
   }
 
   @override
@@ -214,321 +249,388 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thẻ Người Dùng (Phân biệt Admin vs Sinh viên)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isAdmin
-                      ? const [
-                          Color(0xFF0f172a),
-                          Color(0xFF1e293b),
-                          Color(0xFF334155),
-                        ]
-                      : const [Color(0xFF0284c7), Color(0xFF0369a1)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: (isAdmin ? Colors.black : const Color(0xFF0284c7))
-                        .withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+      body: RefreshIndicator(
+        onRefresh: fetchHomeData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Thẻ Người Dùng (Phân biệt Admin vs Sinh viên)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isAdmin
+                        ? const [
+                            Color(0xFF0f172a),
+                            Color(0xFF1e293b),
+                            Color(0xFF334155),
+                          ]
+                        : const [Color(0xFF0284c7), Color(0xFF0369a1)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            isAdmin
-                                ? Icons.admin_panel_settings_rounded
-                                : Icons.school_rounded,
-                            color: isAdmin
-                                ? Colors.amber.shade300
-                                : Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            isAdmin
-                                ? 'THẺ CÁN BỘ / QUẢN TRỊ'
-                                : 'THẺ THƯ VIỆN SINH VIÊN',
-                            style: TextStyle(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isAdmin ? Colors.black : const Color(0xFF0284c7))
+                          .withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              isAdmin
+                                  ? Icons.admin_panel_settings_rounded
+                                  : Icons.school_rounded,
                               color: isAdmin
                                   ? Colors.amber.shade300
-                                  : Colors.white70,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              fontSize: 13,
+                                  : Colors.white,
+                              size: 20,
                             ),
-                          ),
-                        ],
-                      ),
-                      const Icon(
-                        Icons.qr_code_2,
+                            const SizedBox(width: 8),
+                            Text(
+                              isAdmin
+                                  ? 'THẺ CÁN BỘ / QUẢN TRỊ'
+                                  : 'THẺ THƯ VIỆN SINH VIÊN',
+                              style: TextStyle(
+                                color: isAdmin
+                                    ? Colors.amber.shade300
+                                    : Colors.white70,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Icon(
+                          Icons.qr_code_2,
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      userInfo['fullName'] ?? 'Chưa cập nhật',
+                      style: const TextStyle(
                         color: Colors.white,
-                        size: 36,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    userInfo['fullName'] ?? 'Chưa cập nhật',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isAdmin
+                          ? 'Email: ${userInfo['email'] ?? 'Chưa cập nhật'}'
+                          : 'MSSV: ${mssv ?? 'Chưa cập nhật'}',
+                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      userInfo['department'] ?? 'Chưa cập nhật',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (isAdmin) ...[
+                const SizedBox(height: 25),
+                // Bảng điều hành thư viện nhanh cho Admin
+                const Text(
+                  'BẢNG ĐIỀU HÀNH THƯ VIỆN',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.menu_book_rounded,
+                              color: Color(0xFF0284c7),
+                              size: 24,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '$catalogTotalElements',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text(
+                              'Sách trong kho',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.swap_horiz_rounded,
+                              color: Colors.green,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${borrowedBooks.where((book) => book['status'] == 'BORROWING').length}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text(
+                              'Đang mượn cá nhân',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${borrowedBooks.where((book) => book['status'] == 'OVERDUE').length}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text(
+                              'Quá hạn',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (canUseLibrarianQr) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LibrarianQrScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text('QUÉT QR MƯỢN / TRẢ TẠI QUẦY'),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                ],
+              ],
+
+              const SizedBox(height: 30),
+
+              // Sách đang mượn / chờ nhận
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Text(
                     isAdmin
-                        ? 'Email: ${userInfo['email'] ?? 'Chưa cập nhật'}'
-                        : 'MSSV: ${mssv ?? 'Chưa cập nhật'}',
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    userInfo['department'] ?? 'Chưa cập nhật',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-
-            if (isAdmin) ...[
-              const SizedBox(height: 25),
-              // Bảng điều hành thư viện nhanh cho Admin
-              const Text(
-                'BẢNG ĐIỀU HÀNH THƯ VIỆN',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.menu_book_rounded,
-                            color: Color(0xFF0284c7),
-                            size: 24,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '$catalogTotalElements',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Sách trong kho',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                        ],
-                      ),
+                        ? 'SÁCH CÁ NHÂN ĐANG MƯỢN'
+                        : 'SÁCH ĐANG MƯỢN & CHỜ NHẬN (${borrowedBooks.length}/3)',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.swap_horiz_rounded,
-                            color: Colors.green,
-                            size: 24,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${borrowedBooks.where((book) => book['status'] == 'BORROWING').length}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Đang mượn cá nhân',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.red,
-                            size: 24,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${borrowedBooks.where((book) => book['status'] == 'OVERDUE').length}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Quá hạn',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (canUseLibrarianQr) ...[
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.push(
+                  TextButton(
+                    onPressed: () async {
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const LibrarianQrScreen(),
+                          builder: (_) => const BorrowedScreen(),
                         ),
                       );
+                      if (mounted) await fetchHomeData();
                     },
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text('QUÉT QR MƯỢN / TRẢ TẠI QUẦY'),
+                    child: const Text('Quản lý'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (borrowedBooks.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      isAdmin
+                          ? 'Tài khoản Quản trị viên chưa đăng ký mượn sách nào.'
+                          : 'Bạn không có sách nào đang mượn.',
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   ),
+                )
+              else
+                ...borrowedBooks.map((book) => buildBorrowedBookCard(book)),
+
+              const SizedBox(height: 30),
+
+              Text(
+                _recommendationTitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
-              ],
-            ],
-
-            const SizedBox(height: 30),
-
-            // Sách đang mượn
-            Text(
-              isAdmin ? 'SÁCH CÁ NHÂN ĐANG MƯỢN' : 'SÁCH ĐANG MƯỢN',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 15),
-
-            if (borrowedBooks.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Text(
-                    isAdmin
-                        ? 'Tài khoản Quản trị viên chưa đăng ký mượn sách nào.'
-                        : 'Bạn không có sách nào đang mượn.',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ),
-              )
-            else
-              ...borrowedBooks.map((book) => buildBorrowedBookCard(book)),
-
-            const SizedBox(height: 30),
-
-            Text(
-              _recommendationTitle,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _recommendationDescription,
-              style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 12),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 255,
-              child: recommendations.isEmpty
-                  ? Center(
-                      child: Text(
-                        recommendationLoadFailed
-                            ? 'Chưa thể tải gợi ý lúc này.'
-                            : 'Chưa có đủ tài liệu phù hợp để gợi ý.',
-                        style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _recommendationDescription,
+                style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 255,
+                child: recommendations.isEmpty
+                    ? Center(
+                        child: Text(
+                          recommendationLoadFailed
+                              ? 'Chưa thể tải gợi ý lúc này.'
+                              : 'Chưa có đủ tài liệu phù hợp để gợi ý.',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      )
+                    : ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: recommendations
+                            .map((item) => _buildRecommendCard(item))
+                            .toList(),
                       ),
-                    )
-                  : ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: recommendations
-                          .map((item) => _buildRecommendCard(item))
-                          .toList(),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget buildBorrowedBookCard(dynamic book) {
-    // LoanService derives these values from the authenticated /loans/my-loans response.
-    double progress = book['progress']?.toDouble() ?? 0.0;
-    int remainingDays = book['remainingDays'] ?? 0;
-    Color statusColor = remainingDays <= 3 ? Colors.red : Colors.green;
-    IconData statusIcon = remainingDays <= 3
-        ? Icons.warning_amber_rounded
-        : Icons.access_time;
+    final status = (book['status'] ?? 'BORROWING').toString().toUpperCase();
+    final isWaitingPickup =
+        book['isWaitingPickup'] == true ||
+        status == 'RESERVED' ||
+        status == 'PENDING';
+    final progress = isWaitingPickup
+        ? 0.25
+        : (book['progress']?.toDouble() ?? 0.0);
+    final remainingDays = (book['remainingDays'] as num?)?.toInt() ?? 0;
+    final pickupDeadlineDisplay = (book['pickupDeadlineDisplay'] ?? '—')
+        .toString();
+    final dueDateDisplay = (book['dueDateDisplay'] ?? '—').toString();
+
+    final Color statusColor;
+    final IconData statusIcon;
+    final String statusLabel;
+
+    if (isWaitingPickup) {
+      statusColor = const Color(0xFF0284c7);
+      statusIcon = Icons.storefront_outlined;
+      statusLabel = 'Chờ nhận tại quầy • Hạn nhận: $pickupDeadlineDisplay';
+    } else if (status == 'OVERDUE' || remainingDays < 0) {
+      statusColor = Colors.red;
+      statusIcon = Icons.warning_amber_rounded;
+      statusLabel =
+          'Quá hạn ${remainingDays.abs() == 0 ? 1 : remainingDays.abs()} ngày • Hạn trả: $dueDateDisplay';
+    } else {
+      statusColor = remainingDays <= 3 ? Colors.orange.shade800 : Colors.green;
+      statusIcon = remainingDays <= 3
+          ? Icons.warning_amber_rounded
+          : Icons.access_time;
+      statusLabel = 'Còn $remainingDays ngày • Hạn trả: $dueDateDisplay';
+    }
 
     return Card(
       elevation: 0,
@@ -537,76 +639,89 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BookCover(
-                  imageUrl: book['coverUrl'] ?? book['imageUrlM'],
-                  title: book['title'] ?? 'Unknown',
-                  author: book['author'],
-                  width: 60,
-                  height: 80,
-                  borderRadius: 8,
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        book['title'] ?? 'Unknown',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        book['author'] ?? 'Unknown',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(statusIcon, size: 16, color: statusColor),
-                          const SizedBox(width: 5),
-                          Text(
-                            remainingDays < 0
-                                ? 'Quá hạn ${-remainingDays} ngày'
-                                : 'Còn $remainingDays ngày',
-                            style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BorrowedScreen()),
+          );
+          if (mounted) await fetchHomeData();
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BookCover(
+                    imageUrl: book['coverUrl'] ?? book['imageUrlM'],
+                    title: book['title'] ?? 'Unknown',
+                    author: book['author'],
+                    width: 60,
+                    height: 80,
+                    borderRadius: 8,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.grey.shade200,
-              color: statusColor,
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ],
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          book['title'] ?? 'Unknown',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          book['author'] ?? 'Unknown',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(statusIcon, size: 16, color: statusColor),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                statusLabel,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.grey.shade200,
+                color: statusColor,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildRecommendCard(RecommendationItem item) {
+    final isSaved = WishlistService.isSavedSync(item.bookId);
     return InkWell(
       onTap: () => _openRecommendation(item),
       child: Container(
@@ -615,13 +730,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BookCover(
-              imageUrl: item.imageUrl,
-              title: item.title,
-              author: item.author,
-              width: 140,
-              height: 140,
-              borderRadius: 12,
+            Stack(
+              children: [
+                BookCover(
+                  imageUrl: item.imageUrl,
+                  title: item.title,
+                  author: item.author,
+                  width: 140,
+                  height: 140,
+                  borderRadius: 12,
+                ),
+                if (isSaved)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.bookmark,
+                        color: Color(0xFF0284c7),
+                        size: 16,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             Text(

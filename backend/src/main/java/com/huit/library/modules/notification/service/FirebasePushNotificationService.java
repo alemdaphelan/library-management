@@ -66,31 +66,46 @@ public class FirebasePushNotificationService {
                         .build();
                 messaging.send(message);
             } catch (FirebaseMessagingException exception) {
-                if (exception.getMessagingErrorCode() != null &&
-                        (exception.getMessagingErrorCode().name().equals("UNREGISTERED") ||
-                         exception.getMessagingErrorCode().name().equals("INVALID_ARGUMENT"))) {
+                if (isPermanentTokenError(exception)) {
                     device.setActive(false);
                     deviceRepository.save(device);
                 }
                 LOGGER.warn("Could not send Firebase notification to a registered device: {}",
                         exception.getMessage());
+            } catch (RuntimeException exception) {
+                LOGGER.warn("Unexpected error sending Firebase notification to registered device: {}",
+                        exception.getMessage());
             }
         }
+    }
+
+    private boolean isPermanentTokenError(FirebaseMessagingException exception) {
+        if (exception.getMessagingErrorCode() == null) {
+            return false;
+        }
+        String code = exception.getMessagingErrorCode().name();
+        return "UNREGISTERED".equals(code)
+                || "INVALID_ARGUMENT".equals(code)
+                || "SENDER_ID_MISMATCH".equals(code);
     }
 
     private String titleFor(String type) {
         if (type == null) return "Thư viện HUIT";
         return switch (type.toUpperCase()) {
-            case "DUE_SOON" -> "Sắp đến hạn trả sách";
-            case "DUE_TODAY" -> "Đến hạn trả sách";
-            case "OVERDUE" -> "Sách đang quá hạn";
-            case "PENALTY", "FINE" -> "Phát sinh khoản phí";
+            case "DUE_SOON", "LOAN_DUE_SOON" -> "Sắp đến hạn trả sách";
+            case "DUE_TODAY", "LOAN_DUE_TODAY" -> "Đến hạn trả sách";
+            case "OVERDUE", "LOAN_OVERDUE" -> "Sách đang quá hạn";
+            case "LOAN_APPROVED" -> "Yêu cầu mượn đã được duyệt";
+            case "LOAN_REJECTED" -> "Yêu cầu mượn bị từ chối";
+            case "WAITLIST_READY", "WAITLIST_AVAILABLE" -> "Sách đặt giữ đã sẵn sàng";
+            case "RESERVATION_EXPIRED" -> "Phiếu đặt giữ đã hết hạn";
+            case "RESERVATION_NO_SHOW" -> "Cảnh báo không đến nhận tài liệu";
+            case "PENALTY", "FINE", "PENALTY_CASE_CREATED", "PENALTY_CASE_DUE" -> "Phát sinh khoản phí / đền bù";
+            case "WAIVER_DECISION" -> "Kết quả xét miễn giảm khoản phạt";
             case "ACCOUNT_LOCKED", "CIRCULATION_LOCKED" -> "Tài khoản bị khóa";
             case "ACCOUNT_UNLOCKED", "CIRCULATION_UNLOCKED" -> "Tài khoản đã mở lại";
-            case "WAITLIST_READY" -> "Sách đặt giữ đã sẵn sàng";
             case "PROPOSAL_APPROVED" -> "Đề xuất tài liệu đã được chấp nhận";
             case "PROPOSAL_REJECTED" -> "Kết quả đề xuất tài liệu";
-            case "RESERVATION_NO_SHOW" -> "Cảnh báo không đến nhận tài liệu";
             default -> "Thông báo Thư viện HUIT";
         };
     }

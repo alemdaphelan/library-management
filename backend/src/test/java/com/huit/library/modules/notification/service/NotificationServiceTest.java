@@ -1,10 +1,12 @@
 package com.huit.library.modules.notification.service;
 
+import com.huit.library.modules.notification.entity.NotificationEntity;
 import com.huit.library.modules.notification.repository.NotificationRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,5 +48,28 @@ class NotificationServiceTest {
 
         assertThat(created).isFalse();
         verify(publisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void marksSingleAndAllNotificationsAsRead() {
+        NotificationRepository repository = mock(NotificationRepository.class);
+        ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+        NotificationService service = new NotificationService(repository, publisher);
+        UUID userId = UUID.randomUUID();
+        UUID notifId = UUID.randomUUID();
+        NotificationEntity entity = new NotificationEntity();
+        entity.setNotifId(notifId);
+        entity.setUserId(userId);
+        entity.setIsRead(false);
+
+        when(repository.findById(notifId)).thenReturn(Optional.of(entity));
+        when(repository.save(entity)).thenReturn(entity);
+        when(repository.markAllAsReadByUserId(userId)).thenReturn(3);
+
+        NotificationEntity updated = service.markAsRead(notifId, userId);
+        int bulkCount = service.markAllAsRead(userId);
+
+        assertThat(updated.getIsRead()).isTrue();
+        assertThat(bulkCount).isEqualTo(3);
     }
 }

@@ -9,6 +9,8 @@ import {
 
 type PolicyValueKey =
   'maximumOpenItems' | 'homeLoanDays' | 'renewalDays' | 'maximumRenewalCount'
+  | 'minimumSecurityDeposit' | 'borrowingValueMargin' | 'recallReturnDays'
+  | 'overdueDebtProcessingDays'
   | 'waitlistHoldHours' | 'homeLateFinePerDay' | 'onsiteLateFinePerDay'
   | 'technicalProcessingFee' | 'compensationSettlementDays';
 
@@ -40,6 +42,10 @@ export class LibraryPolicy implements OnInit {
     { key: 'homeLoanDays', label: 'Thời hạn mượn về nhà', unit: 'ngày' },
     { key: 'renewalDays', label: 'Thời gian mỗi lần gia hạn', unit: 'ngày' },
     { key: 'maximumRenewalCount', label: 'Số lần gia hạn tối đa', unit: 'lần' },
+    { key: 'minimumSecurityDeposit', label: 'Tiền thế chân tối thiểu', unit: 'VNĐ', money: true },
+    { key: 'borrowingValueMargin', label: 'Mức vượt giá trị sách cho phép', unit: 'VNĐ', money: true },
+    { key: 'recallReturnDays', label: 'Thời hạn trả sách bị thu hồi', unit: 'ngày' },
+    { key: 'overdueDebtProcessingDays', label: 'Thời hạn xử lý nợ quá hạn', unit: 'ngày' },
     { key: 'waitlistHoldHours', label: 'Thời gian giữ sách', unit: 'giờ' },
     { key: 'homeLateFinePerDay', label: 'Phạt mượn về quá hạn', unit: 'VNĐ/ngày', money: true },
     { key: 'onsiteLateFinePerDay', label: 'Phạt đọc tại chỗ quá hạn', unit: 'VNĐ/ngày', money: true },
@@ -134,6 +140,8 @@ export class LibraryPolicy implements OnInit {
       this.policy!.maximumOpenItems,
       this.policy!.homeLoanDays,
       this.policy!.renewalDays,
+      this.policy!.recallReturnDays,
+      this.policy!.overdueDebtProcessingDays,
       this.policy!.waitlistHoldHours,
       this.policy!.compensationSettlementDays,
     ];
@@ -141,12 +149,15 @@ export class LibraryPolicy implements OnInit {
       this.policy!.homeLateFinePerDay,
       this.policy!.onsiteLateFinePerDay,
       this.policy!.technicalProcessingFee,
+      this.policy!.borrowingValueMargin,
     ];
     if (values.some(value => !Number.isFinite(Number(value)) || Number(value) < 1)
         || !Number.isFinite(Number(this.policy!.maximumRenewalCount))
         || Number(this.policy!.maximumRenewalCount) < 0
+        || !Number.isFinite(Number(this.policy!.minimumSecurityDeposit))
+        || Number(this.policy!.minimumSecurityDeposit) < 100000
         || money.some(value => !Number.isFinite(Number(value)) || Number(value) < 0)) {
-      this.error = 'Vui lòng nhập số hợp lệ; thời hạn phải lớn hơn 0 và mức phí không được âm.';
+      this.error = 'Vui lòng nhập số hợp lệ; thời hạn phải lớn hơn 0, tiền thế chân tối thiểu từ 100.000 VNĐ và các mức tiền không được âm.';
       return false;
     }
     return true;

@@ -368,8 +368,14 @@ public class DebtLedgerService {
 
     private void tryRestoreBorrowingRights(UUID userId, LocalDateTime now) {
         UserEntity user = userRepository.findByIdForUpdate(userId).orElse(null);
-        if (user == null || user.getCirculationLockedUntil() == null
-                || user.getCirculationLockedUntil().isAfter(now)) {
+        if (user == null) {
+            return;
+        }
+        boolean overdueDebtLock = OverdueDebtService.OVERDUE_DEBT_LOCK_REASON
+                .equalsIgnoreCase(user.getCirculationLockReason());
+        boolean expiredTimedLock = user.getCirculationLockedUntil() != null
+                && !user.getCirculationLockedUntil().isAfter(now);
+        if (!overdueDebtLock && !expiredTimedLock) {
             return;
         }
         if (detailRepository.countOpenItemsByUserId(
@@ -378,6 +384,9 @@ public class DebtLedgerService {
         }
         user.setCirculationLockedUntil(null);
         user.setCirculationLockReason(null);
+        if (overdueDebtLock && "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
+            user.setCardStatus("ACTIVE");
+        }
         userRepository.save(user);
         notificationService.createOnce(
                 userId, "CIRCULATION_UNLOCKED",

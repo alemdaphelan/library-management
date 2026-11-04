@@ -17,4 +17,8 @@ public class LibraryPolicyPublicResponseDTO {
     private BigDecimal onsiteLateFinePerDay;
     private BigDecimal technicalProcessingFee;
     private Integer compensationSettlementDays;
+    private BigDecimal minimumSecurityDeposit;
+    private BigDecimal borrowingValueMargin;
+    private Integer recallReturnDays;
+    private Integer overdueDebtProcessingDays;
 }

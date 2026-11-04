@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,30 +11,47 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/firebase_options.dart';
 import 'api_service.dart';
 import 'auth_service.dart';
+import 'notification_service.dart';
 
 const String _channelId = 'huit_library_notifications';
 const String _channelName = 'Thông báo Thư viện HUIT';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  if (Firebase.apps.isEmpty && DefaultFirebaseOptions.isConfigured) {
+  if (Firebase.apps.isEmpty && DefaultFirebaseOptions.canInitialize) {
+    await _initializeFirebaseApp();
+  }
+}
+
+Future<void> _initializeFirebaseApp() async {
+  if (DefaultFirebaseOptions.isConfigured) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    return;
   }
+  // On Android the Google Services Gradle plugin exposes the values from
+  // google-services.json to Firebase.initializeApp().
+  await Firebase.initializeApp();
 }
 
 class PushNotificationService {
   static const String pushTokenKey = 'huit_lib_push_token';
   static const String deviceIdKey = 'huit_lib_device_id';
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static String? _lastKnownToken;
+  static Map<String, dynamic>? _pendingNavigationPayload;
   static final ValueNotifier<int> notificationRevision = ValueNotifier<int>(0);
+
+  static String? get lastKnownToken => _lastKnownToken;
 
   static Future<bool> initialize() async {
     if (_initialized) return true;
-    if (!DefaultFirebaseOptions.isConfigured) {
+    if (!DefaultFirebaseOptions.canInitialize) {
       debugPrint(
         'Firebase chưa có client config; bỏ qua FCM nhưng ứng dụng vẫn hoạt động.',
       );
@@ -40,9 +59,7 @@ class PushNotificationService {
     }
 
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      await _initializeFirebaseApp();
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       await _configureLocalNotifications();
       await FirebaseMessaging.instance.requestPermission(
@@ -51,7 +68,17 @@ class PushNotificationService {
         sound: true,
       );
       FirebaseMessaging.onMessage.listen(_showForegroundMessage);
-      FirebaseMessaging.instance.onRegistered.listen(_registerToken);
+      FirebaseMessaging.onMessageOpenedApp.listen(
+        _handleRemoteMessageOpenedApp,
+      );
+      FirebaseMessaging.instance.onRegistered.listen(_onTokenReceived);
+
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
+      if (initialMessage != null) {
+        _pendingNavigationPayload = _extractNavigationPayload(initialMessage);
+      }
+
       await FirebaseMessaging.instance.register();
       _initialized = true;
       return true;
@@ -65,26 +92,42 @@ class PushNotificationService {
     if (!_initialized && !await initialize()) return;
     if (await AuthService.getToken() == null) return;
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedToken = _lastKnownToken ?? prefs.getString(pushTokenKey);
+      if (cachedToken != null && cachedToken.trim().isNotEmpty) {
+        await _registerTokenWithBackend(cachedToken.trim());
+      }
       final messaging = FirebaseMessaging.instance;
       final registration = messaging.onRegistered.first.timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 6),
       );
       await messaging.register();
       final token = await registration;
-      if (token.isNotEmpty) {
-        await _registerToken(token);
+      if (token.trim().isNotEmpty) {
+        await _onTokenReceived(token.trim());
       }
     } catch (error) {
       debugPrint('Không thể đồng bộ FCM token: $error');
     }
   }
 
-  static Future<void> _registerToken(String token) async {
+  static Future<void> _onTokenReceived(String token) async {
+    final trimmed = token.trim();
+    if (trimmed.isEmpty) return;
+    _lastKnownToken = trimmed;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(pushTokenKey, trimmed);
+    } catch (_) {}
+    await _registerTokenWithBackend(trimmed);
+  }
+
+  static Future<void> _registerTokenWithBackend(String token) async {
     if (await AuthService.getToken() == null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       var deviceId = prefs.getString(deviceIdKey);
-      if (deviceId == null) {
+      if (deviceId == null || deviceId.trim().isEmpty) {
         deviceId = 'mobile-${DateTime.now().microsecondsSinceEpoch}';
         await prefs.setString(deviceIdKey, deviceId);
       }
@@ -104,7 +147,19 @@ class PushNotificationService {
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(),
     );
-    await _localNotifications.initialize(settings: initializationSettings);
+    await _localNotifications.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: _onDidReceiveNotificationResponse,
+    );
+
+    final launchDetails = await _localNotifications
+        .getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp == true) {
+      final payload = launchDetails?.notificationResponse?.payload;
+      if (payload != null && payload.isNotEmpty) {
+        _pendingNavigationPayload = _decodePayload(payload);
+      }
+    }
 
     const channel = AndroidNotificationChannel(
       _channelId,
@@ -119,15 +174,40 @@ class PushNotificationService {
         ?.createNotificationChannel(channel);
   }
 
+  static Map<String, dynamic> _extractNavigationPayload(RemoteMessage message) {
+    final data = message.data;
+    return <String, dynamic>{
+      'notifId': data['notificationId'] ?? data['notifId'],
+      'type': data['type'] ?? '',
+      'referenceType': data['referenceType'] ?? '',
+      'referenceId': data['referenceId'] ?? '',
+      'title': message.notification?.title ?? '',
+      'content': message.notification?.body ?? '',
+    };
+  }
+
+  static Map<String, dynamic>? _decodePayload(String? rawPayload) {
+    if (rawPayload == null || rawPayload.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(rawPayload);
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   static Future<void> _showForegroundMessage(RemoteMessage message) async {
     // Báo cho các màn hình đang mở tải lại dữ liệu thông báo thật từ backend.
     notificationRevision.value++;
     final notification = message.notification;
     if (notification == null) return;
+    final payload = jsonEncode(_extractNavigationPayload(message));
     await _localNotifications.show(
-      id: message.messageId.hashCode,
+      id: message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
       title: notification.title ?? 'Thông báo Thư viện HUIT',
       body: notification.body,
+      payload: payload,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
@@ -138,6 +218,63 @@ class PushNotificationService {
         iOS: DarwinNotificationDetails(),
       ),
     );
+  }
+
+  static void _onDidReceiveNotificationResponse(
+    NotificationResponse response,
+  ) {
+    notificationRevision.value++;
+    final payloadMap = _decodePayload(response.payload);
+    if (payloadMap != null) {
+      handleNotificationTapPayload(payloadMap);
+    }
+  }
+
+  static void _handleRemoteMessageOpenedApp(RemoteMessage message) {
+    notificationRevision.value++;
+    final payloadMap = _extractNavigationPayload(message);
+    handleNotificationTapPayload(payloadMap);
+  }
+
+  static Future<void> handleNotificationTapPayload(
+    Map<String, dynamic> payload,
+  ) async {
+    final token = await AuthService.getToken();
+    final navContext = navigatorKey.currentContext;
+    if (token == null || navContext == null || !navContext.mounted) {
+      _pendingNavigationPayload = payload;
+      return;
+    }
+
+    final notifId = payload['notifId']?.toString().trim();
+    if (notifId != null && notifId.isNotEmpty && notifId != 'null') {
+      try {
+        await NotificationService.markAsRead(notifId);
+      } catch (_) {}
+    }
+
+    if (!navContext.mounted) return;
+    await NotificationService.navigateToNotificationTarget(
+      navContext,
+      payload,
+    );
+  }
+
+  static Future<void> consumePendingNavigation(BuildContext context) async {
+    final pending = _pendingNavigationPayload;
+    if (pending == null) return;
+    _pendingNavigationPayload = null;
+    if (!context.mounted) return;
+
+    final notifId = pending['notifId']?.toString().trim();
+    if (notifId != null && notifId.isNotEmpty && notifId != 'null') {
+      try {
+        await NotificationService.markAsRead(notifId);
+      } catch (_) {}
+    }
+
+    if (!context.mounted) return;
+    await NotificationService.navigateToNotificationTarget(context, pending);
   }
 
   static String _platformName() {

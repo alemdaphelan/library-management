@@ -40,7 +40,7 @@ public class OnlinePaymentController {
     }
 
     @GetMapping("/sessions/{reference}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<OnlinePaymentSessionDTO> get(
             @PathVariable String reference,
             @AuthenticationPrincipal CustomUserDetails principal) {

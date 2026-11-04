@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/services/notification_service.dart';
+import 'package:mobile_app/services/push_notification_service.dart';
 import 'package:mobile_app/screens/login_screen.dart';
 import 'package:mobile_app/screens/borrowed_screen.dart';
 import 'package:mobile_app/screens/change_password_screen.dart';
+import 'package:mobile_app/screens/notifications_screen.dart';
+import 'package:mobile_app/screens/penalties_screen.dart';
 import 'package:mobile_app/screens/suggest_book_screen.dart';
 import 'package:mobile_app/screens/saved_books_screen.dart';
 import 'package:mobile_app/services/librarian_qr_service.dart';
+import 'package:mobile_app/services/wishlist_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile_app/config/api_config.dart';
 
@@ -18,120 +23,82 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _user;
+  int _unreadNotificationCount = 0;
   bool _isLoading = true;
+  bool _isIssuingLibraryCardQr = false;
 
   @override
   void initState() {
     super.initState();
+    PushNotificationService.notificationRevision.addListener(
+      _refreshNotificationCount,
+    );
+    WishlistService.wishlistRevision.addListener(
+      _handleWishlistRevisionChanged,
+    );
+    AuthService.profileRevision.addListener(_handleProfileRevisionChanged);
     _loadUser();
+  }
+
+  @override
+  void dispose() {
+    PushNotificationService.notificationRevision.removeListener(
+      _refreshNotificationCount,
+    );
+    WishlistService.wishlistRevision.removeListener(
+      _handleWishlistRevisionChanged,
+    );
+    AuthService.profileRevision.removeListener(_handleProfileRevisionChanged);
+    super.dispose();
+  }
+
+  Future<void> _handleProfileRevisionChanged() async {
+    final user = await AuthService.getCachedUser();
+    if (!mounted || user == null) return;
+    setState(() => _user = user);
+  }
+
+  void _handleWishlistRevisionChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _refreshNotificationCount() async {
+    try {
+      final count = await NotificationService.getUnreadCount();
+      if (!mounted) return;
+      setState(() {
+        _unreadNotificationCount = count;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadUser() async {
     final user = await AuthService.getCurrentUser(forceRefresh: true);
+    var unreadCount = 0;
+    try {
+      unreadCount = await NotificationService.getUnreadCount();
+    } catch (_) {}
+    try {
+      await WishlistService.getMine();
+    } catch (_) {}
     if (mounted) {
       setState(() {
         _user = user;
+        _unreadNotificationCount = unreadCount;
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _editProfile() async {
-    final nameController = TextEditingController(
-      text: _user?['fullName']?.toString() ?? '',
+  Future<void> _openNotifications() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
     );
-    final phoneController = TextEditingController(
-      text: _user?['phone']?.toString() ?? '',
-    );
-    final formKey = GlobalKey<FormState>();
-    final shouldSave = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Cập nhật hồ sơ'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Họ và tên',
-                  prefixIcon: Icon(Icons.badge_outlined),
-                ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Vui lòng nhập họ và tên'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Số điện thoại',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-                validator: (value) {
-                  final phone = value?.trim() ?? '';
-                  if (phone.isEmpty) return null;
-                  if (!RegExp(r'^[0-9+() -]{8,20}$').hasMatch(phone)) {
-                    return 'Số điện thoại không hợp lệ';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(dialogContext, true);
-              }
-            },
-            child: const Text('Lưu'),
-          ),
-        ],
-      ),
-    );
-    if (shouldSave != true || !mounted) {
-      nameController.dispose();
-      phoneController.dispose();
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    try {
-      final updated = await AuthService.updateProfile(
-        fullName: nameController.text,
-        phone: phoneController.text,
-      );
-      if (!mounted) return;
-      Navigator.pop(context);
-      setState(() => _user = updated);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã cập nhật hồ sơ.')));
-    } catch (error) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
-    } finally {
-      nameController.dispose();
-      phoneController.dispose();
+    if (mounted) {
+      await _refreshNotificationCount();
     }
   }
 
@@ -145,21 +112,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showLibraryCardQr() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
+    if (_isIssuingLibraryCardQr) return;
+    setState(() => _isIssuingLibraryCardQr = true);
     try {
       final response = await LibrarianQrService.issueMyCard();
       if (!mounted) return;
-      Navigator.pop(context);
       final payload = response['payload']?.toString() ?? '';
+      if (payload.isEmpty) {
+        throw Exception('Backend không trả về dữ liệu QR thẻ thư viện.');
+      }
       final expiresAt = DateTime.tryParse(
         response['expiresAt']?.toString() ?? '',
       );
-      showDialog(
+      await showDialog<void>(
         context: context,
+        barrierColor: Colors.transparent,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Thẻ thư viện QR'),
           content: Column(
@@ -186,12 +153,206 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error.toString().replaceFirst('Exception: ', '')),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _isIssuingLibraryCardQr = false);
+    }
+  }
+
+  Future<void> _showEditProfileSheet() async {
+    final currentUser = _user;
+    if (currentUser == null) return;
+
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(
+      text: currentUser['fullName']?.toString() ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: currentUser['phone']?.toString() ?? '',
+    );
+    var isSaving = false;
+
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: (context, setSheetState) => Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              MediaQuery.viewInsetsOf(context).bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Cập nhật thông tin cá nhân',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: isSaving
+                              ? null
+                              : () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Bạn chỉ có thể thay đổi họ tên và số điện thoại. '
+                      'MSSV, email và vai trò do nhà trường quản lý.',
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      key: const ValueKey('profile-full-name-field'),
+                      controller: nameController,
+                      enabled: !isSaving,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Họ và tên',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        final name = value?.trim() ?? '';
+                        if (name.isEmpty) return 'Vui lòng nhập họ và tên';
+                        if (name.length > 150) {
+                          return 'Họ tên không được vượt quá 150 ký tự';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      key: const ValueKey('profile-phone-field'),
+                      controller: phoneController,
+                      enabled: !isSaving,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Số điện thoại',
+                        hintText: 'Ví dụ: 0912345678',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) =>
+                          AuthService.isValidPhone(value ?? '')
+                          ? null
+                          : 'Nhập 10 chữ số bắt đầu bằng 0 hoặc mã +84',
+                    ),
+                    const SizedBox(height: 14),
+                    _ReadOnlyProfileField(
+                      label: 'Mã số sinh viên',
+                      value:
+                          (currentUser['mssv'] ??
+                                  currentUser['studentId'] ??
+                                  'Chưa cập nhật')
+                              .toString(),
+                      icon: Icons.badge_outlined,
+                    ),
+                    const SizedBox(height: 10),
+                    _ReadOnlyProfileField(
+                      label: 'Email',
+                      value: (currentUser['email'] ?? 'Chưa cập nhật')
+                          .toString(),
+                      icon: Icons.email_outlined,
+                    ),
+                    const SizedBox(height: 10),
+                    _ReadOnlyProfileField(
+                      label: 'Vai trò',
+                      value:
+                          (currentUser['roleId'] ??
+                                  currentUser['role'] ??
+                                  'STUDENT')
+                              .toString(),
+                      icon: Icons.verified_user_outlined,
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      key: const ValueKey('profile-save-button'),
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              if (!(formKey.currentState?.validate() ??
+                                  false)) {
+                                return;
+                              }
+                              setSheetState(() => isSaving = true);
+                              try {
+                                final updated = await AuthService.updateProfile(
+                                  fullName: nameController.text,
+                                  phone: phoneController.text,
+                                );
+                                if (!mounted) return;
+                                setState(() => _user = updated);
+                                if (sheetContext.mounted) {
+                                  Navigator.pop(sheetContext);
+                                }
+                                ScaffoldMessenger.of(this.context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Cập nhật thông tin cá nhân thành công.',
+                                      ),
+                                    ),
+                                  );
+                              } catch (error) {
+                                if (!sheetContext.mounted) return;
+                                setSheetState(() => isSaving = false);
+                                ScaffoldMessenger.of(this.context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        error.toString().replaceFirst(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                              }
+                            },
+                      icon: isSaving
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.save_outlined),
+                      label: Text(isSaving ? 'Đang lưu...' : 'Lưu thay đổi'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } finally {
+      nameController.dispose();
+      phoneController.dispose();
     }
   }
 
@@ -229,6 +390,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(isAdmin ? 'Tài khoản Quản trị' : 'Tài khoản cá nhân'),
         backgroundColor: const Color(0xFF0f172a),
         foregroundColor: Colors.white,
+        actions: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: _openNotifications,
+              ),
+              if (_unreadNotificationCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _unreadNotificationCount > 9
+                          ? '9+'
+                          : '$_unreadNotificationCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -315,7 +508,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.badge_outlined),
-                      title: const Text('Mã số'),
+                      title: const Text('Mã số sinh viên'),
                       subtitle: Text(
                         (_user!['mssv'] ??
                                 _user!['studentId'] ??
@@ -339,21 +532,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         (_user!['phone'] ?? 'Chưa cập nhật').toString(),
                       ),
                     ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.edit_outlined,
-                        color: Color(0xFF0284c7),
-                      ),
-                      title: const Text('Cập nhật họ tên và số điện thoại'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: _editProfile,
-                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
+
+            if (!isAdmin) ...[
+              ListTile(
+                key: const ValueKey('profile-edit-tile'),
+                leading: const Icon(
+                  Icons.edit_outlined,
+                  color: Color(0xFF0284c7),
+                ),
+                title: const Text('Cập nhật thông tin cá nhân'),
+                subtitle: const Text('Thay đổi họ tên và số điện thoại'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _showEditProfileSheet,
+              ),
+              const Divider(height: 1),
+            ],
 
             // Menu Items
             if (isAdmin) ...[
@@ -365,7 +563,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: const Text('Cổng Web Admin (Quản trị hệ thống)'),
                 subtitle: Text(
                   'Quản lý sách, kho và lưu thông tại ${ApiConfig.webPortalUrl}',
-                  style: TextStyle(fontSize: 12),
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.open_in_new, size: 18),
                 onTap: () {
@@ -389,27 +587,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Divider(height: 1),
             ],
             ListTile(
+              leading: const Icon(
+                Icons.notifications_active_outlined,
+                color: Color(0xFF0284c7),
+              ),
+              title: const Text('Thông báo'),
+              subtitle: Text(
+                _unreadNotificationCount > 0
+                    ? 'Bạn có $_unreadNotificationCount thông báo chưa đọc'
+                    : 'Xem lịch sử thông báo thư viện',
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_unreadNotificationCount > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$_unreadNotificationCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              onTap: _openNotifications,
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.qr_code_2, color: Colors.teal),
               title: const Text('Thẻ thư viện QR'),
               subtitle: const Text(
                 'Mã bảo mật có thời hạn để thủ thư xác thực',
               ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _showLibraryCardQr,
+              trailing: _isIssuingLibraryCardQr
+                  ? const SizedBox.square(
+                      dimension: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.chevron_right),
+              onTap: _isIssuingLibraryCardQr ? null : _showLibraryCardQr,
             ),
             const Divider(height: 1),
             ListTile(
+              key: const ValueKey('profile-saved-books-tile'),
               leading: const Icon(Icons.bookmark, color: Color(0xFF0284c7)),
               title: const Text('Sách đã lưu'),
-              subtitle: const Text('Danh sách quan tâm của bạn'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
+              subtitle: Text(
+                WishlistService.savedCount > 0
+                    ? 'Bạn đã lưu ${WishlistService.savedCount} cuốn sách'
+                    : 'Danh sách quan tâm của bạn',
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (WishlistService.savedCount > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0284c7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${WishlistService.savedCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const SavedBooksScreen(),
                   ),
                 );
+                if (mounted) {
+                  setState(() {});
+                }
               },
             ),
             const Divider(height: 1),
@@ -442,6 +718,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const Divider(height: 1),
             ListTile(
+              leading: const Icon(
+                Icons.receipt_long_outlined,
+                color: Colors.deepOrange,
+              ),
+              title: const Text('Khoản phạt & Công nợ'),
+              subtitle: const Text(
+                'Xem tiền thế chân, phạt quá hạn, mất/hỏng và lịch sử thu',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PenaltiesScreen(),
+                  ),
+                );
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.lock_outline, color: Colors.orange),
               title: const Text('Đổi mật khẩu'),
               trailing: const Icon(Icons.chevron_right),
@@ -450,7 +746,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        ChangePasswordScreen(isFirstLogin: false),
+                        const ChangePasswordScreen(isFirstLogin: false),
                   ),
                 );
               },
@@ -467,6 +763,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ReadOnlyProfileField extends StatelessWidget {
+  const _ReadOnlyProfileField({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        suffixIcon: const Icon(Icons.lock_outline, size: 18),
+        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+      ),
+      child: Text(value),
     );
   }
 }

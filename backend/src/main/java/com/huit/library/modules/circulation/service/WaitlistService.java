@@ -69,6 +69,14 @@ public class WaitlistService {
         if (copyRepository.countByBookIdAndStatus(bookId, "AVAILABLE") > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đang có bản sẵn sàng, không cần vào hàng đợi");
         }
+        boolean hasCirculatingCopy = copyRepository.findByBookId(bookId).stream()
+                .anyMatch(c -> c.getStatus() == null
+                        || !List.of("LOST", "DAMAGED").contains(c.getStatus().toUpperCase()));
+        if (!hasCirculatingCopy) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Đầu sách hiện không có bản sao vật lý lưu thông nên không hỗ trợ hàng đợi");
+        }
         if (waitlistRepository.existsByBookIdAndUserIdAndStatus(bookId, userId, "WAITING")
                 || waitlistRepository.findFirstByBookIdAndUserIdAndStatus(bookId, userId, "NOTIFIED").isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có lượt hoạt động cho đầu sách này");
@@ -96,14 +104,15 @@ public class WaitlistService {
                     HttpStatus.BAD_REQUEST,
                     "Phiếu đặt giữ trực tiếp chỉ có hiệu lực trong ngày hiện tại");
         }
-        if (isClosed(selectedDate)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ngày nhận sách đã chọn là ngày thư viện đóng cửa");
+
+        LocalDate pickupDeadlineDate = selectedDate;
+        LocalDateTime closingDeadline = pickupDeadlineDate.atTime(closingTime(pickupDeadlineDate));
+        if (isClosed(pickupDeadlineDate) || !closingDeadline.isAfter(now)) {
+            do {
+                pickupDeadlineDate = pickupDeadlineDate.plusDays(1);
+            } while (isClosed(pickupDeadlineDate));
         }
-        LocalDateTime deadline = selectedDate.atTime(closingTime(selectedDate));
-        if (!deadline.isAfter(now)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Thư viện đã hết giờ nhận sách trong ngày đã chọn");
-        }
-        return deadline;
+        return pickupDeadlineDate.atTime(closingTime(pickupDeadlineDate));
     }
 
     @Transactional

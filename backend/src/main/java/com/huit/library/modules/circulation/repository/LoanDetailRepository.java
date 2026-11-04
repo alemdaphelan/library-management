@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Collection;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.math.BigDecimal;
 import jakarta.persistence.LockModeType;
 
 @Repository
@@ -112,6 +113,33 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
     long countOpenItemsByUserId(
             @Param("userId") UUID userId,
             @Param("statuses") Collection<String> statuses);
+
+    @Query(value = """
+            SELECT COALESCE(SUM(COALESCE(b.default_price, 0)), 0)
+            FROM loan_details ld
+            JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
+            LEFT JOIN book_copies bc ON bc.barcode = ld.barcode
+            JOIN books b ON b.book_id = COALESCE(ld.circulation_book_id, bc.book_id)
+            WHERE lt.user_id = :userId
+              AND ld.return_date IS NULL
+              AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
+              AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
+            """, nativeQuery = true)
+    BigDecimal sumOpenBookValueByUserId(@Param("userId") UUID userId);
+
+    @Query(value = """
+            SELECT b.book_id
+            FROM loan_details ld
+            JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
+            LEFT JOIN book_copies bc ON bc.barcode = ld.barcode
+            JOIN books b ON b.book_id = COALESCE(ld.circulation_book_id, bc.book_id)
+            WHERE lt.user_id = :userId
+              AND ld.return_date IS NULL
+              AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
+              AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
+            ORDER BY ld.detail_id
+            """, nativeQuery = true)
+    List<Long> findOpenBookIdsByUserId(@Param("userId") UUID userId);
 
     @Query(value = """
             SELECT COUNT(ld.detail_id)
@@ -235,18 +263,27 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             Pageable pageable);
 
     @Query(value = """
-            SELECT lt.user_id AS userId,
-                   b.book_id AS bookId,
-                   COALESCE(ld.return_date, ld.updated_at, ld.created_at, lt.updated_at, lt.created_at) AS interactionAt
+            SELECT ld.detail_id AS detailId,
+                   lt.user_id AS userId,
+                   COALESCE(ld.circulation_book_id, bc.book_id) AS bookId,
+                   COALESCE(ld.checkout_at, ld.return_date, ld.updated_at, ld.created_at,
+                            lt.updated_at, lt.created_at) AS interactionAt,
+                   COALESCE(ld.renewal_count, 0) AS renewalCount
             FROM loan_tickets lt
             JOIN loan_details ld ON ld.ticket_id = lt.ticket_id
-            JOIN book_copies bc ON bc.barcode = ld.barcode
-            JOIN books b ON b.book_id = bc.book_id
+            LEFT JOIN book_copies bc ON bc.barcode = ld.barcode
+            JOIN books b ON b.book_id = COALESCE(ld.circulation_book_id, bc.book_id)
             WHERE (
-                    ld.return_status IN ('BORROWING', 'OVERDUE', 'RETURNED', 'LOST', 'DAMAGED')
+                    ld.checkout_at IS NOT NULL
+                    OR ld.return_status IN ('BORROWING', 'BORROWED', 'OVERDUE', 'RETURNED',
+                                            'LOST', 'DAMAGED', 'SETTLED')
                     OR ld.return_date IS NOT NULL
                   )
               AND COALESCE(lt.status, '') NOT IN ('CANCELLED', 'REJECTED')
+              AND lt.user_id IS NOT NULL
+              AND COALESCE(ld.circulation_book_id, bc.book_id) IS NOT NULL
+              AND COALESCE(ld.checkout_at, ld.return_date, ld.updated_at, ld.created_at,
+                           lt.updated_at, lt.created_at) IS NOT NULL
             ORDER BY lt.user_id, interactionAt, ld.detail_id
             """, nativeQuery = true)
     List<EvaluationInteractionProjection> findEvaluationInteractions();

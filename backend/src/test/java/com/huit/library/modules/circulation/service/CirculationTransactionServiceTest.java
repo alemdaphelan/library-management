@@ -75,7 +75,8 @@ class CirculationTransactionServiceTest {
                 mock(WaitlistService.class),
                 mock(NotificationService.class),
                 mock(LibraryHoursService.class),
-                policyService);
+                policyService,
+                mock(BorrowingValuePolicyService.class));
     }
 
     @Test

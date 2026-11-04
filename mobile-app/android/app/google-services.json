@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "736010007926",
+    "project_id": "huit-library",
+    "storage_bucket": "huit-library.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:736010007926:android:93c082b774887208c6b657",
+        "android_client_info": {
+          "package_name": "vn.edu.huit.library"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvCi-voP9Edcnwj9l4bIglevATZuz_YmY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

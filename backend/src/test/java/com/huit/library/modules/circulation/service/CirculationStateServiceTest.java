@@ -45,6 +45,9 @@ class CirculationStateServiceTest {
     private UserRepository userRepository;
     private WalletRepository walletRepository;
     private CirculationOperationRepository operationRepository;
+    private NotificationService notificationService;
+    private LibraryPolicyService policyService;
+    private BorrowingValuePolicyService borrowingValuePolicyService;
     private CirculationStateService service;
 
     @BeforeEach
@@ -57,9 +60,23 @@ class CirculationStateServiceTest {
         userRepository = mock(UserRepository.class);
         walletRepository = mock(WalletRepository.class);
         operationRepository = mock(CirculationOperationRepository.class);
-        LibraryPolicyService policyService = mock(LibraryPolicyService.class);
+        notificationService = mock(NotificationService.class);
+        policyService = mock(LibraryPolicyService.class);
+        borrowingValuePolicyService = mock(BorrowingValuePolicyService.class);
         when(policyService.maximumOpenItems()).thenReturn(3);
         when(policyService.homeLoanDays()).thenReturn(10);
+        when(policyService.recallReturnDays()).thenReturn(7);
+        when(borrowingValuePolicyService.getSnapshot(any(), any())).thenReturn(
+                new BorrowingValuePolicyService.BorrowingValueSnapshot(
+                        new BigDecimal("100000"),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        new BigDecimal("150000"),
+                        new BigDecimal("150000"),
+                        true,
+                        true,
+                        true,
+                        "Hạn mức giá trị còn lại là 150.000 đồng."));
         service = new CirculationStateService(
                 ticketRepository,
                 detailRepository,
@@ -71,9 +88,40 @@ class CirculationStateServiceTest {
                 new CirculationStateMachine(),
                 mock(LateFineService.class),
                 waitlistService,
-                mock(NotificationService.class),
+                notificationService,
                 mock(LibraryHoursService.class),
-                policyService);
+                policyService,
+                borrowingValuePolicyService);
+    }
+
+    @Test
+    void recallShortensDueDateToSevenDaysAndNotifiesReader() {
+        UUID readerId = UUID.randomUUID();
+        LoanTicketEntity ticket = ticket(90L, "BORROWING");
+        ticket.setUserId(readerId);
+        LoanDetailEntity detail = new LoanDetailEntity();
+        detail.setDetailId(901L);
+        detail.setTicketId(90L);
+        detail.setBarcode("BC-RECALL-901");
+        detail.setReturnStatus("BORROWING");
+        LocalDateTime originalDueDate = LocalDateTime.now().plusDays(20);
+        detail.setDueDate(originalDueDate);
+
+        when(detailRepository.findByIdForUpdate(901L)).thenReturn(Optional.of(detail));
+        when(ticketRepository.findByIdForUpdate(90L)).thenReturn(Optional.of(ticket));
+
+        var result = service.recallBook(901L, UUID.randomUUID());
+
+        assertThat(result.getStatus()).isEqualTo("BORROWING");
+        assertThat(detail.getIsRecalled()).isTrue();
+        assertThat(detail.getOriginalDueDateBeforeRecall()).isEqualTo(originalDueDate);
+        assertThat(detail.getRecallDueAt()).isEqualTo(detail.getDueDate());
+        assertThat(detail.getRecallDueAt()).isAfter(LocalDateTime.now().plusDays(6));
+        assertThat(detail.getRecallDueAt()).isBefore(LocalDateTime.now().plusDays(8));
+        verify(detailRepository).save(detail);
+        verify(notificationService).createOnce(
+                eq(readerId), eq("LOAN_RECALL"), contains("BC-RECALL-901"),
+                eq("LOAN_DETAIL"), eq("901"), eq("LOAN_RECALL:901"), any(LocalDateTime.class));
     }
 
     @Test
@@ -335,6 +383,61 @@ class CirculationStateServiceTest {
         assertThat(second.getStatus()).isEqualTo("BORROWING");
         verify(detailRepository, times(2)).save(any(LoanDetailEntity.class));
         verify(historyRepository).save(any(LoanStatusHistoryEntity.class));
+    }
+
+    @Test
+    void cancelReservationReleasesReservedCopyAndPromotesWaitlist() {
+        UUID readerId = UUID.randomUUID();
+        LoanTicketEntity ticket = ticket(55L, "RESERVED");
+        ticket.setUserId(readerId);
+        LoanDetailEntity detail = new LoanDetailEntity();
+        detail.setTicketId(55L);
+        detail.setBarcode("BC-055");
+        detail.setReturnStatus("PENDING");
+        BookCopyEntity copy = new BookCopyEntity();
+        copy.setBarcode("BC-055");
+        copy.setBookId(55L);
+        copy.setStatus("RESERVED");
+        copy.setLockedByUser(readerId);
+
+        when(detailRepository.findByTicketIdForUpdate(55L)).thenReturn(List.of(detail));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-055"))).thenReturn(List.of(copy));
+
+        LoanStateResponseDTO result = service.cancelReservation(ticket, readerId);
+
+        assertThat(result.getStatus()).isEqualTo(LoanTicketStatus.CANCELLED);
+        assertThat(ticket.getStatus()).isEqualTo("CANCELLED");
+        assertThat(detail.getReturnStatus()).isEqualTo("CANCELLED");
+        assertThat(copy.getStatus()).isEqualTo("AVAILABLE");
+        assertThat(copy.getLockedByUser()).isNull();
+        verify(waitlistService).promoteNext(eq(copy), any());
+    }
+
+    @Test
+    void returningOrCancellingItemFreesQuotaForNextReservation() {
+        UUID readerId = UUID.randomUUID();
+        UserEntity reader = new UserEntity();
+        reader.setUserId(readerId);
+        reader.setCardStatus("ACTIVE");
+        when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
+        when(walletRepository.findByUserId(readerId)).thenReturn(Optional.empty());
+        when(detailRepository.countOverdueItemsByUserId(eq(readerId), any())).thenReturn(0L);
+        when(detailRepository.countOpenItemsByUserId(
+                readerId, List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE")))
+                .thenReturn(3L, 2L);
+
+        assertThatThrownBy(() -> service.ensureEligibleForReservation(readerId, 1))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("tối đa 3 tài liệu");
+
+        service.ensureEligibleForReservation(readerId, 1);
+        var eligibility = service.getBorrowEligibility(readerId);
+        assertThat(eligibility.isEligible()).isTrue();
+        assertThat(eligibility.getRemainingSlots()).isEqualTo(1);
+    }
+
+    private void unusedEndHelper() {
+        assertThat(historyRepository).isNotNull();
     }
 
     private BookCopyEntity availableCopy(String barcode, Long bookId) {

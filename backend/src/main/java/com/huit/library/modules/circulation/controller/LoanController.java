@@ -11,6 +11,7 @@ import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
 import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
 import com.huit.library.modules.circulation.dto.RejectLoanRequestDTO;
 import com.huit.library.modules.circulation.dto.ManualCheckoutRequestDTO;
+import com.huit.library.modules.circulation.dto.RecallResponseDTO;
 import com.huit.library.modules.circulation.service.CirculationStateService;
 import com.huit.library.modules.circulation.service.LoanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,6 +38,7 @@ public class LoanController {
     }
 
     @PostMapping("/reserve")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Automatically reserve a book", description = "An eligible reader receives a RESERVED hold immediately, or joins WAITLIST when no copy is available. Checkout still happens at the desk.")
     public ResponseEntity<BorrowResponseDTO> reserveBook(
             @Valid @RequestBody BorrowRequestDTO request,
@@ -46,6 +48,7 @@ public class LoanController {
     }
 
     @PostMapping("/reserve-batch")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Reserve multiple books in one ticket", description = "Automatically creates a RESERVED ticket for up to three books, including valid waitlist holds owned by the reader. The batch is atomic.")
     public ResponseEntity<BatchBorrowResponseDTO> reserveBooks(
             @Valid @RequestBody BatchBorrowRequestDTO request,
@@ -55,6 +58,7 @@ public class LoanController {
     }
 
     @GetMapping("/my-loans")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get My Loans", description = "Retrieve list of all active and past loans/reservations for logged-in user.")
     public ResponseEntity<?> getMyLoans(@AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getUserId();
@@ -62,11 +66,13 @@ public class LoanController {
     }
 
     @GetMapping("/my-eligibility")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get my borrow eligibility", description = "Returns the number of open documents and remaining slots within the three-document limit.")
     public ResponseEntity<BorrowEligibilityDTO> getMyBorrowEligibility(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long bookId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(circulationStateService.getBorrowEligibility(
-                userDetails.getUser().getUserId()));
+                userDetails.getUser().getUserId(), bookId));
     }
 
     @GetMapping("/staff")
@@ -91,6 +97,7 @@ public class LoanController {
     }
 
     @PostMapping("/cancel/{ticketId}")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Cancel Reservation", description = "Reader cancels a pending reservation.")
     public ResponseEntity<?> cancelReservation(
             @PathVariable Long ticketId,
@@ -101,6 +108,7 @@ public class LoanController {
     }
 
     @PostMapping("/renew/{ticketId}")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Renew Loan", description = "Reader renews a currently borrowed book according to the active library policy.")
     public ResponseEntity<?> renewLoan(
             @PathVariable Long ticketId,
@@ -110,6 +118,7 @@ public class LoanController {
     }
 
     @PostMapping("/renew/{ticketId}/items/{detailId}")
+    @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Renew one loan item", description = "Renews exactly one borrowed item according to the active library policy.")
     public ResponseEntity<?> renewLoanItem(
             @PathVariable Long ticketId,
@@ -168,5 +177,15 @@ public class LoanController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(circulationStateService.returnBooks(
                 request, userDetails.getUser().getUserId()));
+    }
+
+    @PostMapping("/items/{detailId}/recall")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    @Operation(summary = "Recall a borrowed item", description = "Requires a borrowed item to be returned within the configured recall period, without extending an earlier due date.")
+    public ResponseEntity<RecallResponseDTO> recallItem(
+            @PathVariable Long detailId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(circulationStateService.recallBook(
+                detailId, userDetails.getUser().getUserId()));
     }
 }

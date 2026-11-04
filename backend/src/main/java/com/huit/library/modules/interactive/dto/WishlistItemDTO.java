@@ -14,8 +14,15 @@ public class WishlistItemDTO {
     private String title;
     private String author;
     private String category;
+    private String department;
     private String cover;
+    private String location;
+    private long copies;
     private long availableCopies;
+    private String status;
+    private String isbn;
+    private String publisher;
+    private Integer publishYear;
+    private Boolean isDigital;
     private LocalDateTime addedAt;
 }
-

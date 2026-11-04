@@ -1,24 +1,110 @@
+import 'package:flutter/foundation.dart';
 import 'api_service.dart';
+import 'library_policy_service.dart';
 
 class LoanService {
+  /// Tăng mỗi khi có thao tác đặt giữ, hủy phiếu hoặc gia hạn thành công
+  /// để các màn hình Trang chủ, Tra cứu, Chi tiết và Cá nhân tự đồng bộ.
+  static final ValueNotifier<int> loanRevision = ValueNotifier<int>(0);
+
+  static void notifyLoansChanged() {
+    loanRevision.value++;
+  }
+
+  /// QR nhận sách chỉ có giá trị trong lúc phiếu còn chờ giao tại quầy.
+  /// Sau khi thủ thư checkout, trạng thái BORROWING/OVERDUE tuyệt đối không
+  /// được tiếp tục hiển thị QR nhận sách cho sinh viên.
+  static bool canShowPickupQr(Map<String, dynamic> loan) {
+    final status = (loan['status'] ?? '').toString().toUpperCase();
+    final itemStatus = (loan['itemStatus'] ?? status).toString().toUpperCase();
+    if (const {
+      'CANCELLED',
+      'RETURNED',
+      'REJECTED',
+      'SETTLED',
+    }.contains(itemStatus)) {
+      return false;
+    }
+    return status == 'PENDING' || status == 'RESERVED';
+  }
+
+  /// QR trả sách chỉ xuất hiện cho tài liệu đang mượn hoặc đã quá hạn và
+  /// chưa được thủ thư ghi nhận trả.
+  static bool canShowReturnQr(Map<String, dynamic> loan) {
+    final status = (loan['status'] ?? '').toString().toUpperCase();
+    final itemStatus = (loan['itemStatus'] ?? status).toString().toUpperCase();
+    if (loan['returnDate'] != null ||
+        const {
+          'CANCELLED',
+          'RETURNED',
+          'REJECTED',
+          'SETTLED',
+        }.contains(itemStatus)) {
+      return false;
+    }
+    return status == 'BORROWING' ||
+        status == 'OVERDUE' ||
+        itemStatus == 'BORROWING' ||
+        itemStatus == 'OVERDUE';
+  }
+
   static Future<List<Map<String, dynamic>>> getLoans({
     bool activeOnly = false,
+    int? policyLoanDays,
   }) async {
+    int? resolvedLoanDays = policyLoanDays;
+    if (resolvedLoanDays == null) {
+      try {
+        final policy = await LibraryPolicyService.getPolicy();
+        resolvedLoanDays = policy.homeLoanDays;
+      } catch (_) {}
+    }
+
     final data = await ApiService.get('/loans/my-loans');
     final loans = (data as List<dynamic>)
-        .map((item) => _normalize(Map<String, dynamic>.from(item as Map)))
-        .toList();
-    if (!activeOnly) return loans;
-    return loans
-        .where(
-          (item) => const {
-            'PENDING',
-            'RESERVED',
-            'BORROWING',
-            'OVERDUE',
-          }.contains(item['status']),
+        .map(
+          (item) => normalizeLoan(
+            Map<String, dynamic>.from(item as Map),
+            loanDays: resolvedLoanDays,
+          ),
         )
         .toList();
+    if (!activeOnly) return loans;
+    return loans.where(isOpenLoanItem).toList();
+  }
+
+  static bool isOpenLoanItem(Map<String, dynamic> item) {
+    final status = (item['status'] ?? '').toString().toUpperCase();
+    final itemStatus = (item['itemStatus'] ?? status).toString().toUpperCase();
+    if (item['returnDate'] != null) return false;
+    if (const {
+      'RETURNED',
+      'CANCELLED',
+      'REJECTED',
+      'SETTLED',
+    }.contains(itemStatus)) {
+      return false;
+    }
+    return const {
+      'PENDING',
+      'RESERVED',
+      'BORROWING',
+      'OVERDUE',
+    }.contains(status);
+  }
+
+  static Future<Map<String, dynamic>> getEligibility({int? bookId}) async {
+    final path = bookId == null
+        ? '/loans/my-eligibility'
+        : '/loans/my-eligibility?bookId=$bookId';
+    final data = await ApiService.get(path);
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  static Future<List<Map<String, dynamic>>> getMyWaitlist() async {
+    final data = await ApiService.get('/waitlist/my');
+    if (data is! List) return const <Map<String, dynamic>>[];
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
   static Future<Map<String, dynamic>> reserveBook(
@@ -26,14 +112,25 @@ class LoanService {
     String ticketType = 'BORROW',
     String? note,
   }) async {
-    final pickupDate = DateTime.now().add(const Duration(days: 1));
+    // Gửi ngày đăng ký hiện tại; Backend sẽ tự dời hạn nhận sang ngày mở cửa
+    // gần nhất nếu đăng ký sau giờ đóng cửa hoặc vào ngày thư viện nghỉ.
+    final pickupDate = DateTime.now();
     final data = await ApiService.post('/loans/reserve', {
       'bookId': bookId,
       'ticketType': ticketType,
       'pickupDate': _dateOnly(pickupDate),
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     });
-    return Map<String, dynamic>.from(data as Map);
+    final result = Map<String, dynamic>.from(data as Map);
+    if (result['success'] == false) {
+      throw ApiException(
+        409,
+        result['message']?.toString() ??
+            'Không thể đăng ký mượn hoặc đặt giữ tài liệu này.',
+      );
+    }
+    notifyLoansChanged();
+    return result;
   }
 
   static Future<Map<String, dynamic>> renewLoan(
@@ -44,30 +141,113 @@ class LoanService {
       '/loans/renew/$ticketId/items/$detailId',
       {},
     );
-    return Map<String, dynamic>.from(data as Map);
+    final result = Map<String, dynamic>.from(data as Map);
+    notifyLoansChanged();
+    return result;
   }
 
   static Future<void> cancelReservation(int ticketId) async {
-    await ApiService.post('/loans/cancel/$ticketId', {});
+    try {
+      await ApiService.post('/loans/cancel/$ticketId', {});
+      notifyLoansChanged();
+    } catch (error) {
+      // Nếu Backend đã hủy thành công nhưng phản hồi mạng/giao diện gặp lỗi,
+      // kiểm tra lại danh sách phiếu từ Backend để đồng bộ đúng trạng thái.
+      try {
+        final loans = await getLoans();
+        final matching = loans
+            .where((item) => (item['ticketId'] as num?)?.toInt() == ticketId)
+            .toList();
+        if (matching.isNotEmpty &&
+            matching.every(
+              (item) =>
+                  item['status'] == 'CANCELLED' ||
+                  item['itemStatus'] == 'CANCELLED',
+            )) {
+          notifyLoansChanged();
+          return;
+        }
+      } catch (_) {}
+      rethrow;
+    }
   }
 
-  static Map<String, dynamic> _normalize(Map<String, dynamic> loan) {
+  static Map<String, dynamic> normalizeLoan(
+    Map<String, dynamic> loan, {
+    int? loanDays,
+  }) {
     final dueDate = _parseDate(loan['dueDate']);
+    final pickupDeadline = _parseDate(
+      loan['pickupDeadline'] ?? loan['pickupDate'],
+    );
     final createdAt = _parseDate(loan['createdAt']);
-    final daysRemaining = loan['daysRemaining'] is num
+    final returnDate = _parseDate(loan['returnDate']);
+    final rawStatus = (loan['status'] ?? 'PENDING').toString().toUpperCase();
+    final itemStatus = (loan['itemStatus'] ?? rawStatus)
+        .toString()
+        .toUpperCase();
+
+    final int? daysRemaining = loan['daysRemaining'] is num
         ? (loan['daysRemaining'] as num).toInt()
         : dueDate?.difference(DateTime.now()).inDays;
+
+    final String effectiveStatus =
+        (rawStatus == 'BORROWING' &&
+            returnDate == null &&
+            ((daysRemaining != null && daysRemaining < 0) ||
+                (dueDate != null && dueDate.isBefore(DateTime.now()))))
+        ? 'OVERDUE'
+        : rawStatus;
+
+    final int? effectiveLoanDays =
+        loanDays ??
+        ((createdAt != null && dueDate != null)
+            ? dueDate.difference(createdAt).inDays
+            : null);
+
+    final double progress =
+        (daysRemaining == null ||
+            effectiveLoanDays == null ||
+            effectiveLoanDays <= 0)
+        ? 0.0
+        : ((effectiveLoanDays - daysRemaining) / effectiveLoanDays).clamp(
+            0.0,
+            1.0,
+          );
+
+    final bool isWaitingPickup =
+        (effectiveStatus == 'RESERVED' || effectiveStatus == 'PENDING') &&
+        returnDate == null &&
+        itemStatus != 'CANCELLED' &&
+        itemStatus != 'RETURNED';
+
+    final bool isBorrowing =
+        (effectiveStatus == 'BORROWING' || effectiveStatus == 'OVERDUE') &&
+        returnDate == null &&
+        itemStatus != 'CANCELLED' &&
+        itemStatus != 'RETURNED';
+
+    final bool isHistory = !isWaitingPickup && !isBorrowing;
+
     return {
       ...loan,
-      'title': loan['bookTitle'] ?? 'Tài liệu thư viện',
-      'coverUrl': loan['bookCover'],
-      'borrowDate': _displayDate(createdAt),
-      'dueDateDisplay': _displayDate(dueDate),
+      'status': effectiveStatus,
+      'itemStatus': itemStatus,
+      'title': loan['bookTitle'] ?? loan['title'] ?? 'Tài liệu thư viện',
+      'coverUrl': loan['bookCover'] ?? loan['coverUrl'],
+      'borrowDate': formatDate(createdAt),
+      'pickupDeadlineDisplay': formatDateTime(pickupDeadline),
+      'dueDateDisplay': formatDate(dueDate),
+      'returnDateDisplay': formatDateTime(returnDate),
       'remainingDays': daysRemaining ?? 0,
       'ticketCode': 'PM-${loan['ticketId']}',
-      'progress': daysRemaining == null
-          ? 0.0
-          : ((10 - daysRemaining) / 10).clamp(0.0, 1.0),
+      'progress': progress,
+      'isWaitingPickup': isWaitingPickup,
+      'isBorrowing': isBorrowing,
+      'isHistory': isHistory,
+      'isOverdue':
+          effectiveStatus == 'OVERDUE' ||
+          (isBorrowing && (daysRemaining ?? 0) < 0),
     };
   }
 
@@ -76,10 +256,20 @@ class LoanService {
     return DateTime.tryParse(value.toString());
   }
 
-  static String _displayDate(DateTime? value) {
-    if (value == null) return '—';
-    return '${value.day.toString().padLeft(2, '0')}/'
-        '${value.month.toString().padLeft(2, '0')}/${value.year}';
+  static String formatDate(dynamic value) {
+    final date = value is DateTime ? value : _parseDate(value);
+    if (date == null) return '—';
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  static String formatDateTime(dynamic value) {
+    final date = value is DateTime ? value : _parseDate(value);
+    if (date == null) return '—';
+    return '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')} '
+        '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   static String _dateOnly(DateTime value) =>

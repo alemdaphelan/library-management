@@ -9,6 +9,7 @@ import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanStatusHistoryRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
 import com.huit.library.modules.notification.service.NotificationService;
+import com.huit.library.modules.finance.service.OverdueDebtService;
 import com.huit.library.modules.penalty.service.LateFineService;
 import com.huit.library.modules.penalty.service.OverdueViolationService;
 import com.huit.library.modules.penalty.repository.PenaltyCaseRepository;
@@ -34,6 +35,7 @@ class CirculationMaintenanceServiceTest {
     private LateFineService lateFineService;
     private NotificationService notificationService;
     private ReservationNoShowService reservationNoShowService;
+    private OverdueDebtService overdueDebtService;
     private CirculationMaintenanceService service;
     private LocalDateTime now;
 
@@ -46,6 +48,7 @@ class CirculationMaintenanceServiceTest {
         lateFineService = mock(LateFineService.class);
         notificationService = mock(NotificationService.class);
         reservationNoShowService = mock(ReservationNoShowService.class);
+        overdueDebtService = mock(OverdueDebtService.class);
         service = new CirculationMaintenanceService(
                 ticketRepository,
                 detailRepository,
@@ -58,11 +61,19 @@ class CirculationMaintenanceServiceTest {
                 reservationNoShowService,
                 mock(WaitlistService.class),
                 mock(PenaltyCaseRepository.class),
+                overdueDebtService,
                 2);
         now = LocalDateTime.of(2026, 10, 17, 12, 0);
         when(ticketRepository.findExpiredReservationIds(now)).thenReturn(List.of());
         when(ticketRepository.findOverdueTicketIds(now)).thenReturn(List.of());
         when(detailRepository.findDueSoon(now, now.plusDays(2))).thenReturn(List.of());
+    }
+
+    @Test
+    void processesDebtPastConfiguredDeadlineInTheSameMaintenanceRun() {
+        service.processAt(now);
+
+        verify(overdueDebtService).processAt(now);
     }
 
     @Test
@@ -139,6 +150,28 @@ class CirculationMaintenanceServiceTest {
         CirculationMaintenanceResult result = service.processAt(now);
 
         assertThat(result.dueSoonNotifications()).isEqualTo(1);
+    }
+
+    @Test
+    void createsDueTodayNotificationWhenBookIsDueOnCurrentDate() {
+        UUID readerId = UUID.randomUUID();
+        LoanTicketEntity ticket = ticket(14L, readerId, "BORROWING");
+        LoanDetailEntity detail = detail(24L, 14L, "BC-014", "BORROWING");
+        detail.setDueDate(now.plusHours(4));
+
+        when(detailRepository.findDueSoon(now, now.plusDays(2))).thenReturn(List.of(detail));
+        when(ticketRepository.findById(14L)).thenReturn(Optional.of(ticket));
+        when(notificationService.createOnce(
+                eq(readerId), eq("DUE_TODAY"), anyString(),
+                eq("LOAN_DETAIL"), eq("24"), eq("LOAN_DUE_TODAY:24:2026-10-17"), eq(now)))
+                .thenReturn(true);
+
+        CirculationMaintenanceResult result = service.processAt(now);
+
+        assertThat(result.dueSoonNotifications()).isEqualTo(1);
+        verify(notificationService).createOnce(
+                eq(readerId), eq("DUE_TODAY"), anyString(),
+                eq("LOAN_DETAIL"), eq("24"), eq("LOAN_DUE_TODAY:24:2026-10-17"), eq(now));
     }
 
     private LoanTicketEntity ticket(Long id, UUID userId, String status) {

@@ -93,6 +93,48 @@ class WaitlistServiceTest {
     }
 
     @Test
+    void directReservationBeforeOpeningKeepsCurrentOpenDayDeadline() {
+        LocalDate pickupDate = LocalDate.of(2026, 10, 23);
+        LocalDateTime now = LocalDateTime.of(2026, 10, 23, 6, 30);
+        when(holidays.findById(pickupDate.toString())).thenReturn(Optional.empty());
+
+        assertThat(service.calculateDirectReservationDeadline(pickupDate, now))
+                .isEqualTo(LocalDateTime.of(2026, 10, 23, 17, 0));
+    }
+
+    @Test
+    void directReservationAfterClosingMovesDeadlineToNextOpenDay() {
+        LocalDate pickupDate = LocalDate.of(2026, 10, 23);
+        LocalDateTime now = LocalDateTime.of(2026, 10, 23, 17, 1);
+        HolidayCalendarEntity nextDayClosed = new HolidayCalendarEntity();
+        nextDayClosed.setIsClosed(true);
+
+        when(holidays.findById("2026-10-23")).thenReturn(Optional.empty());
+        when(holidays.findById("2026-10-24")).thenReturn(Optional.of(nextDayClosed));
+        when(holidays.findById("2026-10-25")).thenReturn(Optional.empty());
+
+        assertThat(service.calculateDirectReservationDeadline(pickupDate, now))
+                .isEqualTo(LocalDateTime.of(2026, 10, 25, 17, 0));
+    }
+
+    @Test
+    void directReservationOnClosedDayMovesDeadlineToNextOpenDayWithOverrideClosingTime() {
+        LocalDate pickupDate = LocalDate.of(2026, 10, 23);
+        LocalDateTime now = LocalDateTime.of(2026, 10, 23, 10, 0);
+        HolidayCalendarEntity closedDay = new HolidayCalendarEntity();
+        closedDay.setIsClosed(true);
+        HolidayCalendarEntity nextOpenDay = new HolidayCalendarEntity();
+        nextOpenDay.setIsClosed(false);
+        nextOpenDay.setOverrideCloseTime("15:30");
+
+        when(holidays.findById("2026-10-23")).thenReturn(Optional.of(closedDay));
+        when(holidays.findById("2026-10-24")).thenReturn(Optional.of(nextOpenDay));
+
+        assertThat(service.calculateDirectReservationDeadline(pickupDate, now))
+                .isEqualTo(LocalDateTime.of(2026, 10, 24, 15, 30));
+    }
+
+    @Test
     void directReservationRejectsAnotherPickupDay() {
         LocalDateTime now = LocalDateTime.of(2026, 10, 23, 10, 0);
 

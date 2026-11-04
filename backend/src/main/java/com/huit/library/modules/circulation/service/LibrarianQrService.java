@@ -3,11 +3,13 @@ package com.huit.library.modules.circulation.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.repository.UserRepository;
+import com.huit.library.modules.circulation.dto.LoanItemDTO;
 import com.huit.library.modules.circulation.dto.LoanTicketDetailDTO;
 import com.huit.library.modules.circulation.dto.QrPayloadResponseDTO;
 import com.huit.library.modules.circulation.dto.QrResolveResponseDTO;
 import com.huit.library.modules.circulation.model.LoanTicketStatus;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
+import com.huit.library.modules.circulation.repository.LoanStatusHistoryRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,7 @@ public class LibrarianQrService {
     private final ObjectMapper objectMapper;
     private final LoanService loanService;
     private final LoanTicketRepository loanTicketRepository;
+    private final LoanStatusHistoryRepository loanStatusHistoryRepository;
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final byte[] secret;
@@ -49,11 +52,13 @@ public class LibrarianQrService {
             ObjectMapper objectMapper,
             LoanService loanService,
             LoanTicketRepository loanTicketRepository,
+            LoanStatusHistoryRepository loanStatusHistoryRepository,
             UserRepository userRepository,
             WalletRepository walletRepository,
             @Value("${library.qr.secret}") String secret,
             @Value("${library.qr.ttl-minutes:10}") long ttlMinutes) {
-        this(objectMapper, loanService, loanTicketRepository, userRepository, walletRepository,
+        this(objectMapper, loanService, loanTicketRepository, loanStatusHistoryRepository,
+                userRepository, walletRepository,
                 secret, ttlMinutes, Clock.systemUTC());
     }
 
@@ -61,6 +66,7 @@ public class LibrarianQrService {
             ObjectMapper objectMapper,
             LoanService loanService,
             LoanTicketRepository loanTicketRepository,
+            LoanStatusHistoryRepository loanStatusHistoryRepository,
             UserRepository userRepository,
             WalletRepository walletRepository,
             String secret,
@@ -75,6 +81,7 @@ public class LibrarianQrService {
         this.objectMapper = objectMapper;
         this.loanService = loanService;
         this.loanTicketRepository = loanTicketRepository;
+        this.loanStatusHistoryRepository = loanStatusHistoryRepository;
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
@@ -90,6 +97,13 @@ public class LibrarianQrService {
         boolean staff = hasStaffRole(requester);
         if (!staff && !Objects.equals(ticket.getUserId(), requester.getUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền tạo QR cho phiếu này");
+        }
+        LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
+        if (!isCounterActionStatus(status)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Phiếu #" + ticketId + " đã ở trạng thái " + status.name()
+                            + " nên không còn thao tác tại quầy hợp lệ");
         }
         return issue("LOAN_TICKET", ticketId.toString(), ticket.getUserId());
     }
@@ -121,11 +135,27 @@ public class LibrarianQrService {
         }
 
         LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
-        if (status != LoanTicketStatus.PENDING && status != LoanTicketStatus.RESERVED) {
+        if (!isCounterActionStatus(status)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Phiếu #" + ticket.getTicketId() + " đã ở trạng thái " + status.name()
-                            + " nên QR nhận sách không còn hiệu lực");
+                            + " nên không còn thao tác tại quầy hợp lệ");
+        }
+        List<LoanItemDTO> items = ticket.getItems() == null ? List.of() : ticket.getItems();
+        var borrowedAt = loanStatusHistoryRepository
+                .findFirstByTicketIdAndToStatusOrderByCreatedAtAsc(
+                        ticketId,
+                        LoanTicketStatus.BORROWING)
+                .map(history -> history.getCreatedAt())
+                .orElse(null);
+        items.forEach(item -> item.setBorrowedAt(borrowedAt));
+        if (status == LoanTicketStatus.BORROWING || status == LoanTicketStatus.OVERDUE) {
+            items = items.stream().filter(this::isActiveReturnItem).toList();
+            if (items.isEmpty()) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Phiếu #" + ticket.getTicketId() + " không còn tài liệu nào cần trả");
+            }
         }
         return QrResolveResponseDTO.builder()
                 .type(claims.type())
@@ -136,7 +166,7 @@ public class LibrarianQrService {
                 .ticketId(ticket.getTicketId())
                 .ticketStatus(status.name())
                 .allowedActions(actionsFor(status))
-                .items(ticket.getItems())
+                .items(items)
                 .expiresAt(Instant.ofEpochSecond(claims.expiresAt()))
                 .build();
     }
@@ -185,6 +215,23 @@ public class LibrarianQrService {
             case BORROWING, OVERDUE -> List.of("RETURN");
             default -> List.of("VIEW");
         };
+    }
+
+    private boolean isCounterActionStatus(LoanTicketStatus status) {
+        return status == LoanTicketStatus.PENDING
+                || status == LoanTicketStatus.RESERVED
+                || status == LoanTicketStatus.BORROWING
+                || status == LoanTicketStatus.OVERDUE;
+    }
+
+    private boolean isActiveReturnItem(LoanItemDTO item) {
+        if (item == null || item.getReturnDate() != null) {
+            return false;
+        }
+        String itemStatus = item.getItemStatus() == null
+                ? ""
+                : item.getItemStatus().trim().toUpperCase(Locale.ROOT);
+        return !List.of("RETURNED", "CANCELLED", "REJECTED", "SETTLED").contains(itemStatus);
     }
 
     private QrPayloadResponseDTO issue(String type, String id, UUID userId) {

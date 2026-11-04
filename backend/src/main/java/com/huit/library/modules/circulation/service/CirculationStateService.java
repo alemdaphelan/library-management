@@ -9,6 +9,7 @@ import com.huit.library.modules.circulation.dto.CirculationOperationResponseDTO;
 import com.huit.library.modules.circulation.dto.LoanStateResponseDTO;
 import com.huit.library.modules.circulation.dto.ReturnRequestDTO;
 import com.huit.library.modules.circulation.dto.ManualCheckoutRequestDTO;
+import com.huit.library.modules.circulation.dto.RecallResponseDTO;
 import com.huit.library.modules.circulation.entity.CirculationOperationEntity;
 import com.huit.library.modules.circulation.entity.LoanDetailEntity;
 import com.huit.library.modules.circulation.entity.LoanStatusHistoryEntity;
@@ -59,6 +60,7 @@ public class CirculationStateService {
     private final NotificationService notificationService;
     private final LibraryHoursService libraryHoursService;
     private final LibraryPolicyService policyService;
+    private final BorrowingValuePolicyService borrowingValuePolicyService;
 
     public CirculationStateService(
             LoanTicketRepository loanTicketRepository,
@@ -73,7 +75,8 @@ public class CirculationStateService {
             WaitlistService waitlistService,
             NotificationService notificationService,
             LibraryHoursService libraryHoursService,
-            LibraryPolicyService policyService) {
+            LibraryPolicyService policyService,
+            BorrowingValuePolicyService borrowingValuePolicyService) {
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.historyRepository = historyRepository;
@@ -87,6 +90,7 @@ public class CirculationStateService {
         this.notificationService = notificationService;
         this.libraryHoursService = libraryHoursService;
         this.policyService = policyService;
+        this.borrowingValuePolicyService = borrowingValuePolicyService;
     }
 
     @Transactional
@@ -101,6 +105,7 @@ public class CirculationStateService {
                     "Không thể chuyển phiếu mượn từ " + currentStatus + " sang " + LoanTicketStatus.RESERVED);
         }
         ensureNoDebtOrOverdue(ticket.getUserId());
+        borrowingValuePolicyService.ensureCurrentWithinLimit(ticket.getUserId());
         ensureCurrentOpenItemsWithinLimit(ticket.getUserId());
         List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticketId);
         if (details.isEmpty() || details.size() > policyService.maximumOpenItems()
@@ -125,6 +130,56 @@ public class CirculationStateService {
                     .changedAt(now).build();
         }
         return autoApproveReservation(ticket);
+    }
+
+    @Transactional
+    public RecallResponseDTO recallBook(Long detailId, UUID operatorId) {
+        LoanDetailEntity detail = loanDetailRepository.findByIdForUpdate(detailId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu đang mượn"));
+        LoanTicketEntity ticket = findTicket(detail.getTicketId());
+        LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
+        if (detail.getReturnDate() != null
+                || (status != LoanTicketStatus.BORROWING && status != LoanTicketStatus.OVERDUE)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Chỉ có thể thu hồi tài liệu đang được mượn");
+        }
+
+        if (Boolean.TRUE.equals(detail.getIsRecalled()) && detail.getRecallDueAt() != null) {
+            return toRecallResponse(detail, status);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime recallDeadline = now.plusDays(policyService.recallReturnDays());
+        LocalDateTime effectiveDueDate = detail.getDueDate() == null
+                || recallDeadline.isBefore(detail.getDueDate())
+                ? recallDeadline : detail.getDueDate();
+        detail.setOriginalDueDateBeforeRecall(detail.getDueDate());
+        detail.setIsRecalled(true);
+        detail.setRecalledAt(now);
+        detail.setRecallDueAt(effectiveDueDate);
+        detail.setDueDate(effectiveDueDate);
+        loanDetailRepository.save(detail);
+
+        notificationService.createOnce(
+                ticket.getUserId(), "LOAN_RECALL",
+                "Thư viện yêu cầu thu hồi tài liệu " + detail.getBarcode()
+                        + ". Vui lòng hoàn trả chậm nhất vào " + effectiveDueDate + ".",
+                "LOAN_DETAIL", detailId.toString(),
+                "LOAN_RECALL:" + detailId, now);
+        return toRecallResponse(detail, status);
+    }
+
+    private RecallResponseDTO toRecallResponse(
+            LoanDetailEntity detail, LoanTicketStatus status) {
+        return RecallResponseDTO.builder()
+                .detailId(detail.getDetailId())
+                .ticketId(detail.getTicketId())
+                .recalledAt(detail.getRecalledAt())
+                .recallDueAt(detail.getRecallDueAt())
+                .dueDate(detail.getDueDate())
+                .status(status.name())
+                .build();
     }
 
     /** Called inside the reservation transaction after eligibility and copy locks are established. */
@@ -194,19 +249,36 @@ public class CirculationStateService {
 
     @Transactional(readOnly = true)
     public BorrowEligibilityDTO getBorrowEligibility(UUID userId) {
+        return getBorrowEligibility(userId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public BorrowEligibilityDTO getBorrowEligibility(UUID userId, Long requestedBookId) {
         int maximumOpenItems = policyService.maximumOpenItems();
         long openItems = countOpenItems(userId);
         long remainingSlots = Math.max(0, maximumOpenItems - openItems);
-        String message = remainingSlots > 0
+        BorrowingValuePolicyService.BorrowingValueSnapshot valueSnapshot = borrowingValuePolicyService.getSnapshot(
+                userId,
+                requestedBookId == null ? List.of() : List.of(requestedBookId));
+        boolean eligible = remainingSlots > 0 && valueSnapshot.eligible();
+        String itemMessage = remainingSlots > 0
                 ? "Bạn còn có thể đăng ký " + remainingSlots + " tài liệu."
                 : "Bạn đã đủ " + maximumOpenItems
                         + " tài liệu đang chờ duyệt, chờ nhận hoặc đang mượn. "
                         + "Hãy trả hoặc hủy một tài liệu trước khi đăng ký tiếp.";
+        String message = remainingSlots <= 0 ? itemMessage : valueSnapshot.message();
         return BorrowEligibilityDTO.builder()
                 .maximumItems(maximumOpenItems)
                 .openItems(openItems)
                 .remainingSlots(remainingSlots)
-                .eligible(remainingSlots > 0)
+                .securityDeposit(valueSnapshot.securityDeposit())
+                .currentBorrowedValue(valueSnapshot.currentBorrowedValue())
+                .requestedBookValue(valueSnapshot.requestedBookValue())
+                .maximumBorrowingValue(valueSnapshot.maximumBorrowingValue())
+                .remainingBorrowingValue(valueSnapshot.remainingBorrowingValue())
+                .priceKnown(valueSnapshot.priceKnown())
+                .monetaryEligible(valueSnapshot.eligible())
+                .eligible(eligible)
                 .message(message)
                 .build();
     }
@@ -268,6 +340,7 @@ public class CirculationStateService {
         }
 
         ensureNoDebtOrOverdue(ticket.getUserId());
+        borrowingValuePolicyService.ensureCurrentWithinLimit(ticket.getUserId());
         long borrowedItems = loanDetailRepository.countOpenItemsByUserId(
                 ticket.getUserId(), List.of("BORROWING", "OVERDUE"));
         int maximumOpenItems = policyService.maximumOpenItems();
@@ -366,6 +439,9 @@ public class CirculationStateService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Một phiếu không được mượn nhiều bản sao của cùng một đầu sách");
         }
+        borrowingValuePolicyService.ensureCanAddBooks(
+                reader.getUserId(),
+                copies.stream().map(com.huit.library.modules.catalog.entity.BookCopyEntity::getBookId).toList());
 
         LoanTicketEntity ticket = new LoanTicketEntity();
         ticket.setUserId(reader.getUserId());
@@ -483,6 +559,18 @@ public class CirculationStateService {
     public BigDecimal receiveNormalReturn(LoanTicketEntity ticket, LoanDetailEntity detail,
             BookCopyEntity copy, String note, LocalDateTime returnedAt) {
         BigDecimal additionalFine = lateFineService.accrueLateFine(ticket, detail, returnedAt);
+        if (additionalFine != null && additionalFine.signum() > 0
+                && ticket.getUserId() != null && detail.getDetailId() != null) {
+            notificationService.createOnce(
+                    ticket.getUserId(),
+                    "FINE",
+                    "Tài liệu " + detail.getBarcode() + " của phiếu #" + ticket.getTicketId()
+                            + " phát sinh phí trả trễ " + additionalFine.toPlainString() + " đồng.",
+                    "LOAN_DETAIL",
+                    detail.getDetailId().toString(),
+                    "FINE:" + detail.getDetailId() + ":" + returnedAt.toLocalDate(),
+                    returnedAt);
+        }
         detail.setReturnStatus(LoanDetailStatus.RETURNED.name());
         detail.setReturnDate(returnedAt);
         detail.setPhysicalReturnAt(returnedAt);

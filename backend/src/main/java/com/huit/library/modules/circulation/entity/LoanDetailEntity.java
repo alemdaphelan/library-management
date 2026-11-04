@@ -32,6 +32,9 @@ public class LoanDetailEntity extends BaseEntity {
     private Long circulationBookId;
     private Integer renewalCount = 0;
     private Boolean isRecalled = false;
+    private LocalDateTime recalledAt;
+    private LocalDateTime recallDueAt;
+    private LocalDateTime originalDueDateBeforeRecall;
     private BigDecimal lateFineAccrued = BigDecimal.ZERO;
     private LocalDateTime fineStoppedAt;
 }

@@ -150,6 +150,27 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             Collection<Long> categoryIds, Pageable pageable);
 
     @Query(value = """
+            SELECT affinity.display_name
+            FROM book_subject_assignments assignment
+            JOIN department_subject_affinities affinity
+              ON affinity.subject_id = assignment.subject_id
+             AND affinity.active = TRUE
+            WHERE assignment.book_id = :bookId
+            ORDER BY assignment.primary_subject DESC, assignment.confidence DESC, affinity.weight DESC, affinity.display_name
+            """, nativeQuery = true)
+    List<String> findDepartmentNamesByBookId(@Param("bookId") Long bookId);
+
+    @Query(value = """
+            SELECT DISTINCT assignment.book_id
+            FROM book_subject_assignments assignment
+            JOIN department_subject_affinities affinity
+              ON affinity.subject_id = assignment.subject_id
+             AND affinity.active = TRUE
+            ORDER BY assignment.book_id
+            """, nativeQuery = true)
+    List<Long> findBookIdsWithActiveDepartmentMapping();
+
+    @Query(value = """
             SELECT DISTINCT b.*
             FROM books b
             JOIN book_subject_assignments assignment ON assignment.book_id = b.book_id

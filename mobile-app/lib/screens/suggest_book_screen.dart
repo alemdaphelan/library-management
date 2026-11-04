@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import '../services/proposal_service.dart';
 
 class SuggestBookScreen extends StatefulWidget {
-  const SuggestBookScreen({super.key});
+  final String? initialProposalId;
+
+  const SuggestBookScreen({super.key, this.initialProposalId});
 
   @override
   State<SuggestBookScreen> createState() => _SuggestBookScreenState();
 }
 
 class _SuggestBookScreenState extends State<SuggestBookScreen> {
+  static const _otherGenreValue = '__OTHER__';
+
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _author = TextEditingController();
@@ -24,21 +28,74 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   final _note = TextEditingController();
 
   String _urgency = 'NORMAL';
+  String? _selectedGenre;
+  List<String> _categories = [];
   bool _isSubmitting = false;
   bool _isLoadingHistory = true;
+  bool _isLoadingCategories = true;
+  bool _categoryLoadFailed = false;
+  bool _showAdditionalInformation = false;
   List<Map<String, dynamic>> _history = [];
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingCategories = true;
+        _categoryLoadFailed = false;
+      });
+    }
+    try {
+      final categories = await ProposalService.getCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = categories;
+        if (_selectedGenre != null &&
+            _selectedGenre != _otherGenreValue &&
+            !_categories.contains(_selectedGenre)) {
+          _selectedGenre = null;
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _categoryLoadFailed = true);
+    } finally {
+      if (mounted) setState(() => _isLoadingCategories = false);
+    }
   }
 
   Future<void> _loadHistory() async {
     if (mounted) setState(() => _isLoadingHistory = true);
     try {
       final data = await ProposalService.getMine();
-      if (mounted) setState(() => _history = data);
+      if (mounted) {
+        setState(() => _history = data);
+        final targetId = widget.initialProposalId?.trim();
+        if (targetId != null && targetId.isNotEmpty) {
+          final exists = data.any(
+            (item) =>
+                (item['proposalId'] ?? item['id'])?.toString() == targetId,
+          );
+          if (!exists) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Đề xuất sách #$targetId không còn tồn tại hoặc bạn không có quyền truy cập.',
+                  ),
+                  backgroundColor: Colors.orange.shade800,
+                ),
+              );
+            });
+          }
+        }
+      }
     } catch (_) {
       // Keep the form usable even if the history endpoint is unavailable.
     } finally {
@@ -59,7 +116,7 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
         edition: _edition.text,
         estimatedPrice: _parsePrice(_estimatedPrice.text),
         externalUrl: _externalUrl.text,
-        genre: _genre.text,
+        genre: _resolvedGenre,
         urgencyLevel: _urgency,
         reason: _reason.text.trim(),
         note: _note.text,
@@ -87,11 +144,23 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
     return normalized.isEmpty ? null : double.tryParse(normalized);
   }
 
+  String? get _resolvedGenre {
+    if (_selectedGenre == _otherGenreValue) {
+      final manualGenre = _genre.text.trim();
+      return manualGenre.isEmpty ? null : manualGenre;
+    }
+    return _selectedGenre;
+  }
+
   void _clearForm() {
     for (final controller in _controllers) {
       controller.clear();
     }
-    setState(() => _urgency = 'NORMAL');
+    setState(() {
+      _urgency = 'NORMAL';
+      _selectedGenre = null;
+      _showAdditionalInformation = false;
+    });
   }
 
   List<TextEditingController> get _controllers => [
@@ -159,7 +228,8 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Điền càng đầy đủ, thư viện càng dễ xác minh và xử lý đề xuất của bạn.',
+                  'Đơn được gửi đến Thủ thư/Admin phụ trách duyệt đề xuất. '
+                  'Khi được chấp nhận, sách mới được ghi vào danh mục; bản sao chỉ có sau khi thư viện nhập kho.',
                   style: TextStyle(color: Colors.grey, height: 1.5),
                 ),
                 const SizedBox(height: 24),
@@ -172,85 +242,42 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
                       : null,
                 ),
                 const SizedBox(height: 14),
+                _field(
+                  _reason,
+                  'Lý do đề xuất *',
+                  Icons.notes,
+                  maxLines: 4,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Vui lòng nhập lý do đề xuất'
+                      : null,
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'THÔNG TIN KHUYẾN KHÍCH',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Các thông tin này giúp thư viện xác minh tài liệu nhanh hơn.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 14),
                 _field(_author, 'Tác giả', Icons.person_outline),
                 const SizedBox(height: 14),
-                _field(_publisher, 'Nhà xuất bản', Icons.business_outlined),
-                const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _field(_isbn, 'ISBN', Icons.qr_code_2)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _field(
-                        _publicationYear,
-                        'Năm xuất bản',
-                        Icons.calendar_today_outlined,
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return null;
-                          }
-                          final year = int.tryParse(value.trim());
-                          return year == null || year < 1000 || year > 2100
-                              ? 'Năm không hợp lệ'
-                              : null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _field(
-                        _edition,
-                        'Phiên bản',
-                        Icons.layers_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _field(
-                        _genre,
-                        'Thể loại',
-                        Icons.category_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                _field(
-                  _estimatedPrice,
-                  'Giá dự kiến (VNĐ)',
-                  Icons.payments_outlined,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                _genreSelector(),
+                if (_selectedGenre == _otherGenreValue) ...[
+                  const SizedBox(height: 14),
+                  _field(
+                    _genre,
+                    'Nhập thể loại khác',
+                    Icons.edit_outlined,
+                    validator: (value) =>
+                        _selectedGenre == _otherGenreValue &&
+                            (value == null || value.trim().isEmpty)
+                        ? 'Vui lòng nhập tên thể loại'
+                        : null,
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) return null;
-                    final price = _parsePrice(value);
-                    return price == null || price < 0
-                        ? 'Giá không hợp lệ'
-                        : null;
-                  },
-                ),
-                const SizedBox(height: 14),
-                _field(
-                  _externalUrl,
-                  'Liên kết tham khảo',
-                  Icons.link,
-                  keyboardType: TextInputType.url,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) return null;
-                    final uri = Uri.tryParse(value.trim());
-                    return uri == null || !uri.hasScheme || !uri.hasAuthority
-                        ? 'Liên kết không hợp lệ'
-                        : null;
-                  },
-                ),
+                ],
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   initialValue: _urgency,
@@ -270,22 +297,7 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
                       setState(() => _urgency = value ?? 'NORMAL'),
                 ),
                 const SizedBox(height: 14),
-                _field(
-                  _reason,
-                  'Lý do đề xuất *',
-                  Icons.notes,
-                  maxLines: 4,
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Vui lòng nhập lý do đề xuất'
-                      : null,
-                ),
-                const SizedBox(height: 14),
-                _field(
-                  _note,
-                  'Ghi chú thêm',
-                  Icons.sticky_note_2_outlined,
-                  maxLines: 2,
-                ),
+                _additionalInformation(),
                 const SizedBox(height: 24),
                 SizedBox(
                   height: 54,
@@ -345,11 +357,151 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
     );
   }
 
+  Widget _genreSelector() {
+    final items = <DropdownMenuItem<String>>[
+      ..._categories.map(
+        (category) => DropdownMenuItem(
+          value: category,
+          child: Text(category, overflow: TextOverflow.ellipsis),
+        ),
+      ),
+      const DropdownMenuItem(value: _otherGenreValue, child: Text('Khác')),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          initialValue: _selectedGenre,
+          isExpanded: true,
+          decoration: _decoration(
+            _isLoadingCategories ? 'Đang tải thể loại...' : 'Thể loại',
+            Icons.category_outlined,
+          ),
+          items: _isLoadingCategories ? const [] : items,
+          onChanged: _isLoadingCategories
+              ? null
+              : (value) => setState(() {
+                  _selectedGenre = value;
+                  if (value != _otherGenreValue) _genre.clear();
+                }),
+        ),
+        if (_categoryLoadFailed)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Chưa tải được danh sách từ thư viện. Bạn có thể chọn Khác hoặc thử lại.',
+                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _loadCategories,
+                  child: const Text('Thử lại'),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _additionalInformation() {
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: _showAdditionalInformation,
+        onExpansionChanged: (expanded) =>
+            setState(() => _showAdditionalInformation = expanded),
+        leading: const Icon(Icons.add_circle_outline),
+        title: const Text(
+          'Thông tin bổ sung',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: const Text('Không bắt buộc'),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        children: [
+          _field(_publisher, 'Nhà xuất bản', Icons.business_outlined),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _field(_isbn, 'ISBN', Icons.qr_code_2)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _field(
+                  _publicationYear,
+                  'Năm xuất bản',
+                  Icons.calendar_today_outlined,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) return null;
+                    final year = int.tryParse(value.trim());
+                    return year == null || year < 1000 || year > 2100
+                        ? 'Năm không hợp lệ'
+                        : null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _field(_edition, 'Phiên bản', Icons.layers_outlined),
+          const SizedBox(height: 14),
+          _field(
+            _estimatedPrice,
+            'Giá dự kiến (VNĐ)',
+            Icons.payments_outlined,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) return null;
+              final price = _parsePrice(value);
+              return price == null || price < 0 ? 'Giá không hợp lệ' : null;
+            },
+          ),
+          const SizedBox(height: 14),
+          _field(
+            _externalUrl,
+            'Liên kết tham khảo',
+            Icons.link,
+            keyboardType: TextInputType.url,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) return null;
+              final uri = Uri.tryParse(value.trim());
+              return uri == null || !uri.hasScheme || !uri.hasAuthority
+                  ? 'Liên kết không hợp lệ'
+                  : null;
+            },
+          ),
+          const SizedBox(height: 14),
+          _field(
+            _note,
+            'Ghi chú thêm',
+            Icons.sticky_note_2_outlined,
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _proposalCard(Map<String, dynamic> proposal) {
     final status = proposal['status']?.toString() ?? 'PENDING';
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ExpansionTile(
+        initiallyExpanded:
+            widget.initialProposalId != null &&
+            widget.initialProposalId ==
+                (proposal['proposalId'] ?? proposal['id'])?.toString(),
         title: Text(proposal['title']?.toString() ?? 'Sách chưa đặt tên'),
         subtitle: Text(proposal['authorName']?.toString() ?? 'Chưa rõ tác giả'),
         trailing: _statusChip(status),
