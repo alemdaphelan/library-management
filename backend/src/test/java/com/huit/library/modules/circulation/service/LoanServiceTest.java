@@ -359,6 +359,15 @@ class LoanServiceTest {
             assertThat(item.getPriceKnown()).isTrue();
             assertThat(item.getReturnable()).isFalse();
         });
+        ticket.setStatus("BORROWING");
+        detail.setReturnStatus("CHECKED_OUT");
+        detail.setCheckoutAt(LocalDateTime.of(2026, 11, 5, 10, 0));
+        var active = service.getLoan(21L).getItems().get(0);
+        assertThat(active.getItemStatus()).isEqualTo("BORROWING");
+        assertThat(active.getReturnable()).isTrue();
+        assertThat(active.getBorrowedAt()).isEqualTo(detail.getCheckoutAt());
+        detail.setPhysicalReturnAt(LocalDateTime.of(2026, 11, 5, 11, 0));
+        assertThat(service.getLoan(21L).getItems().get(0).getReturnable()).isFalse();
     }
 
     @Test

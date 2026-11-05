@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 44-repair-official-major-catalog
+      author: codex
+      comment: Restore missing official majors from existing sourced mappings; preserve manual IDs and history.
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              INSERT INTO academic_majors(major_id, faculty_id, major_name, major_code, source_reference)
+              SELECT faculty_id || ':' || md5(major_name), faculty_id, major_name,
+                     min(department_value) FILTER (WHERE department_value ~ '^[0-9]{7}$'),
+                     'academic_department_mappings (B04), repaired catalog snapshot'
+                FROM academic_department_mappings
+               WHERE major_name IS NOT NULL AND btrim(major_name) <> ''
+               GROUP BY faculty_id, major_name
+              ON CONFLICT DO NOTHING;

@@ -607,13 +607,15 @@ public class LoanService {
         }
 
         var value = bookValuationService.resolve(book);
+        var itemStatus = LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus());
         return LoanItemDTO.builder()
                 .bookValue(value == null ? null : value.amount())
                 .bookValueSource(value == null ? "UNKNOWN" : value.source())
                 .bookValueCurrency(value == null ? "VND" : value.currency())
                 .priceKnown(value != null && value.known())
                 .returnable(detail.getReturnDate() == null && detail.getPhysicalReturnAt() == null
-                        && ("BORROWING".equals(detail.getReturnStatus()) || "OVERDUE".equals(detail.getReturnStatus())))
+                        && (effectiveTicketStatus == LoanTicketStatus.BORROWING || effectiveTicketStatus == LoanTicketStatus.OVERDUE)
+                        && (itemStatus == LoanDetailStatus.BORROWING || itemStatus == LoanDetailStatus.OVERDUE))
                 .ticketId(ticket.getTicketId())
                 .detailId(detail.getDetailId())
                 .bookId(book != null ? book.getBookId() : null)
@@ -625,7 +627,8 @@ public class LoanService {
                 .barcode(detail.getBarcode())
                 .ticketType(LoanTicketType.fromDatabaseValue(ticket.getTicketType()).name())
                 .status(effectiveTicketStatus.name())
-                .itemStatus(detail.getReturnStatus())
+                .itemStatus(itemStatus.name())
+                .borrowedAt(detail.getCheckoutAt())
                 .decisionNote(ticket.getDecisionNote())
                 .createdAt(ticket.getCreatedAt())
                 .pickupDeadline(pickupDeadline)

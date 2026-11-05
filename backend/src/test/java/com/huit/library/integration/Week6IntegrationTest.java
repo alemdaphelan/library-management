@@ -1729,6 +1729,26 @@ class Week6IntegrationTest {
     }
 
     @Test
+    void openItemCountExcludesProcessedAndPhysicallyReceivedItemsEvenWithAnOpenTicket() {
+        var reader = createUserWithRole("mobile-6-count", "STUDENT", "Count@123");
+        var ticket = new LoanTicketEntity();
+        ticket.setUserId(reader.getUserId()); ticket.setStatus("BORROWING"); ticket.setTicketType("BORROW");
+        ticket = loanTicketRepository.saveAndFlush(ticket);
+        for (String status : List.of("BORROWING", "DAMAGED", "LOST", "RETURNED", "SETTLED", "CANCELLED")) {
+            var detail = new LoanDetailEntity(); detail.setTicketId(ticket.getTicketId()); detail.setReturnStatus(status);
+            if ("DAMAGED".equals(status)) detail.setPhysicalReturnAt(LocalDateTime.now());
+            loanDetailRepository.saveAndFlush(detail);
+        }
+        var received = new LoanDetailEntity(); received.setTicketId(ticket.getTicketId());
+        received.setReturnStatus("BORROWING"); received.setPhysicalReturnAt(LocalDateTime.now());
+        loanDetailRepository.saveAndFlush(received);
+        assertThat(loanDetailRepository.countOpenItemsByUserId(reader.getUserId(),
+                List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"))).isEqualTo(1);
+        assertThat(loanDetailRepository.countOpenItemsByUserId(reader.getUserId(),
+                List.of("BORROWING", "OVERDUE"))).isEqualTo(1);
+    }
+
+    @Test
     void dashboardAnalyticsProtectRolesAndLibrarianClassificationIsVersionedAndAudited() throws Exception {
         String base="/dashboard/analytics";
         var book=createBook();String major="DASH-"+UUID.randomUUID();String faculty="FAC-"+UUID.randomUUID().toString().substring(0,8);

@@ -60,6 +60,8 @@ management:
       show-details: never
 
 library:
+  catalog:
+    demo-pricing-enabled: ${CATALOG_DEMO_PRICING_ENABLED:false}
   qr:
     secret: ${QR_SECRET:huit-library-development-qr-secret-change-in-production}
     ttl-minutes: ${QR_TTL_MINUTES:10}

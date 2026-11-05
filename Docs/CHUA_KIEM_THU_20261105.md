@@ -4,6 +4,8 @@ Phạm vi bàn giao: các fix local F01–F10, hòa giải `main/b88ac60`, tài 
 
 ## Còn chờ kiểm tra
 
+Bổ sung sau `29bf937`: sửa `6.docx` được đưa sang `main` theo yêu cầu xuất bản tiếp theo; push source không phải deploy. Flutter analyzer sạch và 61/61 test PASS; backend focused 91 ca khác nhau PASS (90 + 4, trùng 3). Chưa nghiệm thu backend máy bạn/server khác; chưa có URL/phiên bản. Migration 44 và cờ runtime `CATALOG_DEMO_PRICING_ENABLED` chưa áp trên server thật; các giới hạn thiết bị/E2E bên dưới vẫn còn. Chi tiết: [checkpoint Mobile 6](FIX_MOBILE_6_20261105.md), [hướng dẫn backend thật](HUONG_DAN_BACKEND_MOBILE_6_20261105.md). Giá runtime demo không cần migration 43; vẫn giữ giá manual và yêu cầu cọc tối thiểu 100k.
+
 1. **Android/iOS thật:** chưa build APK/AAB hoặc bản iOS trong lượt sửa Mobile này; chưa cài/chạy trên điện thoại. Chưa kiểm tra quyền camera/thông báo, quét QR bằng camera, bàn phím hệ điều hành, vòng đời foreground/background/đóng mở app và khác biệt nền tảng.
 2. **FCM thực tế:** chưa xác nhận nhận push với Firebase project thật, FID refresh, đổi tài khoản trên cùng thiết bị, mất mạng hoặc nhận thông báo khi app đã đóng. Test backend xác nhận chọn đúng FID/token; điều này chưa chứng minh giao push thành công.
 3. **Thao tác trình duyệt:** bản Flutter Web preview build PASS, nhưng chưa nghiệm thu tương tác trong trình duyệt. IAB không attach được; công cụ Windows dừng vì không xác định chắc URL để thực thi chính sách. Không tiếp tục điều khiển sau khi công cụ dừng. Ảnh bàn giao là ảnh engine Flutter trong widget test.

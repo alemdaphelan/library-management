@@ -3,6 +3,34 @@ import 'api_service.dart';
 import 'library_policy_service.dart';
 
 class LoanService {
+  static String _status(Object? value) {
+    final status = value?.toString().trim().toUpperCase() ?? '';
+    return switch (status) {
+      'CHECKED_OUT' || 'ACTIVE' => 'BORROWING',
+      'COMPLETED' => 'RETURNED',
+      'CANCELED' => 'CANCELLED',
+      _ => status,
+    };
+  }
+
+  static String _itemStatus(Map<String, dynamic> item) {
+    final raw = _status(item['itemStatus']);
+    return raw.isEmpty ? _status(item['status']) : raw;
+  }
+
+  static bool _received(Map<String, dynamic> item) =>
+      item['returnDate'] != null || item['physicalReturnAt'] != null;
+
+  static bool isBorrowingItem(Map<String, dynamic> item) =>
+      !_received(item) &&
+      const {'BORROWING', 'OVERDUE'}.contains(_status(item['status'])) &&
+      const {'BORROWING', 'OVERDUE'}.contains(_itemStatus(item));
+
+  static bool isWaitingPickupItem(Map<String, dynamic> item) =>
+      !_received(item) &&
+      const {'PENDING', 'RESERVED'}.contains(_status(item['status'])) &&
+      const {'PENDING', 'RESERVED'}.contains(_itemStatus(item));
+
   /// Tăng mỗi khi có thao tác đặt giữ, hủy phiếu hoặc gia hạn thành công
   /// để các màn hình Trang chủ, Tra cứu, Chi tiết và Cá nhân tự đồng bộ.
   static final ValueNotifier<int> loanRevision = ValueNotifier<int>(0);
@@ -15,28 +43,29 @@ class LoanService {
   /// Sau khi thủ thư checkout, trạng thái BORROWING/OVERDUE tuyệt đối không
   /// được tiếp tục hiển thị QR nhận sách cho sinh viên.
   static bool canShowPickupQr(Map<String, dynamic> loan) {
-    final status = (loan['status'] ?? '').toString().toUpperCase();
-    final itemStatus = (loan['itemStatus'] ?? status).toString().toUpperCase();
-    if (const {
-      'CANCELLED',
-      'RETURNED',
-      'REJECTED',
-      'SETTLED',
-    }.contains(itemStatus)) {
-      return false;
+    return isWaitingPickupItem(loan);
+  }
+
+  static String historyLabel(Map<String, dynamic> loan) {
+    final status = _status(loan['status']);
+    final item = _itemStatus(loan);
+    if (status == 'CANCELLED' || item == 'CANCELLED') return 'Đã hủy yêu cầu';
+    if (status == 'REJECTED') return 'Bị từ chối';
+    if (item == 'DAMAGED') {
+      return _received(loan) ? 'Đã nhận sách hư hỏng' : 'Đã lập hồ sơ hư hỏng';
     }
-    return status == 'PENDING' || status == 'RESERVED';
+    if (item == 'LOST') return 'Đã lập hồ sơ mất sách';
+    if (item == 'SETTLED') return 'Đã hoàn tất xử lý';
+    if (_received(loan) || item == 'RETURNED' || status == 'RETURNED') {
+      return 'Đã trả sách';
+    }
+    return 'Cần đối chiếu trạng thái';
   }
 
   /// QR trả sách chỉ xuất hiện cho tài liệu đang mượn hoặc đã quá hạn và
   /// chưa được thủ thư ghi nhận trả.
   static bool canShowReturnQr(Map<String, dynamic> loan) {
-    final status = (loan['status'] ?? '').toString().toUpperCase();
-    final itemStatus = (loan['itemStatus'] ?? status).toString().toUpperCase();
-    if (loan['returnable'] == false || loan['returnDate'] != null || loan['physicalReturnAt'] != null) {
-      return false;
-    }
-    return itemStatus == 'BORROWING' || itemStatus == 'OVERDUE';
+    return loan['returnable'] != false && isBorrowingItem(loan);
   }
 
   static Future<List<Map<String, dynamic>>> getLoans({
@@ -65,23 +94,7 @@ class LoanService {
   }
 
   static bool isOpenLoanItem(Map<String, dynamic> item) {
-    final status = (item['status'] ?? '').toString().toUpperCase();
-    final itemStatus = (item['itemStatus'] ?? status).toString().toUpperCase();
-    if (item['returnDate'] != null) return false;
-    if (const {
-      'RETURNED',
-      'CANCELLED',
-      'REJECTED',
-      'SETTLED',
-    }.contains(itemStatus)) {
-      return false;
-    }
-    return const {
-      'PENDING',
-      'RESERVED',
-      'BORROWING',
-      'OVERDUE',
-    }.contains(status);
+    return isWaitingPickupItem(item) || isBorrowingItem(item);
   }
 
   static Future<Map<String, dynamic>> getEligibility({int? bookId}) async {
@@ -173,10 +186,8 @@ class LoanService {
     );
     final createdAt = _parseDate(loan['createdAt']);
     final returnDate = _parseDate(loan['returnDate']);
-    final rawStatus = (loan['status'] ?? 'PENDING').toString().toUpperCase();
-    final itemStatus = (loan['itemStatus'] ?? rawStatus)
-        .toString()
-        .toUpperCase();
+    final rawStatus = _status(loan['status'] ?? 'PENDING');
+    final itemStatus = _itemStatus(loan);
 
     final int? daysRemaining = loan['daysRemaining'] is num
         ? (loan['daysRemaining'] as num).toInt()
@@ -184,7 +195,7 @@ class LoanService {
 
     final String effectiveStatus =
         (rawStatus == 'BORROWING' &&
-            returnDate == null &&
+            isBorrowingItem(loan) &&
             ((daysRemaining != null && daysRemaining < 0) ||
                 (dueDate != null && dueDate.isBefore(DateTime.now()))))
         ? 'OVERDUE'
@@ -206,17 +217,8 @@ class LoanService {
             1.0,
           );
 
-    final bool isWaitingPickup =
-        (effectiveStatus == 'RESERVED' || effectiveStatus == 'PENDING') &&
-        returnDate == null &&
-        itemStatus != 'CANCELLED' &&
-        itemStatus != 'RETURNED';
-
-    final bool isBorrowing =
-        (effectiveStatus == 'BORROWING' || effectiveStatus == 'OVERDUE') &&
-        returnDate == null &&
-        loan['physicalReturnAt'] == null &&
-        const {'BORROWING', 'OVERDUE'}.contains(itemStatus);
+    final bool isWaitingPickup = isWaitingPickupItem(loan);
+    final bool isBorrowing = isBorrowingItem(loan);
 
     final bool isHistory = !isWaitingPickup && !isBorrowing;
 
@@ -230,6 +232,7 @@ class LoanService {
       'pickupDeadlineDisplay': formatDateTime(pickupDeadline),
       'dueDateDisplay': formatDate(dueDate),
       'returnDateDisplay': formatDateTime(returnDate),
+      'physicalReturnDateDisplay': formatDateTime(loan['physicalReturnAt']),
       'remainingDays': daysRemaining ?? 0,
       'ticketCode': 'PM-${loan['ticketId']}',
       'progress': progress,
@@ -237,8 +240,8 @@ class LoanService {
       'isBorrowing': isBorrowing,
       'isHistory': isHistory,
       'isOverdue':
-          effectiveStatus == 'OVERDUE' ||
-          (isBorrowing && (daysRemaining ?? 0) < 0),
+          isBorrowing &&
+          (effectiveStatus == 'OVERDUE' || (daysRemaining ?? 0) < 0),
     };
   }
 

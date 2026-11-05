@@ -107,8 +107,9 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             where detail.ticketId = ticket.ticketId
               and ticket.userId = :userId
               and ticket.status in :statuses
-              and detail.returnStatus <> 'CANCELLED'
+              and detail.returnStatus in :statuses
               and detail.returnDate is null
+              and detail.physicalReturnAt is null
             """)
     long countOpenItemsByUserId(
             @Param("userId") UUID userId,
@@ -122,6 +123,7 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             JOIN books b ON b.book_id = COALESCE(ld.circulation_book_id, bc.book_id)
             WHERE lt.user_id = :userId
               AND ld.return_date IS NULL
+              AND ld.physical_return_at IS NULL
               AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
               AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
             """, nativeQuery = true)
@@ -135,6 +137,7 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             JOIN books b ON b.book_id = COALESCE(ld.circulation_book_id, bc.book_id)
             WHERE lt.user_id = :userId
               AND ld.return_date IS NULL
+              AND ld.physical_return_at IS NULL
               AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
               AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
             ORDER BY ld.detail_id
@@ -149,6 +152,7 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             WHERE lt.user_id = :userId
               AND bc.book_id = :bookId
               AND ld.return_date IS NULL
+              AND ld.physical_return_at IS NULL
               AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
               AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
             """, nativeQuery = true)

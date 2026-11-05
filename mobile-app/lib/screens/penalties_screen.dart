@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/ledger_display.dart';
 
 class PenaltiesScreen extends StatefulWidget {
   final String? initialCaseId;
@@ -265,7 +266,7 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                     ..._cases.map(_buildCaseCard),
                   const SizedBox(height: 20),
                   const Text(
-                    'SỔ CÔNG NỢ & PHÍ TRẢ TRỄ',
+                    'SỔ GIAO DỊCH & TIỀN THẾ CHÂN',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -347,9 +348,12 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
   }
 
   Widget _buildEntryCard(Map<String, dynamic> entry) {
-    final type = (entry['type'] ?? '').toString().toUpperCase();
-    final reason = entry['reason']?.toString() ?? 'Giao dịch thư viện';
-    final status = (entry['status'] ?? '').toString().toUpperCase();
+    final type = LedgerDisplay.typeLabel(entry['type']);
+    final reason = LedgerDisplay.title(entry);
+    final status = LedgerDisplay.statusLabel(entry['status']);
+    final explanation = LedgerDisplay.explanation(entry);
+    final isDeposit = LedgerDisplay.isDepositTopUp(entry);
+    final amount = num.tryParse(entry['amount']?.toString() ?? '');
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -375,14 +379,22 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                   '$type • Trạng thái: $status',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
+                if (explanation != null) ...[
+                  const SizedBox(height: 6),
+                  Text(explanation, style: const TextStyle(fontSize: 12)),
+                ],
               ],
             ),
           ),
           Text(
-            _formatMoney(entry['amount']),
-            style: const TextStyle(
+            isDeposit && amount != null
+                ? '+${_formatMoney(amount.abs())}'
+                : _formatMoney(entry['amount']),
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0f172a),
+              color: isDeposit
+                  ? Colors.green.shade700
+                  : const Color(0xFF0f172a),
             ),
           ),
         ],

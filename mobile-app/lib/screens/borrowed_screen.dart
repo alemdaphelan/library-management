@@ -582,12 +582,14 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
       children: [
         Icon(icon, size: 20, color: color),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
       ],
@@ -729,6 +731,55 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
     }
   }
 
+  Widget _buildDatePair(
+    String leftLabel,
+    String leftValue,
+    String rightLabel,
+    String rightValue,
+    Color color,
+  ) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              leftLabel,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            Text(
+              leftValue,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              rightLabel,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            Text(
+              rightValue,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
   Widget _buildBookCard(Map<String, dynamic> book) {
     final title = (book['title'] ?? 'Tài liệu thư viện').toString();
     final author = (book['author'] ?? 'Chưa rõ tác giả').toString();
@@ -783,22 +834,25 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
       statusColor = Colors.blueGrey.shade600;
     }
 
-    String statusText = switch (status) {
-      'PENDING' => 'Chờ duyệt tại quầy',
-      'RESERVED' => 'Đang giữ tại quầy',
-      'RETURNED' => 'Đã trả sách',
-      'CANCELLED' => 'Đã hủy yêu cầu',
-      'REJECTED' => 'Bị từ chối',
-      'OVERDUE' => 'Quá hạn ${daysLeft.abs() == 0 ? 1 : daysLeft.abs()} ngày',
-      _ =>
-        itemStatus == 'CANCELLED'
-            ? 'Đã hủy yêu cầu'
-            : (itemStatus == 'RETURNED'
-                  ? 'Đã trả sách'
-                  : (daysLeft < 0
-                        ? 'Quá hạn ${daysLeft.abs()} ngày'
-                        : 'Còn $daysLeft ngày')),
-    };
+    String statusText = isHistory
+        ? LoanService.historyLabel(book)
+        : switch (status) {
+            'PENDING' => 'Chờ duyệt tại quầy',
+            'RESERVED' => 'Đang giữ tại quầy',
+            'RETURNED' => 'Đã trả sách',
+            'CANCELLED' => 'Đã hủy yêu cầu',
+            'REJECTED' => 'Bị từ chối',
+            'OVERDUE' =>
+              'Quá hạn ${daysLeft.abs() == 0 ? 1 : daysLeft.abs()} ngày',
+            _ =>
+              itemStatus == 'CANCELLED'
+                  ? 'Đã hủy yêu cầu'
+                  : (itemStatus == 'RETURNED'
+                        ? 'Đã trả sách'
+                        : (daysLeft < 0
+                              ? 'Quá hạn ${daysLeft.abs()} ngày'
+                              : 'Còn $daysLeft ngày')),
+          };
 
     final loanDays = _policy?.homeLoanDays;
     final double progress = isHistory
@@ -896,9 +950,11 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(book['priceKnown'] == true && book['bookValue'] != null
-                          ? 'Giá trị hiện tại: ${book['bookValue']} ${book['bookValueCurrency'] ?? 'VND'}'
-                          : 'Giá trị tài liệu: chưa xác định'),
+                      Text(
+                        book['priceKnown'] == true && book['bookValue'] != null
+                            ? 'Giá trị hiện tại: ${book['bookValue']} ${book['bookValueCurrency'] ?? 'VND'}'
+                            : 'Giá trị tài liệu: chưa xác định',
+                      ),
                       Text(
                         author,
                         style: const TextStyle(
@@ -913,129 +969,31 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
             ),
             const SizedBox(height: 14),
             if (isWaitingPickup)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Hạn đến quầy nhận sách',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        pickupDeadlineDisplay,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text(
-                        'Hạn trả dự kiến',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        dueDateDisplay,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              _buildDatePair(
+                'Hạn đến quầy nhận sách',
+                pickupDeadlineDisplay,
+                'Hạn trả sau khi nhận sách',
+                dueDateDisplay,
+                statusColor,
               )
             else if (isBorrowing)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Ngày mượn',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        borrowDate,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text(
-                        'Hạn trả sau khi nhận sách',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        dueDateDisplay,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              _buildDatePair(
+                'Ngày mượn',
+                borrowDate,
+                'Hạn trả sau khi nhận sách',
+                dueDateDisplay,
+                statusColor,
               )
             else
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Ngày đăng ký',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      Text(
-                        borrowDate,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        status == 'RETURNED' || itemStatus == 'RETURNED'
-                            ? 'Ngày trả'
-                            : 'Hạn trả ghi nhận',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      Text(
-                        (status == 'RETURNED' || itemStatus == 'RETURNED') &&
-                                returnDateDisplay != '—'
-                            ? returnDateDisplay
-                            : dueDateDisplay,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              _buildDatePair(
+                'Ngày đăng ký',
+                borrowDate,
+                'Ngày nhận trả',
+                book['physicalReturnDateDisplay'] != null &&
+                        book['physicalReturnDateDisplay'] != '—'
+                    ? book['physicalReturnDateDisplay'].toString()
+                    : returnDateDisplay,
+                statusColor,
               ),
             const SizedBox(height: 14),
             Row(
@@ -1050,12 +1008,16 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
+                Flexible(
+                  flex: 2,
+                  child: Text(
+                    statusText,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                    ),
                   ),
                 ),
               ],

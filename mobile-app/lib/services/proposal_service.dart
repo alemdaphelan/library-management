@@ -2,9 +2,23 @@ import 'api_service.dart';
 
 class ProposalService {
   static Future<List<Map<String, dynamic>>> getMajors() async {
-    final data = await ApiService.get('/proposals/majors');
-    return (data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    try {
+      final data = await ApiService.get('/proposals/majors');
+      if (data is! List) {
+        throw const FormatException('Danh mục ngành trả về không hợp lệ.');
+      }
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) {
+        throw const ApiException(
+          404,
+          'Máy chủ chưa hỗ trợ danh mục ngành cho đề xuất. Vui lòng liên hệ thư viện để cập nhật hệ thống.',
+        );
+      }
+      rethrow;
+    }
   }
+
   static Future<Map<String, dynamic>> create({
     required String title,
     required String reason,

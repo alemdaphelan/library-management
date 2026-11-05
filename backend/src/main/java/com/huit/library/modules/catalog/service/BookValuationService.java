@@ -3,6 +3,11 @@ package com.huit.library.modules.catalog.service;
 import com.huit.library.modules.catalog.entity.BookEntity;
 import com.huit.library.modules.penalty.repository.CompensationRateRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.core.env.StandardEnvironment;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,9 +25,22 @@ public class BookValuationService {
     }
 
     private final CompensationRateRepository compensationRateRepository;
+    private final boolean demoPricingEnabled;
 
     public BookValuationService(CompensationRateRepository compensationRateRepository) {
+        this(compensationRateRepository, false, new StandardEnvironment());
+    }
+
+    @Autowired
+    public BookValuationService(CompensationRateRepository compensationRateRepository,
+            @Value("${library.catalog.demo-pricing-enabled:false}") boolean demoPricingEnabled,
+            Environment environment) {
         this.compensationRateRepository = compensationRateRepository;
+        if (demoPricingEnabled && (environment.acceptsProfiles(Profiles.of("prod", "production"))
+                || !environment.acceptsProfiles(Profiles.of("dev", "test")))) {
+            throw new IllegalStateException("Demo catalog pricing requires dev/test and must not run in production");
+        }
+        this.demoPricingEnabled = demoPricingEnabled;
     }
 
     public BookValue resolve(BookEntity book) {
@@ -35,6 +53,16 @@ public class BookValuationService {
 
         BigDecimal manualPrice = book.getDefaultPrice();
         String status = normalize(book.getPriceStatus());
+        String source = normalize(book.getPriceSource());
+        boolean realCatalogPrice = manualPrice != null && manualPrice.signum() > 0
+                && !"UNKNOWN".equals(status)
+                && !"CONFIGURED_FALLBACK".equals(source) && !"DEMO_GENERATED".equals(source);
+        if (demoPricingEnabled && !realCatalogPrice && book.getBookId() != null) {
+            // Stable per-book value, matching migration 43 without rewriting catalog or money history.
+            long bucket = Math.floorMod(Math.floorMod(book.getBookId(), 51L) * 7919L, 51L);
+            return new BookValue(BigDecimal.valueOf(15000L + bucket * 1000L), true,
+                    "DEMO_GENERATED", "VND", null);
+        }
         if (manualPrice != null && manualPrice.signum() > 0 && !"UNKNOWN".equals(status)) {
             return new BookValue(
                     manualPrice,

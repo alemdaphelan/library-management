@@ -12,7 +12,6 @@ class SuggestBookScreen extends StatefulWidget {
 }
 
 class _SuggestBookScreenState extends State<SuggestBookScreen> {
-
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _author = TextEditingController();
@@ -32,6 +31,7 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   bool _historyFailed = false;
   bool _isLoadingMajors = true;
   bool _majorLoadFailed = false;
+  String? _majorError;
   bool _showAdditionalInformation = false;
   List<Map<String, dynamic>> _history = [];
 
@@ -47,6 +47,7 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
       setState(() {
         _isLoadingMajors = true;
         _majorLoadFailed = false;
+        _majorError = null;
       });
     }
     try {
@@ -54,17 +55,29 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
       if (!mounted) return;
       setState(() {
         _majors = majors;
-        if (!_majors.any((m) => m['majorId'] == _selectedMajor)) _selectedMajor = null;
+        if (!_majors.any((m) => m['majorId'] == _selectedMajor)) {
+          _selectedMajor = null;
+        }
       });
-    } catch (_) {
-      if (mounted) setState(() => _majorLoadFailed = true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _majorLoadFailed = true;
+          _majorError = error.toString().replaceFirst('Exception: ', '');
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoadingMajors = false);
     }
   }
 
   Future<void> _loadHistory() async {
-    if (mounted) setState(() { _isLoadingHistory = true; _historyFailed = false; });
+    if (mounted) {
+      setState(() {
+        _isLoadingHistory = true;
+        _historyFailed = false;
+      });
+    }
     try {
       final data = await ProposalService.getMine();
       if (mounted) {
@@ -98,7 +111,12 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   }
 
   Future<void> _submit() async {
-    if (_isSubmitting || _isLoadingMajors || _majorLoadFailed || _majors.isEmpty) return;
+    if (_isSubmitting ||
+        _isLoadingMajors ||
+        _majorLoadFailed ||
+        _majors.isEmpty) {
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
     try {
@@ -255,7 +273,13 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
                 SizedBox(
                   height: 54,
                   child: ElevatedButton(
-                    onPressed: _isSubmitting || _isLoadingMajors || _majorLoadFailed || _majors.isEmpty ? null : _submit,
+                    onPressed:
+                        _isSubmitting ||
+                            _isLoadingMajors ||
+                            _majorLoadFailed ||
+                            _majors.isEmpty
+                        ? null
+                        : _submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0284c7),
                       foregroundColor: Colors.white,
@@ -319,16 +343,33 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
         key: ValueKey('proposal-major-$_selectedMajor'),
         initialValue: _selectedMajor,
         isExpanded: true,
-        decoration: _decoration(_isLoadingMajors ? 'Đang tải ngành...' : 'Ngành học *', Icons.school_outlined),
-        items: _majors.map((m) => DropdownMenuItem<String>(
-          value: m['majorId'] as String,
-          child: Text(m['majorName'] as String, overflow: TextOverflow.ellipsis),
-        )).toList(),
-        onChanged: _isLoadingMajors || _isSubmitting ? null : (value) => setState(() => _selectedMajor = value),
+        decoration: _decoration(
+          _isLoadingMajors ? 'Đang tải ngành...' : 'Ngành học *',
+          Icons.school_outlined,
+        ),
+        items: _majors
+            .map(
+              (m) => DropdownMenuItem<String>(
+                value: m['majorId'] as String,
+                child: Text(
+                  m['majorName'] as String,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: _isLoadingMajors || _isSubmitting
+            ? null
+            : (value) => setState(() => _selectedMajor = value),
         validator: (value) => value == null ? 'Vui lòng chọn ngành học' : null,
       ),
       if (_majorLoadFailed || (!_isLoadingMajors && _majors.isEmpty)) ...[
-        const Text('Chưa có danh mục ngành. Vui lòng tải lại hoặc liên hệ thư viện.'),
+        Text(
+          _majorLoadFailed
+              ? (_majorError ??
+                    'Không tải được danh mục ngành. Vui lòng thử lại.')
+              : 'Máy chủ chưa có dữ liệu ngành học. Vui lòng liên hệ thư viện.',
+        ),
         TextButton(onPressed: _loadMajors, child: const Text('Thử lại')),
       ],
     ],
@@ -437,9 +478,13 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
           _historyLine('ISBN', proposal['isbn']),
           _historyLine('Năm xuất bản', proposal['publicationYear']),
           _historyLine('Phiên bản', proposal['edition']),
-          _historyLine('Ngành học', proposal['majorName'] ?? 'Đề xuất cũ chưa gán ngành'),
+          _historyLine(
+            'Ngành học',
+            proposal['majorName'] ?? 'Đề xuất cũ chưa gán ngành',
+          ),
           _historyLine('Nguồn ngành', proposal['majorSourceReference']),
-          if (proposal['majorId'] == null) _historyLine('Thể loại cũ', proposal['genre']),
+          if (proposal['majorId'] == null)
+            _historyLine('Thể loại cũ', proposal['genre']),
           _historyLine('Lý do', proposal['reason']),
           _historyLine('Ghi chú', proposal['note']),
           if ((proposal['adminNote']?.toString().trim().isNotEmpty ?? false))
