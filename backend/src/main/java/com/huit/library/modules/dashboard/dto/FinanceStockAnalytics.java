@@ -2,7 +2,6 @@ package com.huit.library.modules.dashboard.dto;
 
 import com.huit.library.modules.dashboard.dto.CirculationAnalytics.Range;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -15,7 +14,7 @@ public final class FinanceStockAnalytics {
             BigDecimal bankReceived, BigDecimal vnpayReceived, BigDecimal otherReceived,
             BigDecimal allocatedPayments, BigDecimal depositApplied, BigDecimal waived,
             BigDecimal adjusted, BigDecimal depositTopups) {}
-    public record MoneyBucket(LocalDate start, LocalDate until, Money amounts) {}
+    public record MoneyBucket(LocalDateTime start, LocalDateTime until, Money amounts) {}
     public record Fee(String feeType, BigDecimal chargesAccrued) {}
     public record CurrentDebt(BigDecimal ledgerOutstanding, BigDecimal walletDebt,
             BigDecimal walletMinusLedger, BigDecimal satisfiedIncludingReductions) {}
@@ -37,7 +36,7 @@ public final class FinanceStockAnalytics {
 
     public record Imports(long completedReceipts, long importedTitles, long firstRecordedImportTitles,
             long importedCopies) {}
-    public record ImportBucket(LocalDate start, LocalDate until, Imports counts,
+    public record ImportBucket(LocalDateTime start, LocalDateTime until, Imports counts,
             Long liquidatedCopies, Long destroyedCopies) {}
     public record ImportCoverage(long completedReceiptsWithoutTime, long invalidDetailRows,
             long titlesWithUndatedImport) {}

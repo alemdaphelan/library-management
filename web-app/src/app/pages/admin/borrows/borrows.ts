@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, OnInit, Optional } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { StudentObligationReport } from './student-obligation-report';
+import { RecallRequests } from './recall-requests';
 import {
   CirculationService,
   LoanTicketDetail,
@@ -13,12 +14,13 @@ import {
 @Component({
   selector: 'app-borrows',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StudentObligationReport],
+  imports: [CommonModule, FormsModule, RouterLink, StudentObligationReport, RecallRequests],
   templateUrl: './borrows.html',
   styleUrl: './borrows.css',
 })
 export class Borrows implements OnInit {
-  activeView: 'loans' | 'report' = 'loans';
+  activeView: 'loans' | 'report' | 'recall' = 'loans';
+  recallVisited = false;
   reportVisited = false;
   reportInitialQuery = '';
   reportInitialMode: 'EITHER'|'OVERDUE' = 'EITHER';
@@ -51,6 +53,7 @@ export class Borrows implements OnInit {
       this.reportInitialMode=this.route.snapshot.queryParamMap.get('reportMode')==='OVERDUE'?'OVERDUE':'EITHER';
       this.switchView('report');
     }
+    if(this.route?.snapshot.queryParamMap.get('view')==='recall') this.switchView('recall');
     const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
     const referenceId = Number(this.route?.snapshot.queryParamMap.get('referenceId'));
     if (referenceType === 'LOAN_TICKET' && Number.isSafeInteger(referenceId) && referenceId > 0) {
@@ -59,10 +62,11 @@ export class Borrows implements OnInit {
     this.loadLoans();
   }
 
-  switchView(view: 'loans' | 'report'): void {
+  switchView(view: 'loans' | 'report' | 'recall'): void {
     if (this.actionInProgress) return;
     this.activeView = view;
     if (view === 'report') this.reportVisited = true;
+    if (view === 'recall') this.recallVisited = true;
   }
 
   get filteredLoans(): LoanTicketSummary[] {

@@ -134,31 +134,39 @@ public class CirculationStateService {
 
     @Transactional
     public RecallResponseDTO recallBook(Long detailId, UUID operatorId) {
+        LoanDetailEntity snapshot = loanDetailRepository.findById(detailId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu đang mượn"));
+        LoanTicketEntity ticket = findTicket(snapshot.getTicketId());
         LoanDetailEntity detail = loanDetailRepository.findByIdForUpdate(detailId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu đang mượn"));
-        LoanTicketEntity ticket = findTicket(detail.getTicketId());
+        if (!ticket.getTicketId().equals(detail.getTicketId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã thay đổi; tải lại phiếu mượn");
+        }
         LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
-        if (detail.getReturnDate() != null
+        LocalDateTime existingRecallDue = detail.getRecallDueAt() != null
+                ? detail.getRecallDueAt() : detail.getRecallDueDate();
+        if (Boolean.TRUE.equals(detail.getIsRecalled()) && existingRecallDue != null) {
+            return toRecallResponse(detail, status);
+        }
+        if (detail.getReturnDate() != null || detail.getPhysicalReturnAt() != null
+                || detail.getFineStoppedAt() != null || detail.getLossReportedAt() != null
+                || !("BORROWING".equals(detail.getReturnStatus()) || "OVERDUE".equals(detail.getReturnStatus()))
+                || Boolean.TRUE.equals(detail.getIsRecalled()) || detail.getDueDate() == null
                 || (status != LoanTicketStatus.BORROWING && status != LoanTicketStatus.OVERDUE)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Chỉ có thể thu hồi tài liệu đang được mượn");
         }
 
-        if (Boolean.TRUE.equals(detail.getIsRecalled()) && detail.getRecallDueAt() != null) {
-            return toRecallResponse(detail, status);
-        }
-
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+                .truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         LocalDateTime recallDeadline = now.plusDays(policyService.recallReturnDays());
         LocalDateTime effectiveDueDate = detail.getDueDate() == null
                 || recallDeadline.isBefore(detail.getDueDate())
                 ? recallDeadline : detail.getDueDate();
-        detail.setOriginalDueDateBeforeRecall(detail.getDueDate());
-        detail.setIsRecalled(true);
-        detail.setRecalledAt(now);
-        detail.setRecallDueAt(effectiveDueDate);
-        detail.setDueDate(effectiveDueDate);
+        detail.recordRecall(now, operatorId, "Thư viện yêu cầu thu hồi tài liệu",
+                detail.getDueDate(), effectiveDueDate);
         loanDetailRepository.save(detail);
 
         notificationService.createOnce(
@@ -175,8 +183,8 @@ public class CirculationStateService {
         return RecallResponseDTO.builder()
                 .detailId(detail.getDetailId())
                 .ticketId(detail.getTicketId())
-                .recalledAt(detail.getRecalledAt())
-                .recallDueAt(detail.getRecallDueAt())
+                .recalledAt(detail.getRecalledAt() != null ? detail.getRecalledAt() : detail.getRecallRequestedAt())
+                .recallDueAt(detail.getRecallDueAt() != null ? detail.getRecallDueAt() : detail.getRecallDueDate())
                 .dueDate(detail.getDueDate())
                 .status(status.name())
                 .build();
@@ -590,7 +598,8 @@ public class CirculationStateService {
     public void completeReturnedTickets(List<LoanTicketEntity> tickets, UUID operatorId) {
         for (LoanTicketEntity ticket : tickets) {
             boolean completed = loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId()).stream()
-                    .allMatch(detail -> List.of("RETURNED", "CANCELLED", "SETTLED").contains(detail.getReturnStatus()));
+                    .allMatch(detail -> detail.getPhysicalReturnAt() != null
+                            || List.of("RETURNED", "CANCELLED", "SETTLED").contains(detail.getReturnStatus()));
             if (completed && !"RETURNED".equals(ticket.getStatus())) {
                 transition(ticket, LoanTicketStatus.RETURNED, operatorId, "Đã nhận đủ sách trả tại quầy");
             }

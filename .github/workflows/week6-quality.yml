@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify preflight client-key isolation
+        shell: pwsh
+        run: pwsh -File ./scripts/test-preflight-secret-scan.ps1
       - name: Check secrets, generated files and Compose manifest
         shell: pwsh
         run: pwsh -File ./scripts/week12d-preflight.ps1

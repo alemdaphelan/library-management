@@ -28,6 +28,11 @@ public class BookProposalEntity extends BaseEntity {
     @Column(length = 1000)
     private String externalUrl;
     private String genre;
+    @Column(length = 128)
+    private String majorId;
+    private String majorName;
+    @Column(length = 1000)
+    private String majorSourceReference;
     private String urgencyLevel;
     @Column(length = 1000)
     private String reason;

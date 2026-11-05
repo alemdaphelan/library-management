@@ -120,6 +120,9 @@ void main() {
 
       final mockClient = MockClient((http.Request request) async {
         final path = request.url.path;
+        if (path.endsWith('/api/v1/library-card')) {
+          return http.Response('{"depositBalance":0,"totalDebt":0}', 200);
+        }
         if (request.method == 'GET' && path.endsWith('/api/v1/notifications')) {
           return http.Response.bytes(
             utf8.encode(jsonEncode(notifications)),
@@ -189,6 +192,9 @@ void main() {
     (WidgetTester tester) async {
       final mockClient = MockClient((http.Request request) async {
         final path = request.url.path;
+        if (path.endsWith('/api/v1/library-card')) {
+          return http.Response('{"depositBalance":0,"totalDebt":0}', 200);
+        }
         if (path.endsWith('/api/v1/penalty-cases/my') ||
             path.endsWith('/api/v1/transactions/my-ledger') ||
             path.endsWith('/api/v1/proposals/my') ||

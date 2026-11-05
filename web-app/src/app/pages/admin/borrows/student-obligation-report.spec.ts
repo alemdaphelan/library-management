@@ -48,7 +48,7 @@ describe('Student obligation report UI', () => {
     expect(service.preview).toHaveBeenCalledWith({ mode: 'EITHER', facultyId: '', q: '' }, 0, 25);
     expect(text).toContain('138 / 138'); expect(text).toContain('Trần Thị B'); expect(text).toContain('VND');
     expect(text).toContain('29/10/2026 10:15:30'); expect(text).toContain('Miễn giảm'); expect(text).toContain('Điều chỉnh giảm');
-    expect(text).toContain('70,000'); expect(text).toContain('100,000'); expect(text).not.toContain('Cần đối soát');
+    expect(text).toContain('70,000'); expect(text).toContain('100,000'); expect(text).not.toContain('Cần kiểm tra');
     expect(fixture.nativeElement.querySelector('a').getAttribute('href')).toContain('referenceType=USER&referenceId=reader-1');
     expect(fixture.nativeElement.querySelector('option[value="UNCLASSIFIED"]')).toBeNull();
   });
@@ -88,8 +88,27 @@ describe('Student obligation report UI', () => {
   it('distinguishes returned readers with debt, missing wallet and reconciliation issues', () => {
     const data = component.report!; data.students[0] = { ...student, overdueItemCount: 0, earliestDueDate: null, walletDebt: null, walletDifference: null, reconciliationDifference: 100 };
     data.overdueItems = []; component.selectStudent(data.students[0]); fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Chưa có ví'); expect(fixture.nativeElement.textContent).toContain('Cần đối soát');
+    expect(fixture.nativeElement.textContent).toContain('Chưa có dữ liệu tài khoản'); expect(fixture.nativeElement.textContent).toContain('Cần kiểm tra');
     expect(fixture.nativeElement.textContent).toContain('vẫn còn công nợ sau khi trả sách');
+  });
+  it.each([[50000,'cao hơn'],[-50000,'thấp hơn'],[0,'khớp số']])('explains the signed account difference %s without changing either debt source',(gap,label)=>{
+    const row={...student,walletDebt:student.outstandingAmount+Number(gap),walletDifference:Number(gap)};
+    component.report!.students=[row];component.selectStudent(row);fixture.detectChanges();
+    const text=fixture.nativeElement.textContent;expect(text).toContain('Nợ theo các khoản phí');expect(text).toContain('Nợ lưu trong tài khoản');expect(text).toContain(label);
+    expect(row.outstandingAmount).toBe(100000);expect(row.walletDifference).toBe(gap);
+    expect(text).not.toMatch(/ledger|wallet|distinct|snapshot/i);
+    expect(text).toContain('Chênh lệch bằng 0 không có nghĩa là sinh viên đã hết nợ.');
+  });
+  it('keeps missing account data separate from zero debt and explains both fee discrepancy signs',()=>{
+    const row={...student,walletDebt:null,walletDifference:null};
+    expect(component.walletComparison(row)).toContain('không có nghĩa là đã hết nợ');
+    expect(component.feeComparison({...row,reconciliationDifference:100})).toContain('lớn hơn');
+    expect(component.feeComparison({...row,reconciliationDifference:-100})).toContain('nhỏ hơn');
+    expect(component.feeComparison(row)).toContain('khớp');
+    component.report!.students=[{...row,paidOrDepositAmount:-100,reconciliationDifference:50}];component.selectStudent(component.report!.students[0]);fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Số thanh toán/cấn cọc âm');expect(fixture.nativeElement.textContent).toContain('chưa kết luận nguyên nhân');
+    expect(fixture.nativeElement.querySelector('.debt-comparison').textContent).toContain('Số thanh toán/cấn cọc đang âm: -100');
+    expect(fixture.nativeElement.textContent).toContain('Miễn giảm một phần');
   });
   it('shows an empty result without inventing data and disables export', () => {
     service.preview.mockReturnValueOnce(of({ ...report(), totalStudents: 0, students: [], overdueItems: [], ledgerEntries: [] }));

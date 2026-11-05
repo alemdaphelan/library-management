@@ -1,9 +1,10 @@
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { Detail } from './detail';
 
 describe('Detail review policy', () => {
   const circulationService = {
+    reserveBook:vi.fn(),
     getMyBorrowEligibility: vi.fn(() => of({
       maximumItems: 3,
       openItems: 3,
@@ -97,4 +98,18 @@ describe('Detail review policy', () => {
     expect(borrowCartService.add).not.toHaveBeenCalled();
     expect(component.toastMessage).toContain('đủ 3 tài liệu');
   });
+
+  it('renders a delayed reservation result immediately and blocks duplicate submits',()=>{
+    const pending=new Subject<any>();circulationService.reserveBook.mockReturnValueOnce(pending);
+    const c=createComponent(vi.fn());c.book={id:7,availableCopies:2};c.pickupDate='2026-11-04';c.generateQrCode=vi.fn();
+    c.submitBorrowRequest();c.submitBorrowRequest();expect(circulationService.reserveBook).toHaveBeenCalledTimes(1);expect(c.isSubmittingBorrow).toBe(true);
+    pending.next({success:true,status:'RESERVED',ticketId:15});pending.complete();
+    expect(c.isSubmittingBorrow).toBe(false);expect(c.borrowSuccessData?.ticketId).toBe(15);expect(c.book.availableCopies).toBe(1);expect(c.generateQrCode).toHaveBeenCalledWith(15);
+    c.submitBorrowRequest();expect(circulationService.reserveBook).toHaveBeenCalledTimes(1);
+  });
+  it('clears the spinner after a delayed reservation failure',()=>{
+    const pending=new Subject<any>();circulationService.reserveBook.mockReturnValueOnce(pending);const c=createComponent(vi.fn());c.book={id:7};c.submitBorrowRequest();
+    pending.error({status:409,error:{detail:'Thẻ bị khóa'}});expect(c.isSubmittingBorrow).toBe(false);expect(c.borrowErrorMessage).toBe('Thẻ bị khóa');
+  });
+
 });

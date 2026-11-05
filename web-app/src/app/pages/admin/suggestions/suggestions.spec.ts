@@ -4,6 +4,23 @@ import { AdminSuggestions } from './suggestions';
 describe('AdminSuggestions', () => {
   const cdr = { detectChanges: vi.fn() };
 
+  it('filters official major IDs together with status and text, preserving legacy proposals', () => {
+    const component = new AdminSuggestions({} as any, cdr as any);
+    component.proposals = [
+      { title: 'Java', status: 'PENDING', majorId: 'CNTT', majorName: 'Công nghệ thông tin' },
+      { title: 'Java', status: 'APPROVED', majorId: 'CNTT', majorName: 'Công nghệ thông tin' },
+      { title: 'Java', status: 'PENDING', majorId: 'KT', majorName: 'Kế toán' },
+      { title: 'Legacy', status: 'PENDING', genre: 'Công nghệ thông tin' },
+    ];
+    component.majorFilter = 'CNTT'; component.searchTerm = 'Java';
+    expect(component.filteredSuggestions).toHaveLength(1);
+    expect(component.majorOptions).toHaveLength(2);
+    component.majorFilter = '__LEGACY__'; component.searchTerm = '';
+    expect(component.filteredSuggestions.map(p => p.title)).toEqual(['Legacy']);
+    component.majorFilter = ''; component.activeTab = 'ALL';
+    expect(component.filteredSuggestions).toHaveLength(4);
+  });
+
   it('loads summary lazily and opens its exact original in the unchanged individual drawer', () => {
     const component = new AdminSuggestions({} as any, cdr as any);
     component.proposals = [{ proposalId: 7, title: 'Clean Code', status: 'PENDING' }];

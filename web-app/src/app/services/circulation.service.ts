@@ -78,6 +78,15 @@ export interface LoanItem {
   pickupDeadline?: string;
   dueDate?: string;
   returnDate?: string;
+  physicalReturnAt?: string;
+  lossReportedAt?: string;
+  lossReportDescription?: string;
+  isRecalled?: boolean;
+  recallRequestedAt?: string;
+  recallRequestedBy?: string;
+  recallReason?: string;
+  recallPreviousDueDate?: string;
+  recallDueDate?: string;
   daysRemaining?: number;
   renewalCount: number;
   lateFineAccrued: number;
@@ -98,6 +107,14 @@ export interface LoanTicketSummary {
   overdueItemCount: number;
   totalLateFine: number;
 }
+
+export interface RecallItem {
+  ticketId: number; detailId: number; userId?: string; mssv?: string; readerName?: string;
+  bookId?: number; bookTitle: string; barcode?: string; dueDate?: string; itemStatus: string;
+  isRecalled: boolean; recallRequestedAt?: string; recallReason?: string; recallDueDate?: string; lossReportedAt?: string;
+}
+export type RecallFilter = 'ALL' | 'NOT_RECALLED' | 'RECALLED' | 'OVERDUE';
+export interface RecallPage { items: RecallItem[]; total: number; page: number; size: number; }
 
 export interface LoanTicketDetail {
   ticketId: number;
@@ -185,6 +202,14 @@ export class CirculationService {
     return this.http.get<LoanItem[]>(`${this.apiUrl}/my-loans`);
   }
 
+  reportLoss(ticketId: number, detailId: number, description: string): Observable<LoanItem> {
+    return this.http.post<LoanItem>(`${this.apiUrl}/${ticketId}/items/${detailId}/loss-report`, { description });
+  }
+
+  getLossReport(detailId: number): Observable<LoanTicketDetail> {
+    return this.http.get<LoanTicketDetail>(`${this.apiUrl}/loss-reports/${detailId}`);
+  }
+
   getMyBorrowEligibility(): Observable<BorrowEligibility> {
     return this.http.get<BorrowEligibility>(`${this.apiUrl}/my-eligibility`);
   }
@@ -192,6 +217,14 @@ export class CirculationService {
   /** Danh sách phiếu thật dành cho Admin/Librarian. */
   getStaffLoans(): Observable<LoanTicketSummary[]> {
     return this.http.get<LoanTicketSummary[]>(`${this.apiUrl}/staff`);
+  }
+
+  getRecallItems(q: string, state: RecallFilter, page: number, size = 10): Observable<RecallPage> {
+    return this.http.get<RecallPage>(`${this.apiUrl}/recall-items`, { params: { q, state, page, size } });
+  }
+
+  requestRecall(ticketId: number, detailId: number, reason: string): Observable<LoanItem> {
+    return this.http.post<LoanItem>(`${this.apiUrl}/${ticketId}/items/${detailId}/recall`, { reason });
   }
 
   /**

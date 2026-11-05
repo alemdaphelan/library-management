@@ -43,6 +43,13 @@
         <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         <input type="text" [(ngModel)]="searchTerm" class="form-control" placeholder="Tìm tên sách, tác giả, sinh viên, MSSV...">
       </div>
+      <label>Ngành học
+        <select class="form-control" [(ngModel)]="majorFilter">
+          <option value="">Tất cả ngành</option>
+          <option *ngFor="let m of majorOptions" [value]="m.id">{{ m.name }}</option>
+          <option value="__LEGACY__">Đề xuất cũ chưa gán ngành</option>
+        </select>
+      </label>
       <button class="btn-outline btn-sm" (click)="loadProposals()" [disabled]="isLoading" style="display: inline-flex; align-items: center; gap: 6px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
         Làm mới
@@ -72,6 +79,7 @@
               Tác giả: {{ s.authorName || 'Chưa rõ' }}
               <span *ngIf="s.publisher"> • NXB: {{ s.publisher }}</span>
             </div>
+            <div>Ngành: {{ s.majorName || 'Đề xuất cũ chưa gán ngành' }}</div>
           </td>
           <td>
             <div style="font-weight: 600; color: #1e293b;">{{ s.userName || 'Sinh viên' }}</div>
@@ -144,12 +152,12 @@
           <div class="meta-val">{{ selectedSuggestion.publicationYear || 'Chưa rõ' }}<span *ngIf="selectedSuggestion.edition"> · {{ selectedSuggestion.edition }}</span></div>
         </div>
         <div class="meta-item">
-          <div class="meta-label">Thể loại</div>
-          <div class="meta-val">{{ selectedSuggestion.genre || 'Chưa phân loại' }}</div>
+          <div class="meta-label">Ngành học</div>
+          <div class="meta-val">{{ selectedSuggestion.majorName || 'Đề xuất cũ chưa gán ngành' }}</div>
         </div>
-        <div class="meta-item">
-          <div class="meta-label">Mức độ cần thiết</div>
-          <div class="meta-val">{{ urgencyLabel(selectedSuggestion.urgencyLevel) }}</div>
+        <div class="meta-item" *ngIf="selectedSuggestion.majorSourceReference">
+          <div class="meta-label">Nguồn ngành lúc đề xuất</div>
+          <div class="meta-val">{{ selectedSuggestion.majorSourceReference }}</div>
         </div>
         <div class="meta-item">
           <div class="meta-label">Giá dự kiến</div>

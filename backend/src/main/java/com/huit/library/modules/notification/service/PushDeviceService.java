@@ -54,6 +54,7 @@ public class PushDeviceService {
         }
         registration.setUserId(userId);
         registration.setToken(normalizedToken);
+        registration.setIdentifierType(request.identifierType() == null ? "TOKEN" : request.identifierType());
         registration.setPlatform(normalizedPlatform);
         registration.setDeviceId(normalizedDeviceId);
         registration.setActive(true);

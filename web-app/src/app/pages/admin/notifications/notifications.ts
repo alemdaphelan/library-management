@@ -146,6 +146,8 @@ export class Notifications implements OnInit {
       RESERVATION_NO_SHOW: 'Không đến nhận sách',
       LOAN_REQUEST_PENDING: 'Yêu cầu mượn cũ',
       LOAN_RESERVED: 'Phiếu đã giữ chỗ',
+      LOAN_RECALLED: 'Yêu cầu trả tài liệu',
+      LOAN_LOSS_REPORTED: 'Bạn đọc báo mất sách',
       BOOK_PROPOSAL_PENDING: 'Đề xuất sách mới',
       IMPORT_COMPLETED: 'Đã nhập kho',
       PROPOSAL_APPROVED: 'Đề xuất được duyệt',
@@ -172,6 +174,7 @@ export class Notifications implements OnInit {
     return ({
       BOOK_PROPOSAL: 'Mở đề xuất',
       LOAN_TICKET: 'Mở phiếu mượn',
+      LOAN_LOSS_REPORT: 'Tiếp nhận báo mất',
       LOAN_DETAIL: 'Mở quản lý mượn',
       WAITLIST: 'Mở quản lý mượn',
       GOODS_RECEIPT: 'Mở phiếu nhập',
@@ -188,6 +191,7 @@ export class Notifications implements OnInit {
     const target = ({
       BOOK_PROPOSAL: '/admin/suggestions',
       LOAN_TICKET: '/admin/circulation',
+      LOAN_LOSS_REPORT: '/admin/penalties',
       LOAN_DETAIL: '/admin/borrows',
       WAITLIST: '/admin/circulation',
       GOODS_RECEIPT: '/admin/imports',

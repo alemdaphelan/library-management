@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_app/screens/splash_screen.dart';
 import 'package:mobile_app/services/push_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await PushNotificationService.initialize();
   runApp(const HuitLibraryApp());
+  unawaited(PushNotificationService.initialize());
 }
 
 class HuitLibraryApp extends StatelessWidget {

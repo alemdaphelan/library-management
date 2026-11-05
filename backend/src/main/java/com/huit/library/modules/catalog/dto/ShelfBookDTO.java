@@ -5,5 +5,9 @@ public record ShelfBookDTO(
         Long bookId,
         String title,
         String isbn,
-        String status) {
+        String status,
+        boolean catalogMatched) {
+    public ShelfBookDTO(String barcode, Long bookId, String title, String isbn, String status) {
+        this(barcode, bookId, title, isbn, status, true);
+    }
 }

@@ -149,6 +149,9 @@ public class ReturnInspectionService {
                 if (item.getCondition() == ReturnInspectionRequestDTO.Condition.DAMAGED) {
                     detail.setPhysicalReturnAt(receivedAt);
                     detail.setPhysicalReturnTimeSource("LIVE_DAMAGED_RECEIPT");
+                    detail.setReturnDate(receivedAt);
+                    // Physical custody ends even when heavy damage is financially treated as a loss.
+                    detail.setReturnStatus("DAMAGED");
                 }
                 detail.setReturnConditionNote(item.getReturnConditionNote());
                 details.save(detail);

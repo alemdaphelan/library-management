@@ -105,7 +105,7 @@
       <div class="form-row">
         <div class="form-group flex-1">
           <label for="import-supplier">Nhà Cung Cấp <span class="required">*</span></label>
-          <select id="import-supplier" class="form-control" [(ngModel)]="selectedSupplierId">
+          <select id="import-supplier" class="form-control" [(ngModel)]="selectedSupplierId" required>
             <option [ngValue]="undefined">-- Chọn Nhà cung cấp --</option>
             <option *ngFor="let s of suppliers" [ngValue]="s.supplierId">{{ s.name }}</option>
           </select>
@@ -128,16 +128,16 @@
         <header><h4>Dòng {{ i + 1 }}</h4><button type="button" class="btn-outline btn-sm" (click)="removeLine(i)" [disabled]="newImportLines.length === 1">Bỏ dòng {{ i + 1 }}</button></header>
         <div class="line-grid">
           <label>Tra cứu bằng<select class="form-control" aria-label="Loại định danh" [(ngModel)]="line.mode" (ngModelChange)="clearIdentification(line)"><option value="isbn">ISBN</option><option value="bookId">Mã đầu sách</option></select></label>
-          <label>{{ line.mode === 'isbn' ? 'ISBN' : 'Mã đầu sách' }}<input class="form-control" [attr.aria-label]="'Định danh dòng ' + (i + 1)" [(ngModel)]="line.identifier" (ngModelChange)="clearIdentification(line)" (keyup.enter)="lookupIsbn(line)"></label>
+          <label>{{ line.mode === 'isbn' ? 'ISBN' : 'Mã đầu sách' }}<input class="form-control" [attr.aria-label]="'Định danh dòng ' + (i + 1)" [(ngModel)]="line.identifier" (ngModelChange)="clearIdentification(line)" (keyup.enter)="lookupIsbn(line)" required></label>
           <button type="button" class="btn-outline lookup-button" (click)="lookupIsbn(line)" [disabled]="line.lookupState === 'loading'">{{ line.lookupState === 'loading' ? 'Đang tra…' : 'Đối chiếu danh mục' }}</button>
         </div>
         <p class="lookup-note" [ngClass]="line.lookupState" *ngIf="line.lookupMessage">{{ line.lookupMessage }}</p>
         <div class="identified-book" *ngIf="line.identification as book"><strong>{{ book.title }}</strong><p>{{ book.author || 'Chưa có tác giả' }} · {{ book.publisher || 'Chưa có NXB' }} · {{ book.publishYear || 'Chưa có năm' }} · ISBN: {{ book.isbn || 'Chưa có' }}</p><p>Phân loại: {{ book.categoryName || 'Chưa có nhóm danh mục' }} · DDC: {{ book.ddcCallNumber || 'Chưa có' }}</p><ul *ngIf="book.subjects.length"><li *ngFor="let subject of book.subjects">{{ subject.name }} · Nguồn: {{ subject.source }}<small *ngIf="subject.evidence">{{ subject.evidence }}</small></li></ul><p class="form-help" *ngIf="book.classificationStatus === 'MISSING'">Chưa có dữ liệu phân loại. Cần bổ sung danh mục trước khi áp dụng xếp sách tự động.</p><p class="placement-note">{{ book.placementMessage }}</p></div>
-        <div class="line-grid numeric-grid"><label>Số lượng<input type="number" class="form-control" [attr.aria-label]="'Số lượng dòng ' + (i + 1)" [(ngModel)]="line.qty" min="1" step="1"></label><label>Đơn giá (VNĐ)<input type="number" class="form-control" [attr.aria-label]="'Đơn giá dòng ' + (i + 1)" [(ngModel)]="line.price" min="0"></label></div>
+        <div class="line-grid numeric-grid"><label>Số lượng<input type="number" class="form-control" [attr.aria-label]="'Số lượng dòng ' + (i + 1)" [(ngModel)]="line.qty" min="1" step="1" required></label><label>Đơn giá (VNĐ)<input type="number" class="form-control" [attr.aria-label]="'Đơn giá dòng ' + (i + 1)" [(ngModel)]="line.price" min="0" required></label></div>
         <div class="line-grid location-grid">
-          <label>Tầng<select class="form-control" [attr.aria-label]="'Tầng dòng ' + (i + 1)" [(ngModel)]="line.floorId" (ngModelChange)="floorChanged(line)" [disabled]="floorsLoading || !!locationError"><option [ngValue]="undefined">Chọn tầng</option><option *ngFor="let floor of floors" [ngValue]="floor.id">{{ floor.name }}</option></select></label>
-          <label>Kệ<select class="form-control" [attr.aria-label]="'Kệ dòng ' + (i + 1)" [(ngModel)]="line.bookshelfId" (ngModelChange)="bookshelfChanged(line)" [disabled]="!line.floorId || line.locationLoading"><option [ngValue]="undefined">Chọn kệ</option><option *ngFor="let item of line.bookshelves" [ngValue]="item.id">{{ item.name }}</option></select></label>
-          <label>Ngăn<select class="form-control" [attr.aria-label]="'Ngăn dòng ' + (i + 1)" [(ngModel)]="line.shelfId" [disabled]="!line.bookshelfId || line.locationLoading"><option [ngValue]="undefined">Chọn ngăn</option><option *ngFor="let item of line.shelves" [ngValue]="item.id">{{ item.name }}</option></select></label>
+          <label>Tầng<select class="form-control" [attr.aria-label]="'Tầng dòng ' + (i + 1)" [(ngModel)]="line.floorId" (ngModelChange)="floorChanged(line)" [disabled]="floorsLoading || !!locationError" required><option [ngValue]="undefined">Chọn tầng</option><option *ngFor="let floor of floors" [ngValue]="floor.id">{{ floor.name }}</option></select></label>
+          <label>Kệ<select class="form-control" [attr.aria-label]="'Kệ dòng ' + (i + 1)" [(ngModel)]="line.bookshelfId" (ngModelChange)="bookshelfChanged(line)" [disabled]="!line.floorId || line.locationLoading" required><option [ngValue]="undefined">Chọn kệ</option><option *ngFor="let item of line.bookshelves" [ngValue]="item.id">{{ item.name }}</option></select></label>
+          <label>Ngăn<select class="form-control" [attr.aria-label]="'Ngăn dòng ' + (i + 1)" [(ngModel)]="line.shelfId" [disabled]="!line.bookshelfId || line.locationLoading" required><option [ngValue]="undefined">Chọn ngăn</option><option *ngFor="let item of line.shelves" [ngValue]="item.id">{{ item.name }}</option></select></label>
         </div>
         <p class="form-help" *ngIf="line.locationLoading">Đang tải vị trí…</p><p class="page-message error" *ngIf="line.locationError">{{ line.locationError }}</p><p class="location-path" *ngIf="line.shelfId">Vị trí chọn: {{ locationPath(line) }}</p>
       </article>

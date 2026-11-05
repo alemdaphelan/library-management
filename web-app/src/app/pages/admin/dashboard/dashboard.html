@@ -1,8 +1,28 @@
-<div class="dashboard-page"><header><div><span class="eyebrow">THƯ VIỆN · PHÂN TÍCH</span><h1>Dashboard thủ thư</h1><p class="muted">Giao nhận thực tế, danh mục hiện có và đối chiếu nguồn số liệu.</p></div><span class="timezone">Giờ Việt Nam · UTC+7</span></header>
-<nav aria-label="Nội dung Dashboard"><button *ngFor="let t of tabs" [attr.aria-pressed]="tab===t.id" [class.active]="tab===t.id" (click)="tab=t.id">{{t.label}}</button></nav>
-<section class="panel range-panel"><form class="filters" (ngSubmit)="apply()"><label>Từ ngày (bao gồm)<input name="from" type="date" min="0001-01-01" max="9999-12-31" required [(ngModel)]="draft.from" /></label><label>Đến ngày (loại trừ)<input name="until" type="date" min="0001-01-01" max="9999-12-31" required [(ngModel)]="draft.until" /></label><label>Gộp theo<select name="period" [(ngModel)]="draft.period"><option value="MONTH">Tháng</option><option value="QUARTER">Quý</option><option value="YEAR">Năm</option></select></label><button class="primary">Áp dụng kỳ</button></form><p class="muted">Kỳ đang áp dụng: {{range.from | date:'dd/MM/yyyy'}} → trước {{range.until | date:'dd/MM/yyyy'}}. Danh mục, dư nợ và quá hạn là snapshot hiện tại.</p><p *ngIf="dirty" class="notice warning">Ngày chưa áp dụng. Các phần theo kỳ vẫn dùng khoảng đã áp dụng phía trên.</p><p *ngIf="error" class="error" role="alert">{{error}}</p></section>
-<app-circulation-dashboard *ngIf="tab==='circulation'" [range]="range"/>
-<app-holdings-dashboard *ngIf="tab==='holdings'"/>
-<app-finance-dashboard *ngIf="tab==='finance'" [range]="range"/>
-<app-stock-dashboard *ngIf="tab==='stock'" [range]="range"/>
+<div class="dashboard-page">
+  <header><div><span class="eyebrow">THƯ VIỆN · THỐNG KÊ</span><h1>Thống kê thư viện</h1><p class="muted">Theo dõi mượn trả, tài liệu và thu chi.</p></div><span class="timezone">Giờ Việt Nam</span></header>
+  <nav aria-label="Nội dung thống kê"><button *ngFor="let t of tabs" [attr.aria-pressed]="tab===t.id" [class.active]="tab===t.id" (click)="tab=t.id">{{t.label}}</button></nav>
+  <section class="panel range-panel" *ngIf="tab!=='holdings'" aria-label="Kỳ thống kê">
+    <form (ngSubmit)="apply()">
+      <div class="filters">
+        <label *ngIf="preset!=='CUSTOM'">Ngày tham chiếu<input name="anchorDate" type="date" min="0001-01-01" max="9999-12-31" [(ngModel)]="anchorDate" (ngModelChange)="choosePreset()" [required]="preset!=='CUSTOM'"></label>
+        <div class="period-options" role="group" aria-label="Chọn kỳ">
+          <button type="button" *ngFor="let p of periods" [class.active]="preset===p.id" [attr.aria-pressed]="preset===p.id" (click)="choosePeriod(p.id)">{{p.label}}</button>
+          <button type="button" [class.active]="preset==='CUSTOM'" [attr.aria-pressed]="preset==='CUSTOM'" (click)="chooseCustom()">Khoảng khác</button>
+        </div>
+        <button class="primary" type="submit">Áp dụng kỳ</button>
+      </div>
+      <div class="filters custom-range" *ngIf="preset==='CUSTOM'">
+        <label>Từ ngày<input name="from" type="date" min="0001-01-01" max="9999-12-31" required [(ngModel)]="draft.from"></label>
+        <label>Đến trước ngày<input name="until" type="date" min="0001-01-01" max="9999-12-31" required [(ngModel)]="draft.until"></label>
+        <label>Độ chi tiết<select name="period" [(ngModel)]="draft.period"><option value="DAY">Theo giờ</option><option value="MONTH">Theo ngày</option><option value="YEAR">Theo tháng</option><option value="QUARTER">Theo quý</option></select></label>
+      </div>
+    </form>
+    <p class="applied-range">Đang xem: <strong>{{range.from | date:'dd/MM/yyyy'}} → trước {{range.until | date:'dd/MM/yyyy'}}</strong></p>
+    <p *ngIf="dirty" class="notice warning" role="status">Ngày chưa áp dụng. Bấm Áp dụng kỳ để cập nhật các số liệu.</p>
+    <p *ngIf="error" class="error" role="alert">{{error}}</p>
+  </section>
+  <app-circulation-dashboard *ngIf="tab==='circulation'" [range]="range"/>
+  <app-holdings-dashboard *ngIf="tab==='holdings'"/>
+  <app-finance-dashboard *ngIf="tab==='finance'" [range]="range"/>
+  <app-stock-dashboard *ngIf="tab==='stock'" [range]="range"/>
 </div>

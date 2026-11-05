@@ -112,6 +112,8 @@ library:
     service-account-path: ${FIREBASE_SERVICE_ACCOUNT_CONTAINER_PATH:${GOOGLE_APPLICATION_CREDENTIALS:}}
     service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
   payment:
+    mock:
+      enabled: ${PAYMENT_MOCK_ENABLED:false}
     vnpay:
       enabled: ${VNPAY_ENABLED:false}
       payment-url: ${VNPAY_PAYMENT_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}

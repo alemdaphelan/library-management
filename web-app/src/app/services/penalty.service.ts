@@ -81,10 +81,10 @@ export interface DebtEntry {
 
 export interface OnlinePaymentSession {
   reference: string;
-  provider: 'VNPAY';
+  provider: 'VNPAY' | 'MOCK';
   purpose: 'DEBT' | 'DEPOSIT';
   amount: number;
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'EXPIRED';
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
   paymentUrl?: string;
   paymentTransactionId?: number;
   expiresAt: string;
@@ -117,6 +117,22 @@ export class PenaltyService {
 
   getOnlinePayment(reference: string): Observable<OnlinePaymentSession> {
     return this.http.get<OnlinePaymentSession>(`${this.onlinePaymentUrl}/sessions/${encodeURIComponent(reference)}`);
+  }
+
+  getPaymentCapabilities(): Observable<{ mockEnabled: boolean }> {
+    return this.http.get<{ mockEnabled: boolean }>(`${this.onlinePaymentUrl}/capabilities`);
+  }
+
+  createMockPayment(payload: { amount: number; purpose: 'DEBT' | 'DEPOSIT'; idempotencyKey: string }): Observable<OnlinePaymentSession> {
+    return this.http.post<OnlinePaymentSession>(`${environment.apiUrl}/api/v1/mock-payments/sessions`, payload);
+  }
+
+  getMockPayment(reference: string): Observable<OnlinePaymentSession> {
+    return this.http.get<OnlinePaymentSession>(`${environment.apiUrl}/api/v1/mock-payments/sessions/${encodeURIComponent(reference)}`);
+  }
+
+  finishMockPayment(reference: string, outcome: 'SUCCESS' | 'CANCEL' | 'FAIL'): Observable<OnlinePaymentSession> {
+    return this.http.post<OnlinePaymentSession>(`${environment.apiUrl}/api/v1/mock-payments/sessions/${encodeURIComponent(reference)}/finish`, { outcome });
   }
 
   createCase(payload: PenaltyCaseRequest): Observable<PenaltyCase> {

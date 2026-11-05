@@ -10,7 +10,9 @@
     </button>
   </div>
 
-  <nav class="view-tabs" aria-label="Chọn nội dung theo dõi"><button type="button" (click)="switchView('loans')" [class.active]="activeView === 'loans'" [attr.aria-pressed]="activeView === 'loans'" [disabled]="actionInProgress">Danh sách phiếu mượn</button><button type="button" (click)="switchView('report')" [class.active]="activeView === 'report'" [attr.aria-pressed]="activeView === 'report'" [disabled]="actionInProgress">Báo cáo quá hạn & công nợ</button></nav>
+  <nav class="view-tabs" aria-label="Chọn nội dung theo dõi"><button type="button" (click)="switchView('loans')" [class.active]="activeView === 'loans'" [attr.aria-pressed]="activeView === 'loans'" [disabled]="actionInProgress">Danh sách phiếu mượn</button><button type="button" (click)="switchView('report')" [class.active]="activeView === 'report'" [attr.aria-pressed]="activeView === 'report'" [disabled]="actionInProgress">Báo cáo quá hạn & công nợ</button><button type="button" (click)="switchView('recall')" [class.active]="activeView === 'recall'" [attr.aria-pressed]="activeView === 'recall'" [disabled]="actionInProgress">Yêu cầu trả sách</button></nav>
+
+  <app-recall-requests *ngIf="recallVisited" [hidden]="activeView !== 'recall'" (busyChange)="actionInProgress=$event" (recalled)="loadLoans()"></app-recall-requests>
 
   <app-student-obligation-report *ngIf="reportVisited" [hidden]="activeView !== 'report'" [initialQuery]="reportInitialQuery" [initialMode]="reportInitialMode" (ticketRequested)="viewDetails($event)"></app-student-obligation-report>
   <div class="error-state" *ngIf="ticketError" role="alert">{{ ticketError }}</div>

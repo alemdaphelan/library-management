@@ -17,6 +17,21 @@ import java.util.List;
 
 @Service
 public class LocationService {
+    public record CopiesPage(List<ShelfBookDTO> items, long total, int page, int size) {}
+
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public CopiesPage getCopiesPage(Long shelfId, int page, int size) {
+        if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Trang phải từ 0; số dòng từ 1 đến 100; vị trí phân trang không vượt giới hạn hỗ trợ");
+        }
+        if (shelfId != null && !shelfRepository.existsById(shelfId)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Không tìm thấy ngăn kệ");
+        }
+        var result = bookCopyRepository.findLocationBooks(shelfId, org.springframework.data.domain.PageRequest.of(page, size));
+        return new CopiesPage(result.getContent(), result.getTotalElements(), page, size);
+    }
     private final FloorRepository floorRepository;
     private final BookshelfRepository bookshelfRepository;
     private final ShelfRepository shelfRepository;

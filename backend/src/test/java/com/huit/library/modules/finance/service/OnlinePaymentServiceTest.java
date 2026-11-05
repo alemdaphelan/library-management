@@ -158,6 +158,21 @@ class OnlinePaymentServiceTest {
                 mock(com.huit.library.modules.circulation.service.LibraryHoursService.class));
     }
 
+    @Test
+    void signedVnpayCallbackCannotCompleteAMockSession() throws Exception {
+        var sessions = mock(OnlinePaymentSessionRepository.class);
+        var ledger = mock(DebtLedgerService.class);
+        var session = new OnlinePaymentSessionEntity(); session.setProvider("MOCK");
+        when(sessions.findByReferenceForUpdate("MOCK-TEST")).thenReturn(Optional.of(session));
+        SortedMap<String, String> params = new TreeMap<>();
+        params.put("vnp_TxnRef", "MOCK-TEST"); params.put("vnp_TmnCode", "TESTCODE");
+        params.put("vnp_Amount", "5000000"); params.put("vnp_ResponseCode", "00");
+        params.put("vnp_SecureHash", hmac(query(params)));
+        assertThatThrownBy(() -> service(sessions, mock(WalletRepository.class), ledger, true).processCallback(params))
+                .hasMessageContaining("không thuộc VNPAY");
+        verifyNoInteractions(ledger);
+    }
+
     private String query(SortedMap<String, String> params) {
         return params.entrySet().stream()
                 .filter(entry -> !"vnp_SecureHash".equals(entry.getKey()))

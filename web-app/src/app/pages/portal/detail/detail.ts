@@ -307,7 +307,7 @@ export class Detail implements OnInit, OnDestroy {
   }
 
   submitBorrowRequest() {
-    if (!this.book || !this.book.id) return;
+    if (!this.book || !this.book.id || this.isSubmittingBorrow || this.borrowSuccessData?.success) return;
 
     this.isSubmittingBorrow = true;
     this.borrowErrorMessage = '';

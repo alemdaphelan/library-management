@@ -36,6 +36,12 @@ public class BookProposalController {
                 userDetails.getUser().getUserId(), req));
     }
 
+    @GetMapping("/majors")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getMajors() {
+        return ResponseEntity.ok(proposalService.getMajors());
+    }
+
     @GetMapping("/my")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Get my proposals", description = "Reader views their submitted proposals and approval status")

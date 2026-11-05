@@ -7,7 +7,7 @@ Ngày: **29/10/2026**. Dành cho thủ thư/Admin tại `/admin/borrows` → **B
 1. Mở tab báo cáo. Mặc định xem **Quá hạn hoặc còn nợ**, mọi khoa, 25 sinh viên/trang. Đây là tập hợp sinh viên có ít nhất một trong hai điều kiện, không yêu cầu đồng thời cả hai.
 2. Chọn loại báo cáo, khoa từ API, nhập MSSV/họ tên, chọn số dòng rồi bấm **Xem báo cáo**. Bộ lọc ngày tạo/trạng thái phiếu ở tab danh sách phiếu không ảnh hưởng báo cáo này. **Đặt lại bộ lọc** trở về mặc định và trang đầu.
 3. Xem số sinh viên phù hợp toàn bộ bộ lọc, thời điểm chốt/timezone và đơn vị VND. **Trang trước / Trang tiếp** dùng phân trang Backend; không chia trang lại từ danh sách phiếu đang tải.
-4. Các cột tiền tách nghĩa vụ đã ghi sổ, thanh toán/cấn cọc, miễn, điều chỉnh và dư nợ ledger. Tiền là dữ liệu server, gồm cả khoản cũ; không lấy tổng phí trễ của phiếu làm dư nợ. Ví chưa có hiện “Chưa có ví”, khác ví có nợ 0. Chênh ví/ledger hoặc số đối soát bất thường được đánh dấu **Cần đối soát**.
+4. Các cột tiền tách nghĩa vụ đã ghi sổ, thanh toán/cấn cọc, miễn, điều chỉnh và nợ theo các khoản phí. Tiền là dữ liệu server, gồm cả khoản cũ; không lấy tổng phí trễ của phiếu làm dư nợ. Tài khoản thiếu dữ liệu hiện “Chưa có dữ liệu tài khoản”, khác số nợ 0. Chênh giữa hai nguồn nợ hoặc trong các khoản phí bất thường được đánh dấu **Cần kiểm tra**.
 5. Bấm **Chi tiết** trên dòng sinh viên để xem tài liệu còn quá hạn và các khoản sổ nợ. **Xem phiếu #...** mở panel phiếu hiện có ngay trong trang, đóng panel trở lại báo cáo với bộ lọc giữ nguyên. Có liên kết quầy trả/báo mất, hồ sơ phạt và **Xem / thu nợ**. Người đã trả hết sách vẫn có thể còn công nợ.
 6. **Tải Excel toàn bộ kết quả** dùng đúng mode/khoa/từ khóa của báo cáo đã xem, không gửi page/size. Nếu đang sửa bộ lọc, cần bấm Xem trước khi tải/chuyển trang. Khi xuất, khóa bộ lọc và nút tải để chặn gửi lặp. Tên file lấy từ Content-Disposition; thiếu header có tên dự phòng gồm loại báo cáo và mốc thời gian báo cáo đã xem.
 7. File gồm ba sheet Tong hop / Qua han / So no theo B04. Xuất là snapshot mới tại thời điểm server tạo file nên có thể khác lúc preview nếu phát sinh nghiệp vụ xen giữa. Thông báo “Đã yêu cầu tải” xác nhận trình duyệt nhận lệnh tải, không giả nhận rằng người dùng đã lưu file thành công.
@@ -39,3 +39,14 @@ npm.cmd run build
 ```
 
 Cấu hình một worker giống B01. Checkpoint và điểm tiếp tục B06 ở [BAN_GIAO_BATCH_THU_THU.md](BAN_GIAO_BATCH_THU_THU.md).
+
+
+## F10 — Cách đọc công nợ (04/11/2026)
+
+- **Nợ theo các khoản phí** là phần còn phải trả của các khoản phạt/phí đang mở sau các khoản đã xử lý. **Nợ lưu trong tài khoản** là số dư nợ hệ thống lưu riêng; báo cáo giữ cả hai nguồn để đối chiếu.
+- **Chênh giữa hai nguồn nợ** = nợ tài khoản − nợ theo các khoản phí. Dương: tài khoản cao hơn; âm: tài khoản thấp hơn. Thiếu dữ liệu tài khoản không thay bằng 0 và không được coi là hết nợ.
+- **Chênh trong các khoản phí** = phạt/phí phát sinh − thanh toán/cấn cọc − miễn giảm − điều chỉnh − nợ theo các khoản phí. Khác 0 nghĩa là các số chưa khớp; báo cáo không tự xác định nguyên nhân.
+- Mở **Cách đọc số nợ và khoản chênh** để xem công thức; mở Chi tiết sinh viên để xem cả số tiền có dấu và hướng chênh. Đối chiếu chứng từ thu tiền/cấn cọc/quyết định miễn hoặc điều chỉnh trước khi xử lý. Chênh 0 chỉ cho biết số khớp, không nói rằng người đó đã trả hết nợ.
+- “Đã xử lý” trên từng khoản bao gồm thanh toán, cấn cọc, miễn giảm và điều chỉnh; không dùng làm tiền thực thu. Số thanh toán/cấn cọc âm vẫn giữ nguyên và đánh dấu cần kiểm tra, không tự ép về 0.
+- Excel vẫn có ba sheet Tong hop / Qua han / So no. Các cột tiền/ID nguồn ở vị trí cũ, bổ sung hai cột giải thích ở cuối Tong hop. Nợ tài khoản/chênh hai nguồn thiếu dữ liệu giữ ô trống. Tiêu đề và các loại/trạng thái/phương thức thông dụng được dịch; giá trị chưa biết giữ nguyên để tra nguồn.
+- F10 chỉ đổi cách trình bày. Không sửa giao dịch, số dư tài khoản, API JSON, bộ lọc, cách cộng tiền hoặc quyền thu nợ. Số liệu Web và file có thể khác nếu có nghiệp vụ xen giữa hai thời điểm tạo báo cáo.

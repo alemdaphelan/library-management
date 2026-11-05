@@ -107,6 +107,7 @@ class CirculationStateServiceTest {
         LocalDateTime originalDueDate = LocalDateTime.now().plusDays(20);
         detail.setDueDate(originalDueDate);
 
+        when(detailRepository.findById(901L)).thenReturn(Optional.of(detail));
         when(detailRepository.findByIdForUpdate(901L)).thenReturn(Optional.of(detail));
         when(ticketRepository.findByIdForUpdate(90L)).thenReturn(Optional.of(ticket));
 

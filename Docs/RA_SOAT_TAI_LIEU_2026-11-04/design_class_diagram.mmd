@@ -1,0 +1,403 @@
+classDiagram
+    direction LR
+    %% Baseline: 2026-11-04 main HEAD 756870b plus uncommitted working tree
+    %% Selected real controllers and collaborators, not a dump of every DTO or repository.
+    %% Class names and public operation names are from Java source; parameters omitted for readability.
+    %% Arrows below mean declared field dependency. No invented ServiceImpl or Python AI client.
+    %% JPA/JDBC repositories, security filters and configuration are documented in Technologies.docx.
+    namespace Auth {
+        class AuthController {
+            <<controller>>
+            +login()
+            +logout()
+            +refreshToken()
+        }
+        class UserController {
+            <<controller>>
+            +getAllStudents()
+            +getStudentByMssv()
+            +getReaderProfile()
+        }
+        class AuthService {
+            <<service>>
+            +authenticateUser()
+            +changePassword()
+            +refreshToken()
+        }
+        class UserService {
+            <<service>>
+            +getAllStudents()
+            +getStudentByMssv()
+            +createStudent()
+        }
+        class LibraryCardService {
+            <<service>>
+            +get()
+        }
+    }
+    namespace Catalog {
+        class BookController {
+            <<controller>>
+            +searchBooks()
+            +getSearchDepartments()
+            +getBookByIsbn()
+        }
+        class BookService {
+            <<service>>
+            +searchBooks()
+            +getSearchDepartments()
+            +getBookById()
+        }
+        class BookCopyService {
+            <<service>>
+            +getCopiesByBookId()
+            +getByBarcode()
+            +updateLocation()
+        }
+        class LocationService {
+            <<service>>
+            +getCopiesPage()
+            +getFloors()
+            +createFloor()
+        }
+        class ShelfPlacementService {
+            <<service>>
+            +candidates()
+            +requireAllowed()
+        }
+        class ShelfSubjectRuleService {
+            <<service>>
+            +getAvailableSubjects()
+            +getShelfSubjects()
+            +replaceShelfSubjects()
+        }
+    }
+    namespace Circulation {
+        class LoanController {
+            <<controller>>
+            +reserveBook()
+            +reserveBooks()
+            +getMyLoans()
+        }
+        class ReturnInspectionController {
+            <<controller>>
+            +inspect()
+            +concurrentConflict()
+        }
+        class LoanService {
+            <<service>>
+            +reserveOrBorrowBook()
+            +reserveBooks()
+            +getMyLoans()
+        }
+        class CirculationStateService {
+            <<service>>
+            +approveReservation()
+            +autoApproveReservation()
+            +rejectReservation()
+        }
+        class ReturnInspectionService {
+            <<service>>
+            +inspect()
+        }
+        class CirculationMaintenanceService {
+            <<service>>
+            +processAt()
+        }
+        class LoanRecallService {
+            <<service>>
+            +list()
+            +request()
+        }
+        class WaitlistService {
+            <<service>>
+            +join()
+            +getMine()
+            +calculateDirectReservationDeadline()
+        }
+        class LibrarianQrService {
+            <<service>>
+            +issueTicketPayload()
+            +issueCardPayload()
+            +resolve()
+        }
+        class LibraryHoursService {
+            <<service>>
+            +isCounterOpen()
+            +requireCounterOpen()
+            +closingTime()
+        }
+    }
+    namespace Inventory {
+        class InventoryController {
+            <<controller>>
+            +getAllSuppliers()
+            +createSupplier()
+            +importBooks()
+        }
+        class DisposalController {
+            <<controller>>
+            +candidates()
+            +list()
+            +create()
+        }
+        class InventoryService {
+            <<service>>
+            +getAllSuppliers()
+            +createSupplier()
+            +importBooks()
+        }
+        class InventoryAuditService {
+            <<service>>
+            +createAudit()
+            +getAudits()
+            +getAudit()
+        }
+        class CatalogIdentificationService {
+            <<service>>
+            +identify()
+        }
+        class DisposalService {
+            <<service>>
+            +candidates()
+            +create()
+            +get()
+        }
+    }
+    namespace Digital {
+        class DigitalAssetController {
+            <<controller>>
+            +list()
+            +listByBook()
+            +upload()
+        }
+        class DigitalAssetService {
+            <<service>>
+            +list()
+            +listByBook()
+            +upload()
+        }
+    }
+    namespace Finance {
+        class PaymentController {
+            <<controller>>
+            +recordPayment()
+            +getLedger()
+            +getMyLedger()
+        }
+        class OnlinePaymentController {
+            <<controller>>
+            +create()
+            +get()
+            +vnpayReturn()
+        }
+        class DebtLedgerService {
+            <<service>>
+            +recordPayment()
+            +recordMockPayment()
+            +recordDepositTopUp()
+        }
+        class OnlinePaymentService {
+            <<service>>
+            +create()
+            +get()
+            +processCallback()
+        }
+        class PenaltyCaseService {
+            <<service>>
+            +createCase()
+            +createRate()
+            +submitForReview()
+        }
+        class LateFineService {
+            <<service>>
+            +accrueLateFine()
+        }
+    }
+    namespace Reporting {
+        class HoldingsAnalyticsController {
+            <<controller>>
+            +catalog()
+            +summary()
+            +materials()
+        }
+        class HoldingsAnalyticsService {
+            <<service>>
+            +catalog()
+            +summary()
+            +materials()
+        }
+        class MaterialClassificationService {
+            <<service>>
+            +get()
+            +put()
+        }
+        class CirculationAnalyticsService {
+            <<service>>
+            +report()
+            +ranking()
+            +overdue()
+        }
+        class FinanceStockAnalyticsService {
+            <<service>>
+            +finance()
+            +events()
+            +allocations()
+        }
+        class StudentObligationReportService {
+            <<service>>
+            +faculties()
+            +classificationCoverage()
+            +preview()
+        }
+        class ProposalSummaryService {
+            <<service>>
+            +preview()
+            +exportData()
+            +aggregate()
+        }
+    }
+    namespace Support {
+        class OrientationService {
+            <<service>>
+            +list()
+            +get()
+            +create()
+        }
+        class LibraryPolicyService {
+            <<service>>
+            +getPolicy()
+            +getPublicPolicy()
+            +getHistory()
+        }
+        class NotificationService {
+            <<service>>
+            +createOnce()
+            +getMyNotifications()
+            +markAsRead()
+        }
+        class EmailNotificationService {
+            <<service>>
+            +send()
+        }
+        class FirebasePushNotificationService {
+            <<service>>
+            +send()
+        }
+    }
+    namespace Recommendation {
+        class BookRecommendationService {
+            <<service>>
+            +getPopularBooks()
+            +getSimilarBooks()
+        }
+        class HybridRecommendationService {
+            <<service>>
+            +getPersonalizedRecommendations()
+        }
+        class TfIdfSimilarityEngine {
+            <<component>>
+            +score()
+            +scoreProfile()
+        }
+        class RecommendationCacheService {
+            <<service>>
+            +get()
+            +put()
+        }
+    }
+    namespace RAG {
+        class RagChatController {
+            <<controller>>
+            +query()
+        }
+        class RagChatService {
+            <<service>>
+            +ask()
+        }
+        class RagRetrievalService {
+            <<service>>
+            +retrieve()
+        }
+        class RagKnowledgeIndexService {
+            <<service>>
+            +rebuild()
+            +status()
+        }
+        class RagKnowledgeStore {
+            <<component>>
+            +isCurrent()
+            +replace()
+            +clear()
+        }
+        class RagEmbeddingGateway {
+            <<service>>
+            +embedDocument()
+            +embedQuery()
+            +providerKey()
+        }
+        class GeminiApiClient {
+            <<component>>
+            +isConfigured()
+            +embed()
+            +generate()
+        }
+    }
+    AuthController ..> AuthService : uses
+    BookController ..> BookService : uses
+    BookController ..> BookRecommendationService : uses
+    BookController ..> HybridRecommendationService : uses
+    BookRecommendationService ..> TfIdfSimilarityEngine : uses
+    CatalogIdentificationService ..> InventoryService : uses
+    CirculationMaintenanceService ..> LateFineService : uses
+    CirculationMaintenanceService ..> NotificationService : uses
+    CirculationMaintenanceService ..> WaitlistService : uses
+    CirculationStateService ..> LateFineService : uses
+    CirculationStateService ..> WaitlistService : uses
+    CirculationStateService ..> NotificationService : uses
+    CirculationStateService ..> LibraryHoursService : uses
+    CirculationStateService ..> LibraryPolicyService : uses
+    DebtLedgerService ..> NotificationService : uses
+    DigitalAssetController ..> DigitalAssetService : uses
+    DisposalController ..> DisposalService : uses
+    FinanceStockAnalyticsService ..> CirculationAnalyticsService : uses
+    HoldingsAnalyticsController ..> HoldingsAnalyticsService : uses
+    HoldingsAnalyticsController ..> MaterialClassificationService : uses
+    HybridRecommendationService ..> TfIdfSimilarityEngine : uses
+    HybridRecommendationService ..> RecommendationCacheService : uses
+    InventoryController ..> InventoryService : uses
+    InventoryController ..> InventoryAuditService : uses
+    LateFineService ..> LibraryPolicyService : uses
+    LibrarianQrService ..> LoanService : uses
+    LoanController ..> LoanService : uses
+    LoanController ..> CirculationStateService : uses
+    LoanRecallService ..> LoanService : uses
+    LoanRecallService ..> NotificationService : uses
+    LoanService ..> CirculationStateService : uses
+    LoanService ..> WaitlistService : uses
+    LoanService ..> LibraryPolicyService : uses
+    OnlinePaymentController ..> OnlinePaymentService : uses
+    OnlinePaymentService ..> DebtLedgerService : uses
+    OnlinePaymentService ..> LibraryHoursService : uses
+    OrientationService ..> NotificationService : uses
+    PaymentController ..> DebtLedgerService : uses
+    PaymentController ..> LibraryHoursService : uses
+    PenaltyCaseService ..> LateFineService : uses
+    PenaltyCaseService ..> NotificationService : uses
+    PenaltyCaseService ..> LibraryPolicyService : uses
+    RagChatController ..> RagChatService : uses
+    RagChatService ..> RagRetrievalService : uses
+    RagChatService ..> RagKnowledgeStore : uses
+    RagChatService ..> GeminiApiClient : uses
+    RagEmbeddingGateway ..> GeminiApiClient : uses
+    RagKnowledgeIndexService ..> RagKnowledgeStore : uses
+    RagKnowledgeIndexService ..> RagEmbeddingGateway : uses
+    RagRetrievalService ..> RagEmbeddingGateway : uses
+    RagRetrievalService ..> RagKnowledgeStore : uses
+    ReturnInspectionController ..> ReturnInspectionService : uses
+    ReturnInspectionService ..> CirculationStateService : uses
+    ReturnInspectionService ..> PenaltyCaseService : uses
+    ReturnInspectionService ..> LibraryHoursService : uses
+    UserController ..> UserService : uses
+    WaitlistService ..> NotificationService : uses
+    WaitlistService ..> LibraryPolicyService : uses

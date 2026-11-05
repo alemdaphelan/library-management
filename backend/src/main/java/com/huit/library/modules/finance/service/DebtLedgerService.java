@@ -68,8 +68,18 @@ public class DebtLedgerService {
 
     @Transactional
     public PaymentReceiptDTO recordPayment(DebtPaymentRequestDTO request, UUID operatorId) {
+        return recordPayment(request, operatorId, false);
+    }
+
+    /** Internal entry point used only by the gated dev/test mock payment service. */
+    @Transactional
+    public PaymentReceiptDTO recordMockPayment(DebtPaymentRequestDTO request, UUID operatorId) {
+        return recordPayment(request, operatorId, true);
+    }
+
+    private PaymentReceiptDTO recordPayment(DebtPaymentRequestDTO request, UUID operatorId, boolean mock) {
         String method = request.getMethod().trim().toUpperCase(Locale.ROOT);
-        if (!List.of("CASH", "BANK_TRANSFER", "VNPAY").contains(method)) {
+        if (mock ? !"MOCK".equals(method) : !List.of("CASH", "BANK_TRANSFER", "VNPAY").contains(method)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phương thức thanh toán không được hỗ trợ");
         }
         String dedupKey = "PAYMENT:" + request.getIdempotencyKey().trim();
@@ -127,7 +137,7 @@ public class DebtLedgerService {
                 ? "Thu công nợ thư viện" : request.getNote().trim());
         payment.setStatus("COMPLETED");
         payment.setPaymentMethod(method);
-        payment.setReceiptNumber("RCPT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
+        payment.setReceiptNumber((mock ? "MOCK-" : "RCPT-") + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT));
         payment.setConfirmedBy(operatorId);
         payment.setPaidAt(LocalDateTime.now());
         payment.setDedupKey(dedupKey);
@@ -165,6 +175,15 @@ public class DebtLedgerService {
     @Transactional
     public PaymentReceiptDTO recordDepositTopUp(
             UUID userId, BigDecimal amount, String gatewayReference) {
+        return recordDepositTopUp(userId, amount, gatewayReference, false);
+    }
+
+    @Transactional
+    public PaymentReceiptDTO recordMockDepositTopUp(UUID userId, BigDecimal amount, String reference) {
+        return recordDepositTopUp(userId, amount, reference, true);
+    }
+
+    private PaymentReceiptDTO recordDepositTopUp(UUID userId, BigDecimal amount, String gatewayReference, boolean mock) {
         String dedupKey = "DEPOSIT_TOPUP:" + gatewayReference;
         TransactionEntity replay = transactionRepository.findByDedupKey(dedupKey).orElse(null);
         if (replay != null) {
@@ -185,10 +204,10 @@ public class DebtLedgerService {
         topUp.setUserId(userId);
         topUp.setAmount(amount.negate());
         topUp.setType("DEPOSIT_TOPUP");
-        topUp.setReason("Nạp tiền thế chân trực tuyến qua VNPAY");
+        topUp.setReason(mock ? "GIẢ LẬP: nạp tiền thế chân để kiểm thử" : "Nạp tiền thế chân trực tuyến qua VNPAY");
         topUp.setStatus("COMPLETED");
-        topUp.setPaymentMethod("VNPAY");
-        topUp.setReceiptNumber("VNP-" + gatewayReference);
+        topUp.setPaymentMethod(mock ? "MOCK" : "VNPAY");
+        topUp.setReceiptNumber((mock ? "MOCK-" : "VNP-") + gatewayReference);
         topUp.setConfirmedBy(userId);
         topUp.setPaidAt(LocalDateTime.now());
         topUp.setDedupKey(dedupKey);
@@ -355,8 +374,12 @@ public class DebtLedgerService {
         if (detail == null) {
             return;
         }
-        detail.setReturnDate(LocalDateTime.now());
-        detail.setReturnStatus("SETTLED");
+        if (detail.getPhysicalReturnAt() == null) {
+            detail.setReturnDate(LocalDateTime.now());
+            detail.setReturnStatus("SETTLED");
+        } else {
+            detail.setReturnDate(detail.getPhysicalReturnAt());
+        }
         detailRepository.save(detail);
         LoanTicketEntity ticket = ticketRepository.findById(penaltyCase.getTicketId()).orElse(null);
         if (ticket != null && detailRepository.findByTicketId(ticket.getTicketId()).stream()

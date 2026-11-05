@@ -27,6 +27,7 @@ describe('Borrows', () => {
   const service = {
     getStaffLoans: vi.fn(() => of([summary])),
     getLoan: vi.fn(() => of(detail)),
+    getRecallItems: vi.fn(() => of({items:[],total:0,page:0,size:10})),
     approveReservation: vi.fn(() => of({ ticketId: 24, previousStatus: 'PENDING', status: 'RESERVED', message: 'Đã duyệt', changedAt: '2026-10-18T09:00:00' })),
     rejectReservation: vi.fn(() => of({ ticketId: 24, previousStatus: 'PENDING', status: 'REJECTED', message: 'Đã từ chối', changedAt: '2026-10-18T09:00:00' })),
   };
@@ -62,6 +63,13 @@ describe('Borrows', () => {
     expect(text).toContain('Quá hạn');
     expect(text).toMatch(/3[,.]000 VNĐ/);
     expect(text).not.toContain('28,450');
+  });
+
+  it('loads recall items only when the recall tab is opened and keeps it during tab switches',async()=>{
+    expect(service.getRecallItems).not.toHaveBeenCalled();fixture.nativeElement.querySelectorAll('.view-tabs button')[2].click();await fixture.whenStable();fixture.detectChanges();
+    expect(service.getRecallItems).toHaveBeenCalledTimes(1);expect(fixture.nativeElement.querySelector('app-recall-requests')).not.toBeNull();
+    fixture.nativeElement.querySelectorAll('.view-tabs button')[0].click();await fixture.whenStable();
+    fixture.nativeElement.querySelectorAll('.view-tabs button')[2].click();await fixture.whenStable();fixture.detectChanges();expect(service.getRecallItems).toHaveBeenCalledTimes(1);
   });
 
   it('filters the real list by reader and status', () => {

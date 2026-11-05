@@ -16,6 +16,7 @@ import org.testcontainers.junit.jupiter.*;
 import java.math.BigDecimal;
 import java.time.*;
 import java.util.UUID;
+import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 
 @Testcontainers
@@ -40,7 +41,7 @@ class FinanceStockAnalyticsIntegrationTest {
     @Test void twoHundredThousandWithFiftyDepositThenPartialAndFinalPaymentReconciles() {
         long debt=charge("COMPENSATION",200000,50000,"2026-01-03");
         wallet(150000);
-        var initial=service.finance(from,until,Period.MONTH);
+        var initial=service.finance(from,until,Period.YEAR);
         assertThat(initial.totals().chargesAccrued()).isEqualByComparingTo("200000");
         assertThat(initial.totals().depositApplied()).isEqualByComparingTo("50000");
         assertThat(initial.totals().moneyReceived()).isZero();
@@ -49,7 +50,7 @@ class FinanceStockAnalyticsIntegrationTest {
         long cash=payment(60000,"CASH","2026-02-01");allocate(cash,debt,60000);
         jdbc.update("UPDATE transactions SET paid_amount=110000,payment_method='CASH',paid_at='2026-02-01' WHERE transaction_id=?",debt);
         jdbc.update("UPDATE wallets SET total_debt=90000 WHERE user_id=?",reader);
-        var partial=service.finance(from,until,Period.MONTH);
+        var partial=service.finance(from,until,Period.YEAR);
         assertThat(partial.totals().cashReceived()).isEqualByComparingTo("60000");
         assertThat(partial.totals().allocatedPayments()).isEqualByComparingTo("60000");
         assertThat(partial.totals().depositApplied()).isEqualByComparingTo("50000");
@@ -57,7 +58,7 @@ class FinanceStockAnalyticsIntegrationTest {
         long bank=payment(90000,"BANK_TRANSFER","2026-03-01");allocate(bank,debt,90000);
         jdbc.update("UPDATE transactions SET paid_amount=200000,status='PAID',payment_method='BANK_TRANSFER',paid_at='2026-03-01' WHERE transaction_id=?",debt);
         jdbc.update("UPDATE wallets SET total_debt=0 WHERE user_id=?",reader);
-        var finalReport=service.finance(from,until,Period.MONTH);
+        var finalReport=service.finance(from,until,Period.YEAR);
         assertThat(finalReport.totals().moneyReceived()).isEqualByComparingTo("150000");
         assertThat(finalReport.totals().bankReceived()).isEqualByComparingTo("90000");
         assertThat(finalReport.totals().depositApplied()).isEqualByComparingTo("50000");
@@ -71,7 +72,7 @@ class FinanceStockAnalyticsIntegrationTest {
     @Test void enoughDepositAndTopUpAreSeparateFromNewMoneyReceived() {
         charge("FINE",200000,200000,"2026-01-01");
         transaction("DEPOSIT_TOPUP",-250000,"COMPLETED","2026-01-01","2026-01-01","VNPAY");
-        var report=service.finance(from,until,Period.MONTH);
+        var report=service.finance(from,until,Period.YEAR);
         assertThat(report.totals().depositApplied()).isEqualByComparingTo("200000");
         assertThat(report.totals().depositTopups()).isEqualByComparingTo("250000");
         assertThat(report.totals().moneyReceived()).isZero();
@@ -102,32 +103,32 @@ class FinanceStockAnalyticsIntegrationTest {
     @Test void receiptAndAllocationTotalsRemainIndependentAndInvalidLinesAreVisible() {
         long a=charge("FINE",50000,0,"2025-12-01"),b=charge("TECHNICAL_FEE",100000,0,"2025-12-01");
         long p=payment(150000,"VNPAY","2026-01-02");allocate(p,a,50000);allocate(p,b,100000);
-        var r=service.finance(from,until,Period.MONTH);
+        var r=service.finance(from,until,Period.YEAR);
         assertThat(r.totals().moneyReceived()).isEqualByComparingTo("150000");
         assertThat(r.totals().allocatedPayments()).isEqualByComparingTo("150000");
         assertThat(r.totals().chargesAccrued()).isZero();
         assertThat(finance.lifetimeMoneyReceived()).isEqualByComparingTo("150000");
         allocate(p,a,1); // bad imported allocation must be a discrepancy, never another receipt
-        r=service.finance(from,until,Period.MONTH);
+        r=service.finance(from,until,Period.YEAR);
         assertThat(r.totals().moneyReceived()).isEqualByComparingTo("150000");
         assertThat(r.coverage().receiptMinusEligibleAllocations()).isEqualByComparingTo("-1");
         long invalid=transaction("DEPOSIT_TOPUP",-100,"COMPLETED","2026-01-01","2026-01-01","VNPAY");
         allocate(p,invalid,100);
-        assertThat(service.finance(from,until,Period.MONTH).coverage().invalidAllocationRows()).isEqualTo(1);
+        assertThat(service.finance(from,until,Period.YEAR).coverage().invalidAllocationRows()).isEqualTo(1);
     }
     @Test void datesQuarterYearZeroBucketsAndPaymentStatusUseBusinessTimes() {
         transaction("PAYMENT",-100,"COMPLETED","2025-12-31","2026-01-01","CASH");
         transaction("PAYMENT",-200,"COMPLETED","2026-02-01","2026-04-01","BANK_TRANSFER");
         transaction("PAYMENT",-500,"FAILED","2026-01-01","2026-01-01","CASH");
-        var r=service.finance(from,until,Period.MONTH);
+        var r=service.finance(from,until,Period.YEAR);
         assertThat(r.totals().cashReceived()).isEqualByComparingTo("100");
         assertThat(r.buckets()).hasSize(3);
         assertThat(r.buckets().get(1).amounts().moneyReceived()).isZero();
         assertThat(service.finance(LocalDate.of(2025,12,31),LocalDate.of(2026,1,2),Period.YEAR).buckets()).hasSize(2);
         var q=service.finance(LocalDate.of(2026,1,2),LocalDate.of(2026,5,2),Period.QUARTER);
         assertThat(q.buckets()).hasSize(2);
-        assertThat(q.buckets().get(0).start()).isEqualTo(LocalDate.of(2026,1,2));
-        assertThat(q.buckets().get(1).until()).isEqualTo(LocalDate.of(2026,5,2));
+        assertThat(q.buckets().get(0).start()).isEqualTo(LocalDate.of(2026,1,2).atStartOfDay());
+        assertThat(q.buckets().get(1).until()).isEqualTo(LocalDate.of(2026,5,2).atStartOfDay());
         assertThat(q.totals().bankReceived()).isEqualByComparingTo("200");
     }
     @Test void unknownLegacyDepositOrDatesAreNotGuessedAndWalletIsCurrentOnly() {
@@ -135,7 +136,7 @@ class FinanceStockAnalyticsIntegrationTest {
         jdbc.update("UPDATE transactions SET paid_amount=50000 WHERE transaction_id=?",d);
         transaction("PAYMENT",-100,"COMPLETED","2026-01-01",null,"CASH");
         wallet(170000);
-        var r=service.finance(from,until,Period.MONTH);
+        var r=service.finance(from,until,Period.YEAR);
         assertThat(r.totals().depositApplied()).isZero();
         assertThat(r.coverage().chargesWithoutDepositEvidence()).isEqualTo(1);
         assertThat(r.coverage().paymentsWithoutPaidTime()).isEqualTo(1);
@@ -149,7 +150,7 @@ class FinanceStockAnalyticsIntegrationTest {
         long jan=receipt("COMPLETED","2026-01-31T23:59:59",b,3);line(jan,b,2);
         receipt("COMPLETED","2026-02-01",b,4);receipt("COMPLETED","2026-02-01",c,5);
         receipt("COMPLETED","2026-04-01",c,100);receipt("PENDING","2026-01-01",c,100);
-        var r=service.stock(from,until,Period.MONTH);
+        var r=service.stock(from,until,Period.YEAR);
         assertThat(r.totals().completedReceipts()).isEqualTo(3);
         assertThat(r.totals().importedCopies()).isEqualTo(14);
         assertThat(r.totals().importedTitles()).isEqualTo(2);
@@ -164,7 +165,7 @@ class FinanceStockAnalyticsIntegrationTest {
         long b=book("Has unknown history");receipt("COMPLETED",null,b,2);
         long good=receipt("COMPLETED","2026-01-01",b,3);line(good,b,-1);
         jdbc.update("INSERT INTO book_copies(barcode,book_id,status) VALUES ('B13-RETIRED',?,'RETIRED')",b);
-        var r=service.stock(from,until,Period.MONTH);
+        var r=service.stock(from,until,Period.YEAR);
         assertThat(r.totals().importedCopies()).isEqualTo(3);
         assertThat(r.totals().firstRecordedImportTitles()).isZero();
         assertThat(r.coverage().completedReceiptsWithoutTime()).isEqualTo(1);
@@ -174,10 +175,10 @@ class FinanceStockAnalyticsIntegrationTest {
         assertThat(r.disposals().liquidatedCopies()).isNull();
         assertThat(r.buckets().get(0).destroyedCopies()).isNull();
         jdbc.update("DELETE FROM book_copies WHERE book_id=?",b);
-        assertThat(service.stock(from,until,Period.MONTH).totals().importedCopies()).isEqualTo(3);
+        assertThat(service.stock(from,until,Period.YEAR).totals().importedCopies()).isEqualTo(3);
     }
     @Test void emptyPagesRangeValidationAndReadOnlyReportsDoNotMutateBalances() {
-        assertThat(service.finance(from,until,Period.MONTH).totals().moneyReceived()).isZero();
+        assertThat(service.finance(from,until,Period.YEAR).totals().moneyReceived()).isZero();
         assertThat(service.stock(from,until,Period.QUARTER).buckets()).hasSize(1);
         assertThat(service.events(from,until,EventKind.PAYMENT,99,25).items()).isEmpty();
         assertThat(service.receipts(from,until,99,25).items()).isEmpty();
@@ -205,4 +206,19 @@ class FinanceStockAnalyticsIntegrationTest {
         line(id,book,qty);return id;
     }
     private void line(long receipt,long book,int qty){jdbc.update("INSERT INTO receipt_details(receipt_id,book_id,quantity,unit_price) VALUES (?,?,?,1000)",receipt,book,qty);}
+
+    @Test void dailyAndWeeklyFinanceAndImportsShareClippedCalendarBuckets() {
+        long b=book("Daily weekly imports");
+        charge("FINE",1000,0,"2025-12-29T00:00:00");charge("FINE",2000,0,"2026-01-04T23:59:59");charge("FINE",4000,0,"2026-01-05T00:00:00");
+        receipt("COMPLETED","2025-12-29T00:00:00",b,1);receipt("COMPLETED","2026-01-04T23:59:59",b,2);receipt("COMPLETED","2026-01-05T00:00:00",b,4);
+        var start=LocalDate.parse("2025-12-29");var end=LocalDate.parse("2026-01-05");
+        for(var period:List.of(Period.DAY,Period.WEEK)) {
+            var f=service.finance(start,end,period);var s=service.stock(start,end,period);
+            assertThat(f.totals().chargesAccrued()).isEqualByComparingTo("3000");assertThat(s.totals().importedCopies()).isEqualTo(3);
+            assertThat(f.buckets()).hasSize(period==Period.DAY?168:7);assertThat(s.buckets()).hasSameSizeAs(f.buckets());
+            for(int i=0;i<f.buckets().size();i++){assertThat(f.buckets().get(i).start()).isEqualTo(s.buckets().get(i).start());assertThat(f.buckets().get(i).until()).isEqualTo(s.buckets().get(i).until());}
+            assertThat(f.buckets().get(0).amounts().chargesAccrued()).isEqualByComparingTo("1000");
+        }
+    }
+
 }

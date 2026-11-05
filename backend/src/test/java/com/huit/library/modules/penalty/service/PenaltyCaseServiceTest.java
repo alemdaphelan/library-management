@@ -86,10 +86,17 @@ class PenaltyCaseServiceTest {
         verify(transactions, times(2)).save(any());
     }
 
-    @Test
-    void acceptedReplacementCreatesNewCopyAndClosesFullyPaidCase() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void acceptedReplacementCreatesNewCopyAndClosesFullyPaidCase(boolean physicallyReceived) {
         UUID userId = UUID.randomUUID();
         LoanDetailEntity detail = detail(11L, 21L, "BC-OLD");
+        var receivedAt = java.time.LocalDateTime.of(2026, 10, 31, 10, 0);
+        if (physicallyReceived) {
+            detail.setReturnStatus("DAMAGED");
+            detail.setPhysicalReturnAt(receivedAt);
+            detail.setReturnDate(receivedAt);
+        }
         LoanTicketEntity ticket = ticket(21L, userId);
         PenaltyCaseEntity penaltyCase = new PenaltyCaseEntity();
         penaltyCase.setCaseId(2L);
@@ -114,7 +121,9 @@ class PenaltyCaseServiceTest {
 
         assertThat(result.getStatus()).isEqualTo("PAID");
         assertThat(result.getReplacementBarcode()).isEqualTo("BC-NEW");
-        assertThat(detail.getReturnStatus()).isEqualTo("SETTLED");
+        assertThat(detail.getReturnStatus()).isEqualTo(physicallyReceived ? "DAMAGED" : "SETTLED");
+        if (physicallyReceived) assertThat(detail.getReturnDate()).isEqualTo(receivedAt);
+        else assertThat(detail.getPhysicalReturnAt()).isNull();
         assertThat(ticket.getStatus()).isEqualTo("RETURNED");
         verify(copies).save(argThat(value -> "BC-NEW".equals(value.getBarcode())
                 && "AVAILABLE".equals(value.getStatus()) && value.getBookId().equals(31L)));

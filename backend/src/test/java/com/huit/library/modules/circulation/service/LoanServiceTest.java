@@ -50,6 +50,7 @@ class LoanServiceTest {
     private WaitlistService waitlistService;
     private LibraryPolicyService policyService;
     private LoanService service;
+    private com.huit.library.modules.catalog.service.BookValuationService valuationService;
 
     @BeforeEach
     void setUp() {
@@ -62,6 +63,7 @@ class LoanServiceTest {
         circulationStateService = mock(CirculationStateService.class);
         waitlistService = mock(WaitlistService.class);
         policyService = mock(LibraryPolicyService.class);
+        valuationService = mock(com.huit.library.modules.catalog.service.BookValuationService.class);
         when(policyService.maximumOpenItems()).thenReturn(3);
         when(policyService.homeLoanDays()).thenReturn(10);
         when(policyService.renewalDays()).thenReturn(10);
@@ -82,7 +84,8 @@ class LoanServiceTest {
                 waitlistService,
                 mock(StaffNotificationService.class),
                 policyService,
-                mock(BorrowingValuePolicyService.class));
+                mock(BorrowingValuePolicyService.class),
+                valuationService);
     }
 
     @Test
@@ -330,6 +333,8 @@ class LoanServiceTest {
         book.setBookId(41L);
         book.setTitle("Clean Architecture");
         book.setAuthor("Robert C. Martin");
+        when(valuationService.resolve(book)).thenReturn(new com.huit.library.modules.catalog.service.BookValuationService.BookValue(
+                new java.math.BigDecimal("55000"), true, "DEMO_GENERATED", "VND", null));
 
         when(ticketRepository.findById(21L)).thenReturn(Optional.of(ticket));
         when(userRepository.findById(userId)).thenReturn(Optional.of(reader));
@@ -349,6 +354,10 @@ class LoanServiceTest {
             assertThat(item.getBarcode()).isEqualTo("BC-021");
             assertThat(item.getPickupDeadline()).isEqualTo(LocalDateTime.of(2026, 10, 25, 17, 0));
             assertThat(item.getDecisionNote()).isEqualTo("Độc giả cần bổ sung giấy xác nhận");
+            assertThat(item.getBookValue()).isEqualByComparingTo("55000");
+            assertThat(item.getBookValueSource()).isEqualTo("DEMO_GENERATED");
+            assertThat(item.getPriceKnown()).isTrue();
+            assertThat(item.getReturnable()).isFalse();
         });
     }
 
@@ -425,6 +434,63 @@ class LoanServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("quá hạn");
         verify(detailRepository, never()).save(detail);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"DAMAGED", "LOST", "RETURNED", "SETTLED", "BORROWING"})
+    void renewRejectsIncidentAndPhysicallyReceivedItemsEvenOnAnOpenTicket(String status) {
+        UUID userId = UUID.randomUUID();
+        var ticket = new LoanTicketEntity();
+        ticket.setTicketId(230L); ticket.setUserId(userId); ticket.setStatus("BORROWING");
+        var detail = new LoanDetailEntity();
+        detail.setDetailId(231L); detail.setTicketId(230L); detail.setReturnStatus(status);
+        detail.setDueDate(LocalDateTime.now().plusDays(2));
+        // Also reject an inconsistent legacy BORROWING row when a receipt timestamp exists.
+        if ("BORROWING".equals(status)) detail.setPhysicalReturnAt(LocalDateTime.now());
+        when(ticketRepository.findByIdForUpdate(230L)).thenReturn(Optional.of(ticket));
+        when(detailRepository.findByTicketId(230L)).thenReturn(List.of(detail));
+        assertThatThrownBy(() -> service.renewLoan(230L, 231L, userId)).hasMessageContaining("đang mượn");
+        verify(detailRepository, never()).save(any());
+    }
+
+    @Test
+    void renewalChangesOnlyTheSelectedItemOnAMultiItemTicket() {
+        UUID userId = UUID.randomUUID();
+        var ticket = new LoanTicketEntity();
+        ticket.setTicketId(232L); ticket.setUserId(userId); ticket.setStatus("BORROWING"); ticket.setTicketType("BORROW");
+        var first = new LoanDetailEntity();
+        first.setDetailId(233L); first.setReturnStatus("BORROWING"); first.setRenewalCount(1);
+        first.setDueDate(LocalDateTime.now().plusDays(2));
+        var second = new LoanDetailEntity();
+        second.setDetailId(234L); second.setReturnStatus("BORROWING"); second.setRenewalCount(0);
+        second.setDueDate(first.getDueDate());
+        var dueAt = first.getDueDate();
+        when(ticketRepository.findByIdForUpdate(232L)).thenReturn(Optional.of(ticket));
+        when(detailRepository.findByTicketId(232L)).thenReturn(List.of(first, second));
+        var result = service.renewLoan(232L, 234L, userId);
+        assertThat(first.getRenewalCount()).isEqualTo(1);
+        assertThat(first.getDueDate()).isEqualTo(dueAt);
+        assertThat(second.getRenewalCount()).isEqualTo(1);
+        assertThat(second.getDueDate()).isEqualTo(dueAt.plusDays(10));
+        assertThat(result.getDetailId()).isEqualTo(234L);
+    }
+
+    @Test
+    void reportedItemCannotRenewButAnotherSelectedItemOnTheSameTicketCan() {
+        UUID userId = UUID.randomUUID();
+        var ticket = new LoanTicketEntity();
+        ticket.setTicketId(235L); ticket.setUserId(userId); ticket.setStatus("BORROWING"); ticket.setTicketType("BORROW");
+        var reported = new LoanDetailEntity();
+        reported.setDetailId(236L); reported.setReturnStatus("BORROWING"); reported.setLossReportedAt(LocalDateTime.now());
+        var held = new LoanDetailEntity();
+        held.setDetailId(237L); held.setReturnStatus("BORROWING"); held.setDueDate(LocalDateTime.now().plusDays(2));
+        when(ticketRepository.findByIdForUpdate(235L)).thenReturn(Optional.of(ticket));
+        when(detailRepository.findByTicketId(235L)).thenReturn(List.of(reported, held));
+        assertThatThrownBy(() -> service.renewLoan(235L, 236L, userId)).hasMessageContaining("báo mất");
+        verify(detailRepository, never()).save(any());
+        service.renewLoan(235L, 237L, userId);
+        assertThat(held.getRenewalCount()).isEqualTo(1);
+        assertThat(reported.getRenewalCount()).isZero();
     }
 
     @Test

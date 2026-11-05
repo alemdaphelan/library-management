@@ -28,19 +28,30 @@ public class BookProposalService {
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
     private final StaffNotificationService staffNotificationService;
+    private final com.huit.library.modules.reporting.repository.AcademicMajorRepository majorRepository;
 
     public BookProposalService(BookProposalRepository proposalRepository,
                                UserRepository userRepository,
                                NotificationService notificationService,
                                BookRepository bookRepository,
                                CategoryRepository categoryRepository,
-                               StaffNotificationService staffNotificationService) {
+                               StaffNotificationService staffNotificationService,
+                               com.huit.library.modules.reporting.repository.AcademicMajorRepository majorRepository) {
         this.proposalRepository = proposalRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.bookRepository = bookRepository;
         this.categoryRepository = categoryRepository;
         this.staffNotificationService = staffNotificationService;
+        this.majorRepository = majorRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.huit.library.modules.interactive.dto.ProposalMajorDTO> getMajors() {
+        return majorRepository.findAllByOrderByMajorNameAscMajorIdAsc().stream()
+                .map(m -> new com.huit.library.modules.interactive.dto.ProposalMajorDTO(
+                        m.getMajorId(), m.getMajorName(), m.getMajorCode(), m.getFacultyId(), m.getSourceReference()))
+                .toList();
     }
 
     @Transactional
@@ -60,6 +71,14 @@ public class BookProposalService {
         entity.setEstimatedPrice(req.getEstimatedPrice());
         entity.setExternalUrl(normalize(req.getExternalUrl()));
         entity.setGenre(normalize(req.getGenre()));
+        if (req.getMajorId() != null && !req.getMajorId().isBlank()) {
+            var major = majorRepository.findById(req.getMajorId().trim())
+                    .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.BAD_REQUEST, "Ngành học không có trong danh mục chính thức"));
+            entity.setMajorId(major.getMajorId());
+            entity.setMajorName(major.getMajorName());
+            entity.setMajorSourceReference(major.getSourceReference());
+        }
         entity.setUrgencyLevel(req.getUrgencyLevel() == null || req.getUrgencyLevel().isBlank()
                 ? "NORMAL" : req.getUrgencyLevel().trim().toUpperCase());
         entity.setReason(req.getReason() != null ? req.getReason().trim() : null);
@@ -179,6 +198,9 @@ public class BookProposalService {
         dto.setEstimatedPrice(entity.getEstimatedPrice());
         dto.setExternalUrl(entity.getExternalUrl());
         dto.setGenre(entity.getGenre());
+        dto.setMajorId(entity.getMajorId());
+        dto.setMajorName(entity.getMajorName());
+        dto.setMajorSourceReference(entity.getMajorSourceReference());
         dto.setUrgencyLevel(entity.getUrgencyLevel());
         dto.setReason(entity.getReason());
         dto.setNote(entity.getNote());

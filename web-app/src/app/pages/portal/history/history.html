@@ -6,7 +6,7 @@
       <p class="page-subtitle">Theo dõi trạng thái phiếu mượn, hạn trả sách và lấy mã QR để duyệt mượn nhanh tại quầy.</p>
     </div>
     <div class="header-action" *ngIf="isLoggedIn">
-      <button class="btn-refresh" (click)="loadLoans()" [disabled]="isLoading" title="Tải lại danh sách">
+      <button class="btn-refresh" (click)="refresh()" [disabled]="isLoading" title="Tải lại danh sách">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.spinning]="isLoading">
           <polyline points="23 4 23 10 17 10"></polyline>
           <polyline points="1 20 1 14 7 14"></polyline>
@@ -68,21 +68,18 @@
   <!-- MAIN CONTENT VIEW -->
   <div class="history-content-wrap" *ngIf="isLoggedIn && !isLoading && !errorMessage">
 
-    <section class="debt-summary" *ngIf="debtEntries.length || penaltyCases.length">
+    <section class="debt-summary" *ngIf="outstandingDebt > 0">
       <div>
         <span class="date-lbl">CÔNG NỢ THƯ VIỆN</span>
-        <h3>{{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ còn phải thanh toán</h3>
-        <p>Bạn vẫn có thể xem công nợ và hồ sơ đền bù khi quyền mượn đang bị khóa.</p>
+        <h3 *ngIf="outstandingDebt > 0">{{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ còn phải thanh toán</h3>
+        <p>Xem các khoản còn phải thanh toán và hướng dẫn xử lý.</p>
       </div>
       <a class="btn btn-outline" routerLink="/my-penalties">Xem chi tiết công nợ</a>
       <div class="debt-lines">
-        <div *ngFor="let entry of debtEntries" [hidden]="entry.amount <= 0">
+        <div *ngFor="let entry of openDebtEntries">
           <strong>{{ entry.type }}</strong> · {{ entry.reason }}:
-          {{ (entry.amount - (entry.paidAmount || 0)) | number:'1.0-0':'en-US' }} VNĐ
+          {{ amountDue(entry) | number:'1.0-0':'en-US' }} VNĐ
           <span>({{ entry.status }})</span>
-        </div>
-        <div *ngFor="let penalty of penaltyCases">
-          Hồ sơ #{{ penalty.caseId }} · {{ penalty.barcode }} · {{ penalty.status }} · hạn {{ penalty.settlementDueAt | date:'dd/MM/yyyy' }}
         </div>
       </div>
     </section>
@@ -171,14 +168,6 @@
                 Đang mượn về nhà
               </span>
 
-              <span class="renewal-count-badge" [class.maxed]="policyLoaded && (item.renewalCount || 0) >= maximumRenewalCount">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="1 4 1 10 7 10"></polyline>
-                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-                </svg>
-                Gia hạn: {{ item.renewalCount || 0 }}/{{ policyLoaded ? maximumRenewalCount : '…' }} lần
-              </span>
-
               <span class="copy-barcode" *ngIf="item.barcode">Mã vạch: <strong>{{ item.barcode }}</strong></span>
             </div>
 
@@ -188,16 +177,25 @@
                 <a [routerLink]="book.bookId ? ['/book', book.bookId] : null">
                   <strong>{{ book.bookTitle }}</strong>
                   <span>{{ book.author || 'Đang cập nhật' }} · {{ book.barcode || 'Chưa có mã vạch' }}</span>
-                  <span class="per-item-state" [class.returned]="book.itemStatus === 'RETURNED'">
+                  <span class="per-item-state" [class.returned]="book.itemStatus === 'RETURNED' || !!book.physicalReturnAt">
                     {{ itemStatusLabel(book) }} · Hạn trả {{ book.dueDate | date:'dd/MM/yyyy' }}
-                    <ng-container *ngIf="book.returnDate"> · Đã trả {{ book.returnDate | date:'dd/MM/yyyy HH:mm' }}</ng-container>
+                    <ng-container *ngIf="book.physicalReturnAt"> · Nhận lại {{ book.physicalReturnAt | date:'dd/MM/yyyy HH:mm' }}</ng-container>
                   </span>
+                  <span class="renewal-count-badge" [class.maxed]="policyLoaded && (book.renewalCount || 0) >= maximumRenewalCount">
+                    Gia hạn: {{ book.renewalCount || 0 }}/{{ policyLoaded ? maximumRenewalCount : '…' }} lần
+                  </span>
+                  <span *ngIf="book.lossReportedAt">Báo mất lúc {{ book.lossReportedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                  <span class="recall-notice" *ngIf="book.isRecalled">Thư viện yêu cầu trả · Hạn trả {{ (book.recallDueDate || book.dueDate) | date:'dd/MM/yyyy HH:mm' }}<br>{{ book.recallReason || 'Đã có lệnh thu hồi; liên hệ thủ thư để đối chiếu.' }}<ng-container *ngIf="book.recallRequestedAt"><br>Gửi lúc {{ book.recallRequestedAt | date:'dd/MM/yyyy HH:mm' }}</ng-container></span>
                 </a>
+                <div class="loan-item-actions">
                 <button class="btn-renew-primary" (click)="renewBook(book)"
-                        *ngIf="book.itemStatus !== 'RETURNED'"
+                        *ngIf="canRenewItem(book)"
                         [disabled]="!policyLoaded || renewingTicketId === book.ticketId || (book.renewalCount || 0) >= maximumRenewalCount">
                   {{ policyLoaded && (book.renewalCount || 0) >= maximumRenewalCount ? 'Đã đạt giới hạn gia hạn' : 'Gia hạn cuốn này' }}
                 </button>
+                <button type="button" class="btn-cancel" *ngIf="canReportLoss(book)" (click)="openLossReport(book)"
+                        [disabled]="lossReportSubmitting || renewingTicketId !== null">Báo mất cuốn này</button>
+                </div>
               </div>
             </div>
 
@@ -206,14 +204,14 @@
                 <span class="date-lbl">Ngày mượn:</span>
                 <strong>{{ item.createdAt | date:'dd/MM/yyyy' }}</strong>
               </div>
-              <div class="date-col" *ngIf="item.dueDate">
+              <div class="date-col" *ngIf="item.items.length === 1 && isHeldItem(item) && item.dueDate">
                 <span class="date-lbl">Hạn hoàn trả:</span>
                 <strong [class.text-danger]="item.daysRemaining !== undefined && item.daysRemaining < 0"
                         [class.text-warning]="item.daysRemaining !== undefined && item.daysRemaining >= 0 && item.daysRemaining <= 3">
                   {{ item.dueDate | date:'dd/MM/yyyy' }}
                 </strong>
               </div>
-              <div class="date-col" *ngIf="item.daysRemaining !== undefined">
+              <div class="date-col" *ngIf="item.items.length === 1 && isHeldItem(item) && item.daysRemaining !== undefined">
                 <span class="date-lbl">Thời hạn còn:</span>
                 <strong [class.text-danger]="item.daysRemaining < 0" [class.text-warning]="item.daysRemaining >= 0 && item.daysRemaining <= 3">
                   {{ item.daysRemaining < 0 ? ('Quá hạn ' + (-item.daysRemaining) + ' ngày!') : (item.daysRemaining === 0 ? 'Hôm nay!' : (item.daysRemaining + ' ngày')) }}
@@ -222,7 +220,7 @@
             </div>
 
             <!-- Progress Bar -->
-            <div class="progress-container" *ngIf="item.progress !== undefined">
+            <div class="progress-container" *ngIf="item.items.length === 1 && isHeldItem(item) && item.progress !== undefined">
               <div class="progress-bar-bg">
                 <div class="progress-bar-fill" [ngClass]="item.statusType || 'normal'" [style.width.%]="item.progress"></div>
               </div>
@@ -333,7 +331,7 @@
             </div>
 
             <h3 class="item-title">Phiếu #{{ item.ticketId }} · {{ item.items.length }} tài liệu</h3>
-            <div class="ticket-book-list"><a *ngFor="let book of item.items" [routerLink]="book.bookId ? ['/book', book.bookId] : null"><strong>{{ book.bookTitle }}</strong><span>{{ book.author || 'Đang cập nhật' }} · {{ book.barcode || 'Chưa có mã vạch' }}</span><span class="per-item-state">{{ itemStatusLabel(book) }} · hạn {{ book.dueDate | date:'dd/MM/yyyy' }}<ng-container *ngIf="book.returnDate"> · trả {{ book.returnDate | date:'dd/MM/yyyy HH:mm' }}</ng-container></span></a></div>
+            <div class="ticket-book-list"><a *ngFor="let book of item.items" [routerLink]="book.bookId ? ['/book', book.bookId] : null"><strong>{{ book.bookTitle }}</strong><span>{{ book.author || 'Đang cập nhật' }} · {{ book.barcode || 'Chưa có mã vạch' }}</span><span class="per-item-state">{{ itemStatusLabel(book) }} · hạn {{ book.dueDate | date:'dd/MM/yyyy' }}<ng-container *ngIf="book.physicalReturnAt"> · nhận lại {{ book.physicalReturnAt | date:'dd/MM/yyyy HH:mm' }}</ng-container></span><span class="renewal-count-badge">Gia hạn: {{ book.renewalCount || 0 }}/{{ policyLoaded ? maximumRenewalCount : '…' }} lần</span><span class="recall-notice" *ngIf="book.isRecalled">Thư viện yêu cầu trả · Hạn trả {{ (book.recallDueDate || book.dueDate) | date:'dd/MM/yyyy HH:mm' }}<br>{{ book.recallReason || 'Đã có lệnh thu hồi; liên hệ thủ thư để đối chiếu.' }}<ng-container *ngIf="book.recallRequestedAt"><br>Gửi lúc {{ book.recallRequestedAt | date:'dd/MM/yyyy HH:mm' }}</ng-container></span></a></div>
 
             <div class="dates-row">
               <div class="date-col">
@@ -347,13 +345,15 @@
             </div>
 
             <div class="item-actions">
-              <button class="btn-renew-primary" *ngFor="let book of (item.status === 'BORROWING' ? item.items : [])" (click)="renewBook(book)" [disabled]="!policyLoaded || renewingTicketId === book.ticketId || (book.renewalCount || 0) >= maximumRenewalCount">
+              <button class="btn-renew-primary" *ngFor="let book of renewableItems(item)" (click)="renewBook(book)" [disabled]="!policyLoaded || renewingTicketId === book.ticketId || (book.renewalCount || 0) >= maximumRenewalCount">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="23 4 23 10 17 10"></polyline>
                   <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
                 </svg>
                 Gia hạn {{ book.bookTitle }}
               </button>
+              <button type="button" class="btn-cancel" *ngFor="let book of reportableItems(item)" (click)="openLossReport(book)"
+                      [disabled]="lossReportSubmitting || renewingTicketId !== null">Báo mất {{ book.bookTitle }}</button>
 
               <button class="btn-qr" (click)="openQrModal(item)" *ngIf="item.status === 'PENDING' || item.status === 'RESERVED'">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -395,7 +395,7 @@
               <div class="tl-info">
                 <span class="tl-ticket-no">Phiếu #{{ past.ticketId }}</span>
                 <h4 class="tl-title">{{ past.items.length }} tài liệu trong phiếu</h4>
-                <div class="ticket-book-list compact"><a *ngFor="let book of past.items" [routerLink]="book.bookId ? ['/book', book.bookId] : null"><strong>{{ book.bookTitle }}</strong><span>{{ book.barcode || '—' }}</span></a></div>
+                <div class="ticket-book-list compact"><a *ngFor="let book of past.items" [routerLink]="book.bookId ? ['/book', book.bookId] : null"><strong>{{ book.bookTitle }}</strong><span>{{ book.barcode || '—' }}</span><span class="per-item-state returned">{{ itemStatusLabel(book) }}<ng-container *ngIf="book.physicalReturnAt"> · nhận lại {{ book.physicalReturnAt | date:'dd/MM/yyyy HH:mm' }}</ng-container></span><span class="renewal-count-badge">Gia hạn: {{ book.renewalCount || 0 }}/{{ policyLoaded ? maximumRenewalCount : '…' }} lần</span></a></div>
                 <span class="badge badge-ok">Đã hoàn trả</span>
               </div>
             </div>
@@ -433,6 +433,26 @@
       </div>
     </div>
 
+  </div>
+
+  <div class="modal-backdrop" *ngIf="lossReportItem">
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="loss-report-title">
+      <div class="modal-header"><h3 id="loss-report-title">Báo mất sách</h3></div>
+      <form class="modal-body" (ngSubmit)="submitLossReport()">
+        <p><strong>{{ lossReportItem.bookTitle }}</strong><br>Phiếu #{{ lossReportItem.ticketId }} · {{ lossReportItem.barcode }}</p>
+        <p>Thủ thư sẽ tiếp nhận và xác minh để hướng dẫn xử lý. Gửi báo mất chưa tạo khoản phí. Cuốn đã báo mất sẽ không được gia hạn.</p>
+        <label for="loss-report-description">Mô tả sự việc</label>
+        <textarea id="loss-report-description" name="lossReportDescription" class="loss-description" [(ngModel)]="lossReportDescription"
+                  rows="4" maxlength="1000" required [disabled]="lossReportSubmitting"></textarea>
+        <p class="text-danger" role="alert" *ngIf="lossReportError">{{ lossReportError }}</p>
+        <div class="item-actions">
+          <button type="button" class="btn-cancel" (click)="closeLossReport()" [disabled]="lossReportSubmitting">Hủy</button>
+          <button type="submit" class="btn-renew-primary" [disabled]="lossReportSubmitting || !lossReportDescription.trim() || lossReportDescription.trim().length > 1000">
+            {{ lossReportSubmitting ? 'Đang gửi…' : 'Gửi báo mất' }}
+          </button>
+        </div>
+      </form>
+    </section>
   </div>
 
   <!-- MODAL: HIỂN THỊ MÃ QR PHIẾU MƯỢN ĐỂ QUÉT TẠI QUẦY -->

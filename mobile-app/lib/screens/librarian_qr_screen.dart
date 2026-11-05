@@ -28,6 +28,9 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
   String? _error;
   String? _success;
   Map<String, dynamic>? _resolved;
+  String? _operationKey;
+  String? _pendingAction;
+  List<Map<String, dynamic>>? _pendingReturnItems;
 
   @override
   void initState() {
@@ -57,7 +60,7 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
   }
 
   Future<void> _resolve(String payload) async {
-    if (_resolving) return;
+    if (_resolving || _submitting) return;
     setState(() {
       _resolving = true;
       _error = null;
@@ -75,11 +78,16 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
       if (!mounted) return;
       setState(() {
         _resolved = result;
+        _operationKey = null;
+        _pendingAction = null;
+        _pendingReturnItems = null;
         _barcodesController.text = barcodes;
         _returnDrafts
           ..clear()
           ..addEntries(
-            items.whereType<Map>().map((item) {
+            items.whereType<Map>().where(LibrarianQrService.isReturnable).map((
+              item,
+            ) {
               final detailId = (item['detailId'] as num?)?.toInt();
               return detailId == null
                   ? null
@@ -99,17 +107,22 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
   }
 
   Future<void> _resetScanner() async {
+    if (_submitting || _resolving) return;
     setState(() {
       _resolved = null;
       _error = null;
       _success = null;
       _barcodesController.clear();
       _returnDrafts.clear();
+      _operationKey = null;
+      _pendingAction = null;
+      _pendingReturnItems = null;
     });
     await _scannerController.start();
   }
 
   Future<void> _showManualInput() async {
+    if (_submitting || _resolving) return;
     await _scannerController.stop();
     if (!mounted) return;
 
@@ -135,6 +148,8 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
 
   Future<void> _performAction(String action) async {
     if (_submitting || _resolved == null) return;
+    if (_pendingAction != null && _pendingAction != action) return;
+    FocusScope.of(context).unfocus();
     final barcodes = _barcodes;
     if (action == 'CHECKOUT' && barcodes.isEmpty) {
       setState(() => _error = 'Cần ít nhất một barcode sách để xử lý.');
@@ -150,10 +165,28 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
       if (action == 'CHECKOUT') {
         final ticketId = (_resolved!['ticketId'] as num?)?.toInt();
         if (ticketId == null) throw Exception('Phiếu mượn không hợp lệ.');
-        response = await LibrarianQrService.checkout(ticketId, barcodes);
+        _pendingAction = action;
+        _operationKey ??= LibrarianQrService.operationKey('checkout');
+        response = await LibrarianQrService.checkout(
+          ticketId,
+          barcodes,
+          idempotencyKey: _operationKey,
+        );
       } else {
-        final inspectionItems = _buildReturnInspectionPayload();
-        response = await LibrarianQrService.inspectAndReturn(inspectionItems);
+        final inspectionItems =
+            _pendingReturnItems ?? _buildReturnInspectionPayload();
+        if (inspectionItems.isEmpty) {
+          throw Exception(
+            'Không còn tài liệu đủ điều kiện nhận trả. Hãy quét lại phiếu.',
+          );
+        }
+        _pendingReturnItems = inspectionItems;
+        _pendingAction = action;
+        _operationKey ??= LibrarianQrService.operationKey('return-inspection');
+        response = await LibrarianQrService.inspectAndReturn(
+          inspectionItems,
+          idempotencyKey: _operationKey,
+        );
       }
       if (!mounted) return;
       LoanService.notifyLoansChanged();
@@ -166,6 +199,9 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
         _success = successMessage;
         _barcodesController.clear();
         _returnDrafts.clear();
+        _operationKey = null;
+        _pendingAction = null;
+        _pendingReturnItems = null;
       });
       await _scannerController.start();
     } catch (error) {
@@ -180,13 +216,21 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
         setState(() {
           _resolved = null;
           _barcodesController.clear();
+          _returnDrafts.clear();
+          _operationKey = null;
+          _pendingAction = null;
+          _pendingReturnItems = null;
           _error =
               'Phiếu đã được giao sách trước đó và hiện ở trạng thái đang mượn. '
               'Vui lòng quét phiếu khác.';
         });
         await _scannerController.start();
       } else {
-        setState(() => _error = message);
+        setState(
+          () => _error = _pendingAction == null
+              ? message
+              : '$message\nThử lại sẽ gửi đúng nội dung và mã xử lý trước đó. Quét lại phiếu để kiểm tra trạng thái mới nhất.',
+        );
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -414,7 +458,7 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
                 ),
                 IconButton(
                   tooltip: 'Quét mã khác',
-                  onPressed: _resetScanner,
+                  onPressed: _submitting || _resolving ? null : _resetScanner,
                   icon: const Icon(Icons.qr_code_scanner),
                 ),
               ],
@@ -456,6 +500,14 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
                           subtitle: Text('Barcode: ${map['barcode'] ?? '—'}'),
                         ),
                         _InfoRow(
+                          label: 'Giá trị tài liệu hiện tại',
+                          value:
+                              map['priceKnown'] == true &&
+                                  map['bookValue'] != null
+                              ? '${map['bookValue']} ${map['bookValueCurrency'] ?? 'VND'} (${map['bookValueSource'] ?? ''})'
+                              : 'Chưa xác định giá',
+                        ),
+                        _InfoRow(
                           label: map['borrowedAt'] != null
                               ? 'Ngày mượn'
                               : 'Ngày đăng ký',
@@ -472,8 +524,13 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
                             label: 'Ngày trả',
                             value: _formatDate(map['returnDate']),
                           ),
-                        if (actions.contains('RETURN') && detailId != null)
-                          _buildReturnInspectionEditor(detailId),
+                        if (actions.contains('RETURN') &&
+                            detailId != null &&
+                            LibrarianQrService.isReturnable(map))
+                          AbsorbPointer(
+                            absorbing: _submitting || _pendingAction != null,
+                            child: _buildReturnInspectionEditor(detailId),
+                          ),
                       ],
                     ),
                   ),
@@ -484,6 +541,10 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: _barcodesController,
+                readOnly:
+                    _submitting ||
+                    _pendingAction != null ||
+                    actions.contains('RETURN'),
                 minLines: 1,
                 maxLines: items.length > 1 ? items.length : 1,
                 decoration: InputDecoration(
@@ -549,6 +610,14 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
         const Divider(height: 24),
         DropdownButtonFormField<String>(
           initialValue: draft.condition,
+          isExpanded: true,
+          itemHeight: null,
+          selectedItemBuilder: (context) => const [
+            Text('Bình thường', overflow: TextOverflow.ellipsis),
+            Text('Hư hỏng nhẹ', overflow: TextOverflow.ellipsis),
+            Text('Hư hỏng nặng', overflow: TextOverflow.ellipsis),
+            Text('Mất tài liệu', overflow: TextOverflow.ellipsis),
+          ],
           decoration: const InputDecoration(
             labelText: 'Tình trạng tài liệu khi trả',
             border: OutlineInputBorder(),
@@ -602,6 +671,7 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             initialValue: draft.stillInMarket,
+            isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Tài liệu còn lưu hành trên thị trường?',
               border: OutlineInputBorder(),
@@ -621,6 +691,7 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               initialValue: draft.settlement,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Cách đền bù',
                 border: OutlineInputBorder(),
@@ -644,6 +715,7 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             initialValue: draft.languageCategory,
+            isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Phân loại ngôn ngữ',
               border: OutlineInputBorder(),
@@ -845,6 +917,7 @@ class _LibrarianQrManualInputDialogState
 
   @override
   Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
     title: const Text('Nhập dữ liệu QR'),
     content: Column(
       mainAxisSize: MainAxisSize.min,

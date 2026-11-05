@@ -1,12 +1,12 @@
 package com.huit.library.modules.dashboard.repository;
 
 import com.huit.library.modules.dashboard.dto.CirculationAnalytics.Range;
+import com.huit.library.modules.dashboard.service.AnalyticsBuckets;
 import com.huit.library.modules.dashboard.dto.FinanceStockAnalytics.*;
 import org.springframework.jdbc.core.namedparam.*;
 import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -42,19 +42,19 @@ public class ImportAnalyticsRepository {
                   (SELECT coalesce(sum(quantity::bigint),0) FROM selected_lines) copies
                 """,params(r,at),(rs,n)->counts(rs));
     }
-    public Map<LocalDate,Imports> buckets(Range r,LocalDateTime at) {
-        String unit=r.period().name().toLowerCase(Locale.ROOT);
+    public Map<LocalDateTime,Imports> buckets(Range r,LocalDateTime at) {
+        String unit=AnalyticsBuckets.sqlUnit(r.period());
         String sql=BASE+"""
-                , receipt_counts AS (SELECT date_trunc('%s',completed_at)::date bucket,count(*) n FROM selected_receipts GROUP BY bucket),
-                line_counts AS (SELECT date_trunc('%s',completed_at)::date bucket,count(DISTINCT book_id) titles,sum(quantity::bigint) copies FROM selected_lines GROUP BY bucket),
-                first_counts AS (SELECT date_trunc('%s',first_at)::date bucket,count(*) n FROM first_import
+                , receipt_counts AS (SELECT date_trunc('%s',completed_at) bucket,count(*) n FROM selected_receipts GROUP BY bucket),
+                line_counts AS (SELECT date_trunc('%s',completed_at) bucket,count(DISTINCT book_id) titles,sum(quantity::bigint) copies FROM selected_lines GROUP BY bucket),
+                first_counts AS (SELECT date_trunc('%s',first_at) bucket,count(*) n FROM first_import
                   WHERE first_at>=:from AND first_at<:until AND first_at<=:snapshot GROUP BY bucket)
                 SELECT r.bucket,r.n receipts,coalesce(l.titles,0) titles,coalesce(f.n,0) first_titles,coalesce(l.copies,0) copies
                 FROM receipt_counts r LEFT JOIN line_counts l ON l.bucket=r.bucket LEFT JOIN first_counts f ON f.bucket=r.bucket
                 """.formatted(unit,unit,unit);
         return jdbc.query(sql,params(r,at),rs->{
-            Map<LocalDate,Imports> result=new HashMap<>();
-            while(rs.next())result.put(rs.getDate("bucket").toLocalDate(),counts(rs));
+            Map<LocalDateTime,Imports> result=new HashMap<>();
+            while(rs.next())result.put(rs.getObject("bucket",LocalDateTime.class),counts(rs));
             return result;
         });
     }

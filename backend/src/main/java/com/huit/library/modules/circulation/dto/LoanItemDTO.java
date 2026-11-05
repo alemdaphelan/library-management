@@ -19,6 +19,11 @@ public class LoanItemDTO {
     private String bookTitle;
     private String bookCover;
     private String author;
+    private BigDecimal bookValue;
+    private String bookValueSource;
+    private String bookValueCurrency;
+    private Boolean priceKnown;
+    private Boolean returnable;
     private String barcode;
     private String ticketType;
     private String status;
@@ -29,6 +34,15 @@ public class LoanItemDTO {
     private LocalDateTime pickupDeadline;
     private LocalDateTime dueDate;
     private LocalDateTime returnDate;
+    private LocalDateTime physicalReturnAt;
+    private LocalDateTime lossReportedAt;
+    private String lossReportDescription;
+    private Boolean isRecalled;
+    private LocalDateTime recallRequestedAt;
+    private java.util.UUID recallRequestedBy;
+    private String recallReason;
+    private LocalDateTime recallPreviousDueDate;
+    private LocalDateTime recallDueDate;
     private Long daysRemaining;
     private Integer renewalCount;
     private Boolean recalled;

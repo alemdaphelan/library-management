@@ -388,8 +388,13 @@ public class PenaltyCaseService {
         if (detail == null) {
             return;
         }
-        detail.setReturnDate(LocalDateTime.now());
-        detail.setReturnStatus("SETTLED");
+        // Paying a case must never replace the time/condition of an actual counter receipt.
+        if (detail.getPhysicalReturnAt() == null) {
+            detail.setReturnDate(LocalDateTime.now());
+            detail.setReturnStatus("SETTLED");
+        } else {
+            detail.setReturnDate(detail.getPhysicalReturnAt());
+        }
         detailRepository.save(detail);
         LoanTicketEntity ticket = ticketRepository.findById(penaltyCase.getTicketId()).orElse(null);
         if (ticket != null && detailRepository.findByTicketId(ticket.getTicketId()).stream()

@@ -140,6 +140,9 @@ public class OnlinePaymentService {
         String reference = callbackParams.get("vnp_TxnRef");
         OnlinePaymentSessionEntity session = sessionRepository.findByReferenceForUpdate(reference)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên thanh toán"));
+        if (!"VNPAY".equals(session.getProvider())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phiên thanh toán không thuộc VNPAY");
+        }
         if (!tmnCode.equals(callbackParams.get("vnp_TmnCode"))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã website thanh toán không hợp lệ");
         }

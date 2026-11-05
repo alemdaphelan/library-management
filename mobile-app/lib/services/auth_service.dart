@@ -193,7 +193,7 @@ class AuthService {
         'Content-Type': 'application/json',
       },
       body: jsonEncode({'fullName': normalizedName, 'phone': normalizedPhone}),
-    );
+      ).timeout(const Duration(seconds: 20));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_extractErrorMessage(response));
     }

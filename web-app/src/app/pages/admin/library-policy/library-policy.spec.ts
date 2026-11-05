@@ -13,6 +13,7 @@ describe('LibraryPolicy', () => {
   };
   const policy = {
     maximumOpenItems: 3, homeLoanDays: 10, renewalDays: 10, maximumRenewalCount: 1, waitlistHoldHours: 48,
+    minimumSecurityDeposit: 100000, borrowingValueMargin: 50000, recallReturnDays: 7, overdueDebtProcessingDays: 30,
     homeLateFinePerDay: 1000, onsiteLateFinePerDay: 5000,
     technicalProcessingFee: 50000, compensationSettlementDays: 30,
   };

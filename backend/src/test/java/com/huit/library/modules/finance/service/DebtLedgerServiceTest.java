@@ -25,6 +25,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -79,6 +80,14 @@ class DebtLedgerServiceTest {
             assertThat(line.getFeeType()).isEqualTo("FINE");
             assertThat(line.getAmount()).isEqualByComparingTo("300");
         });
+    }
+
+    @Test
+    void ordinaryPaymentEntryPointDoesNotAcceptMockAsARealPaymentMethod() {
+        var request = new DebtPaymentRequestDTO(); request.setMethod("MOCK");
+        assertThatThrownBy(() -> service.recordPayment(request, UUID.randomUUID()))
+                .hasMessageContaining("không được hỗ trợ");
+        verifyNoInteractions(transactions, wallets);
     }
 
     @Test

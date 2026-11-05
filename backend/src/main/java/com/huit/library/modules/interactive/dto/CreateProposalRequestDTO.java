@@ -40,6 +40,8 @@ public class CreateProposalRequestDTO {
 
     @Size(max = 255, message = "Thể loại không được vượt quá 255 ký tự")
     private String genre;
+    @Size(max = 128)
+    private String majorId;
 
     @Pattern(regexp = "LOW|NORMAL|HIGH", message = "Mức độ ưu tiên phải là LOW, NORMAL hoặc HIGH")
     private String urgencyLevel = "NORMAL";

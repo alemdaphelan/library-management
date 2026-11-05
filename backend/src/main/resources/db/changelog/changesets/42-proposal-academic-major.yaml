@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 42-proposal-academic-major
+      author: codex
+      changes:
+        - addColumn:
+            tableName: book_proposals
+            columns:
+              - column: {name: major_id, type: varchar(128)}
+              - column: {name: major_name, type: varchar(255)}
+              - column: {name: major_source_reference, type: varchar(1000)}
+        - addForeignKeyConstraint:
+            baseTableName: book_proposals
+            baseColumnNames: major_id
+            referencedTableName: academic_majors
+            referencedColumnNames: major_id
+            constraintName: fk_proposal_academic_major
+        - createIndex:
+            tableName: book_proposals
+            indexName: idx_proposal_major
+            columns:
+              - column: {name: major_id}
+      rollback:
+        - dropForeignKeyConstraint: {baseTableName: book_proposals, constraintName: fk_proposal_academic_major}
+        - dropIndex: {tableName: book_proposals, indexName: idx_proposal_major}
+        - dropColumn: {tableName: book_proposals, columnName: major_source_reference}
+        - dropColumn: {tableName: book_proposals, columnName: major_name}
+        - dropColumn: {tableName: book_proposals, columnName: major_id}

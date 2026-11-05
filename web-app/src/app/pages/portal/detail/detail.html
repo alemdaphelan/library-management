@@ -374,7 +374,7 @@
 
         <div class="form-section">
           <label class="form-label" for="pickupDate">Ngày hẹn đến nhận sách</label>
-          <input type="date" id="pickupDate" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" class="form-input" readonly>
+          <input type="date" id="pickupDate" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" class="form-input" readonly required>
           <span class="form-help">Tài liệu có sẵn chỉ được giữ đến giờ đóng cửa hôm nay; tài liệu từ hàng đợi được giữ {{ waitlistHoldHours === null ? 'theo quy định' : (waitlistHoldHours + ' giờ') }} từ lúc thông báo.</span>
         </div>
 

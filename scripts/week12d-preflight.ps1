@@ -23,6 +23,24 @@ function Add-Pass([string]$message) {
     Write-Host "[PASS] $message" -ForegroundColor Green
 }
 
+function Get-SecretScanContent([string]$relativePath, [string]$content) {
+    if ($relativePath -ne 'mobile-app/android/app/google-services.json') { return $content }
+    # Firebase's Android client key is shipped in the app, not a server credential.
+    # Exclude only this structured field; scan every other field and every other file.
+    # https://firebase.google.com/docs/projects/api-keys
+    $firebaseClientConfig = $content | ConvertFrom-Json -AsHashtable
+    if (-not $firebaseClientConfig.ContainsKey('client')) { throw 'Missing Firebase client configuration' }
+    foreach ($firebaseClient in $firebaseClientConfig['client']) {
+        foreach ($firebaseClientKey in @($firebaseClient['api_key'])) {
+            if ($null -ne $firebaseClientKey -and $firebaseClientKey.ContainsKey('current_key') -and
+                $firebaseClientKey['current_key'] -match '^AIza[0-9A-Za-z_-]{35}$') {
+                $firebaseClientKey['current_key'] = 'FIREBASE_ANDROID_CLIENT_IDENTIFIER'
+            }
+        }
+    }
+    return ($firebaseClientConfig | ConvertTo-Json -Depth 30)
+}
+
 Push-Location $repositoryRoot
 try {
     $requiredFiles = @(
@@ -101,6 +119,12 @@ try {
             continue
         }
         $content = Get-Content -LiteralPath $relativePath -Raw -ErrorAction SilentlyContinue
+        try {
+            $content = Get-SecretScanContent $relativePath $content
+        } catch {
+                Add-Failure "Cấu hình Firebase Android không đọc được: $relativePath"
+                # Keep scanning the original content when parsing fails.
+        }
         foreach ($pattern in $secretPatterns) {
             if ($content -match $pattern) {
                 $null = $secretFiles.Add($relativePath)

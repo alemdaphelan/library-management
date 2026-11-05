@@ -28,6 +28,9 @@ public class PushDeviceRegistrationEntity extends BaseEntity {
     @Column(nullable = false, unique = true, length = 512)
     private String token;
 
+    @Column(nullable = false, length = 16)
+    private String identifierType = "TOKEN";
+
     @Column(nullable = false, length = 20)
     private String platform;
 

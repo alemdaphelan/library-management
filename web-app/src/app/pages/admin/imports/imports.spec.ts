@@ -77,6 +77,7 @@ describe('Imports with per-line physical location', () => {
   });
   it('accepts explicit bookId for legacy or ambiguous ISBN without sending a stale ISBN', () => {
     const line = readyLine(); line.mode = 'bookId'; line.identifier = '12'; component.clearIdentification(line); component.lookupIsbn(line);
+    line.floorId=1;component.floorChanged(line);line.bookshelfId=2;component.bookshelfChanged(line);line.shelfId=3;
     component.saveImport(); expect(service.identify).toHaveBeenLastCalledWith('bookId', '12');
     expect(service.saveImport.mock.calls[0][0].lines[0].isbn).toBeUndefined();
   });
@@ -102,4 +103,12 @@ describe('Imports with per-line physical location', () => {
   it('canceling an unsent form has no mutation and restores page scrolling', () => {
     readyLine(); component.closeDrawer(); expect(service.saveImport).not.toHaveBeenCalled(); expect(document.body.style.overflow).toBe('');
   });
+
+  it('fills the real hierarchy from an Admin rule and clears it when identity changes',()=>{
+    service.identify.mockReturnValueOnce(of({...identification,placementStatus:'SUGGESTED_BY_ADMIN_RULE',suggestedShelfId:3,placements:[{shelfId:3,bookshelfId:2,floorId:1,shelfName:'Ngăn B',bookshelfName:'Kệ A',floorName:'Tầng 1',subjectName:'CNTT'}]}));
+    component.openDrawer();const line=component.newImportLines[0];line.identifier='9780132350884';component.lookupIsbn(line);
+    expect([line.floorId,line.bookshelfId,line.shelfId]).toEqual([1,2,3]);expect(line.locationLoading).toBe(false);
+    component.clearIdentification(line);expect(line.shelfId).toBeUndefined();expect(line.bookshelfId).toBeUndefined();expect(line.floorId).toBeUndefined();
+  });
+
 });

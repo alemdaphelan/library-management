@@ -56,7 +56,7 @@ class DashboardAnalyticsIntegrationTest {
     }
     @Test void countsItemsAndTicketsSeparatelyAndPartialReturnsInTheirOwnMonths(){
         long t=ticket("BORROWING",null);for(int i=0;i<3;i++){long b=book("Book "+i,false);detail(t,copy(b,"AVAILABLE"),i<2?"RETURNED":"BORROWING","2026-01-31T23:59:59",i==0?"2026-01-31T23:59:59":i==1?"2026-02-01T00:00:00":null);}
-        var r=circulation.report(from,until,Period.MONTH);assertThat(r.totals().checkoutItems()).isEqualTo(3);assertThat(r.totals().checkoutTickets()).isEqualTo(1);
+        var r=circulation.report(from,until,Period.YEAR);assertThat(r.totals().checkoutItems()).isEqualTo(3);assertThat(r.totals().checkoutTickets()).isEqualTo(1);
         assertThat(r.totals().physicalReturnItems()).isEqualTo(2);assertThat(r.totals().physicalReturnTickets()).isEqualTo(1);
         assertThat(r.buckets()).hasSize(6);assertThat(r.buckets().get(0).counts().checkoutItems()).isEqualTo(3);assertThat(r.buckets().get(0).counts().physicalReturnItems()).isEqualTo(1);
         assertThat(r.buckets().get(1).counts().checkoutItems()).isZero();assertThat(r.buckets().get(1).counts().physicalReturnItems()).isEqualTo(1);assertThat(r.buckets().get(2).counts().physicalReturnItems()).isZero();
@@ -65,8 +65,8 @@ class DashboardAnalyticsIntegrationTest {
         long b=book("Boundaries",false),t=ticket("BORROWING",null);String c=copy(b,"AVAILABLE");
         for(String at:List.of("2025-12-31T23:59:59","2026-01-01T00:00:00","2026-03-31T23:59:59","2026-04-01T00:00:00","2026-07-01T00:00:00"))detail(t,c,"BORROWING",at,null);
         var r=circulation.report(from,until,Period.QUARTER);assertThat(r.totals().checkoutItems()).isEqualTo(3);assertThat(r.buckets()).hasSize(2);assertThat(r.buckets().get(0).counts().checkoutItems()).isEqualTo(2);
-        assertThat(circulation.report(from,LocalDate.parse("2027-01-01"),Period.YEAR).buckets()).hasSize(1);
-        var clipped=circulation.report(LocalDate.parse("2026-01-15"),LocalDate.parse("2026-04-15"),Period.QUARTER);assertThat(clipped.buckets().get(0).start()).isEqualTo(LocalDate.parse("2026-01-15"));assertThat(clipped.buckets().get(1).until()).isEqualTo(LocalDate.parse("2026-04-15"));
+        assertThat(circulation.report(from,LocalDate.parse("2027-01-01"),Period.YEAR).buckets()).hasSize(12);
+        var clipped=circulation.report(LocalDate.parse("2026-01-15"),LocalDate.parse("2026-04-15"),Period.QUARTER);assertThat(clipped.buckets().get(0).start()).isEqualTo(LocalDate.parse("2026-01-15").atStartOfDay());assertThat(clipped.buckets().get(1).until()).isEqualTo(LocalDate.parse("2026-04-15").atStartOfDay());
         assertThatThrownBy(()->circulation.report(until,from,Period.MONTH)).isInstanceOf(ResponseStatusException.class);
     }
     @Test void ranksTiesLeastPreviouslyBorrowedNeverAndCurrentWithStablePages(){
@@ -186,4 +186,18 @@ class DashboardAnalyticsIntegrationTest {
     private UUID person(String type){UUID id=UUID.randomUUID();jdbc.update("INSERT INTO users(user_id,mssv,full_name,user_type) VALUES (?,?,?,?)",id,id.toString(),"Người kiểm thử",type);return id;}
     private long ticket(String state,UUID user){return jdbc.queryForObject("INSERT INTO loan_tickets(status,user_id) VALUES (?,?) RETURNING ticket_id",Long.class,state,user);}
     private long detail(long t,String barcode,String state,String checkout,String returned){return jdbc.queryForObject("INSERT INTO loan_details(ticket_id,barcode,return_status,checkout_at,physical_return_at,return_date) VALUES (?,?,?,?,?,?) RETURNING detail_id",Long.class,t,barcode,state,checkout==null?null:LocalDateTime.parse(checkout),returned==null?null:LocalDateTime.parse(returned),returned==null?null:LocalDateTime.parse(returned));}
+
+    @Test void dailyAndMondayWeeklyBucketsClipToHalfOpenRangeAndRejectOversizedCharts() {
+        long b=book("Daily weekly",false),t=ticket("BORROWING",null);String c=copy(b,"AVAILABLE");
+        for(String at:List.of("2025-12-28T23:59:59","2025-12-29T00:00:00","2026-01-04T23:59:59","2026-01-05T00:00:00"))detail(t,c,"BORROWING",at,null);
+        var start=LocalDate.parse("2025-12-29");var end=LocalDate.parse("2026-01-05");
+        var daily=circulation.report(start,end,Period.DAY);assertThat(daily.buckets()).hasSize(168);assertThat(daily.totals().checkoutItems()).isEqualTo(2);
+        assertThat(daily.buckets().get(0).counts().checkoutItems()).isEqualTo(1);assertThat(daily.buckets().get(167).counts().checkoutItems()).isEqualTo(1);
+        var weekly=circulation.report(start,end,Period.WEEK);assertThat(weekly.buckets()).hasSize(7);assertThat(weekly.buckets().get(0).counts().checkoutItems()).isEqualTo(1);
+        assertThat(weekly.buckets().get(0).start()).isEqualTo(start.atStartOfDay());
+        var clipped=circulation.report(LocalDate.parse("2026-01-01"),LocalDate.parse("2026-01-06"),Period.WEEK);
+        assertThat(clipped.buckets()).hasSize(5);assertThat(clipped.buckets().get(0).start()).isEqualTo(LocalDate.parse("2026-01-01").atStartOfDay());
+        assertThatThrownBy(()->circulation.report(start,start.plusDays(1001),Period.DAY)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("1000");
+    }
+
 }

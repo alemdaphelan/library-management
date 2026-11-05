@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-05",
+  "timezone": "Asia/Saigon",
+  "baseline": "b88ac60 + local changes",
+  "flutter": "3.47.9",
+  "dart": "3.13.7",
+  "tests": 55,
+  "layout_cases": 10,
+  "analyze": "No issues found",
+  "web_preview_build": "PASS",
+  "browser_interaction": "NOT VERIFIED: Computer Use stopped because Windows browser URL could not be verified",
+  "camera_push_android_ios": "NOT VERIFIED",
+  "test_data": "synthetic API and camera; real application widgets",
+  "sdk_removed": true,
+  "server_stopped": true,
+  "lockfile_restored_sha256": "197916a0e82489ffbdcfa3d5de7b7f4856c8fc0926f3bb329ef8f65c3619575b",
+  "source_sha256": {
+    "mobile-app/lib/screens/detail_screen.dart": "e5e3d59f3eeced7a52865f92b2a8c1c76d351a6e8ab58633484d213421661a50",
+    "mobile-app/lib/screens/librarian_qr_screen.dart": "9679e4739b4e324fd7310e8899329726b911ba723cefd3d710578b91e540d76b",
+    "mobile-app/lib/screens/penalties_screen.dart": "770ae3de7fad93f4cbaea228f04d3f16b9dc4a8b316dc19117e8f4b4f41a5d08",
+    "mobile-app/lib/widgets/edit_profile_sheet.dart": "916e87247c12e68ed6ba88ab2711b7f8dff7e39872d286dc9fe0eca058a0ad31",
+    "mobile-app/test/mobile_layout_test.dart": "0b952bc49520945a7b55d12c895c654c912b2de53dc3f5408234458155d47f7f",
+    "mobile-app/test/support/mobile_ui_fixture.dart": "0d38c15a50d76774750180d6365d343cb9e712fa9fe85be4fc37a86c86b4209b",
+    "mobile-app/test/support/fake_scanner.dart": "297d1926b83a84bc01d3bf6d8c17d5f9edbd7cfb695941c66c0957e3f627083b",
+    "mobile-app/test/ui_preview.dart": "67691284529db6416c40631a30df47817f38a6599321c6665837e4ca5278602a"
+  },
+  "log_sha256": {
+    "flutter-tests-final.log": "47916134e10cd4bb64851b9f00b21da832ea31f45048a74aed0ca8855cba2727",
+    "flutter-analyze-final.log": "89f51ac5409f675aaa56b658ded6a7606501dc2f4a39559671c2ed9d31873398",
+    "flutter-preview-build.log": "35ca90bfefba40c527fafa60d7c5769f7dd57a55b3f7d1cf00b5ad692d49336b"
+  },
+  "screenshot_sha256": {
+    "borrow-sheet-1.0.png": "eb1cf39276a84b2095f0305ae54c0a65dd405c15da94b4914fe129f3245d0742",
+    "borrow-sheet-1.8.png": "0768f33ec6e85c1301fda6593c13e0faa13daf6e6034f218bfc2ea5d67193d68",
+    "librarian-return-1.0.png": "ae054ded8863d0ec79f4cb82cab710bee77add75b7c7958f086511c3ba014da5",
+    "librarian-return-1.8.png": "b05b7de86e27d491a7f92f2e448470302f34587a38f84fba3da74140906d3d8d",
+    "penalties-1.0.png": "99afb661e777c9d13e78c7b0bf89fede6e3bd1564f1ddde88d248acce5807371",
+    "penalties-1.8.png": "452ee6489ad907e99df0d998d0f0fb2eaee61ca4d94424f9a2632070ee3980a2",
+    "profile-keyboard.png": "fcac9d6a685749f14bd67a70762dbb3d5ae750093a85cb4e83e3907a6ca51c18",
+    "proposal-1.0.png": "dcfc86183cc3027ce2e28950c5f0374854d23d8c7cd7aba761d3ed6cdb58a1f0",
+    "proposal-1.8.png": "a0902b90c5b99b9eb80561a787ea14d5e187cdd237e588c14c56110201597e16",
+    "ticket-qr.png": "f17346b6577878223a26a47da83ecc4c3842fe757d5d735baa291963001992cb"
+  }
+}

@@ -76,6 +76,18 @@ public class LocationController {
         return ResponseEntity.ok(shelfSubjectRuleService.getAvailableSubjects());
     }
 
+    @GetMapping("/shelves/{id}/books/page")
+    public ResponseEntity<?> getShelfBooksPage(@PathVariable Long id, @RequestParam(defaultValue="0") int page,
+                                              @RequestParam(defaultValue="50") int size) {
+        return ResponseEntity.ok(locationService.getCopiesPage(id, page, size));
+    }
+
+    @GetMapping("/unplaced-copies")
+    public ResponseEntity<?> getUnplacedCopies(@RequestParam(defaultValue="0") int page,
+                                             @RequestParam(defaultValue="50") int size) {
+        return ResponseEntity.ok(locationService.getCopiesPage(null, page, size));
+    }
+
     @GetMapping("/shelves/{id}/subjects")
     public ResponseEntity<?> getShelfSubjects(@PathVariable Long id) {
         return ResponseEntity.ok(shelfSubjectRuleService.getShelfSubjects(id));

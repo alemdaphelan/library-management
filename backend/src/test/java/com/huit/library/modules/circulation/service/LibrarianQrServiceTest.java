@@ -136,7 +136,11 @@ class LibrarianQrServiceTest {
                 .items(List.of(LoanItemDTO.builder()
                         .barcode("BC-RETURN-001")
                         .itemStatus("BORROWING")
-                        .build()))
+                        .build(),
+                        LoanItemDTO.builder().barcode("DAMAGED-ALREADY").itemStatus("DAMAGED").build(),
+                        LoanItemDTO.builder().barcode("LOST-ALREADY").itemStatus("LOST").build(),
+                        LoanItemDTO.builder().barcode("PHYSICAL-RETURN").itemStatus("BORROWING")
+                                .physicalReturnAt(borrowedAt.plusDays(1)).build()))
                 .build());
 
         var issued = service.issueTicketPayload(92L, reader);

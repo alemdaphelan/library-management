@@ -74,4 +74,12 @@ describe('LocationService', () => {
     expect(updateRequest.request.body).toEqual({ subjectIds: [2, 5] });
     updateRequest.flush([]);
   });
+  it('uses the paged shelf and unplaced read contracts and preserves unmatched identifiers',()=>{
+    service.getShelfBooksPage(3,2).subscribe(page=>expect(page.items[0].bookId).toBeNull());
+    const page=httpTesting.expectOne(r=>r.url.endsWith('/shelves/3/books/page'));
+    expect(page.request.method).toBe('GET');expect(page.request.params.get('page')).toBe('2');expect(page.request.params.get('size')).toBe('50');
+    page.flush({items:[{barcode:'NO-ID',bookId:null,catalogMatched:false,title:'Chưa đối chiếu đầu sách',status:'AVAILABLE'}],total:101,page:2,size:50});
+    service.getUnplacedCopies(1).subscribe();const free=httpTesting.expectOne(r=>r.url.endsWith('/unplaced-copies'));
+    expect(free.request.method).toBe('GET');expect(free.request.params.get('page')).toBe('1');expect(free.request.params.get('size')).toBe('50');free.flush({items:[],total:0,page:1,size:50});
+  });
 });

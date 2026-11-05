@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 38-loan-recall-evidence
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE loan_details ADD COLUMN recall_requested_at timestamp,
+                ADD COLUMN recall_requested_by uuid, ADD COLUMN recall_reason varchar(1000),
+                ADD COLUMN recall_previous_due_date timestamp, ADD COLUMN recall_due_date timestamp;
+              ALTER TABLE loan_details ADD CONSTRAINT ck_loan_recall_evidence CHECK (
+                (recall_requested_at IS NULL AND recall_requested_by IS NULL AND recall_reason IS NULL
+                  AND recall_previous_due_date IS NULL AND recall_due_date IS NULL)
+                OR (is_recalled IS TRUE AND recall_requested_at IS NOT NULL AND recall_requested_by IS NOT NULL
+                  AND recall_reason IS NOT NULL AND char_length(btrim(recall_reason)) BETWEEN 1 AND 1000
+                  AND recall_previous_due_date IS NOT NULL AND recall_due_date IS NOT NULL
+                  AND recall_due_date=LEAST(recall_previous_due_date,recall_requested_at+INTERVAL '7 days'))
+              );
+              CREATE INDEX idx_recall_active_items ON loan_details(due_date,detail_id)
+                WHERE return_date IS NULL AND physical_return_at IS NULL AND return_status IN ('BORROWING','OVERDUE');
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX idx_recall_active_items;
+              ALTER TABLE loan_details DROP CONSTRAINT ck_loan_recall_evidence;
+              ALTER TABLE loan_details DROP COLUMN recall_requested_at, DROP COLUMN recall_requested_by,
+                DROP COLUMN recall_reason, DROP COLUMN recall_previous_due_date, DROP COLUMN recall_due_date;

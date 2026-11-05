@@ -93,3 +93,6 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 4px;
   font-size: 0.85em;
 }
+/* Required indicators follow the same convention in all role-specific forms. */
+label .required, label .req, label .required-marker, label.has-required-field span[aria-hidden="true"] { color:#b91c1c; }
+.required-marker { font-weight:700; margin-inline-end:4px; }

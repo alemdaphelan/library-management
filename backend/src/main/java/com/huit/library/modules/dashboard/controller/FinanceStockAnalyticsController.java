@@ -18,9 +18,10 @@ public class FinanceStockAnalyticsController {
 
     @GetMapping("/finance")
     public ResponseEntity<?> finance(
+            @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate until,
-            @RequestParam(defaultValue="MONTH") Period period){return ok(service.finance(from,until,period));}
+            @RequestParam(defaultValue="MONTH") Period period){return ok(service.finance(date,from,until,period));}
     @GetMapping("/finance/entries")
     public ResponseEntity<?> events(
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate from,
@@ -32,9 +33,10 @@ public class FinanceStockAnalyticsController {
             @RequestParam(defaultValue="25") int size){return ok(service.allocations(id,page,size));}
     @GetMapping("/stock-movements")
     public ResponseEntity<?> stock(
+            @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate until,
-            @RequestParam(defaultValue="MONTH") Period period){return ok(service.stock(from,until,period));}
+            @RequestParam(defaultValue="MONTH") Period period){return ok(service.stock(date,from,until,period));}
     @GetMapping("/stock-movements/receipts")
     public ResponseEntity<?> receipts(
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate from,

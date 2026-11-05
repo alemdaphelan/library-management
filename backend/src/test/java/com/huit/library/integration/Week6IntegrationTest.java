@@ -970,6 +970,7 @@ class Week6IntegrationTest {
             assertThat(receipt.items().get(1).penaltyAmount()).isEqualByComparingTo("200000");
             assertThat(receipt.items().get(1).depositApplied()).isEqualByComparingTo("50000");
             assertThat(receipt.items().get(1).debtAdded()).isEqualByComparingTo("150000");
+            assertThat(receipt.items().get(1).returnDate()).isNotNull();
             assertThat(receipt.items().get(2).copyStatus()).isEqualTo("LOST");
             assertThat(receipt.items().get(2).penaltyAmount()).isEqualByComparingTo("50000");
             assertThat(receipt.items().get(2).returnDate()).isNull();
@@ -1148,6 +1149,58 @@ class Week6IntegrationTest {
         } finally {
             bookCopyRepository.findById(replacementBarcode).ifPresent(bookCopyRepository::delete);
             cleanupInspection(fixture, key, key + "-normal");
+        }
+    }
+
+    @Test
+    void damagedReceiptEndsCustodyBeforePaymentAndPartialTicketStaysOpen() {
+        var fixture = inspectionFixture(2, "0");
+        String key = "f03-partial-" + UUID.randomUUID();
+        try {
+            var request = inspectionRequest(key, fixture, "DAMAGED");
+            var receipt = returnInspectionService.inspect(request, UUID.randomUUID());
+            assertThat(receipt.tickets().get(0).status()).isEqualTo("BORROWING");
+            var damaged = loanDetailRepository.findById(fixture.details().get(0).getDetailId()).orElseThrow();
+            assertThat(damaged.getReturnDate()).isEqualTo(damaged.getPhysicalReturnAt()).isNotNull();
+            assertThat(bookCopyRepository.findById(damaged.getBarcode()).orElseThrow().getStatus()).isEqualTo("MAINTENANCE");
+            assertThat(loanDetailRepository.countOpenItemsByUserId(fixture.reader().getUserId(), List.of("BORROWING", "OVERDUE"))).isEqualTo(1);
+            assertThatThrownBy(() -> loanService.renewLoan(fixture.ticket().getTicketId(), damaged.getDetailId(), fixture.reader().getUserId()))
+                    .hasMessageContaining("đang mượn");
+            var second = inspectionRequest(key + "-rest", fixture, "NORMAL", "NORMAL");
+            second.setItems(List.of(second.getItems().get(1)));
+            var completed = returnInspectionService.inspect(second, UUID.randomUUID());
+            assertThat(completed.tickets().get(0).status()).isEqualTo("RETURNED");
+            assertThat(penaltyCaseRepository.findById(receipt.items().get(0).penaltyCaseId()).orElseThrow().getStatus()).isEqualTo("OUTSTANDING");
+            assertThat(walletRepository.findByUserId(fixture.reader().getUserId()).orElseThrow().getTotalDebt()).isEqualByComparingTo("200000");
+            var replay = returnInspectionService.inspect(request, UUID.randomUUID());
+            assertThat(replay.items()).isEqualTo(receipt.items());
+            assertThat(replay.tickets()).isEqualTo(receipt.tickets()); // Original receipt, not the later ticket state.
+        } finally {
+            cleanupInspection(fixture, key, key + "-rest");
+        }
+    }
+
+    @Test
+    void heavyDamagedReceiptClosesLoanWhileReplacementIsStillOwed() {
+        var fixture = inspectionFixture(1, "0");
+        String key = "f03-heavy-" + UUID.randomUUID();
+        try {
+            var request = inspectionRequest(key, fixture, "DAMAGED");
+            var penalty = request.getItems().get(0).getPenalty();
+            penalty.setDamageSeverity("HEAVY");
+            penalty.setSettlementMethod("REPLACEMENT");
+            var receipt = returnInspectionService.inspect(request, UUID.randomUUID());
+            assertThat(receipt.tickets().get(0).status()).isEqualTo("RETURNED");
+            assertThat(receipt.items().get(0).detailStatus()).isEqualTo("DAMAGED");
+            assertThat(receipt.items().get(0).copyStatus()).isEqualTo("LOST"); // Quarantined; not lendable.
+            assertThat(receipt.items().get(0).returnDate()).isNotNull();
+            assertThat(receipt.items().get(0).penaltyStatus()).isEqualTo("OUTSTANDING");
+            var historyItem = loanService.getMyLoans(fixture.reader().getUserId()).stream()
+                    .filter(item -> item.getDetailId().equals(fixture.details().get(0).getDetailId())).findFirst().orElseThrow();
+            assertThat(historyItem.getStatus()).isEqualTo("RETURNED");
+            assertThat(historyItem.getPhysicalReturnAt()).isEqualTo(historyItem.getReturnDate());
+        } finally {
+            cleanupInspection(fixture, key);
         }
     }
 
@@ -1426,6 +1479,8 @@ class Week6IntegrationTest {
         book.setPublisher("HUIT");
         book.setLanguage("vi");
         book.setIsDigital(false);
+        book.setDefaultPrice(new BigDecimal("50000"));
+        book.setPriceStatus("KNOWN");
         return bookRepository.saveAndFlush(book);
     }
 
@@ -1530,7 +1585,7 @@ class Week6IntegrationTest {
         assertThat(result.bookId()).isEqualTo(book.getBookId()); assertThat(result.canonicalIsbn()).isEqualTo("9780132350884");
         assertThat(result.subjects()).hasSize(1); assertThat(result.subjects().get(0).source()).isEqualTo("MANUAL");
         assertThat(result.classificationStatus()).isEqualTo("AVAILABLE");
-        assertThat(result.placementStatus()).isEqualTo("WAITING_ADMIN_RULES"); assertThat(result.suggestedShelfId()).isNull();
+        assertThat(result.placementStatus()).isEqualTo("NO_MATCHING_RULE"); assertThat(result.suggestedShelfId()).isNull();
         assertThat(inventoryIdentification.identify("9780134494166", null).bookId()).isEqualTo(anotherEdition.getBookId());
         var modern = createBook(); modern.setIsbn("9791090636071"); bookRepository.saveAndFlush(modern);
         var noIsbn = createBook(); noIsbn.setIsbn(null); bookRepository.saveAndFlush(noIsbn);
@@ -1557,7 +1612,7 @@ class Week6IntegrationTest {
             var staff = createUserWithRole("b06-" + role, role, "Import@123"); String token = loginAndGetToken(staff.getEmail(), "Import@123");
             mockMvc.perform(get("/inventory/catalog-identification").param("isbn", "0-201-53082-1").header("Authorization", "Bearer " + token))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.bookId").value(book.getBookId()))
-                    .andExpect(jsonPath("$.placementStatus").value("WAITING_ADMIN_RULES"));
+                    .andExpect(jsonPath("$.placementStatus").value("NO_MATCHING_RULE"));
             var line = request.getLines().get(0); Long shelf = line.getShelfId(); line.setShelfId(null);
             mockMvc.perform(post("/inventory/receipts").header("Authorization", "Bearer " + token).contentType("application/json").content(objectMapper.writeValueAsString(request))).andExpect(status().isBadRequest());
             line.setShelfId(shelf);
@@ -1629,6 +1684,48 @@ class Week6IntegrationTest {
             mockMvc.perform(get(base + "/export").header("Authorization", "Bearer " + token).param("facultyId", "UNKNOWN")).andExpect(status().isBadRequest());
         }
         assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM book_proposals WHERE user_id=? AND status='PENDING'", Long.class, student.getUserId())).isEqualTo(3);
+    }
+
+    @Test
+    void mobileMajorProposalAndFidContractsRequireAuthenticationAndPreserveOfficialSource() throws Exception {
+        String faculty = "MOBILE_" + UUID.randomUUID().toString().substring(0, 8);
+        String major = faculty + "_IT";
+        jdbcTemplate.update("INSERT INTO academic_faculties(faculty_id,faculty_name) VALUES (?,?)", faculty, "Mobile test faculty");
+        jdbcTemplate.update("INSERT INTO academic_majors(major_id,faculty_id,major_name,source_reference) VALUES (?,?,?,?)",
+                major, faculty, "Công nghệ thông tin", "Official test catalog");
+        var student = createUserWithRole("mobile-major-student", "STUDENT", "Mobile@123");
+        String token = loginAndGetToken(student.getEmail(), "Mobile@123");
+        mockMvc.perform(get("/proposals/majors")).andExpect(status().isForbidden());
+        String majors = mockMvc.perform(get("/proposals/majors").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(majors).contains(major, "Official test catalog");
+        String body = "{\"title\":\"Mobile proposal\",\"reason\":\"Môn chuyên ngành\",\"majorId\":\"" + major + "\"}";
+        mockMvc.perform(post("/proposals").header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.majorId").value(major))
+                .andExpect(jsonPath("$.majorName").value("Công nghệ thông tin"))
+                .andExpect(jsonPath("$.majorSourceReference").value("Official test catalog"))
+                .andExpect(jsonPath("$.urgencyLevel").value("NORMAL"));
+        mockMvc.perform(post("/proposals").header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body.replace(major, "FAKE-MAJOR")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/proposals/admin").header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/proposals/my").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].majorId").value(major));
+        mockMvc.perform(get("/api/v1/library-card").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.depositBalance").isNumber())
+                .andExpect(jsonPath("$.totalDebt").isNumber());
+        mockMvc.perform(get("/api/v1/transactions/my-ledger").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+        mockMvc.perform(post("/api/v1/notifications/devices").header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"mobile-fid-test\",\"platform\":\"ANDROID\",\"deviceId\":\"mobile-test-device\",\"identifierType\":\"FID\"}"))
+                .andExpect(status().isOk());
+        assertThat(jdbcTemplate.queryForObject("SELECT identifier_type FROM push_device_registrations WHERE token='mobile-fid-test'", String.class)).isEqualTo("FID");
+        mockMvc.perform(post("/api/v1/notifications/devices").header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"invalid\",\"platform\":\"ANDROID\",\"identifierType\":\"WRONG\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -1716,4 +1813,43 @@ class Week6IntegrationTest {
         }
         throw new AssertionError("Mailpit did not capture the OTP email");
     }
+
+    @Test void adminPlacementRuleGuidesIdentificationAndRejectsIncompatibleImportAtomically() {
+        var book=createBook();var other=createBook();var supplier=createSupplier();
+        var allowed=line(book.getBookId(),2,"1000");
+        long subject=jdbcTemplate.queryForObject("INSERT INTO recommendation_subjects(code,name,active) VALUES (?, 'Chủ đề xếp sách',true) RETURNING subject_id",Long.class,"FIX-"+UUID.randomUUID());
+        jdbcTemplate.update("INSERT INTO book_subject_assignments(book_id,subject_id,confidence,classification_source,evidence,primary_subject) VALUES (?,?,1,'MANUAL','Danh mục được xác minh',true)",book.getBookId(),subject);
+        jdbcTemplate.update("INSERT INTO shelf_subject_rules(shelf_id,subject_id,active) VALUES (?,?,true)",allowed.getShelfId(),subject);
+        var result=inventoryIdentification.identify(null,book.getBookId());
+        assertThat(result.placementStatus()).isEqualTo("SUGGESTED_BY_ADMIN_RULE");
+        assertThat(result.suggestedShelfId()).isEqualTo(allowed.getShelfId());
+        assertThat(result.placements().get(0).floorId()).isEqualTo(allowed.getFloorId());
+        long receiptsBefore=goodsReceiptRepository.count(),copiesBefore=bookCopyRepository.count();
+        var rejected=new ImportReceiptRequestDTO.Line();rejected.setBookId(other.getBookId());rejected.setQuantity(1);rejected.setUnitPrice(BigDecimal.ONE);rejected.setShelfId(allowed.getShelfId());
+        assertThatThrownBy(()->inventoryService.importBooks(importRequest(supplier.getSupplierId(),List.of(allowed,rejected)))).hasMessageContaining("409");
+        assertThat(goodsReceiptRepository.count()).isEqualTo(receiptsBefore);assertThat(bookCopyRepository.count()).isEqualTo(copiesBefore);
+        var saved=inventoryService.importBooks(importRequest(supplier.getSupplierId(),List.of(allowed)));
+        assertThat(saved.getQuantity()).isEqualTo(2);
+        assertThat(saved.getLines().get(0).shelfId()).isEqualTo(allowed.getShelfId());
+    }
+
+    @Autowired private com.huit.library.modules.catalog.service.LocationService locationService;
+    @Test void shelfPagesKeepOrphanCopiesAndUnplacedCopiesWithoutGuessingCatalogLinks() throws Exception {
+        var book=createBook();var position=line(book.getBookId(),1,"100");
+        String placed="FIX-PLACED-"+UUID.randomUUID(),orphan="FIX-ORPHAN-"+UUID.randomUUID(),unplaced="FIX-UNPLACED-"+UUID.randomUUID();
+        jdbcTemplate.update("INSERT INTO book_copies(barcode,book_id,shelf_id,status) VALUES (?,?,?,'AVAILABLE')",placed,book.getBookId(),position.getShelfId());
+        jdbcTemplate.update("INSERT INTO book_copies(barcode,book_id,shelf_id,status) VALUES (?,999999999,?,'AVAILABLE')",orphan,position.getShelfId());
+        jdbcTemplate.update("INSERT INTO book_copies(barcode,book_id,status) VALUES (?,?,'AVAILABLE')",unplaced,book.getBookId());
+        var first=locationService.getCopiesPage(position.getShelfId(),0,1);var second=locationService.getCopiesPage(position.getShelfId(),1,1);
+        assertThat(first.total()).isEqualTo(2);assertThat(second.items()).hasSize(1);
+        var rows=bookCopyRepository.findShelfBooks(position.getShelfId());
+        assertThat(rows.stream().filter(r->r.barcode().equals(orphan)).findFirst().orElseThrow().catalogMatched()).isFalse();
+        assertThat(rows.stream().filter(r->r.barcode().equals(placed)).findFirst().orElseThrow().catalogMatched()).isTrue();
+        assertThat(locationService.getCopiesPage(null,0,100).total()).isGreaterThan(0);
+        assertThatThrownBy(()->locationService.getCopiesPage(position.getShelfId(),-1,50)).hasMessageContaining("400");
+        assertThatThrownBy(()->locationService.getCopiesPage(999999999L,0,50)).hasMessageContaining("404");
+        var student=createUserWithRole("fix-shelf-student","STUDENT","Shelf@123");String token=loginAndGetToken(student.getEmail(),"Shelf@123");
+        mockMvc.perform(get("/locations/unplaced-copies").header("Authorization","Bearer "+token)).andExpect(status().isForbidden());
+    }
+
 }

@@ -17,11 +17,11 @@ void main() {
     });
     submittedBodies = [];
     ApiService.testClient = MockClient((request) async {
-      if (request.method == 'GET' && request.url.path.endsWith('/categories')) {
+      if (request.method == 'GET' && request.url.path.endsWith('/proposals/majors')) {
         return http.Response(
           jsonEncode([
-            {'categoryId': 1, 'name': 'Công nghệ thông tin'},
-            {'categoryId': 2, 'name': 'Khoa học'},
+            {'majorId': 'CNTT', 'majorName': 'Công nghệ thông tin'},
+            {'majorId': 'KT', 'majorName': 'Kế toán'},
           ]),
           200,
           headers: {'content-type': 'application/json; charset=utf-8'},
@@ -57,29 +57,23 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('tải thể loại từ Backend và hỗ trợ nhập thể loại Khác', (
-    tester,
-  ) async {
+  testWidgets('official majors replace genres and urgency', (tester) async {
     await pumpForm(tester);
-
-    expect(find.text('Nhập thể loại khác'), findsNothing);
-
-    final genreDropdown = find.byType(DropdownButtonFormField<String>).first;
-    await tester.ensureVisible(genreDropdown);
-    await tester.pump();
-    await tester.tap(genreDropdown);
+    expect(find.text('Mức độ cần thiết'), findsNothing);
+    final dropdown = find.byType(DropdownButtonFormField<String>);
+    await tester.ensureVisible(dropdown);
+    await tester.tap(dropdown);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Công nghệ thông tin'), findsOneWidget);
-    expect(find.text('Khoa học'), findsOneWidget);
-    await tester.tap(find.text('Khác').last);
+    expect(find.text('Kế toán'), findsOneWidget);
+    expect(find.text('Khác'), findsNothing);
+    await tester.tap(find.text('Công nghệ thông tin').last);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-
-    expect(find.text('Nhập thể loại khác'), findsOneWidget);
   });
 
-  testWidgets('chỉ bắt buộc tên sách và lý do, trường ít dùng được thu gọn', (
+  testWidgets('thông tin ít dùng được thu gọn', (
     tester,
   ) async {
     await pumpForm(tester);
@@ -103,7 +97,7 @@ void main() {
     expect(find.text('Liên kết tham khảo'), findsOneWidget);
   });
 
-  testWidgets('gửi thể loại đã chọn cùng hai trường bắt buộc', (tester) async {
+  testWidgets('gửi mã ngành chính thức, bỏ thể loại và ưu tiên', (tester) async {
     await pumpForm(tester);
 
     await tester.enterText(
@@ -136,8 +130,9 @@ void main() {
     expect(submittedBodies, hasLength(1));
     expect(submittedBodies.single['title'], 'Kiến trúc phần mềm');
     expect(submittedBodies.single['reason'], 'Phục vụ môn học chuyên ngành');
-    expect(submittedBodies.single['genre'], 'Công nghệ thông tin');
-    expect(submittedBodies.single['urgencyLevel'], 'NORMAL');
+    expect(submittedBodies.single['majorId'], 'CNTT');
+    expect(submittedBodies.single.containsKey('genre'), isFalse);
+    expect(submittedBodies.single.containsKey('urgencyLevel'), isFalse);
     expect(submittedBodies.single.containsKey('publisher'), isFalse);
   });
 }

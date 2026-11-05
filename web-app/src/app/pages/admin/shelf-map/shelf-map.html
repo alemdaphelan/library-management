@@ -25,7 +25,7 @@
       </header>
 
       <form class="create-form" (ngSubmit)="createFloor()">
-        <input name="newFloorName" [(ngModel)]="newFloorName" placeholder="Ví dụ: Tầng 3" maxlength="100">
+        <label>Tên tầng<input required name="newFloorName" [(ngModel)]="newFloorName" placeholder="Ví dụ: Tầng 3" maxlength="100"></label>
         <button type="submit" [disabled]="!newFloorName.trim()">Thêm</button>
       </form>
 
@@ -54,7 +54,7 @@
       </header>
 
       <form class="create-form" (ngSubmit)="createBookshelf()">
-        <input name="newBookshelfName" [(ngModel)]="newBookshelfName" placeholder="Ví dụ: Kệ CNTT-A" maxlength="100" [disabled]="!selectedFloor">
+        <label>Tên dãy kệ<input required name="newBookshelfName" [(ngModel)]="newBookshelfName" placeholder="Ví dụ: Kệ CNTT-A" maxlength="100" [disabled]="!selectedFloor"></label>
         <button type="submit" [disabled]="!selectedFloor || !newBookshelfName.trim()">Thêm</button>
       </form>
 
@@ -84,7 +84,7 @@
       </header>
 
       <form class="create-form" (ngSubmit)="createShelf()">
-        <input name="newShelfName" [(ngModel)]="newShelfName" placeholder="Ví dụ: Ngăn 01" maxlength="100" [disabled]="!selectedBookshelf">
+        <label>Tên ngăn<input required name="newShelfName" [(ngModel)]="newShelfName" placeholder="Ví dụ: Ngăn 01" maxlength="100" [disabled]="!selectedBookshelf"></label>
         <button type="submit" [disabled]="!selectedBookshelf || !newShelfName.trim()">Thêm</button>
       </form>
 
@@ -111,7 +111,7 @@
         <h2>Tài liệu trong {{ selectedShelf.name }}</h2>
         <p>Danh sách từng bản sao đang được xếp tại ngăn kệ này.</p>
       </div>
-      <span class="count">{{ shelfBooks.length }} bản sao</span>
+      <span class="count" *ngIf="!isLoadingShelfBooks && !shelfBooksError">{{ shelfTotal }} bản sao</span>
     </div>
 
     <div class="subject-rule-panel">
@@ -150,20 +150,30 @@
     </div>
 
     <div class="loading" *ngIf="isLoadingShelfBooks">Đang tải danh sách tài liệu…</div>
-    <div class="table-wrap" *ngIf="!isLoadingShelfBooks && shelfBooks.length">
+    <p class="message error" role="alert" *ngIf="shelfBooksError">{{shelfBooksError}} <button type="button" (click)="loadShelfBooks(shelfPage)">Thử lại tài liệu trong ngăn</button></p>
+    <div class="table-wrap" *ngIf="!isLoadingShelfBooks && !shelfBooksError && shelfBooks.length">
       <table>
         <thead><tr><th>Tên sách</th><th>ISBN</th><th>Mã vạch</th><th>Trạng thái</th></tr></thead>
         <tbody>
           <tr *ngFor="let book of shelfBooks">
-            <td><a [routerLink]="['/book', book.bookId]">{{ book.title }}</a></td>
+            <td><a *ngIf="book.catalogMatched !== false && book.bookId !== null" [routerLink]="['/book', book.bookId]">{{ book.title }}</a><span *ngIf="book.catalogMatched === false || book.bookId === null">{{ book.title }} <ng-container *ngIf="book.bookId !== null">(mã {{book.bookId}})</ng-container></span></td>
             <td>{{ book.isbn || '—' }}</td><td>{{ book.barcode }}</td><td>{{ copyStatusLabel(book.status) }}</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p class="empty" *ngIf="!isLoadingShelfBooks && shelfBooks.length === 0">Ngăn kệ này chưa có tài liệu.</p>
+    <div class="subject-actions"><button type="button" (click)="loadShelfBooks(shelfPage)" [disabled]="isLoadingShelfBooks">Tải lại</button><button type="button" (click)="loadShelfBooks(shelfPage-1)" [disabled]="isLoadingShelfBooks || !!shelfBooksError || shelfPage===0">Trước</button><span>Trang {{shelfPage+1}} · 50 dòng/trang</span><button type="button" (click)="loadShelfBooks(shelfPage+1)" [disabled]="isLoadingShelfBooks || !!shelfBooksError || (shelfPage+1)*50>=shelfTotal">Sau</button></div><p class="empty" *ngIf="!isLoadingShelfBooks && !shelfBooksError && shelfBooks.length === 0">Ngăn kệ này chưa có tài liệu.</p>
   </section>
 
+  <section class="shelf-books">
+    <h2>Bản sao chưa xếp ngăn <span *ngIf="!unplacedLoading && !unplacedError">({{unplacedTotal}})</span></h2>
+    <p>Chọn tầng/kệ/ngăn ở trên rồi xác nhận đúng vị trí thực tế của từng cuốn. Tài liệu số không được xếp ngăn vật lý.</p>
+    <p *ngIf="unplacedLoading">Đang tải…</p><p class="message error" *ngIf="unplacedError" role="alert">{{unplacedError}} <button type="button" (click)="loadUnplaced(unplacedPage)">Thử lại bản sao chưa xếp</button></p>
+    <div class="table-wrap" *ngIf="!unplacedLoading && !unplacedError"><table><thead><tr><th>Đầu sách</th><th>Mã vạch</th><th>Trạng thái</th><th>Xếp ngăn</th></tr></thead><tbody>
+      <tr *ngFor="let book of unplaced"><td>{{book.title}}</td><td>{{book.barcode}}</td><td>{{copyStatusLabel(book.status)}}</td><td><button type="button" (click)="placeUnlocated(book)" [disabled]="!selectedShelf || !!placingBarcode">{{placingBarcode===book.barcode?'Đang xếp…':'Xếp vào '+(selectedShelf?.name || 'ngăn đã chọn')}}</button></td></tr>
+    </tbody></table><p *ngIf="!unplaced.length">Không có bản sao chưa xếp ngăn.</p></div>
+    <div class="subject-actions"><button type="button" (click)="loadUnplaced(unplacedPage)" [disabled]="unplacedLoading">Tải lại</button><button type="button" (click)="loadUnplaced(unplacedPage-1)" [disabled]="unplacedLoading || !!unplacedError || unplacedPage===0">Trước</button><span>Trang {{unplacedPage+1}} · 50 dòng/trang</span><button type="button" (click)="loadUnplaced(unplacedPage+1)" [disabled]="unplacedLoading || !!unplacedError || (unplacedPage+1)*50>=unplacedTotal">Sau</button></div>
+  </section>
   <div class="scope-note">
     Sơ đồ hiện biểu diễn cấu trúc vị trí thực tế trong cơ sở dữ liệu. Tọa độ mặt bằng và chỉ đường không được hiển thị vì mô hình dữ liệu hiện chưa lưu tọa độ kệ.
   </div>

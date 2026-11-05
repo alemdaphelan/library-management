@@ -35,7 +35,7 @@ class InventoryServiceTest {
         BookCopyRepository copyRepository = mock(BookCopyRepository.class);
         ShelfRepository shelfRepository = mock(ShelfRepository.class);
         InventoryService service = new InventoryService(receiptRepository, supplierRepository,
-                detailRepository, bookRepository, copyRepository, mock(StaffNotificationService.class), shelfRepository);
+                detailRepository, bookRepository, copyRepository, mock(StaffNotificationService.class), shelfRepository, mock(com.huit.library.modules.catalog.service.ShelfPlacementService.class));
         FloorEntity floor = new FloorEntity(); floor.setFloorId(1L); floor.setName("Tầng 1");
         BookshelfEntity bookshelf = new BookshelfEntity(); bookshelf.setBookshelfId(2L); bookshelf.setName("Kệ A"); bookshelf.setFloor(floor);
         ShelfEntity shelf = new ShelfEntity(); shelf.setShelfId(3L); shelf.setName("Ngăn B"); shelf.setBookshelf(bookshelf);

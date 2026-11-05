@@ -40,6 +40,7 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
       final results = await Future.wait([
         ApiService.get('/api/v1/penalty-cases/my'),
         ApiService.get('/api/v1/transactions/my-ledger'),
+        ApiService.get('/api/v1/library-card'),
       ]);
       if (!mounted) return;
       final rawCases = results[0];
@@ -49,19 +50,14 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
           ? rawCases.map((e) => Map<String, dynamic>.from(e as Map)).toList()
           : <Map<String, dynamic>>[];
 
-      Map<String, dynamic> parsedWallet = {};
-      List<Map<String, dynamic>> parsedEntries = [];
-      if (rawLedger is Map) {
-        if (rawLedger['wallet'] is Map) {
-          parsedWallet = Map<String, dynamic>.from(rawLedger['wallet'] as Map);
-        }
-        final list = rawLedger['entries'] ?? rawLedger['transactions'];
-        if (list is List) {
-          parsedEntries = list
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-        }
+      final rawCard = results[2];
+      if (rawCard is! Map || rawLedger is! List || rawCases is! List) {
+        throw Exception('Dữ liệu công nợ không hợp lệ. Vui lòng tải lại.');
       }
+      final parsedWallet = Map<String, dynamic>.from(rawCard);
+      final parsedEntries = rawLedger
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
 
       setState(() {
         _cases = parsedCases;
@@ -106,19 +102,24 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
   }
 
   String _formatMoney(dynamic amount) {
-    final value = num.tryParse(amount?.toString() ?? '0') ?? 0;
+    final value = num.tryParse(amount?.toString() ?? '');
+    if (value == null) return 'Chưa có dữ liệu';
     return '${value.toStringAsFixed(0)} đ';
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalDebt = _wallet['totalDebt'] ?? 0;
-    final depositBalance = _wallet['depositBalance'] ?? 0;
+    final totalDebt = _wallet['totalDebt'];
+    final depositBalance = _wallet['depositBalance'];
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 26
+            ? 96
+            : 56,
         title: const Text(
           'Khoản phạt & Công nợ',
+          maxLines: 2,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -171,55 +172,71 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                       color: const Color(0xFF0f172a),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Tổng công nợ hiện tại',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final stacked =
+                            constraints.maxWidth < 340 &&
+                            MediaQuery.textScalerOf(context).scale(16) > 22;
+                        final width = stacked
+                            ? constraints.maxWidth
+                            : (constraints.maxWidth - 12) / 2;
+                        return Wrap(
+                          spacing: 12,
+                          runSpacing: 16,
+                          children: [
+                            SizedBox(
+                              width: width,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Tổng công nợ hiện tại',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatMoney(totalDebt),
+                                    style: const TextStyle(
+                                      color: Colors.amberAccent,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatMoney(totalDebt),
-                                style: const TextStyle(
-                                  color: Colors.amberAccent,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            SizedBox(
+                              width: width,
+                              child: Column(
+                                crossAxisAlignment: stacked
+                                    ? CrossAxisAlignment.start
+                                    : CrossAxisAlignment.end,
+                                children: [
+                                  const Text(
+                                    'Tiền thế chân còn lại',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatMoney(depositBalance),
+                                    style: const TextStyle(
+                                      color: Colors.greenAccent,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                'Tiền thế chân còn lại',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatMoney(depositBalance),
-                                style: const TextStyle(
-                                  color: Colors.greenAccent,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -298,10 +315,13 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Hồ sơ #$caseId (${item['barcode'] ?? ''})',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  'Hồ sơ #$caseId (${item['barcode'] ?? ''})',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 status,
                 style: TextStyle(

@@ -225,13 +225,13 @@ public class LibrarianQrService {
     }
 
     private boolean isActiveReturnItem(LoanItemDTO item) {
-        if (item == null || item.getReturnDate() != null) {
+        if (item == null || item.getReturnDate() != null || item.getPhysicalReturnAt() != null) {
             return false;
         }
         String itemStatus = item.getItemStatus() == null
                 ? ""
                 : item.getItemStatus().trim().toUpperCase(Locale.ROOT);
-        return !List.of("RETURNED", "CANCELLED", "REJECTED", "SETTLED").contains(itemStatus);
+        return List.of("BORROWING", "OVERDUE").contains(itemStatus);
     }
 
     private QrPayloadResponseDTO issue(String type, String id, UUID userId) {

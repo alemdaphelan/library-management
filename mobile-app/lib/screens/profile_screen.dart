@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/edit_profile_sheet.dart';
 import 'package:mobile_app/services/auth_service.dart';
 import 'package:mobile_app/services/notification_service.dart';
 import 'package:mobile_app/services/push_notification_service.dart';
@@ -166,194 +167,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showEditProfileSheet() async {
     final currentUser = _user;
     if (currentUser == null) return;
-
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController(
-      text: currentUser['fullName']?.toString() ?? '',
+    final updated = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => EditProfileSheet(user: currentUser),
     );
-    final phoneController = TextEditingController(
-      text: currentUser['phone']?.toString() ?? '',
-    );
-    var isSaving = false;
-
-    try {
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        builder: (sheetContext) => StatefulBuilder(
-          builder: (context, setSheetState) => Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              MediaQuery.viewInsetsOf(context).bottom + 20,
-            ),
-            child: SingleChildScrollView(
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Cập nhật thông tin cá nhân',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: isSaving
-                              ? null
-                              : () => Navigator.pop(sheetContext),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Bạn chỉ có thể thay đổi họ tên và số điện thoại. '
-                      'MSSV, email và vai trò do nhà trường quản lý.',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      key: const ValueKey('profile-full-name-field'),
-                      controller: nameController,
-                      enabled: !isSaving,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Họ và tên',
-                        prefixIcon: Icon(Icons.person_outline),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        final name = value?.trim() ?? '';
-                        if (name.isEmpty) return 'Vui lòng nhập họ và tên';
-                        if (name.length > 150) {
-                          return 'Họ tên không được vượt quá 150 ký tự';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      key: const ValueKey('profile-phone-field'),
-                      controller: phoneController,
-                      enabled: !isSaving,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'Số điện thoại',
-                        hintText: 'Ví dụ: 0912345678',
-                        prefixIcon: Icon(Icons.phone_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) =>
-                          AuthService.isValidPhone(value ?? '')
-                          ? null
-                          : 'Nhập 10 chữ số bắt đầu bằng 0 hoặc mã +84',
-                    ),
-                    const SizedBox(height: 14),
-                    _ReadOnlyProfileField(
-                      label: 'Mã số sinh viên',
-                      value:
-                          (currentUser['mssv'] ??
-                                  currentUser['studentId'] ??
-                                  'Chưa cập nhật')
-                              .toString(),
-                      icon: Icons.badge_outlined,
-                    ),
-                    const SizedBox(height: 10),
-                    _ReadOnlyProfileField(
-                      label: 'Email',
-                      value: (currentUser['email'] ?? 'Chưa cập nhật')
-                          .toString(),
-                      icon: Icons.email_outlined,
-                    ),
-                    const SizedBox(height: 10),
-                    _ReadOnlyProfileField(
-                      label: 'Vai trò',
-                      value:
-                          (currentUser['roleId'] ??
-                                  currentUser['role'] ??
-                                  'STUDENT')
-                              .toString(),
-                      icon: Icons.verified_user_outlined,
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton.icon(
-                      key: const ValueKey('profile-save-button'),
-                      onPressed: isSaving
-                          ? null
-                          : () async {
-                              if (!(formKey.currentState?.validate() ??
-                                  false)) {
-                                return;
-                              }
-                              setSheetState(() => isSaving = true);
-                              try {
-                                final updated = await AuthService.updateProfile(
-                                  fullName: nameController.text,
-                                  phone: phoneController.text,
-                                );
-                                if (!mounted) return;
-                                setState(() => _user = updated);
-                                if (sheetContext.mounted) {
-                                  Navigator.pop(sheetContext);
-                                }
-                                ScaffoldMessenger.of(this.context)
-                                  ..hideCurrentSnackBar()
-                                  ..showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Cập nhật thông tin cá nhân thành công.',
-                                      ),
-                                    ),
-                                  );
-                              } catch (error) {
-                                if (!sheetContext.mounted) return;
-                                setSheetState(() => isSaving = false);
-                                ScaffoldMessenger.of(this.context)
-                                  ..hideCurrentSnackBar()
-                                  ..showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        error.toString().replaceFirst(
-                                          'Exception: ',
-                                          '',
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                              }
-                            },
-                      icon: isSaving
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.save_outlined),
-                      label: Text(isSaving ? 'Đang lưu...' : 'Lưu thay đổi'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    } finally {
-      nameController.dispose();
-      phoneController.dispose();
-    }
+    if (!mounted || updated == null) return;
+    setState(() => _user = updated);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Cập nhật thông tin cá nhân thành công.')));
   }
 
   @override
@@ -763,33 +587,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ReadOnlyProfileField extends StatelessWidget {
-  const _ReadOnlyProfileField({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        suffixIcon: const Icon(Icons.lock_outline, size: 18),
-        border: const OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.grey.shade100,
-      ),
-      child: Text(value),
     );
   }
 }

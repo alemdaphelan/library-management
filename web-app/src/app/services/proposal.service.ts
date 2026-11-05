@@ -19,6 +19,9 @@ export interface BookProposal {
   estimatedPrice?: number | null;
   externalUrl?: string;
   genre?: string;
+  majorId?: string;
+  majorName?: string;
+  majorSourceReference?: string;
   urgencyLevel?: 'LOW' | 'NORMAL' | 'HIGH';
   reason?: string;
   note?: string;

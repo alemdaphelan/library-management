@@ -7,11 +7,16 @@ import { forkJoin } from 'rxjs';
 import { DebtEntry, PenaltyCase, PenaltyService } from '../../../services/penalty.service';
 import { AuthService, LibraryCard } from '../../../services/auth.service';
 import { DialogService } from '../../../services/dialog.service';
+import { isDebtCharge, remainingDebt } from '../../../services/debt-amount';
+import { FinancePager } from './finance-pager';
+import { MockPayment } from './mock-payment';
+
+const closedCases = new Set(['PAID', 'WAIVED', 'SETTLED', 'CLOSED', 'CANCELLED', 'COMPLETED']);
 
 @Component({
   selector: 'app-my-penalties',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, FinancePager, MockPayment],
   templateUrl: './my-penalties.html',
   styleUrls: ['./my-penalties.css'],
 })
@@ -24,6 +29,20 @@ export class MyPenalties implements OnInit {
   paymentPurpose: 'DEBT' | 'DEPOSIT' = 'DEBT';
   paymentAmount = 0;
   paymentSubmitting = false;
+  readonly pageSize = 10;
+  debtPage = 0;
+  casePage = 0;
+  paymentPage = 0;
+  debtStatus: 'UNPAID' | 'PAID' | 'ALL' = 'UNPAID';
+  debtType = '';
+  debtQuery = '';
+  caseStatus: 'OPEN' | 'CLOSED' | 'ALL' = 'OPEN';
+  readonly feeTypes = [
+    { value: 'FINE', label: 'Phạt quá hạn' },
+    { value: 'REPAIR_FEE', label: 'Phí sửa chữa' },
+    { value: 'COMPENSATION', label: 'Tiền đền bù' },
+    { value: 'TECHNICAL_FEE', label: 'Phí xử lý kỹ thuật' },
+  ];
 
   constructor(
     private penaltyService: PenaltyService,
@@ -51,6 +70,7 @@ export class MyPenalties implements OnInit {
         this.ledger = ledger || [];
         this.penaltyCases = cases || [];
         this.libraryCard = card;
+        this.debtPage = this.casePage = this.paymentPage = 0;
         if (this.paymentPurpose === 'DEBT') this.paymentAmount = this.outstandingDebt;
         this.loading = false;
         this.cdr.detectChanges();
@@ -65,7 +85,7 @@ export class MyPenalties implements OnInit {
 
   get debtEntries(): DebtEntry[] {
     return this.ledger
-      .filter(entry => Number(entry.amount) > 0 && entry.type !== 'DEPOSIT_TOPUP')
+      .filter(isDebtCharge)
       .sort((a, b) => this.dateValue(b.createdAt) - this.dateValue(a.createdAt));
   }
 
@@ -73,6 +93,44 @@ export class MyPenalties implements OnInit {
     return this.ledger
       .filter(entry => entry.type === 'PAYMENT' || Number(entry.amount) < 0)
       .sort((a, b) => this.dateValue(b.paidAt || b.createdAt) - this.dateValue(a.paidAt || a.createdAt));
+  }
+
+  get filteredDebtEntries(): DebtEntry[] {
+    const query = this.searchKey(this.debtQuery.trim());
+    return this.debtEntries.filter(entry => {
+      const open = this.remainingAmount(entry) > 0;
+      const type = entry.type === 'REPAIR' ? 'REPAIR_FEE' : entry.type === 'OVERDUE_FINE' ? 'FINE' : entry.type;
+      return (this.debtStatus === 'ALL' || (this.debtStatus === 'UNPAID' ? open : !open))
+        && (!this.debtType || type === this.debtType)
+        && (!query || this.searchKey(`${entry.transactionId} ${this.feeTypeLabel(entry.type)} ${entry.reason || ''} ${entry.receiptNumber || ''}`).includes(query));
+    });
+  }
+  get visibleDebtEntries(): DebtEntry[] {
+    return this.filteredDebtEntries.slice(this.debtPage * this.pageSize, (this.debtPage + 1) * this.pageSize);
+  }
+  get filteredCases(): PenaltyCase[] {
+    return this.penaltyCases.filter(item => this.caseStatus === 'ALL'
+      || (this.caseStatus === 'CLOSED' ? closedCases.has(item.status) : !closedCases.has(item.status)))
+      .sort((a, b) => this.dateValue(b.reportedAt) - this.dateValue(a.reportedAt) || b.caseId - a.caseId);
+  }
+  get visibleCases(): PenaltyCase[] {
+    return this.filteredCases.slice(this.casePage * this.pageSize, (this.casePage + 1) * this.pageSize);
+  }
+  get visiblePayments(): DebtEntry[] {
+    return this.paymentEntries.slice(this.paymentPage * this.pageSize, (this.paymentPage + 1) * this.pageSize);
+  }
+  get cardStatusLabel(): string {
+    if (!this.libraryCard?.issued) return 'Chưa cấp thẻ';
+    return ({ ACTIVE: 'Đang hoạt động', LOCKED: 'Đã khóa', EXPIRED: 'Đã hết hạn' } as Record<string, string>)[this.libraryCard.cardStatus] || 'Chưa xác định';
+  }
+  caseRemaining(item: PenaltyCase): number {
+    return closedCases.has(item.status) ? 0 : Math.max(0, item.totalAmount - (item.paidAmount || 0));
+  }
+  resetDebtFilters(): void {
+    this.debtStatus = 'UNPAID'; this.debtType = ''; this.debtQuery = ''; this.debtPage = 0;
+  }
+  private searchKey(value: string): string {
+    return value.normalize('NFD').replace(/\p{M}/gu, '').replace(/[đĐ]/g, 'd').toLocaleLowerCase('vi');
   }
 
   selectPaymentPurpose(purpose: 'DEBT' | 'DEPOSIT'): void {
@@ -132,7 +190,7 @@ export class MyPenalties implements OnInit {
   }
 
   remainingAmount(entry: DebtEntry): number {
-    return Math.max(0, Number(entry.amount || 0) - Number(entry.paidAmount || 0));
+    return remainingDebt(entry);
   }
 
   feeTypeLabel(type: string): string {
@@ -141,6 +199,8 @@ export class MyPenalties implements OnInit {
       OVERDUE_FINE: 'Phạt quá hạn',
       COMPENSATION: 'Tiền đền bù',
       REPAIR: 'Phí sửa chữa',
+      REPAIR_FEE: 'Phí sửa chữa',
+      WAIVER_ADJUSTMENT: 'Miễn giảm',
       TECHNICAL_FEE: 'Phí xử lý kỹ thuật',
       PAYMENT: 'Thanh toán',
       DEPOSIT_TOPUP: 'Nạp tiền thế chân',
@@ -160,6 +220,8 @@ export class MyPenalties implements OnInit {
       SETTLED: 'Đã quyết toán',
       CLOSED: 'Đã đóng',
       WAIVED: 'Đã miễn giảm',
+      WAITING_REPLACEMENT: 'Chờ sách thay thế',
+      CANCELLED: 'Đã hủy',
     } as Record<string, string>)[status] || status;
   }
 

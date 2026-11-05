@@ -34,13 +34,14 @@ class LibrarianQrService {
 
   static Future<Map<String, dynamic>> checkout(
     int ticketId,
-    List<String> barcodes,
-  ) async {
+    List<String> barcodes, {
+    String? idempotencyKey,
+  }) async {
     final data = await ApiService.post('/loans/checkout', {
-      'idempotencyKey': _operationKey('checkout'),
+      'idempotencyKey': idempotencyKey ?? operationKey('checkout'),
       'ticketId': ticketId,
       'barcodes': _normalizeBarcodes(barcodes),
-    });
+    }).timeout(const Duration(seconds: 20));
     return Map<String, dynamic>.from(data as Map);
   }
 
@@ -49,7 +50,7 @@ class LibrarianQrService {
     String? note,
   }) async {
     final data = await ApiService.post('/loans/return', {
-      'idempotencyKey': _operationKey('return'),
+      'idempotencyKey': operationKey('return'),
       'barcodes': _normalizeBarcodes(barcodes),
       if (note != null && note.trim().isNotEmpty)
         'returnConditionNote': note.trim(),
@@ -58,12 +59,13 @@ class LibrarianQrService {
   }
 
   static Future<Map<String, dynamic>> inspectAndReturn(
-    List<Map<String, dynamic>> items,
-  ) async {
+    List<Map<String, dynamic>> items, {
+    String? idempotencyKey,
+  }) async {
     final data = await ApiService.post('/loans/return-inspection', {
-      'idempotencyKey': _operationKey('return-inspection'),
+      'idempotencyKey': idempotencyKey ?? operationKey('return-inspection'),
       'items': items,
-    });
+    }).timeout(const Duration(seconds: 20));
     return Map<String, dynamic>.from(data as Map);
   }
 
@@ -73,7 +75,12 @@ class LibrarianQrService {
       .toSet()
       .toList();
 
-  static String _operationKey(String operation) {
+  static bool isReturnable(Map item) {
+    if (item['returnable'] == false || item['returnDate'] != null || item['physicalReturnAt'] != null) return false;
+    return const ['BORROWING', 'OVERDUE'].contains(item['itemStatus']?.toString().toUpperCase());
+  }
+
+  static String operationKey(String operation) {
     final random = Random.secure().nextInt(1 << 32).toRadixString(16);
     return 'mobile-$operation-${DateTime.now().microsecondsSinceEpoch}-$random';
   }

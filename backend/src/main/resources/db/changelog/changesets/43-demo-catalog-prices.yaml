@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 43-demo-catalog-prices
+      author: codex
+      context: "@demo"
+      comment: Explicit demo-only prices; preserve catalog/manual prices and all historical financial records.
+      changes:
+        - sql:
+            sql: |
+              UPDATE books
+                 SET default_price = 15000 + mod(book_id * 7919, 51) * 1000,
+                     price_source = 'DEMO_GENERATED', price_status = 'ESTIMATED',
+                     price_currency = 'VND', price_updated_at = CURRENT_TIMESTAMP
+               WHERE price_source = 'CONFIGURED_FALLBACK'
+                 AND price_status = 'ESTIMATED'
+                 AND COALESCE(is_digital, false) = false;

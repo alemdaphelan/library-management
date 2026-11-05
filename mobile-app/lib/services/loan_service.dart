@@ -33,19 +33,10 @@ class LoanService {
   static bool canShowReturnQr(Map<String, dynamic> loan) {
     final status = (loan['status'] ?? '').toString().toUpperCase();
     final itemStatus = (loan['itemStatus'] ?? status).toString().toUpperCase();
-    if (loan['returnDate'] != null ||
-        const {
-          'CANCELLED',
-          'RETURNED',
-          'REJECTED',
-          'SETTLED',
-        }.contains(itemStatus)) {
+    if (loan['returnable'] == false || loan['returnDate'] != null || loan['physicalReturnAt'] != null) {
       return false;
     }
-    return status == 'BORROWING' ||
-        status == 'OVERDUE' ||
-        itemStatus == 'BORROWING' ||
-        itemStatus == 'OVERDUE';
+    return itemStatus == 'BORROWING' || itemStatus == 'OVERDUE';
   }
 
   static Future<List<Map<String, dynamic>>> getLoans({
@@ -224,8 +215,8 @@ class LoanService {
     final bool isBorrowing =
         (effectiveStatus == 'BORROWING' || effectiveStatus == 'OVERDUE') &&
         returnDate == null &&
-        itemStatus != 'CANCELLED' &&
-        itemStatus != 'RETURNED';
+        loan['physicalReturnAt'] == null &&
+        const {'BORROWING', 'OVERDUE'}.contains(itemStatus);
 
     final bool isHistory = !isWaitingPickup && !isBorrowing;
 

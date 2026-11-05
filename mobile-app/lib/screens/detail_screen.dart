@@ -31,7 +31,7 @@ class _DetailScreenState extends State<DetailScreen> {
   num _requestedBookValue = 0;
   num _maximumBorrowingValue = 0;
   num _remainingBorrowingValue = 0;
-  bool _priceKnown = true;
+  bool _priceKnown = false;
   bool _monetaryEligible = true;
   bool _eligibilityLoaded = false;
   bool _hasActiveLoanForBook = false;
@@ -184,8 +184,10 @@ class _DetailScreenState extends State<DetailScreen> {
         _remainingBorrowingValue = _asMoney(
           eligibility['remainingBorrowingValue'],
         );
-        _priceKnown = eligibility['priceKnown'] != false;
-        _monetaryEligible = eligibility['monetaryEligible'] != false;
+        _priceKnown =
+            eligibility['priceKnown'] == true &&
+            eligibility['requestedBookValue'] != null;
+        _monetaryEligible = eligibility['monetaryEligible'] == true;
         _eligibilityLoaded = eligibility.isNotEmpty;
         _hasActiveLoanForBook = hasLoanForBook;
         _hasActiveWaitlistForBook = hasWaitingForBook;
@@ -321,6 +323,7 @@ class _DetailScreenState extends State<DetailScreen> {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
@@ -329,198 +332,208 @@ class _DetailScreenState extends State<DetailScreen> {
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0284c7).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      isJoiningWaitlist
-                          ? Icons.hourglass_top_rounded
-                          : Icons.bookmark_add_rounded,
-                      color: const Color(0xFF0284c7),
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      isJoiningWaitlist
-                          ? 'Xác nhận đăng ký hàng đợi'
-                          : 'Xác nhận đăng ký mượn',
-                      style: const TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0284c7).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isJoiningWaitlist
+                            ? Icons.hourglass_top_rounded
+                            : Icons.bookmark_add_rounded,
+                        color: const Color(0xFF0284c7),
+                        size: 28,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  children: [
-                    _buildInfoRow('Tên sách:', title, isBold: true),
-                    const Divider(height: 18),
-                    _buildInfoRow('Tác giả:', author),
-                    const Divider(height: 18),
-                    _buildInfoRow('Thể loại:', category),
-                    const Divider(height: 18),
-                    _buildInfoRow('Chuyên ngành:', department),
-                    const Divider(height: 18),
-                    _buildInfoRow('Vị trí:', shelfLocation),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Nơi nhận:',
-                      'Quầy thủ thư - Tầng 2 (Thư viện HUIT)',
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Hạn giữ sách:',
-                      isJoiningWaitlist
-                          ? (_policy == null
-                                ? 'Giữ chỗ theo quy định thư viện khi có bản sao trả về'
-                                : 'Giữ tối đa ${_policy!.waitlistHoldHours} giờ kể từ khi có thông báo sách về')
-                          : 'Nhận trong ngày làm việc hiện tại (trước giờ đóng cửa quầy)',
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Thời hạn mượn:',
-                      _policy == null
-                          ? 'Theo quy định lưu thông hiện hành của thư viện'
-                          : '${_policy!.homeLoanDays} ngày theo quy định thư viện',
-                      highlightColor: Colors.green.shade700,
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Hạn mức hiện tại:',
-                      'Đang có $_openItemsCount/$_maxOpenItems tài liệu (còn $_remainingSlots lượt)',
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Tiền thế chân:',
-                      _formatVnd(_securityDeposit),
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Đang giữ/mượn:',
-                      _formatVnd(_currentBorrowedValue),
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Giá cuốn này:',
-                      _priceKnown
-                          ? _formatVnd(_requestedBookValue)
-                          : 'Chưa xác định giá',
-                      highlightColor: _priceKnown
-                          ? Colors.black87
-                          : Colors.red.shade700,
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Tối đa được giữ:',
-                      _formatVnd(_maximumBorrowingValue),
-                    ),
-                    const Divider(height: 18),
-                    _buildInfoRow(
-                      'Hạn mức còn lại:',
-                      _formatVnd(_remainingBorrowingValue),
-                      highlightColor: _monetaryEligible
-                          ? Colors.green.shade700
-                          : Colors.red.shade700,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        isJoiningWaitlist
+                            ? 'Xác nhận đăng ký hàng đợi'
+                            : 'Xác nhận đăng ký mượn',
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              if (!_priceKnown || !_monetaryEligible) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.red.shade200),
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
-                  child: Text(
-                    _eligibilityMessage ??
-                        'Tài khoản chưa đáp ứng hạn mức giá trị để đăng ký tài liệu này.',
-                    style: TextStyle(
-                      color: Colors.red.shade900,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Column(
+                    children: [
+                      _buildInfoRow('Tên sách:', title, isBold: true),
+                      const Divider(height: 18),
+                      _buildInfoRow('Tác giả:', author),
+                      const Divider(height: 18),
+                      _buildInfoRow('Thể loại:', category),
+                      const Divider(height: 18),
+                      _buildInfoRow('Chuyên ngành:', department),
+                      const Divider(height: 18),
+                      _buildInfoRow('Vị trí:', shelfLocation),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Nơi nhận:',
+                        'Quầy thủ thư - Tầng 2 (Thư viện HUIT)',
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Hạn giữ sách:',
+                        isJoiningWaitlist
+                            ? (_policy == null
+                                  ? 'Giữ chỗ theo quy định thư viện khi có bản sao trả về'
+                                  : 'Giữ tối đa ${_policy!.waitlistHoldHours} giờ kể từ khi có thông báo sách về')
+                            : 'Nhận trong ngày làm việc hiện tại (trước giờ đóng cửa quầy)',
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Thời hạn mượn:',
+                        _policy == null
+                            ? 'Theo quy định lưu thông hiện hành của thư viện'
+                            : '${_policy!.homeLoanDays} ngày theo quy định thư viện',
+                        highlightColor: Colors.green.shade700,
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Hạn mức hiện tại:',
+                        'Đang có $_openItemsCount/$_maxOpenItems tài liệu (còn $_remainingSlots lượt)',
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Tiền thế chân:',
+                        _eligibilityLoaded
+                            ? _formatVnd(_securityDeposit)
+                            : 'Chưa tải được',
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Đang giữ/mượn:',
+                        _eligibilityLoaded
+                            ? _formatVnd(_currentBorrowedValue)
+                            : 'Chưa tải được',
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Giá cuốn này:',
+                        _priceKnown
+                            ? _formatVnd(_requestedBookValue)
+                            : 'Chưa xác định giá',
+                        highlightColor: _priceKnown
+                            ? Colors.black87
+                            : Colors.red.shade700,
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Tối đa được giữ:',
+                        _eligibilityLoaded
+                            ? _formatVnd(_maximumBorrowingValue)
+                            : 'Chưa tải được',
+                      ),
+                      const Divider(height: 18),
+                      _buildInfoRow(
+                        'Hạn mức còn lại:',
+                        _eligibilityLoaded
+                            ? _formatVnd(_remainingBorrowingValue)
+                            : 'Chưa tải được',
+                        highlightColor: _monetaryEligible
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
+                      ),
+                    ],
                   ),
                 ),
-              ],
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Hủy bỏ',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                if (!_priceKnown || !_monetaryEligible) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: _priceKnown && _monetaryEligible
-                          ? () => Navigator.pop(ctx, true)
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0284c7),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        isJoiningWaitlist
-                            ? 'XÁC NHẬN VÀO HÀNG ĐỢI'
-                            : 'XÁC NHẬN MƯỢN',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      _eligibilityMessage ??
+                          'Tài khoản chưa đáp ứng hạn mức giá trị để đăng ký tài liệu này.',
+                      style: TextStyle(
+                        color: Colors.red.shade900,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 10),
-            ],
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Hủy bỏ',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: _priceKnown && _monetaryEligible
+                            ? () => Navigator.pop(ctx, true)
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0284c7),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          isJoiningWaitlist
+                              ? 'XÁC NHẬN VÀO HÀNG ĐỢI'
+                              : 'XÁC NHẬN MƯỢN',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
           ),
         );
       },
@@ -1019,6 +1032,13 @@ class _DetailScreenState extends State<DetailScreen> {
                     const SizedBox(height: 20),
 
                     // Location & Copies Card
+                    Text(
+                      _priceKnown
+                          ? 'Giá trị tài liệu: ${_formatVnd(_requestedBookValue)}'
+                          : 'Giá trị tài liệu: chưa xác định / chưa tải được',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(

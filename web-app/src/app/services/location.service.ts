@@ -15,11 +15,13 @@ export interface LocationNode {
 
 export interface ShelfBook {
   barcode: string;
-  bookId: number;
+  bookId: number | null;
   title: string;
   isbn?: string;
   status: string;
+  catalogMatched?: boolean;
 }
+export interface ShelfBooksPage {items:ShelfBook[];total:number;page:number;size:number;}
 
 export interface ShelfSubject {
   subjectId: number;
@@ -74,6 +76,16 @@ export class LocationService {
 
   getShelfBooks(shelfId: number): Observable<ShelfBook[]> {
     return this.http.get<ShelfBook[]>(`${this.apiUrl}/shelves/${shelfId}/books`);
+  }
+
+  getShelfBooksPage(shelfId:number,page=0):Observable<ShelfBooksPage> {
+    return this.http.get<ShelfBooksPage>(`${this.apiUrl}/shelves/${shelfId}/books/page`,{params:{page,size:50}});
+  }
+  getUnplacedCopies(page=0):Observable<ShelfBooksPage> {
+    return this.http.get<ShelfBooksPage>(`${this.apiUrl}/unplaced-copies`,{params:{page,size:50}});
+  }
+  placeCopy(barcode:string,shelfId:number):Observable<unknown> {
+    return this.http.put(`${environment.apiUrl}/book-copies/${encodeURIComponent(barcode)}/location`,null,{params:{shelfId}});
   }
 
   getAvailableSubjects(): Observable<ShelfSubject[]> {

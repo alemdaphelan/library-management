@@ -17,7 +17,7 @@
       <small class="message success" *ngIf="linkedBookLabel">Đã chọn: {{ linkedBookLabel }}</small>
     </label>
     <label>Quyền truy cập
-      <select [(ngModel)]="uploadAccessLevel">
+      <select [(ngModel)]="uploadAccessLevel" required>
         <option value="AUTHENTICATED">Bạn đọc đã đăng nhập</option>
         <option value="STAFF_ONLY">Chỉ nhân viên thư viện</option>
       </select>
@@ -83,7 +83,7 @@
         <small class="message success" *ngIf="editForm.bookLabel">{{ editForm.bookLabel }}</small>
         <small *ngIf="editForm.bookId && !editForm.bookIsbn">Giữ nguyên sách đang liên kết nếu để trống.</small>
       </label>
-      <label>Quyền truy cập<select name="accessLevel" [(ngModel)]="editForm.accessLevel"><option value="AUTHENTICATED">Bạn đọc đã đăng nhập</option><option value="STAFF_ONLY">Chỉ nhân viên thư viện</option></select></label>
+      <label>Quyền truy cập<select name="accessLevel" [(ngModel)]="editForm.accessLevel" required><option value="AUTHENTICATED">Bạn đọc đã đăng nhập</option><option value="STAFF_ONLY">Chỉ nhân viên thư viện</option></select></label>
       <div class="dialog-actions"><button type="button" (click)="editingAsset = null">Hủy</button><button class="primary" type="submit">Lưu thay đổi</button></div>
     </form>
   </div>

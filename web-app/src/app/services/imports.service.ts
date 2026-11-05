@@ -24,7 +24,8 @@ export interface CatalogIdentification {
   author: string | null; publisher: string | null; publishYear: number | null; defaultPrice: number | null;
   categoryId: number | null; categoryName: string | null; ddcCallNumber: string | null;
   subjects: { code: string; name: string; confidence: number; source: string; evidence: string | null; primary: boolean }[];
-  classificationStatus: 'MISSING' | 'AVAILABLE'; placementStatus: 'WAITING_ADMIN_RULES'; suggestedShelfId: null; placementMessage: string;
+  classificationStatus: 'MISSING' | 'AVAILABLE'; placementStatus: 'WAITING_ADMIN_RULES'|'NO_MATCHING_RULE'|'SUGGESTED_BY_ADMIN_RULE'; suggestedShelfId: number|null; placementMessage: string;
+  placements?: {shelfId:number;bookshelfId:number;floorId:number;shelfName:string;bookshelfName:string;floorName:string;subjectName:string}[];
 }
 export interface ImportReceiptRequest {
   supplierId: number;

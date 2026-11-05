@@ -40,11 +40,12 @@ public class InventoryService {
     private final BookCopyRepository bookCopyRepository;
     private final StaffNotificationService staffNotificationService;
     private final ShelfRepository shelfRepository;
+    private final com.huit.library.modules.catalog.service.ShelfPlacementService placement;
 
     public InventoryService(GoodsReceiptRepository goodsReceiptRepository, SupplierRepository supplierRepository,
                             ReceiptDetailRepository receiptDetailRepository, BookRepository bookRepository,
                             BookCopyRepository bookCopyRepository,
-                            StaffNotificationService staffNotificationService, ShelfRepository shelfRepository) {
+                            StaffNotificationService staffNotificationService, ShelfRepository shelfRepository, com.huit.library.modules.catalog.service.ShelfPlacementService placement) {
         this.goodsReceiptRepository = goodsReceiptRepository;
         this.supplierRepository = supplierRepository;
         this.receiptDetailRepository = receiptDetailRepository;
@@ -52,6 +53,7 @@ public class InventoryService {
         this.bookCopyRepository = bookCopyRepository;
         this.staffNotificationService = staffNotificationService;
         this.shelfRepository = shelfRepository;
+        this.placement=placement;
     }
 
     public List<SupplierEntity> getAllSuppliers() {
@@ -90,7 +92,9 @@ public class InventoryService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Vị trí thiếu tên tầng/kệ/ngăn, cần sửa trước khi nhập");
             }
             String path = bookshelf.getFloor().getName() + " / " + bookshelf.getName() + " / " + shelf.getName();
-            prepared.add(new PreparedLine(line, resolveBook(line), shelf, path));
+            var book=resolveBook(line);
+            placement.requireAllowed(book.getBookId(),shelf.getShelfId());
+            prepared.add(new PreparedLine(line,book,shelf,path));
         }
         BigDecimal total = request.getLines().stream()
                 .map(line -> line.getUnitPrice().multiply(BigDecimal.valueOf(line.getQuantity())))

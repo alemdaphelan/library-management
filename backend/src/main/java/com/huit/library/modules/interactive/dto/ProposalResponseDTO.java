@@ -21,6 +21,9 @@ public class ProposalResponseDTO {
     private BigDecimal estimatedPrice;
     private String externalUrl;
     private String genre;
+    private String majorId;
+    private String majorName;
+    private String majorSourceReference;
     private String urgencyLevel;
     private String reason;
     private String note;

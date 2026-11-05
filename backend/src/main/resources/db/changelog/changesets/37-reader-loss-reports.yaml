@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 37-reader-loss-reports
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              ALTER TABLE loan_details ADD COLUMN loss_reported_at timestamp;
+              ALTER TABLE loan_details ADD COLUMN loss_report_description varchar(1000);
+              ALTER TABLE loan_details ADD CONSTRAINT ck_loan_detail_loss_report CHECK (
+                (loss_reported_at IS NULL AND loss_report_description IS NULL)
+                OR (loss_reported_at IS NOT NULL AND loss_report_description IS NOT NULL
+                  AND char_length(btrim(loss_report_description)) BETWEEN 1 AND 1000)
+              );
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE loan_details DROP CONSTRAINT ck_loan_detail_loss_report;
+              ALTER TABLE loan_details DROP COLUMN loss_reported_at, DROP COLUMN loss_report_description;

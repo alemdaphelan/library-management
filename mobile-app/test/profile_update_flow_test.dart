@@ -6,6 +6,7 @@ void main() {
     test('chuẩn hóa số điện thoại Việt Nam trước khi gửi Backend', () {
       expect(AuthService.normalizePhone('(+84) 912-345-678'), '0912345678');
       expect(AuthService.normalizePhone('0912 345 678'), '0912345678');
+      expect(AuthService.normalizePhone('+84 356996264'), '0356996264');
     });
 
     test('chỉ chấp nhận số điện thoại hợp lệ hoặc để trống', () {

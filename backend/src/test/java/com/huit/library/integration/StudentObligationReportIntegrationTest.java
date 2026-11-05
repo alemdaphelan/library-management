@@ -142,6 +142,23 @@ class StudentObligationReportIntegrationTest {
         assertThat(service.preview(Mode.OVERDUE, null, "", 0, 25).students()).isEmpty();
     }
 
+    @Test void exportsSourceDebtDifferencesWithTheirSignsAndDoesNotReconcileBalances()throws Exception {
+        UUID user=student("f10-difference",null);charge(user,200000,100000,"PAID");wallet(user,50000);
+        // Imported status says PAID while paid_amount only covers half: the report exposes the discrepancy.
+        var data=service.exportData(Mode.DEBT,null,"f10-difference");var source=data.students().get(0);
+        assertThat(source.outstandingAmount()).isZero();assertThat(source.walletDifference()).isEqualByComparingTo("50000");
+        assertThat(source.reconciliationDifference()).isEqualByComparingTo("100000");
+        try(var book=new XSSFWorkbook(new ByteArrayInputStream(exporter.export(data)))){
+            var row=book.getSheet("Tong hop").getRow(5);
+            assertThat(row.getCell(14).getNumericCellValue()).isZero();assertThat(row.getCell(15).getNumericCellValue()).isEqualTo(50000);
+            assertThat(row.getCell(16).getNumericCellValue()).isEqualTo(50000);assertThat(row.getCell(17).getNumericCellValue()).isEqualTo(100000);
+            assertThat(row.getCell(19).getStringCellValue()).contains("cao hơn");assertThat(row.getCell(20).getStringCellValue()).contains("lớn hơn");
+        }
+        assertThat(jdbc.queryForObject("SELECT total_debt FROM wallets WHERE user_id=?",BigDecimal.class,user)).isEqualByComparingTo("50000");
+        assertThat(jdbc.queryForObject("SELECT paid_amount FROM transactions WHERE user_id=?",BigDecimal.class,user)).isEqualByComparingTo("100000");
+        assertThat(service.preview(Mode.DEBT,null,"f10-difference",0,25).students().get(0)).isEqualTo(source);
+    }
+
     @Test
     void previewPagesButExportIncludesAllMatchingStudentsAndTheirDetails() throws Exception {
         for (String code : List.of("page-01", "page-02", "page-03")) {

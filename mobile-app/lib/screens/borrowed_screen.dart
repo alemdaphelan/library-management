@@ -896,6 +896,9 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
+                      Text(book['priceKnown'] == true && book['bookValue'] != null
+                          ? 'Giá trị hiện tại: ${book['bookValue']} ${book['bookValueCurrency'] ?? 'VND'}'
+                          : 'Giá trị tài liệu: chưa xác định'),
                       Text(
                         author,
                         style: const TextStyle(

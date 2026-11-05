@@ -1,29 +1,10 @@
 import 'api_service.dart';
 
 class ProposalService {
-  static Future<List<String>> getCategories() async {
-    final data = await ApiService.getPublic('/categories');
-    final rawItems = data is List
-        ? data
-        : data is Map && data['content'] is List
-        ? data['content'] as List
-        : const <dynamic>[];
-
-    final names =
-        rawItems
-            .map((item) {
-              if (item is Map) return item['name']?.toString().trim() ?? '';
-              return '';
-            })
-            .where((name) => name.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort(
-            (left, right) => left.toLowerCase().compareTo(right.toLowerCase()),
-          );
-    return names;
+  static Future<List<Map<String, dynamic>>> getMajors() async {
+    final data = await ApiService.get('/proposals/majors');
+    return (data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
-
   static Future<Map<String, dynamic>> create({
     required String title,
     required String reason,
@@ -34,8 +15,7 @@ class ProposalService {
     String? edition,
     double? estimatedPrice,
     String? externalUrl,
-    String? genre,
-    String urgencyLevel = 'NORMAL',
+    String? majorId,
     String? note,
   }) async {
     final data = await ApiService.post('/proposals', {
@@ -49,8 +29,7 @@ class ProposalService {
       'estimatedPrice': ?estimatedPrice,
       if (externalUrl?.trim().isNotEmpty == true)
         'externalUrl': externalUrl!.trim(),
-      if (genre?.trim().isNotEmpty == true) 'genre': genre!.trim(),
-      'urgencyLevel': urgencyLevel,
+      if (majorId?.trim().isNotEmpty == true) 'majorId': majorId!.trim(),
       'reason': reason,
       if (note?.trim().isNotEmpty == true) 'note': note!.trim(),
     });

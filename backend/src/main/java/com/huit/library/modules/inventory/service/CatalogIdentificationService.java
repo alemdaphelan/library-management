@@ -12,8 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class CatalogIdentificationService {
     private final InventoryService inventory;
     private final BookSubjectAssignmentRepository subjects;
-    public CatalogIdentificationService(InventoryService inventory, BookSubjectAssignmentRepository subjects) {
-        this.inventory = inventory; this.subjects = subjects;
+    private final com.huit.library.modules.catalog.service.ShelfPlacementService placement;
+    public CatalogIdentificationService(InventoryService inventory, BookSubjectAssignmentRepository subjects,com.huit.library.modules.catalog.service.ShelfPlacementService placement) {
+        this.inventory = inventory; this.subjects = subjects;this.placement=placement;
     }
     @Transactional(readOnly = true)
     public CatalogIdentificationDTO identify(String isbn, Long bookId) {
@@ -31,9 +32,13 @@ public class CatalogIdentificationService {
                         assignment.getConfidence(), assignment.getClassificationSource(), assignment.getEvidence(), Boolean.TRUE.equals(assignment.getPrimarySubject())))
                 .toList();
         var category = book.getCategory();
+        var candidates=placement.candidates(book.getBookId());
         return new CatalogIdentificationDTO(book.getBookId(), book.getTitle(), book.getIsbn(), canonical, book.getAuthor(), book.getPublisher(),
                 book.getPublishYear(), book.getDefaultPrice(), category == null ? null : category.getCategoryId(), category == null ? null : category.getName(),
                 book.getDdcCallNumber(), classification, category == null && classification.isEmpty() ? "MISSING" : "AVAILABLE",
-                "WAITING_ADMIN_RULES", null, "Chưa có quy tắc xếp sách được quản lý. Chọn ngăn thủ công; chưa có đề xuất tự động.");
+                candidates.isEmpty()?"NO_MATCHING_RULE":"SUGGESTED_BY_ADMIN_RULE",
+                candidates.isEmpty()?null:candidates.get(0).shelfId(),
+                candidates.isEmpty()?"Chưa có ngăn khớp chủ đề theo quy định Admin. Chọn ngăn không hạn chế hoặc bổ sung phân loại/quy tắc."
+                    :"Đã chọn ngăn phù hợp quy định chủ đề của Admin. Có thể chọn vị trí hợp lệ khác; server kiểm tra lại lúc lưu.",candidates);
     }
 }

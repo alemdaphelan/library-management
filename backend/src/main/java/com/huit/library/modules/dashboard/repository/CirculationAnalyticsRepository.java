@@ -1,5 +1,6 @@
 package com.huit.library.modules.dashboard.repository;
 import com.huit.library.modules.dashboard.dto.CirculationAnalytics.*;
+import com.huit.library.modules.dashboard.service.AnalyticsBuckets;
 import org.springframework.jdbc.core.namedparam.*;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
@@ -26,18 +27,19 @@ public class CirculationAnalyticsRepository {
                 """, params(range,snapshot), (rs,n) -> new Counts(rs.getLong("ci"),rs.getLong("ri"),rs.getLong("ct"),rs.getLong("rt")));
     }
     public List<Bucket> buckets(Range range, LocalDateTime snapshot) {
-        String unit = range.period().name().toLowerCase(Locale.ROOT);
-        String step = switch(range.period()) { case MONTH -> "1 month"; case QUARTER -> "3 months"; case YEAR -> "1 year"; };
+        String unit = AnalyticsBuckets.sqlUnit(range.period());
+        String step = AnalyticsBuckets.sqlStep(range.period());
         return jdbc.query("""
-                WITH buckets AS (SELECT greatest(s,:from) start_at, least(s+interval '%s',:until) end_at
-                  FROM generate_series(date_trunc('%s',cast(:from AS timestamp)),cast(:until AS timestamp)-interval '1 microsecond',interval '%s') s)
+                WITH buckets AS (SELECT s bucket,greatest(s,:from) start_at, least(s+interval '%s',:until) end_at
+                  FROM generate_series(date_trunc('%s',cast(:from AS timestamp)),cast(:until AS timestamp)-interval '1 microsecond',interval '%s') s),
+                checkouts AS (SELECT date_trunc('%s',checkout_at) bucket,count(*) items,count(DISTINCT ticket_id) tickets
+                  FROM loan_details WHERE checkout_at>=:from AND checkout_at<:until AND checkout_at<=:snapshot GROUP BY bucket),
+                returns AS (SELECT date_trunc('%s',physical_return_at) bucket,count(*) items,count(DISTINCT ticket_id) tickets
+                  FROM loan_details WHERE physical_return_at>=:from AND physical_return_at<:until AND physical_return_at<=:snapshot GROUP BY bucket)
                 SELECT start_at,end_at,
-                  (SELECT count(*) FROM loan_details WHERE checkout_at>=start_at AND checkout_at<end_at AND checkout_at<=:snapshot) ci,
-                  (SELECT count(*) FROM loan_details WHERE physical_return_at>=start_at AND physical_return_at<end_at AND physical_return_at<=:snapshot) ri,
-                  (SELECT count(DISTINCT ticket_id) FROM loan_details WHERE checkout_at>=start_at AND checkout_at<end_at AND checkout_at<=:snapshot) ct,
-                  (SELECT count(DISTINCT ticket_id) FROM loan_details WHERE physical_return_at>=start_at AND physical_return_at<end_at AND physical_return_at<=:snapshot) rt
-                FROM buckets ORDER BY start_at
-                """.formatted(step,unit,step), params(range,snapshot), (rs,n) -> new Bucket(rs.getTimestamp("start_at").toLocalDateTime().toLocalDate(),rs.getTimestamp("end_at").toLocalDateTime().toLocalDate(),new Counts(rs.getLong("ci"),rs.getLong("ri"),rs.getLong("ct"),rs.getLong("rt"))));
+                  coalesce(c.items,0) ci,coalesce(r.items,0) ri,coalesce(c.tickets,0) ct,coalesce(r.tickets,0) rt
+                FROM buckets b LEFT JOIN checkouts c ON c.bucket=b.bucket LEFT JOIN returns r ON r.bucket=b.bucket ORDER BY start_at
+                """.formatted(step,unit,step,unit,unit), params(range,snapshot), (rs,n) -> new Bucket(rs.getObject("start_at",LocalDateTime.class),rs.getObject("end_at",LocalDateTime.class),new Counts(rs.getLong("ci"),rs.getLong("ri"),rs.getLong("ct"),rs.getLong("rt"))));
     }
     public Coverage coverage(Range range, LocalDateTime snapshot) {
         return jdbc.queryForObject("""

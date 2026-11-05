@@ -43,13 +43,21 @@ class PushNotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static bool _listenersAttached = false;
+  static Future<bool>? _initialization;
+  static const String pushIdentifierTypeKey = 'huit_lib_push_identifier_type';
   static String? _lastKnownToken;
   static Map<String, dynamic>? _pendingNavigationPayload;
   static final ValueNotifier<int> notificationRevision = ValueNotifier<int>(0);
 
   static String? get lastKnownToken => _lastKnownToken;
 
-  static Future<bool> initialize() async {
+  static Future<bool> initialize() {
+    if (_initialized) return Future.value(true);
+    return _initialization ??= _initialize().whenComplete(() { _initialization = null; });
+  }
+
+  static Future<bool> _initialize() async {
     if (_initialized) return true;
     if (!DefaultFirebaseOptions.canInitialize) {
       debugPrint(
@@ -67,11 +75,12 @@ class PushNotificationService {
         badge: true,
         sound: true,
       );
-      FirebaseMessaging.onMessage.listen(_showForegroundMessage);
-      FirebaseMessaging.onMessageOpenedApp.listen(
-        _handleRemoteMessageOpenedApp,
-      );
-      FirebaseMessaging.instance.onRegistered.listen(_onTokenReceived);
+      if (!_listenersAttached) {
+        FirebaseMessaging.onMessage.listen(_showForegroundMessage);
+        FirebaseMessaging.onMessageOpenedApp.listen(_handleRemoteMessageOpenedApp);
+        FirebaseMessaging.instance.onRegistered.listen(_onTokenReceived);
+        _listenersAttached = true;
+      }
 
       final initialMessage = await FirebaseMessaging.instance
           .getInitialMessage();
@@ -79,7 +88,7 @@ class PushNotificationService {
         _pendingNavigationPayload = _extractNavigationPayload(initialMessage);
       }
 
-      await FirebaseMessaging.instance.register();
+      await FirebaseMessaging.instance.register().timeout(const Duration(seconds: 10));
       _initialized = true;
       return true;
     } catch (error) {
@@ -94,15 +103,19 @@ class PushNotificationService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedToken = _lastKnownToken ?? prefs.getString(pushTokenKey);
-      if (cachedToken != null && cachedToken.trim().isNotEmpty) {
+      if (prefs.getString(pushIdentifierTypeKey) == 'FID' &&
+          cachedToken != null && cachedToken.trim().isNotEmpty) {
         await _registerTokenWithBackend(cachedToken.trim());
       }
       final messaging = FirebaseMessaging.instance;
       final registration = messaging.onRegistered.first.timeout(
         const Duration(seconds: 6),
       );
-      await messaging.register();
-      final token = await registration;
+      final results = await Future.wait<dynamic>([
+        messaging.register().timeout(const Duration(seconds: 6)),
+        registration,
+      ]);
+      final token = results[1] as String;
       if (token.trim().isNotEmpty) {
         await _onTokenReceived(token.trim());
       }
@@ -118,6 +131,7 @@ class PushNotificationService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(pushTokenKey, trimmed);
+      await prefs.setString(pushIdentifierTypeKey, 'FID');
     } catch (_) {}
     await _registerTokenWithBackend(trimmed);
   }
@@ -133,6 +147,7 @@ class PushNotificationService {
       }
       await ApiService.post('/api/v1/notifications/devices', {
         'token': token,
+        'identifierType': 'FID',
         'platform': _platformName(),
         'deviceId': deviceId,
       });

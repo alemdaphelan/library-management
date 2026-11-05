@@ -85,7 +85,7 @@
           <div class="scan-fields">
             <label>
               <span>Barcode bản sao *</span>
-              <input #barcodeInput name="barcode" [(ngModel)]="barcode" autocomplete="off" placeholder="Ví dụ: BC-001" [disabled]="isSubmitting" />
+              <input #barcodeInput name="barcode" [(ngModel)]="barcode" autocomplete="off" placeholder="Ví dụ: BC-001" [disabled]="isSubmitting" required />
             </label>
             <label>
               <span>Vị trí đang quét (không bắt buộc)</span>

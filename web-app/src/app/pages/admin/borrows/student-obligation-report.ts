@@ -93,6 +93,15 @@ export class StudentObligationReport implements OnInit {
     return (student.walletDifference !== null && student.walletDifference !== 0)
       || student.reconciliationDifference !== 0 || student.paidOrDepositAmount < 0;
   }
+  walletComparison(student: StudentObligation): string {
+    const gap=student.walletDifference;
+    if(student.walletDebt===null||gap===null)return 'Chưa có số dư nợ trong tài khoản để so sánh; không có nghĩa là đã hết nợ.';
+    return gap>0?'Nợ lưu trong tài khoản cao hơn nợ theo các khoản phí.':gap<0?'Nợ lưu trong tài khoản thấp hơn nợ theo các khoản phí.':'Hai nguồn nợ đang khớp số.';
+  }
+  feeComparison(student: StudentObligation): string {
+    return student.reconciliationDifference>0?'Phí còn lại sau các khoản giảm lớn hơn nợ theo các khoản phí.':student.reconciliationDifference<0?'Phí còn lại sau các khoản giảm nhỏ hơn nợ theo các khoản phí.':'Đối chiếu các khoản phí đang khớp.';
+  }
+  statusLabel(status:string):string {return ({OUTSTANDING:'Chưa thanh toán',PARTIALLY_PAID:'Thanh toán một phần',PARTIALLY_ADJUSTED:'Điều chỉnh một phần',PARTIALLY_WAIVED:'Miễn giảm một phần',PAID:'Đã hoàn tất',COMPLETED:'Đã hoàn tất',PENDING:'Chờ xử lý',CANCELLED:'Đã hủy',WAIVED:'Đã miễn',ADJUSTED:'Đã điều chỉnh'} as Record<string,string>)[status]||status;}
   modeLabel(mode: string): string { return ({ EITHER: 'Quá hạn hoặc còn nợ', OVERDUE: 'Còn tài liệu quá hạn', DEBT: 'Còn công nợ' } as Record<string, string>)[mode] || mode; }
   facultyLabel(id: string | null): string { return !id ? 'Mọi khoa' : id === 'UNCLASSIFIED' ? 'Cần bổ sung phân loại' : this.faculties.find(item => item.facultyId === id)?.facultyName || id; }
   feeLabel(type: string): string { return ({ FINE: 'Phí trễ', REPAIR_FEE: 'Sửa chữa', COMPENSATION: 'Đền bù', TECHNICAL_FEE: 'Xử lý kỹ thuật', PAYMENT: 'Thanh toán', ADJUSTMENT: 'Điều chỉnh giảm', WAIVER_ADJUSTMENT: 'Miễn giảm' } as Record<string, string>)[type] || type; }

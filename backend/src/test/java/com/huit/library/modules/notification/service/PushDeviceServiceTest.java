@@ -34,6 +34,7 @@ class PushDeviceServiceTest {
 
         assertThat(existing.getUserId()).isEqualTo(userId);
         assertThat(existing.getActive()).isTrue();
+        assertThat(existing.getIdentifierType()).isEqualTo("TOKEN");
         assertThat(response.active()).isTrue();
         verify(repository).save(existing);
     }
@@ -56,9 +57,10 @@ class PushDeviceServiceTest {
 
         PushDeviceService service = new PushDeviceService(repository);
         var response = service.register(userId,
-                new RegisterPushDeviceRequestDTO("new-token", "ANDROID", "device-01"));
+                new RegisterPushDeviceRequestDTO("new-token", "ANDROID", "device-01", "FID"));
 
         assertThat(existingDevice.getToken()).isEqualTo("new-token");
+        assertThat(existingDevice.getIdentifierType()).isEqualTo("FID");
         assertThat(existingDevice.getUserId()).isEqualTo(userId);
         assertThat(existingDevice.getActive()).isTrue();
         assertThat(response.registrationId()).isEqualTo(existingDevice.getRegistrationId());

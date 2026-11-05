@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.event.TransactionPhase;
@@ -36,6 +37,7 @@ public class FirebasePushNotificationService {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Async("notificationDeliveryExecutor")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void send(PushNotificationEvent event) {
         if (!preferenceService.isPushEnabled(event.userId())) {
@@ -56,14 +58,15 @@ public class FirebasePushNotificationService {
                 data.put("referenceType", nullToEmpty(event.referenceType()));
                 data.put("referenceId", nullToEmpty(event.referenceId()));
 
-                Message message = Message.builder()
-                        .setToken(device.getToken())
+                Message.Builder builder = Message.builder()
                         .setNotification(com.google.firebase.messaging.Notification.builder()
                                 .setTitle(titleFor(event.type()))
                                 .setBody(event.content())
                                 .build())
-                        .putAllData(data)
-                        .build();
+                        .putAllData(data);
+                if ("FID".equals(device.getIdentifierType())) builder.setFid(device.getToken());
+                else builder.setToken(device.getToken());
+                Message message = builder.build();
                 messaging.send(message);
             } catch (FirebaseMessagingException exception) {
                 if (isPermanentTokenError(exception)) {

@@ -1,13 +1,13 @@
 package com.huit.library.modules.dashboard.repository;
 
 import com.huit.library.modules.dashboard.dto.CirculationAnalytics.Range;
+import com.huit.library.modules.dashboard.service.AnalyticsBuckets;
 import com.huit.library.modules.dashboard.dto.FinanceStockAnalytics.*;
 import org.springframework.jdbc.core.namedparam.*;
 import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -76,12 +76,12 @@ public class FinanceAnalyticsRepository {
     public Money totals(Range r, LocalDateTime at) {
         return jdbc.queryForObject(BASE+"SELECT "+AMOUNTS+" FROM events WHERE "+IN_RANGE,params(r,at),(rs,n)->money(rs));
     }
-    public Map<LocalDate,Money> buckets(Range r, LocalDateTime at) {
-        String unit=r.period().name().toLowerCase(Locale.ROOT);
-        return jdbc.query(BASE+"SELECT date_trunc('"+unit+"',at)::date bucket,"+AMOUNTS
+    public Map<LocalDateTime,Money> buckets(Range r, LocalDateTime at) {
+        String unit=AnalyticsBuckets.sqlUnit(r.period());
+        return jdbc.query(BASE+"SELECT date_trunc('"+unit+"',at) bucket,"+AMOUNTS
                 +" FROM events WHERE "+IN_RANGE+" GROUP BY bucket",params(r,at),rs->{
-            Map<LocalDate,Money> result=new HashMap<>();
-            while(rs.next()) result.put(rs.getDate("bucket").toLocalDate(),money(rs));
+            Map<LocalDateTime,Money> result=new HashMap<>();
+            while(rs.next()) result.put(rs.getObject("bucket",LocalDateTime.class),money(rs));
             return result;
         });
     }

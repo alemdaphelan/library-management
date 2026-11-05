@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 36-damaged-physical-return
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              -- Reconcile only proven physical receipts. Never infer custody from payment/report dates.
+              UPDATE loan_details SET return_date=physical_return_at
+                WHERE physical_return_at IS NOT NULL
+                  AND return_status IN ('DAMAGED','LOST','SETTLED')
+                  AND return_date IS DISTINCT FROM physical_return_at;
+              WITH completed AS (
+                SELECT t.ticket_id, t.status FROM loan_tickets t
+                WHERE t.status IN ('BORROWING','OVERDUE')
+                  AND EXISTS (SELECT 1 FROM loan_details d WHERE d.ticket_id=t.ticket_id)
+                  AND EXISTS (SELECT 1 FROM loan_details d WHERE d.ticket_id=t.ticket_id
+                    AND d.physical_return_at IS NOT NULL)
+                  AND NOT EXISTS (SELECT 1 FROM loan_details d WHERE d.ticket_id=t.ticket_id
+                    AND d.physical_return_at IS NULL
+                    AND (d.return_status IS NULL OR d.return_status NOT IN ('RETURNED','CANCELLED','SETTLED')))
+              ), history AS (
+                INSERT INTO loan_status_history(ticket_id,from_status,to_status,reason,created_at)
+                SELECT ticket_id,status,'RETURNED',
+                  'F03: đối chiếu hoàn trả từ physical_return_at; công nợ tiếp tục xử lý riêng',CURRENT_TIMESTAMP
+                FROM completed RETURNING ticket_id
+              )
+              UPDATE loan_tickets t SET status='RETURNED',version=COALESCE(version,0)+1,updated_at=CURRENT_TIMESTAMP
+                FROM history h WHERE t.ticket_id=h.ticket_id;
+      # Data correction: restore a backup to reverse; payment rows and stored receipts are untouched.

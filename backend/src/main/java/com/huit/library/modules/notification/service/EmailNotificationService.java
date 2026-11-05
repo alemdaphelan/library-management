@@ -7,6 +7,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -31,6 +32,7 @@ public class EmailNotificationService {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Async("notificationDeliveryExecutor")
     public void send(PushNotificationEvent event) {
         if (!preferenceService.isEmailEnabled(event.userId())) {
             return;
@@ -61,6 +63,7 @@ public class EmailNotificationService {
             case "PROPOSAL_REJECTED" -> "Kết quả đề xuất tài liệu";
             case "LOAN_APPROVED", "LOAN_RESERVED" -> "Tài liệu đã được hệ thống giữ chỗ";
             case "LOAN_REJECTED" -> "Kết quả yêu cầu mượn tài liệu";
+            case "LOAN_RECALLED" -> "Thư viện yêu cầu trả tài liệu";
             case "DUE_SOON", "LOAN_DUE_SOON" -> "Sắp đến hạn trả sách";
             case "DUE_TODAY" -> "Đến hạn trả sách";
             case "OVERDUE", "LOAN_OVERDUE" -> "Sách đang quá hạn";

@@ -4,14 +4,16 @@
 
 ## Kỳ và trạng thái tải
 
-- Chọn từ ngày bao gồm/đến ngày loại trừ, gộp MONTH/QUARTER/YEAR rồi bấm **Áp dụng kỳ**. Ví dụ tháng 10: 01/10 → trước 01/11. Timezone Asia/Ho_Chi_Minh, mặc định đầu năm đến đầu ngày mai tại Việt Nam.
-- Ngày chưa áp dụng không thay số đang xem. Mượn/trả, tài chính và nhập dùng cùng kỳ đã áp dụng, kể cả khi chuyển tab. Catalog/quá hạn/dư nợ luôn là snapshot hiện tại, có nhãn riêng.
+- F08 (04/11/2026): nhập **Ngày tham chiếu**, chọn nút **Ngày / Tuần / Tháng / Năm**, rồi bấm **Áp dụng kỳ**. Mặc định tháng hiện tại theo giờ Việt Nam. Ngày có 24 khoảng giờ; tuần thứ Hai–Chủ nhật có 7 ngày; tháng có 28/29/30/31 ngày; năm có 12 tháng. Cùng ngữ nghĩa backend F07.
+- **Khoảng khác** giữ chọn từ ngày/đến trước ngày và độ chi tiết giờ/ngày/tháng/quý. Ngày kết thúc không được tính vào kỳ. Chặn ngày không tồn tại, khoảng đảo/qua 50 năm hoặc hơn 1.000 cột trước khi gọi API. Các nút/ngày đang sửa chưa tự gửi request.
+- Biểu đồ và bảng đọc start/until ISO local datetime, dùng range.bucketUnit do server trả. Nhãn giờ 00:00…23:00, mốc cuối 24:00; ngày dd/MM, tháng MM/yyyy; bảng giờ có ngày đầy đủ. Không chuyển timestamp local sang UTC theo múi giờ máy. Biểu đồ có vùng cuộn ngang bằng chuột/bàn phím; bảng chi tiết giữ đủ số chính xác.
+- Ngày chưa áp dụng không thay số đang xem. Mượn/trả, tài chính và nhập dùng cùng kỳ đã áp dụng, kể cả khi chuyển tab. Danh mục/quá hạn/dư nợ luôn là số hiện tại, có nhãn riêng; không dựng số lịch sử từ số dư/tồn hiện tại.
 - Mỗi tab tải khi mở; chuyển tab hủy request cũ và tải lại khi quay lại. Giữ kỳ chung, bộ lọc/phân trang riêng của tab được đặt lại khi tab được tạo lại.
 - Mỗi phần có loading/error/retry riêng. Đang tải hoặc lỗi không giữ tổng cũ làm tổng mới và không tự biến thành 0. API thành công với 0 vẫn hiển thị 0. Request cũ không ghi đè response mới; rời trang hủy subscriptions.
 
 ## Mượn/trả — B14
 
-API B11: circulation, rankings, overdue. Thẻ tổng tách lượt tài liệu giao/nhận vật lý và số phiếu distinct; bảng/biểu đồ cột ngang dùng bucket thật, có số 0 và ngày bucket cắt theo khoảng. Không cộng distinct ticket giữa các bucket thành tổng kỳ.
+API B11: circulation, rankings, overdue. Thẻ tổng tách lượt tài liệu giao/nhận vật lý và số phiếu distinct; bảng/biểu đồ cột dọc dùng bucket thật, có số 0 và ngày bucket cắt theo khoảng. Không cộng distinct ticket giữa các bucket thành tổng kỳ.
 
 Năm chế độ xếp hạng: nhiều trong kỳ, ít trong nhóm có lượt, chưa có chứng cứ toàn lịch sử, không ghi nhận trong kỳ, đang mượn hiện tại. 25 dòng/trang tại server, các trang đi hết tập kết quả; đồng hạng giữ position. Link đầu sách mở `/book/{id}`.
 
@@ -45,3 +47,10 @@ Thanh lý/hủy **Chờ Admin — chưa có số liệu thực thi**; null hiệ
 - Backend mở rộng B15: HoldingsAnalytics.Filter query, controller/service/repository tổng/list có q; Summary.coverage cho nguồn mất liên kết. Không migration mới sau 35.
 - Lệnh Web tại web-app: `npm.cmd test -- --watch=false --runner-config=../.codex-tmp/b01-vitest.config.mjs`, `npm.cmd run build`. `.codex-tmp/b01-vitest.config.mjs` chỉ giới hạn 1 worker cho môi trường này; CI vẫn có thể dùng `npm test -- --watch=false`.
 - Báo cáo nghiệm thu mới và phần chờ: `TestChucNang/24_NGHIEM_THU_THU_THU_B01_B16.md`; checkpoint cuối: `Docs/BAN_GIAO_BATCH_THU_THU.md`.
+
+
+## Bàn giao F08
+
+- Dashboard dùng từ tiếng Việt cho chỉ tiêu, số hiện tại, nguồn và khoản thu/phân bổ; vẫn giữ cảnh báo thiếu chứng cứ, chênh lệch tiền và Chờ Admin cho kết quả thanh lý/hủy. Không thay số tiền hay quy tắc cộng distinct.
+- Web tiếp tục gửi **from/until/period** đã tính theo lịch cho cả ba báo cáo và các danh sách chi tiết. Không gửi thêm date cùng from/until, tránh lỗi 400 F07. Đổi tab giữ kỳ đã áp dụng. Sửa lựa chọn hiển thị nhắc chưa áp dụng, không dùng kỳ nháp để tải dữ liệu.
+- Cần backend source F07 và Web source F08 khi chạy thử. Không có migration trong hai batch này; không thay bản đang chạy chỉ bằng sửa source. Nghiệm thu backend đã có tại F07; kiểm tra Web/API fixture và bằng chứng lượt mới ghi trong Docs/KE_HOACH_FIX_LOI_V2.md.

@@ -53,6 +53,7 @@ public class LoanService {
     private final StaffNotificationService staffNotificationService;
     private final LibraryPolicyService policyService;
     private final BorrowingValuePolicyService borrowingValuePolicyService;
+    private final com.huit.library.modules.catalog.service.BookValuationService bookValuationService;
 
     public LoanService(
             LoanTicketRepository loanTicketRepository,
@@ -65,7 +66,8 @@ public class LoanService {
             WaitlistService waitlistService,
             StaffNotificationService staffNotificationService,
             LibraryPolicyService policyService,
-            BorrowingValuePolicyService borrowingValuePolicyService) {
+            BorrowingValuePolicyService borrowingValuePolicyService,
+            com.huit.library.modules.catalog.service.BookValuationService bookValuationService) {
         this.loanTicketRepository = loanTicketRepository;
         this.loanDetailRepository = loanDetailRepository;
         this.waitlistRepository = waitlistRepository;
@@ -77,6 +79,7 @@ public class LoanService {
         this.staffNotificationService = staffNotificationService;
         this.policyService = policyService;
         this.borrowingValuePolicyService = borrowingValuePolicyService;
+        this.bookValuationService = bookValuationService;
     }
 
     @Transactional
@@ -442,6 +445,50 @@ public class LoanService {
     }
 
     @Transactional
+    public LoanItemDTO reportLoss(Long ticketId, Long detailId, String description, UUID userId) {
+        if (description == null || description.isBlank() || description.length() > 1000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nhập mô tả báo mất, tối đa 1000 ký tự");
+        }
+        // Same ticket -> details lock order as counter returns; concurrent reports have one winner.
+        var ticket = loanTicketRepository.findByIdForUpdate(ticketId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn"));
+        if (!userId.equals(ticket.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn chỉ được báo mất tài liệu của mình");
+        }
+        var detail = loanDetailRepository.findByTicketIdForUpdate(ticketId).stream()
+                .filter(item -> detailId.equals(item.getDetailId())).findFirst().orElseThrow(() ->
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu trong phiếu"));
+        // First report is immutable. A retry after staff processing returns it without another event/fee.
+        if (detail.getLossReportedAt() != null) return toLoanItem(ticket, detail);
+        if (!List.of("BORROWING", "OVERDUE").contains(ticket.getStatus())
+                || !List.of("BORROWING", "OVERDUE").contains(detail.getReturnStatus())
+                || detail.getReturnDate() != null || detail.getPhysicalReturnAt() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ báo mất cuốn đang mượn và chưa có hồ sơ sự cố");
+        }
+        var reportedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
+        detail.setLossReportDescription(description.strip());
+        detail.setLossReportedAt(reportedAt);
+        loanDetailRepository.saveAndFlush(detail);
+        staffNotificationService.notifyAll("LOAN_LOSS_REPORTED",
+                "Bạn đọc báo mất tài liệu " + detail.getBarcode() + " trong phiếu #" + ticketId
+                        + ". Mở báo mất để xác minh bạn đọc và tài liệu trước khi lập hồ sơ.",
+                "LOAN_LOSS_REPORT", detailId.toString(), "LOAN_LOSS_REPORTED:" + detailId, reportedAt);
+        return toLoanItem(ticket, detail);
+    }
+
+    @Transactional(readOnly = true)
+    public LoanTicketDetailDTO getLossReport(Long detailId) {
+        var detail = loanDetailRepository.findById(detailId).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy báo mất"));
+        if (detail.getLossReportedAt() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tài liệu chưa có báo mất từ bạn đọc");
+        }
+        var ticket = getLoan(detail.getTicketId());
+        ticket.setItems(ticket.getItems().stream().filter(item -> detailId.equals(item.getDetailId())).toList());
+        return ticket;
+    }
+
+    @Transactional
     public LoanItemDTO renewLoan(Long ticketId, Long detailId, UUID userId) {
         LoanTicketEntity ticket = loanTicketRepository.findByIdForUpdate(ticketId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + ticketId));
@@ -460,8 +507,15 @@ public class LoanService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy chi tiết mượn sách cho phiếu này");
         }
 
+        if (details.stream().anyMatch(item -> (detailId == null || detailId.equals(item.getDetailId()))
+                && item.getLossReportedAt() != null)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã báo mất; liên hệ thủ thư để xử lý");
+        }
+
         List<LoanDetailEntity> activeDetails = details.stream()
                 .filter(item -> item.getReturnDate() == null)
+                .filter(item -> item.getPhysicalReturnAt() == null)
+                .filter(item -> item.getLossReportedAt() == null)
                 .filter(item -> "BORROWING".equalsIgnoreCase(item.getReturnStatus()))
                 .toList();
         LoanDetailEntity detail;
@@ -477,14 +531,14 @@ public class LoanService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu đang mượn trong phiếu"));
         }
 
+        if (Boolean.TRUE.equals(detail.getIsRecalled())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Thư viện đã yêu cầu trả tài liệu này; không thể gia hạn");
+        }
+
         circulationStateService.ensureEligibleForRenewal(userId);
 
         if (detail.getDueDate() != null && detail.getDueDate().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã quá hạn nên không thể gia hạn");
-        }
-
-        if (Boolean.TRUE.equals(detail.getIsRecalled())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu này đã có lệnh thu hồi từ thư viện, không thể gia hạn!");
         }
 
         int currentRenewals = detail.getRenewalCount() != null ? detail.getRenewalCount() : 0;
@@ -552,7 +606,14 @@ public class LoanService {
             effectiveTicketStatus = LoanTicketStatus.OVERDUE;
         }
 
+        var value = bookValuationService.resolve(book);
         return LoanItemDTO.builder()
+                .bookValue(value == null ? null : value.amount())
+                .bookValueSource(value == null ? "UNKNOWN" : value.source())
+                .bookValueCurrency(value == null ? "VND" : value.currency())
+                .priceKnown(value != null && value.known())
+                .returnable(detail.getReturnDate() == null && detail.getPhysicalReturnAt() == null
+                        && ("BORROWING".equals(detail.getReturnStatus()) || "OVERDUE".equals(detail.getReturnStatus())))
                 .ticketId(ticket.getTicketId())
                 .detailId(detail.getDetailId())
                 .bookId(book != null ? book.getBookId() : null)
@@ -570,12 +631,21 @@ public class LoanService {
                 .pickupDeadline(pickupDeadline)
                 .dueDate(detail.getDueDate())
                 .returnDate(detail.getReturnDate())
+                .physicalReturnAt(detail.getPhysicalReturnAt())
+                .lossReportedAt(detail.getLossReportedAt())
+                .lossReportDescription(detail.getLossReportDescription())
+                .isRecalled(Boolean.TRUE.equals(detail.getIsRecalled()))
+                .recallRequestedAt(detail.getRecallRequestedAt() != null ? detail.getRecallRequestedAt() : detail.getRecalledAt())
+                .recallRequestedBy(detail.getRecallRequestedBy())
+                .recallReason(detail.getRecallReason())
+                .recallPreviousDueDate(detail.getRecallPreviousDueDate() != null ? detail.getRecallPreviousDueDate() : detail.getOriginalDueDateBeforeRecall())
+                .recallDueDate(detail.getRecallDueDate() != null ? detail.getRecallDueDate() : detail.getRecallDueAt())
                 .daysRemaining(daysRemaining)
                 .renewalCount(detail.getRenewalCount() != null ? detail.getRenewalCount() : 0)
                 .recalled(Boolean.TRUE.equals(detail.getIsRecalled()))
-                .recalledAt(detail.getRecalledAt())
-                .recallDueAt(detail.getRecallDueAt())
-                .originalDueDateBeforeRecall(detail.getOriginalDueDateBeforeRecall())
+                .recalledAt(detail.getRecalledAt() != null ? detail.getRecalledAt() : detail.getRecallRequestedAt())
+                .recallDueAt(detail.getRecallDueAt() != null ? detail.getRecallDueAt() : detail.getRecallDueDate())
+                .originalDueDateBeforeRecall(detail.getOriginalDueDateBeforeRecall() != null ? detail.getOriginalDueDateBeforeRecall() : detail.getRecallPreviousDueDate())
                 .lateFineAccrued(detail.getLateFineAccrued() != null
                         ? detail.getLateFineAccrued()
                         : BigDecimal.ZERO)

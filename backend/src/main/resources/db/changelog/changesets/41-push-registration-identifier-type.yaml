@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 41-push-registration-identifier-type
+      author: codex
+      changes:
+        - addColumn:
+            tableName: push_device_registrations
+            columns:
+              - column:
+                  name: identifier_type
+                  type: varchar(16)
+                  defaultValue: TOKEN
+                  constraints: { nullable: false }
+        - sql:
+            sql: "ALTER TABLE push_device_registrations ADD CONSTRAINT ck_push_identifier_type CHECK (identifier_type IN ('TOKEN', 'FID'))"
+      rollback:
+        - dropColumn: { tableName: push_device_registrations, columnName: identifier_type }

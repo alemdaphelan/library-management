@@ -35,6 +35,14 @@ describe('CirculationService', () => {
     request.flush([{ ticketId: 19, status: 'OVERDUE', itemCount: 1, overdueItemCount: 1, totalLateFine: 3000 }]);
   });
 
+  it('requests a filtered recall page and sends only the chosen item reason',()=>{
+    service.getRecallItems('2001240001','NOT_RECALLED',2,10).subscribe();
+    const list=httpTesting.expectOne(request=>request.url===`${apiUrl}/recall-items`);
+    expect(list.request.params.get('q')).toBe('2001240001');expect(list.request.params.get('state')).toBe('NOT_RECALLED');expect(list.request.params.get('page')).toBe('2');list.flush({items:[],total:0,page:2,size:10});
+    service.requestRecall(33,45,'Cần học phần').subscribe();const post=httpTesting.expectOne(`${apiUrl}/33/items/45/recall`);
+    expect(post.request.method).toBe('POST');expect(post.request.body).toEqual({reason:'Cần học phần'});post.flush({});
+  });
+
   it('loads the current reader borrowing limit from the backend', () => {
     service.getMyBorrowEligibility().subscribe(response => {
       expect(response.remainingSlots).toBe(1);
@@ -43,6 +51,17 @@ describe('CirculationService', () => {
     const request = httpTesting.expectOne(`${apiUrl}/my-eligibility`);
     expect(request.request.method).toBe('GET');
     request.flush({ maximumItems: 3, openItems: 2, remainingSlots: 1, eligible: true, message: 'Còn 1' });
+  });
+
+  it('reports the selected item using only a description and reads the staff handoff separately', () => {
+    service.reportLoss(33, 48, 'Mất trên xe buýt').subscribe();
+    const post = httpTesting.expectOne(`${apiUrl}/33/items/48/loss-report`);
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ description: 'Mất trên xe buýt' });
+    post.flush({ ticketId: 33, detailId: 48, lossReportedAt: '2026-11-04T10:00:00' });
+    service.getLossReport(48).subscribe();
+    const get = httpTesting.expectOne(`${apiUrl}/loss-reports/48`);
+    expect(get.request.method).toBe('GET'); get.flush({ ticketId: 33, items: [] });
   });
 
   it('treats the plain-text cancellation response as a successful request', () => {

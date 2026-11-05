@@ -48,6 +48,7 @@ export class Imports implements OnInit, OnDestroy {
   removeLine(index: number): void { if (!this.isSaving && this.newImportLines.length > 1) this.newImportLines.splice(index, 1); }
   clearIdentification(line: ImportLineDraft): void {
     line.requestVersion++; line.bookId = undefined; line.title = ''; line.identification = undefined; line.lookupState = 'idle'; line.lookupMessage = '';
+    line.floorId=undefined;line.bookshelfId=undefined;line.shelfId=undefined;line.bookshelves=[];line.shelves=[];line.locationLoading=false;line.locationError='';
   }
   lookupIsbn(line: ImportLineDraft): void {
     if (this.isSaving || line.lookupState === 'loading') return;
@@ -64,7 +65,7 @@ export class Imports implements OnInit, OnDestroy {
         if (version !== line.requestVersion || !this.newImportLines.includes(line)) return;
         line.bookId = book.bookId; line.title = book.title; line.identification = book;
         if (!line.price && book.defaultPrice != null) line.price = Number(book.defaultPrice);
-        line.lookupState = 'found'; line.lookupMessage = 'Đã đối chiếu đầu sách và ấn bản trong danh mục.'; this.cdr.detectChanges();
+        line.lookupState = 'found'; line.lookupMessage = 'Đã đối chiếu đầu sách và ấn bản trong danh mục.';this.applySuggestedPlacement(line,version); this.cdr.detectChanges();
       }, error: error => {
         if (version !== line.requestVersion || !this.newImportLines.includes(line)) return;
         line.lookupState = 'missing'; line.lookupMessage = this.extractError(error, 'Không nhận diện được đầu sách. Kiểm tra ISBN hoặc chọn mã đầu sách rõ ràng.'); this.cdr.detectChanges();
@@ -81,6 +82,19 @@ export class Imports implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }, error: error => { this.floorsLoading = false; this.locationError = this.extractError(error, 'Không tải được cây vị trí.'); this.cdr.detectChanges(); },
     });
+  }
+  private applySuggestedPlacement(line:ImportLineDraft,version:number):void {
+    const candidate=line.identification?.placements?.find(p=>p.shelfId===line.identification?.suggestedShelfId);
+    if(!candidate)return;
+    line.floorId=candidate.floorId;line.bookshelfId=candidate.bookshelfId;line.shelfId=candidate.shelfId;line.locationLoading=true;
+    forkJoin({bookshelves:this.locations.getBookshelves(candidate.floorId),shelves:this.locations.getShelves(candidate.bookshelfId)})
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:result=>{
+        if(line.requestVersion!==version||!this.newImportLines.includes(line)||line.floorId!==candidate.floorId||line.bookshelfId!==candidate.bookshelfId)return;
+        line.bookshelves=result.bookshelves.filter(b=>b.parentId===candidate.floorId);line.shelves=result.shelves.filter(s=>s.parentId===candidate.bookshelfId);
+        line.locationLoading=false;
+        if(!line.shelves.some(s=>s.id===candidate.shelfId)){line.shelfId=undefined;line.locationError='Vị trí đề xuất đã thay đổi. Chọn lại ngăn.';}
+        this.cdr.markForCheck();
+      },error:()=>{if(line.requestVersion!==version)return;line.locationLoading=false;line.shelfId=undefined;line.locationError='Không tải được vị trí theo quy định. Thử đối chiếu lại hoặc chọn thủ công.';this.cdr.markForCheck();}});
   }
   floorChanged(line: ImportLineDraft): void {
     line.bookshelfId = undefined; line.shelfId = undefined; line.bookshelves = []; line.shelves = []; line.locationError = ''; line.locationLoading = false;

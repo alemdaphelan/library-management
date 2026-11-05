@@ -24,12 +24,25 @@ public interface BookCopyRepository extends JpaRepository<BookCopyEntity, String
 
     @Query("""
             select new com.huit.library.modules.catalog.dto.ShelfBookDTO(
-                copy.barcode, book.bookId, book.title, book.isbn, copy.status)
-            from BookCopyEntity copy, BookEntity book
-            where copy.bookId = book.bookId and copy.shelf.shelfId = :shelfId
-            order by lower(book.title), copy.barcode
+                copy.barcode, copy.bookId, coalesce(book.title,'Bản sao chưa đối chiếu được đầu sách'), book.isbn, copy.status, case when book.bookId is null then false else true end)
+            from BookCopyEntity copy left join BookEntity book on copy.bookId=book.bookId
+            where copy.shelf.shelfId = :shelfId
+            order by lower(coalesce(book.title,'Bản sao chưa đối chiếu được đầu sách')), copy.barcode
             """)
     List<ShelfBookDTO> findShelfBooks(@Param("shelfId") Long shelfId);
+
+    @Query(value = """
+            select new com.huit.library.modules.catalog.dto.ShelfBookDTO(
+                copy.barcode, copy.bookId, coalesce(book.title,'Bản sao chưa đối chiếu được đầu sách'), book.isbn, copy.status, case when book.bookId is null then false else true end)
+            from BookCopyEntity copy left join copy.shelf shelf left join BookEntity book on copy.bookId=book.bookId
+            where (:shelfId is null and shelf is null) or shelf.shelfId=:shelfId
+            order by lower(coalesce(book.title,'Bản sao chưa đối chiếu được đầu sách')), copy.barcode
+            """, countQuery = """
+            select count(copy) from BookCopyEntity copy left join copy.shelf shelf
+            where (:shelfId is null and shelf is null) or shelf.shelfId=:shelfId
+            """)
+    org.springframework.data.domain.Page<ShelfBookDTO> findLocationBooks(@Param("shelfId") Long shelfId,
+            org.springframework.data.domain.Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

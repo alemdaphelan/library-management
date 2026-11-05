@@ -1104,3 +1104,8 @@
 .pickup-complete-note { color: #475569; font-size: .9rem; font-weight: 600; }
 .history-time-group { grid-column: 1 / -1; margin: 18px 0 4px; padding: 9px 13px; border-left: 4px solid #0284c7; background: #e0f2fe; color: #075985; border-radius: 6px; }
 .load-more-hint { grid-column: 1 / -1; text-align: center; color: #64748b; padding: 18px; }
+.loan-item-actions { display: flex; flex-direction: column; gap: 8px; }
+.ticket-book-list .recall-notice { display:block;white-space:normal;text-align:left;color:#9a3412;background:#fff7ed;border-left:3px solid #ea580c;padding:8px;overflow-wrap:anywhere; }
+.ticket-book-list a:has(.recall-notice) { flex-wrap:wrap; } .ticket-book-list .recall-notice { flex-basis:100%; }
+.loss-description { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px; font: inherit; border: 1px solid #94a3b8; border-radius: 8px; resize: vertical; }
+@media (max-width: 600px) { .ticket-book-row { flex-wrap: wrap; } .loan-item-actions { flex-basis: 100%; } }

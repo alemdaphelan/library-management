@@ -21,6 +21,13 @@ export class AdminSuggestions implements OnInit {
   isLoading = false;
   isUpdating = false;
   searchTerm = '';
+  majorFilter = '';
+
+  get majorOptions(): { id: string; name: string }[] {
+    const majors = new Map<string, string>();
+    for (const p of this.proposals) if (p.majorId) majors.set(p.majorId, p.majorName || p.majorId);
+    return [...majors].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }
   adminNoteInput = '';
   alertMessage: { type: 'success' | 'error'; text: string } | null = null;
 
@@ -79,6 +86,8 @@ export class AdminSuggestions implements OnInit {
 
   get filteredSuggestions(): BookProposal[] {
     let result = this.proposals;
+    if (this.majorFilter === '__LEGACY__') result = result.filter(s => !s.majorId);
+    else if (this.majorFilter) result = result.filter(s => s.majorId === this.majorFilter);
 
     if (this.activeTab !== 'ALL') {
       result = result.filter(s => s.status === this.activeTab);
@@ -190,10 +199,6 @@ export class AdminSuggestions implements OnInit {
         this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi từ chối đề xuất!'));
       }
     });
-  }
-
-  urgencyLabel(level?: string): string {
-    return ({ LOW: 'Thấp', NORMAL: 'Bình thường', HIGH: 'Cao' } as Record<string, string>)[level || 'NORMAL'] || 'Bình thường';
   }
 
   private extractError(error: any, fallback: string): string {

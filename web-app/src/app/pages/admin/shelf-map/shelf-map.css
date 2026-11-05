@@ -102,6 +102,9 @@
   border-radius: 8px;
   font: inherit;
 }
+.create-form label { min-width:0; font-size:.85rem; }
+.create-form label input { display:block; width:100%; box-sizing:border-box; margin-top:5px; }
+.create-form button { align-self:end; min-height:40px; }
 
 .create-form input:focus {
   border-color: #0284c7;
@@ -391,3 +394,4 @@
     grid-template-columns: 1fr;
   }
 }
+.message button{font:inherit;padding:8px 12px;margin:6px 0 6px 8px;min-height:36px;border:1px solid currentColor;border-radius:6px;background:white;color:inherit;cursor:pointer}.message button:focus-visible{outline:3px solid #38bdf8;outline-offset:2px}

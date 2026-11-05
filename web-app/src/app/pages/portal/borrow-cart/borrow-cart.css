@@ -41,5 +41,7 @@ h1 { margin: 7px 0; font-size: 2.1rem; }
 .success-card p { color: #475569; }
 .success-meta { display: flex; flex-wrap: wrap; gap: 10px; }
 .success-meta span { background: #eff6ff; color: #1d4ed8; padding: 6px 10px; border-radius: 999px; font-size: .84rem; font-weight: 700; }
+.review-actions { display:grid; gap:12px; }.review-actions a { color:#0369a1; font-weight:700; }.review-actions button,.error-message button { border:1px solid #94a3b8; border-radius:8px; background:white; color:#334155; padding:10px; cursor:pointer; }
+.remove-button:disabled,.type-options button:disabled { opacity:.55; cursor:default; }
 @media (max-width: 820px) { .cart-grid { grid-template-columns: 1fr; } .page-heading { align-items: flex-start; flex-direction: column; } }
 @media (max-width: 520px) { .borrow-cart-page { padding: 28px 14px 55px; } .cart-item { grid-template-columns: 56px 1fr; } .cart-item img { width: 54px; height: 75px; } .remove-button { grid-column: 2; justify-self: start; } .type-options { grid-template-columns: 1fr; } }

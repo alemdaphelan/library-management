@@ -41,7 +41,7 @@
           <p>{{ item.author || 'Đang cập nhật tác giả' }}</p>
           <span>Còn {{ item.availableCopies || 0 }} bản tại thời điểm thêm vào giỏ</span>
         </div>
-        <button type="button" class="remove-button" (click)="remove(item.bookId)">Xóa</button>
+        <button type="button" class="remove-button" (click)="remove(item.bookId)" [disabled]="isSubmitting || requiresReview">Xóa</button>
       </article>
       <p class="availability-note">Tình trạng bản sao sẽ được kiểm tra lại khi tạo phiếu.</p>
     </section>
@@ -53,27 +53,32 @@
         <strong>Hạn mức: {{ eligibility.openItems }}/{{ eligibility.maximumItems }} tài liệu đang hoạt động</strong>
         <span>{{ eligibility.message }}</span>
       </div>
+      <div class="error-message" *ngIf="eligibilityError" role="alert">{{eligibilityError}} <button type="button" (click)="loadEligibility()" [disabled]="isCheckingEligibility">Tải lại hạn mức</button></div>
 
       <label>Hình thức sử dụng</label>
       <div class="type-options">
-        <button type="button" [class.active]="ticketType === 'BORROW'" (click)="ticketType = 'BORROW'">
+        <button type="button" [class.active]="ticketType === 'BORROW'" (click)="ticketType = 'BORROW'" [disabled]="isSubmitting || requiresReview">
           <strong>Mượn về</strong><span>{{ policy ? (policy.homeLoanDays + ' ngày từ lúc nhận') : 'Theo quy định hiện hành' }}</span>
         </button>
-        <button type="button" [class.active]="ticketType === 'ONSITE'" (click)="ticketType = 'ONSITE'">
+        <button type="button" [class.active]="ticketType === 'ONSITE'" (click)="ticketType = 'ONSITE'" [disabled]="isSubmitting || requiresReview">
           <strong>Đọc tại chỗ</strong><span>Trả trước giờ đóng cửa cùng ngày</span>
         </button>
       </div>
 
       <label for="cart-pickup-date">Ngày đến nhận</label>
-      <input id="cart-pickup-date" type="date" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" readonly>
+      <input id="cart-pickup-date" type="date" [(ngModel)]="pickupDate" [min]="minPickupDate" [max]="maxPickupDate" readonly required>
       <small>Phiếu trực tuyến chỉ giữ sách đến giờ đóng cửa hôm nay. Quy tắc {{ policy ? (policy.waitlistHoldHours + ' giờ') : 'giữ chỗ' }} chỉ dành cho người được gọi từ hàng đợi.</small>
 
       <label for="cart-note">Ghi chú cho thủ thư</label>
-      <textarea id="cart-note" maxlength="500" [(ngModel)]="note" placeholder="Ví dụ: nhận tại quầy tầng 2"></textarea>
+      <textarea id="cart-note" maxlength="500" [(ngModel)]="note" [disabled]="isSubmitting || requiresReview" placeholder="Ví dụ: nhận tại quầy tầng 2"></textarea>
 
-      <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <div class="error-message" *ngIf="errorMessage" role="alert">{{ errorMessage }}</div>
+      <div *ngIf="requiresReview" class="review-actions">
+        <a routerLink="/history">Kiểm tra lịch sử mượn</a>
+        <button type="button" (click)="unlockAfterReview()" [disabled]="isSubmitting">Tôi đã kiểm tra lịch sử, mở lại giỏ</button>
+      </div>
 
-      <button type="button" class="submit-button" (click)="submit()" [disabled]="isSubmitting || isCheckingEligibility || (eligibility !== null && items.length > eligibility.remainingSlots)">
+      <button type="button" class="submit-button" (click)="submit()" [attr.aria-busy]="isSubmitting" [disabled]="isSubmitting || requiresReview || isCheckingEligibility || (eligibility !== null && items.length > eligibility.remainingSlots)">
         {{ isSubmitting ? 'Đang tạo phiếu...' : (isCheckingEligibility ? 'Đang kiểm tra hạn mức...' : 'Tạo một phiếu cho ' + items.length + ' tài liệu') }}
       </button>
     </section>

@@ -21,8 +21,8 @@
 
   <ng-container *ngIf="!loading && !errorMessage">
     <section class="summary-grid">
-      <article class="summary-card debt-card">
-        <span>Còn phải thanh toán</span>
+      <article class="summary-card debt-card" [class.cleared]="outstandingDebt === 0">
+        <span>{{outstandingDebt>0?'Còn phải thanh toán':'Không có công nợ'}}</span>
         <strong>{{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ</strong>
         <small>{{ openDebtEntries.length }} khoản đang mở</small>
       </article>
@@ -39,7 +39,7 @@
       <article class="summary-card deposit-card">
         <span>Tiền thế chân hiện có</span>
         <strong>{{ (libraryCard?.depositBalance || 0) | number:'1.0-0':'en-US' }} VNĐ</strong>
-        <small>Trạng thái thẻ: {{ libraryCard?.cardStatus || 'Chưa cấp thẻ' }}</small>
+        <small>Trạng thái thẻ: <span class="card-status" [class.active]="libraryCard?.issued && libraryCard?.cardStatus === 'ACTIVE'" [class.locked]="libraryCard?.issued && libraryCard?.cardStatus === 'LOCKED'" [class.expired]="libraryCard?.issued && libraryCard?.cardStatus === 'EXPIRED'">{{cardStatusLabel}}</span></small>
       </article>
       <article class="summary-card">
         <span>Hồ sơ mất / hỏng</span>
@@ -47,6 +47,8 @@
         <small>Gồm hồ sơ đang xử lý và đã quyết toán</small>
       </article>
     </section>
+
+    <app-mock-payment [debt]="outstandingDebt" (completed)="loadFinancials()" />
 
     <section class="payment-panel">
       <div class="payment-copy">
@@ -61,7 +63,7 @@
       <div class="payment-form">
         <label for="payment-amount">Số tiền (VNĐ)</label>
         <input id="payment-amount" type="number" min="1000" step="1000" [(ngModel)]="paymentAmount"
-               [max]="paymentPurpose === 'DEBT' ? outstandingDebt : 100000000">
+               [max]="paymentPurpose === 'DEBT' ? outstandingDebt : 100000000" required>
         <small *ngIf="paymentPurpose === 'DEBT'">Công nợ hiện tại: {{ outstandingDebt | number:'1.0-0':'en-US' }} VNĐ</small>
         <small *ngIf="paymentPurpose === 'DEPOSIT'">Số tiền này được cộng vào tiền thế chân, không tự cấn trừ công nợ.</small>
         <button type="button" (click)="startOnlinePayment()"
@@ -77,35 +79,43 @@
       <div><strong>Bạn hiện không còn công nợ đến hạn.</strong><p>Quyền mượn vẫn phụ thuộc trạng thái thẻ và việc hoàn trả đầy đủ tài liệu.</p></div>
     </div>
 
-    <section class="panel">
+    <section class="panel" id="debt-list">
       <div class="panel-heading">
-        <div><h2>Chi tiết các khoản ghi nợ</h2><p>Mỗi dòng tiền được giữ nguyên để phục vụ đối soát và kiểm tra lịch sử.</p></div>
-        <span>{{ debtEntries.length }} khoản</span>
+        <div><h2>Các khoản phí</h2><p>Mặc định chỉ hiện khoản còn phải trả. Chọn trạng thái khác để xem lịch sử.</p></div>
+        <span>{{ filteredDebtEntries.length }} khoản</span>
       </div>
-      <div class="empty-state" *ngIf="debtEntries.length === 0">Chưa phát sinh khoản phạt hoặc đền bù nào.</div>
-      <div class="table-wrap" *ngIf="debtEntries.length > 0">
+      <div class="list-filters">
+        <label>Trạng thái thanh toán<select aria-label="Trạng thái thanh toán" [(ngModel)]="debtStatus" (ngModelChange)="debtPage=0"><option value="UNPAID">Chưa thanh toán đủ</option><option value="PAID">Đã xử lý xong</option><option value="ALL">Tất cả</option></select></label>
+        <label>Loại phí<select aria-label="Loại phí" [(ngModel)]="debtType" (ngModelChange)="debtPage=0"><option value="">Mọi loại phí</option><option *ngFor="let type of feeTypes" [value]="type.value">{{type.label}}</option></select></label>
+        <label>Tìm khoản phí<input type="search" aria-label="Tìm khoản phí" [(ngModel)]="debtQuery" (ngModelChange)="debtPage=0" placeholder="Mã, loại phí, lý do hoặc biên nhận"></label>
+        <button type="button" (click)="resetDebtFilters()">Đặt lại bộ lọc</button>
+      </div>
+      <div class="empty-state" *ngIf="filteredDebtEntries.length === 0">Không có khoản phí phù hợp với bộ lọc.</div>
+      <div class="table-wrap" *ngIf="filteredDebtEntries.length > 0">
         <table>
           <thead><tr><th>Mã</th><th>Loại phí / lý do</th><th>Phát sinh</th><th>Đã trả</th><th>Còn lại</th><th>Trạng thái</th><th>Ngày ghi nhận</th></tr></thead>
           <tbody>
-            <tr *ngFor="let entry of debtEntries">
+            <tr *ngFor="let entry of visibleDebtEntries">
               <td>#{{ entry.transactionId }}</td>
               <td><strong>{{ feeTypeLabel(entry.type) }}</strong><small>{{ entry.reason || 'Không có ghi chú' }}</small></td>
               <td>{{ entry.amount | number:'1.0-0':'en-US' }} VNĐ</td>
               <td>{{ (entry.paidAmount || 0) | number:'1.0-0':'en-US' }} VNĐ</td>
-              <td class="remaining">{{ remainingAmount(entry) | number:'1.0-0':'en-US' }} VNĐ</td>
+              <td class="remaining" [class.settled]="remainingAmount(entry) === 0">{{ remainingAmount(entry) | number:'1.0-0':'en-US' }} VNĐ</td>
               <td><span class="status" [class.open]="remainingAmount(entry) > 0">{{ statusLabel(entry.status) }}</span></td>
               <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
             </tr>
           </tbody>
         </table>
       </div>
+      <app-finance-pager label="khoản phí" [page]="debtPage" [size]="pageSize" [total]="filteredDebtEntries.length" (pageChange)="debtPage=$event"/>
     </section>
 
-    <section class="panel">
-      <div class="panel-heading"><div><h2>Hồ sơ mất / hỏng tài liệu</h2><p>Chi tiết cấu thành tiền đền bù và thời hạn xử lý.</p></div><span>{{ penaltyCases.length }} hồ sơ</span></div>
-      <div class="empty-state" *ngIf="penaltyCases.length === 0">Không có hồ sơ mất hoặc hư hỏng tài liệu.</div>
-      <div class="case-grid" *ngIf="penaltyCases.length > 0">
-        <article class="case-card" *ngFor="let item of penaltyCases">
+    <section class="panel" id="case-list">
+      <div class="panel-heading"><div><h2>Hồ sơ mất / hỏng tài liệu</h2><p>Theo dõi hồ sơ đang xử lý hoặc xem lại hồ sơ đã hoàn tất.</p></div><span>{{ filteredCases.length }} hồ sơ</span></div>
+      <div class="list-filters"><label>Trạng thái hồ sơ<select aria-label="Trạng thái hồ sơ" [(ngModel)]="caseStatus" (ngModelChange)="casePage=0"><option value="OPEN">Đang xử lý</option><option value="CLOSED">Đã hoàn tất</option><option value="ALL">Tất cả</option></select></label></div>
+      <div class="empty-state" *ngIf="filteredCases.length === 0">Không có hồ sơ phù hợp với bộ lọc.</div>
+      <div class="case-grid" *ngIf="filteredCases.length > 0">
+        <article class="case-card" *ngFor="let item of visibleCases">
           <div class="case-top"><div><small>Hồ sơ #{{ item.caseId }}</small><h3>{{ incidentLabel(item.incidentType) }}</h3></div><span class="status">{{ statusLabel(item.status) }}</span></div>
           <p>{{ item.description || 'Không có mô tả bổ sung.' }}</p>
           <dl>
@@ -114,23 +124,25 @@
             <div><dt>Sửa chữa</dt><dd>{{ item.repairFee | number:'1.0-0':'en-US' }} VNĐ</dd></div>
             <div><dt>Đền bù</dt><dd>{{ item.compensationAmount | number:'1.0-0':'en-US' }} VNĐ</dd></div>
             <div><dt>Phí kỹ thuật</dt><dd>{{ item.technicalFee | number:'1.0-0':'en-US' }} VNĐ</dd></div>
-            <div class="case-total"><dt>Tổng / còn lại</dt><dd>{{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ / {{ (item.totalAmount - (item.paidAmount || 0)) | number:'1.0-0':'en-US' }} VNĐ</dd></div>
+            <div class="case-total"><dt>Tổng / còn lại</dt><dd>{{ item.totalAmount | number:'1.0-0':'en-US' }} VNĐ / {{ caseRemaining(item) | number:'1.0-0':'en-US' }} VNĐ</dd></div>
           </dl>
           <div class="case-deadline">Hạn xử lý: <strong>{{ item.settlementDueAt | date:'dd/MM/yyyy HH:mm' }}</strong></div>
           <div class="decision" *ngIf="item.decisionReason"><strong>Kết quả miễn giảm:</strong> {{ item.decisionReason }}</div>
         </article>
       </div>
+      <app-finance-pager label="hồ sơ" [page]="casePage" [size]="pageSize" [total]="filteredCases.length" (pageChange)="casePage=$event"/>
     </section>
 
     <section class="panel">
       <div class="panel-heading"><div><h2>Lịch sử thanh toán</h2><p>Biên nhận do thủ thư xác nhận; giao dịch đã phát hành không bị xóa.</p></div><span>{{ paymentEntries.length }} giao dịch</span></div>
       <div class="empty-state" *ngIf="paymentEntries.length === 0">Chưa có giao dịch thanh toán.</div>
       <div class="payment-list" *ngIf="paymentEntries.length > 0">
-        <article *ngFor="let payment of paymentEntries">
+        <article *ngFor="let payment of visiblePayments">
           <div><strong>{{ payment.receiptNumber || ('Giao dịch #' + payment.transactionId) }}</strong><small>{{ payment.reason }}</small></div>
-          <div><strong>{{ (payment.amount < 0 ? -payment.amount : payment.amount) | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : payment.paymentMethod === 'CASH' ? 'Tiền mặt' : payment.paymentMethod === 'VNPAY' ? 'VNPAY trực tuyến' : payment.paymentMethod || 'Đã ghi nhận' }} · {{ (payment.paidAt || payment.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small></div>
+          <div><strong>{{ (payment.amount < 0 ? -payment.amount : payment.amount) | number:'1.0-0':'en-US' }} VNĐ</strong><small>{{ payment.paymentMethod === 'MOCK' ? 'GIẢ LẬP kiểm thử' : payment.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : payment.paymentMethod === 'CASH' ? 'Tiền mặt' : payment.paymentMethod === 'VNPAY' ? 'VNPAY trực tuyến' : payment.paymentMethod || 'Đã ghi nhận' }} · {{ (payment.paidAt || payment.createdAt) | date:'dd/MM/yyyy HH:mm' }}</small></div>
         </article>
       </div>
+      <app-finance-pager label="giao dịch" [page]="paymentPage" [size]="pageSize" [total]="paymentEntries.length" (pageChange)="paymentPage=$event"/>
     </section>
 
     <footer class="finance-note">

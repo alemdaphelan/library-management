@@ -1,5 +1,8 @@
-import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { timeout } from 'rxjs';
 import { RouterLink, Router } from '@angular/router';
 import * as QRCode from 'qrcode';
 import { AuthService } from '../../../services/auth.service';
@@ -7,6 +10,7 @@ import { CirculationService } from '../../../services/circulation.service';
 import { DebtEntry, PenaltyCase, PenaltyService } from '../../../services/penalty.service';
 import { DialogService } from '../../../services/dialog.service';
 import { LibraryPolicyService } from '../../../services/library-policy.service';
+import { remainingDebt } from '../../../services/debt-amount';
 
 export interface LoanItem {
   ticketId: number;
@@ -24,6 +28,14 @@ export interface LoanItem {
   pickupDeadline?: string;
   dueDate?: string;
   returnDate?: string;
+  physicalReturnAt?: string;
+  lossReportedAt?: string;
+  lossReportDescription?: string;
+  isRecalled?: boolean;
+  recallRequestedAt?: string;
+  recallReason?: string;
+  recallDueDate?: string;
+  recallPreviousDueDate?: string;
   daysRemaining?: number;
   progress?: number;
   statusType?: 'normal' | 'warning' | 'overdue' | 'pending';
@@ -38,11 +50,12 @@ export interface LoanTicketGroup extends LoanItem {
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './history.html',
   styleUrls: ['./history.css']
 })
 export class History implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   isLoading = true;
   isLoggedIn = false;
   errorMessage = '';
@@ -77,6 +90,10 @@ export class History implements OnInit {
   maximumRenewalCount = 0;
   renewalDays = 0;
   policyLoaded = false;
+  lossReportItem: LoanItem | null = null;
+  lossReportDescription = '';
+  lossReportSubmitting = false;
+  lossReportError = '';
 
   constructor(
     private authService: AuthService,
@@ -116,14 +133,20 @@ export class History implements OnInit {
   }
 
   get outstandingDebt(): number {
-    return this.debtEntries
-      .filter(entry => Number(entry.amount) > 0)
-      .reduce((sum, entry) => sum + Math.max(0, Number(entry.amount) - Number(entry.paidAmount || 0)), 0);
+    return this.debtEntries.reduce((sum, entry) => sum + remainingDebt(entry), 0);
   }
+  get openDebtEntries():DebtEntry[]{return this.debtEntries.filter(entry=>remainingDebt(entry)>0);}
+  amountDue(entry:DebtEntry):number{return remainingDebt(entry);}
 
   loadFinancials(): void {
-    this.penaltyService.getMyLedger().subscribe({ next: value => this.debtEntries = value || [] });
-    this.penaltyService.getMyCases().subscribe({ next: value => this.penaltyCases = value || [] });
+    this.penaltyService.getMyLedger().subscribe({ next: value => { this.debtEntries = value || []; this.cdr.markForCheck(); } });
+    this.penaltyService.getMyCases().subscribe({ next: value => { this.penaltyCases = value || []; this.cdr.markForCheck(); } });
+  }
+
+  refresh(): void {
+    if (!this.isLoggedIn) return;
+    this.loadLoans();
+    this.loadFinancials();
   }
 
   setTab(tab: 'BORROWING' | 'PENDING' | 'ALL' | 'PAST' | 'CANCELLED'): void {
@@ -210,6 +233,14 @@ export class History implements OnInit {
         pickupDeadline: raw.pickupDeadline,
         dueDate: raw.dueDate,
         returnDate: raw.returnDate,
+        physicalReturnAt: raw.physicalReturnAt,
+        lossReportedAt: raw.lossReportedAt,
+        lossReportDescription: raw.lossReportDescription,
+        isRecalled: raw.isRecalled === true,
+        recallRequestedAt: raw.recallRequestedAt,
+        recallReason: raw.recallReason,
+        recallDueDate: raw.recallDueDate,
+        recallPreviousDueDate: raw.recallPreviousDueDate,
         daysRemaining: days !== null ? days : undefined,
         progress,
         statusType,
@@ -271,7 +302,83 @@ export class History implements OnInit {
 
   itemStatusLabel(item: LoanItem): string {
     const status = (item.itemStatus || item.status || '').toUpperCase();
-    return ({ BORROWING: 'Đang giữ', OVERDUE: 'Quá hạn', RETURNED: 'Đã trả', PENDING: 'Chờ nhận', RESERVED: 'Đã giữ chỗ' } as Record<string, string>)[status] || status;
+    if (item.lossReportedAt && this.isHeldItem(item)) return 'Đã báo mất · chờ thủ thư';
+    if (item.physicalReturnAt) {
+      return ['DAMAGED', 'LOST', 'SETTLED'].includes(status) ? 'Đã trả · sách hỏng' : 'Đã trả';
+    }
+    return ({ BORROWING: 'Đang giữ', OVERDUE: 'Quá hạn', RETURNED: 'Đã trả', DAMAGED: 'Hồ sơ hỏng · chưa xác nhận nhận lại', LOST: 'Báo mất · đang xử lý', SETTLED: 'Đã giải quyết hồ sơ', CANCELLED: 'Đã hủy', PENDING: 'Chờ nhận', RESERVED: 'Đã giữ chỗ' } as Record<string, string>)[status] || status;
+  }
+
+  canRenewItem(item: LoanItem): boolean {
+    return item.status === 'BORROWING' && item.itemStatus === 'BORROWING'
+      && item.detailId != null && !item.returnDate && !item.physicalReturnAt && !item.lossReportedAt && !item.isRecalled;
+  }
+
+  canReportLoss(item: LoanItem): boolean {
+    return ['BORROWING', 'OVERDUE'].includes(item.status) && item.detailId != null
+      && this.isHeldItem(item) && !item.lossReportedAt;
+  }
+
+  reportableItems(ticket: LoanTicketGroup): LoanItem[] {
+    return ticket.items.filter(item => this.canReportLoss(item));
+  }
+
+  openLossReport(item: LoanItem): void {
+    if (!this.canReportLoss(item) || this.lossReportSubmitting || this.renewingTicketId !== null) return;
+    this.lossReportItem = item;
+    this.lossReportDescription = '';
+    this.lossReportError = '';
+  }
+
+  closeLossReport(): void {
+    if (this.lossReportSubmitting) return;
+    this.lossReportItem = null;
+    this.lossReportError = '';
+  }
+
+  submitLossReport(): void {
+    const item = this.lossReportItem;
+    const description = this.lossReportDescription.trim();
+    if (!item || !this.canReportLoss(item) || this.lossReportSubmitting) return;
+    if (!description || description.length > 1000) {
+      this.lossReportError = 'Nhập mô tả báo mất, tối đa 1000 ký tự.';
+      return;
+    }
+    this.lossReportSubmitting = true;
+    this.lossReportError = '';
+    this.circulationService.reportLoss(item.ticketId, item.detailId!, description)
+      .pipe(timeout(30_000), takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: updated => {
+          this.lossReportSubmitting = false;
+          if (!updated || updated.ticketId !== item.ticketId || updated.detailId !== item.detailId
+              || !updated.lossReportedAt || Number.isNaN(Date.parse(updated.lossReportedAt))
+              || typeof updated.lossReportDescription !== 'string' || !updated.lossReportDescription.trim()) {
+            this.lossReportError = 'Chưa xác nhận được kết quả. Làm mới lịch sử để kiểm tra hoặc gửi lại báo mất.';
+          } else {
+            this.processLoans(this.allList.flatMap(ticket => ticket.items).map(book =>
+              book.detailId === updated.detailId && book.ticketId === updated.ticketId ? { ...book, ...updated } : book));
+            this.lossReportItem = null;
+            this.showToast('Đã gửi báo mất đến thủ thư. Vui lòng liên hệ thư viện để được hướng dẫn xử lý.');
+          }
+          this.cdr.markForCheck();
+        },
+        error: error => {
+          this.lossReportSubmitting = false;
+          const reason = error?.error?.detail ?? error?.error?.message ?? error?.error;
+          this.lossReportError = typeof reason === 'string' && reason.trim() ? reason
+            : 'Chưa xác nhận được kết quả. Mô tả được giữ lại; kiểm tra lịch sử hoặc gửi lại báo mất.';
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  isHeldItem(item: LoanItem): boolean {
+    return ['BORROWING', 'OVERDUE'].includes(item.itemStatus || '')
+      && !item.returnDate && !item.physicalReturnAt;
+  }
+
+  renewableItems(ticket: LoanTicketGroup): LoanItem[] {
+    return ticket.items.filter(item => this.canRenewItem(item));
   }
 
   statusLabel(status: string): string {
@@ -342,6 +449,7 @@ export class History implements OnInit {
   }
 
   async renewBook(item: LoanItem): Promise<void> {
+    if (!this.canRenewItem(item) || this.renewingTicketId !== null || this.lossReportSubmitting) return;
     if (!this.policyLoaded) {
       this.dialog.show({ title: 'Chưa tải được quy định', message: 'Vui lòng tải lại trang trước khi gia hạn.', type: 'warning', confirmText: 'Đã hiểu' });
       return;

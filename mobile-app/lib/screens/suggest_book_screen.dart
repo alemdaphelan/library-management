@@ -12,7 +12,6 @@ class SuggestBookScreen extends StatefulWidget {
 }
 
 class _SuggestBookScreenState extends State<SuggestBookScreen> {
-  static const _otherGenreValue = '__OTHER__';
 
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
@@ -23,17 +22,16 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   final _edition = TextEditingController();
   final _estimatedPrice = TextEditingController();
   final _externalUrl = TextEditingController();
-  final _genre = TextEditingController();
   final _reason = TextEditingController();
   final _note = TextEditingController();
 
-  String _urgency = 'NORMAL';
-  String? _selectedGenre;
-  List<String> _categories = [];
+  String? _selectedMajor;
+  List<Map<String, dynamic>> _majors = [];
   bool _isSubmitting = false;
   bool _isLoadingHistory = true;
-  bool _isLoadingCategories = true;
-  bool _categoryLoadFailed = false;
+  bool _historyFailed = false;
+  bool _isLoadingMajors = true;
+  bool _majorLoadFailed = false;
   bool _showAdditionalInformation = false;
   List<Map<String, dynamic>> _history = [];
 
@@ -41,36 +39,32 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
   void initState() {
     super.initState();
     _loadHistory();
-    _loadCategories();
+    _loadMajors();
   }
 
-  Future<void> _loadCategories() async {
+  Future<void> _loadMajors() async {
     if (mounted) {
       setState(() {
-        _isLoadingCategories = true;
-        _categoryLoadFailed = false;
+        _isLoadingMajors = true;
+        _majorLoadFailed = false;
       });
     }
     try {
-      final categories = await ProposalService.getCategories();
+      final majors = await ProposalService.getMajors();
       if (!mounted) return;
       setState(() {
-        _categories = categories;
-        if (_selectedGenre != null &&
-            _selectedGenre != _otherGenreValue &&
-            !_categories.contains(_selectedGenre)) {
-          _selectedGenre = null;
-        }
+        _majors = majors;
+        if (!_majors.any((m) => m['majorId'] == _selectedMajor)) _selectedMajor = null;
       });
     } catch (_) {
-      if (mounted) setState(() => _categoryLoadFailed = true);
+      if (mounted) setState(() => _majorLoadFailed = true);
     } finally {
-      if (mounted) setState(() => _isLoadingCategories = false);
+      if (mounted) setState(() => _isLoadingMajors = false);
     }
   }
 
   Future<void> _loadHistory() async {
-    if (mounted) setState(() => _isLoadingHistory = true);
+    if (mounted) setState(() { _isLoadingHistory = true; _historyFailed = false; });
     try {
       final data = await ProposalService.getMine();
       if (mounted) {
@@ -97,13 +91,14 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
         }
       }
     } catch (_) {
-      // Keep the form usable even if the history endpoint is unavailable.
+      if (mounted) setState(() => _historyFailed = true);
     } finally {
       if (mounted) setState(() => _isLoadingHistory = false);
     }
   }
 
   Future<void> _submit() async {
+    if (_isSubmitting || _isLoadingMajors || _majorLoadFailed || _majors.isEmpty) return;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
     try {
@@ -116,8 +111,7 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
         edition: _edition.text,
         estimatedPrice: _parsePrice(_estimatedPrice.text),
         externalUrl: _externalUrl.text,
-        genre: _resolvedGenre,
-        urgencyLevel: _urgency,
+        majorId: _selectedMajor,
         reason: _reason.text.trim(),
         note: _note.text,
       );
@@ -144,21 +138,12 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
     return normalized.isEmpty ? null : double.tryParse(normalized);
   }
 
-  String? get _resolvedGenre {
-    if (_selectedGenre == _otherGenreValue) {
-      final manualGenre = _genre.text.trim();
-      return manualGenre.isEmpty ? null : manualGenre;
-    }
-    return _selectedGenre;
-  }
-
   void _clearForm() {
     for (final controller in _controllers) {
       controller.clear();
     }
     setState(() {
-      _urgency = 'NORMAL';
-      _selectedGenre = null;
+      _selectedMajor = null;
       _showAdditionalInformation = false;
     });
   }
@@ -172,7 +157,6 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
     _edition,
     _estimatedPrice,
     _externalUrl,
-    _genre,
     _reason,
     _note,
   ];
@@ -264,45 +248,14 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
                 const SizedBox(height: 14),
                 _field(_author, 'Tác giả', Icons.person_outline),
                 const SizedBox(height: 14),
-                _genreSelector(),
-                if (_selectedGenre == _otherGenreValue) ...[
-                  const SizedBox(height: 14),
-                  _field(
-                    _genre,
-                    'Nhập thể loại khác',
-                    Icons.edit_outlined,
-                    validator: (value) =>
-                        _selectedGenre == _otherGenreValue &&
-                            (value == null || value.trim().isEmpty)
-                        ? 'Vui lòng nhập tên thể loại'
-                        : null,
-                  ),
-                ],
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  initialValue: _urgency,
-                  decoration: _decoration(
-                    'Mức độ cần thiết',
-                    Icons.priority_high,
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'LOW', child: Text('Thấp')),
-                    DropdownMenuItem(
-                      value: 'NORMAL',
-                      child: Text('Bình thường'),
-                    ),
-                    DropdownMenuItem(value: 'HIGH', child: Text('Cao')),
-                  ],
-                  onChanged: (value) =>
-                      setState(() => _urgency = value ?? 'NORMAL'),
-                ),
+                _majorSelector(),
                 const SizedBox(height: 14),
                 _additionalInformation(),
                 const SizedBox(height: 24),
                 SizedBox(
                   height: 54,
                   child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _submit,
+                    onPressed: _isSubmitting || _isLoadingMajors || _majorLoadFailed || _majors.isEmpty ? null : _submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0284c7),
                       foregroundColor: Colors.white,
@@ -342,6 +295,8 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
                 const SizedBox(height: 8),
                 if (_isLoadingHistory)
                   const Center(child: CircularProgressIndicator())
+                else if (_historyFailed)
+                  const Text('Không tải được lịch sử. Nhấn làm mới để thử lại.')
                 else if (_history.isEmpty)
                   const Text(
                     'Bạn chưa có đề xuất nào.',
@@ -357,56 +312,27 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
     );
   }
 
-  Widget _genreSelector() {
-    final items = <DropdownMenuItem<String>>[
-      ..._categories.map(
-        (category) => DropdownMenuItem(
-          value: category,
-          child: Text(category, overflow: TextOverflow.ellipsis),
-        ),
+  Widget _majorSelector() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      DropdownButtonFormField<String>(
+        key: ValueKey('proposal-major-$_selectedMajor'),
+        initialValue: _selectedMajor,
+        isExpanded: true,
+        decoration: _decoration(_isLoadingMajors ? 'Đang tải ngành...' : 'Ngành học *', Icons.school_outlined),
+        items: _majors.map((m) => DropdownMenuItem<String>(
+          value: m['majorId'] as String,
+          child: Text(m['majorName'] as String, overflow: TextOverflow.ellipsis),
+        )).toList(),
+        onChanged: _isLoadingMajors || _isSubmitting ? null : (value) => setState(() => _selectedMajor = value),
+        validator: (value) => value == null ? 'Vui lòng chọn ngành học' : null,
       ),
-      const DropdownMenuItem(value: _otherGenreValue, child: Text('Khác')),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DropdownButtonFormField<String>(
-          initialValue: _selectedGenre,
-          isExpanded: true,
-          decoration: _decoration(
-            _isLoadingCategories ? 'Đang tải thể loại...' : 'Thể loại',
-            Icons.category_outlined,
-          ),
-          items: _isLoadingCategories ? const [] : items,
-          onChanged: _isLoadingCategories
-              ? null
-              : (value) => setState(() {
-                  _selectedGenre = value;
-                  if (value != _otherGenreValue) _genre.clear();
-                }),
-        ),
-        if (_categoryLoadFailed)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Chưa tải được danh sách từ thư viện. Bạn có thể chọn Khác hoặc thử lại.',
-                    style: TextStyle(color: Colors.orange, fontSize: 12),
-                  ),
-                ),
-                TextButton(
-                  onPressed: _loadCategories,
-                  child: const Text('Thử lại'),
-                ),
-              ],
-            ),
-          ),
+      if (_majorLoadFailed || (!_isLoadingMajors && _majors.isEmpty)) ...[
+        const Text('Chưa có danh mục ngành. Vui lòng tải lại hoặc liên hệ thư viện.'),
+        TextButton(onPressed: _loadMajors, child: const Text('Thử lại')),
       ],
-    );
-  }
+    ],
+  );
 
   Widget _additionalInformation() {
     return Card(
@@ -511,8 +437,9 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
           _historyLine('ISBN', proposal['isbn']),
           _historyLine('Năm xuất bản', proposal['publicationYear']),
           _historyLine('Phiên bản', proposal['edition']),
-          _historyLine('Thể loại', proposal['genre']),
-          _historyLine('Mức ưu tiên', proposal['urgencyLevel']),
+          _historyLine('Ngành học', proposal['majorName'] ?? 'Đề xuất cũ chưa gán ngành'),
+          _historyLine('Nguồn ngành', proposal['majorSourceReference']),
+          if (proposal['majorId'] == null) _historyLine('Thể loại cũ', proposal['genre']),
           _historyLine('Lý do', proposal['reason']),
           _historyLine('Ghi chú', proposal['note']),
           if ((proposal['adminNote']?.toString().trim().isNotEmpty ?? false))

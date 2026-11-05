@@ -23,7 +23,7 @@ class LoanAuthorizationContractTest {
         assertStudentOnly(LoanController.class.getMethod(
                 "getMyLoans", CustomUserDetails.class));
         assertStudentOnly(LoanController.class.getMethod(
-                "getMyBorrowEligibility", CustomUserDetails.class));
+                "getMyBorrowEligibility", Long.class, CustomUserDetails.class));
         assertStudentOnly(LoanController.class.getMethod(
                 "cancelReservation", Long.class, CustomUserDetails.class));
         assertStudentOnly(LoanController.class.getMethod(

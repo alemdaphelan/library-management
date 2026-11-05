@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { DialogService } from './services/dialog.service';
+import { RequiredFieldsService } from './services/required-fields.service';
 
 @Component({
   selector: 'app-root',
@@ -13,5 +14,5 @@ import { DialogService } from './services/dialog.service';
 export class App {
   protected readonly title = signal('web-app');
 
-  constructor(public dialogService: DialogService) {}
+  constructor(public dialogService: DialogService, requiredFields: RequiredFieldsService) {}
 }

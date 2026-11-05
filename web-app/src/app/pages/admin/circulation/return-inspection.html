@@ -48,25 +48,25 @@
         <legend>{{ draft.loan.bookTitle }}</legend>
         <div class="item-heading"><p>{{ draft.readerLabel }} · {{ draft.loan.barcode }}</p><button type="button" class="remove" (click)="removeItem(draft.loan.detailId)" [attr.aria-label]="'Bỏ ' + draft.loan.bookTitle">Bỏ khỏi lượt</button></div>
         <div class="field-grid">
-          <label>Tình trạng khi tiếp nhận<select [name]="'condition-' + draft.loan.detailId" [(ngModel)]="draft.condition" (ngModelChange)="changeCondition(draft)"><option value="NORMAL">Bình thường</option><option value="DAMAGED">Hư hỏng</option><option value="LOST">Báo mất</option></select></label>
+          <label>Tình trạng khi tiếp nhận<select [name]="'condition-' + draft.loan.detailId" [(ngModel)]="draft.condition" (ngModelChange)="changeCondition(draft)" required><option value="NORMAL">Bình thường</option><option value="DAMAGED">Hư hỏng</option><option value="LOST">Báo mất</option></select></label>
           <label>Ghi chú khi trả<textarea [name]="'note-' + draft.loan.detailId" [(ngModel)]="draft.note" maxlength="500" rows="2"></textarea></label>
         </div>
         <ng-container *ngIf="draft.condition !== 'NORMAL'">
           <div class="field-grid" *ngIf="draft.condition === 'DAMAGED'">
-            <label>Mức hư hỏng<select [name]="'severity-' + draft.loan.detailId" [(ngModel)]="draft.penalty.damageSeverity" (ngModelChange)="changeCondition(draft)"><option value="LIGHT">Nhẹ</option><option value="HEAVY">Nặng, xử lý như mất</option></select></label>
+            <label>Mức hư hỏng<select [name]="'severity-' + draft.loan.detailId" [(ngModel)]="draft.penalty.damageSeverity" (ngModelChange)="changeCondition(draft)" required><option value="LIGHT">Nhẹ</option><option value="HEAVY">Nặng, xử lý như mất</option></select></label>
             <label>Số trang ảnh hưởng<input type="number" [name]="'pages-' + draft.loan.detailId" [(ngModel)]="draft.penalty.pagesAffected" min="0" step="1"><small>Trên 10 trang cần chọn hỏng nặng.</small></label>
           </div>
           <label>Mô tả sự cố <span aria-hidden="true">*</span><textarea [name]="'description-' + draft.loan.detailId" [(ngModel)]="draft.penalty.description" maxlength="1000" rows="3" required></textarea></label>
           <label>Đường dẫn chứng cứ (nếu có)<input type="url" [name]="'evidence-' + draft.loan.detailId" [(ngModel)]="draft.penalty.evidenceUrl" maxlength="500" placeholder="https://…"></label>
           <div class="field-grid">
-            <label>Loại tài liệu<select [name]="'material-' + draft.loan.detailId" [(ngModel)]="draft.penalty.materialType"><option value="BOOK">Sách</option><option value="CD_DVD">CD/DVD</option><option value="MAP">Bản đồ</option></select></label>
-            <label>Ngôn ngữ<select [name]="'language-' + draft.loan.detailId" [(ngModel)]="draft.penalty.languageCategory"><option value="VIETNAMESE">Việt ngữ</option><option value="FOREIGN">Ngoại văn</option></select></label>
+            <label>Loại tài liệu<select [name]="'material-' + draft.loan.detailId" [(ngModel)]="draft.penalty.materialType" required><option value="BOOK">Sách</option><option value="CD_DVD">CD/DVD</option><option value="MAP">Bản đồ</option></select></label>
+            <label>Ngôn ngữ<select [name]="'language-' + draft.loan.detailId" [(ngModel)]="draft.penalty.languageCategory" required><option value="VIETNAMESE">Việt ngữ</option><option value="FOREIGN">Ngoại văn</option></select></label>
           </div>
           <label *ngIf="!isLoss(draft)">Chi phí sửa chữa (VNĐ) <span aria-hidden="true">*</span><input type="number" [name]="'repair-' + draft.loan.detailId" [(ngModel)]="draft.penalty.repairFee" min="1" required></label>
           <ng-container *ngIf="isLoss(draft)">
             <div class="field-grid">
               <label>Tài liệu còn lưu hành? <span aria-hidden="true">*</span><select [name]="'market-' + draft.loan.detailId" [(ngModel)]="draft.market" (ngModelChange)="changeCondition(draft)" required><option value="">Chọn sau khi xác minh</option><option value="YES">Có</option><option value="NO">Không</option></select></label>
-              <label>Phương thức đền bù<select [name]="'settlement-' + draft.loan.detailId" [(ngModel)]="draft.penalty.settlementMethod" [disabled]="draft.market !== 'NO'"><option value="REPLACEMENT">Nộp sách thay thế</option><option value="CASH" *ngIf="draft.market === 'NO'">Đền bù bằng tiền</option></select></label>
+              <label>Phương thức đền bù<select [name]="'settlement-' + draft.loan.detailId" [(ngModel)]="draft.penalty.settlementMethod" [disabled]="draft.market !== 'NO'" required><option value="REPLACEMENT">Nộp sách thay thế</option><option value="CASH" *ngIf="draft.market === 'NO'">Đền bù bằng tiền</option></select></label>
             </div>
             <p class="hint" *ngIf="draft.penalty.settlementMethod === 'REPLACEMENT'">Phiếu phạt sẽ tiếp tục chờ nộp và nghiệm thu sách thay thế, kể cả khi đã thanh toán đủ phí.</p>
             <ng-container *ngIf="draft.penalty.settlementMethod === 'CASH'">

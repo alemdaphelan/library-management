@@ -1,4 +1,6 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription, timeout } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -22,6 +24,15 @@ export class ShelfMap implements OnInit {
   selectedBookshelf?: LocationNode;
   selectedShelf?: LocationNode;
   shelfBooks: ShelfBook[] = [];
+  shelfTotal=0;shelfPage=0;
+  unplaced: ShelfBook[]=[];unplacedTotal=0;unplacedPage=0;unplacedLoading=false;unplacedError='';
+  placingBarcode='';
+  private booksVersion=0;
+  private unplacedVersion=0;
+  private readonly destroyRef=inject(DestroyRef);
+  private booksRequest?:Subscription;
+  private unplacedRequest?:Subscription;
+  shelfBooksError='';
   isLoadingShelfBooks = false;
   availableSubjects: ShelfSubject[] = [];
   selectedSubjectIds: number[] = [];
@@ -48,12 +59,13 @@ export class ShelfMap implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadUnplaced();
     this.loadAvailableSubjects();
     this.loadFloors();
   }
 
   loadAvailableSubjects(): void {
-    this.locationService.getAvailableSubjects().subscribe({
+    this.locationService.getAvailableSubjects().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: subjects => {
         this.availableSubjects = subjects || [];
         this.cdr.detectChanges();
@@ -64,7 +76,7 @@ export class ShelfMap implements OnInit {
 
   loadFloors(preferredFloorId?: number): void {
     this.startLoading();
-    this.locationService.getFloors().subscribe({
+    this.locationService.getFloors().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: floors => {
         this.floors = floors;
         this.selectedFloor = floors.find(floor => floor.id === preferredFloorId) ?? floors[0];
@@ -85,6 +97,7 @@ export class ShelfMap implements OnInit {
   selectFloor(floor: LocationNode): void {
     if (this.selectedFloor?.id === floor.id) return;
     this.selectedFloor = floor;
+    this.bookshelves = [];
     this.selectedBookshelf = undefined;
     this.selectedShelf = undefined;
     this.shelfBooks = [];
@@ -95,8 +108,9 @@ export class ShelfMap implements OnInit {
 
   loadBookshelves(floorId: number, preferredBookshelfId?: number): void {
     this.startLoading();
-    this.locationService.getBookshelves(floorId).subscribe({
+    this.locationService.getBookshelves(floorId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: bookshelves => {
+        if(this.selectedFloor?.id!==floorId)return;
         this.bookshelves = bookshelves;
         this.selectedBookshelf = bookshelves.find(item => item.id === preferredBookshelfId) ?? bookshelves[0];
         if (this.selectedBookshelf) {
@@ -107,13 +121,14 @@ export class ShelfMap implements OnInit {
           this.cdr.detectChanges();
         }
       },
-      error: error => this.handleError('Không thể tải danh sách dãy kệ.', error)
+      error: error => {if(this.selectedFloor?.id===floorId)this.handleError('Không thể tải danh sách dãy kệ.', error);}
     });
   }
 
   selectBookshelf(bookshelf: LocationNode): void {
     if (this.selectedBookshelf?.id === bookshelf.id) return;
     this.selectedBookshelf = bookshelf;
+    this.shelves = [];
     this.selectedShelf = undefined;
     this.shelfBooks = [];
     this.selectedSubjectIds = [];
@@ -122,8 +137,9 @@ export class ShelfMap implements OnInit {
 
   loadShelves(bookshelfId: number): void {
     this.startLoading();
-    this.locationService.getShelves(bookshelfId).subscribe({
+    this.locationService.getShelves(bookshelfId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: shelves => {
+        if(this.selectedBookshelf?.id!==bookshelfId)return;
         this.shelves = shelves;
         this.selectedShelf = undefined;
         this.shelfBooks = [];
@@ -131,41 +147,64 @@ export class ShelfMap implements OnInit {
         this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: error => this.handleError('Không thể tải danh sách ngăn kệ.', error)
+      error: error => {if(this.selectedBookshelf?.id===bookshelfId)this.handleError('Không thể tải danh sách ngăn kệ.', error);}
     });
   }
 
   selectShelf(shelf: LocationNode): void {
     this.selectedShelf = shelf;
     this.selectedSubjectIds = [];
-    this.isLoadingShelfBooks = true;
+    this.loadShelfBooks(0);
     this.isLoadingSubjects = true;
-    this.locationService.getShelfBooks(shelf.id).subscribe({
-      next: books => {
-        this.shelfBooks = books || [];
-        this.isLoadingShelfBooks = false;
-        this.cdr.detectChanges();
-      },
-      error: error => {
-        this.isLoadingShelfBooks = false;
-        this.shelfBooks = [];
-        this.handleError('Không thể tải danh sách tài liệu trong ngăn kệ.', error);
-        this.cdr.detectChanges();
-      }
-    });
-    this.locationService.getShelfSubjects(shelf.id).subscribe({
+    this.locationService.getShelfSubjects(shelf.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: subjects => {
+        if(this.selectedShelf?.id!==shelf.id)return;
         this.selectedSubjectIds = (subjects || []).map(subject => subject.subjectId);
         this.isLoadingSubjects = false;
         this.cdr.detectChanges();
       },
       error: error => {
+        if(this.selectedShelf?.id!==shelf.id)return;
         this.isLoadingSubjects = false;
         this.selectedSubjectIds = [];
         this.handleError('Không thể tải quy tắc chủ đề của ngăn kệ.', error);
         this.cdr.detectChanges();
       }
     });
+  }
+
+  loadShelfBooks(page=0):void {
+    const shelf=this.selectedShelf;if(!shelf || !Number.isInteger(page) || page<0)return;
+    const version=++this.booksVersion;this.booksRequest?.unsubscribe();
+    this.isLoadingShelfBooks=true;this.shelfBooksError='';this.shelfBooks=[];this.shelfTotal=0;this.shelfPage=page;
+    this.booksRequest=this.locationService.getShelfBooksPage(shelf.id,page).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({next:result=>{
+      if(version!==this.booksVersion || this.selectedShelf?.id!==shelf.id)return;
+      if(result.total>0 && page*50>=result.total){this.loadShelfBooks(Math.floor((result.total-1)/50));return;}
+      this.shelfBooks=result.items;this.shelfTotal=result.total;this.isLoadingShelfBooks=false;this.cdr.markForCheck();
+      if(result.total===0)this.shelfPage=0;
+    },error:()=>{
+      if(version!==this.booksVersion || this.selectedShelf?.id!==shelf.id)return;
+      this.isLoadingShelfBooks=false;this.shelfBooksError='Không thể tải tài liệu trong ngăn. Bấm Thử lại để tải đúng ngăn đang chọn.';this.cdr.markForCheck();
+    }});
+  }
+  loadUnplaced(page=0):void {
+    if(!Number.isInteger(page)||page<0)return;
+    const version=++this.unplacedVersion;this.unplacedRequest?.unsubscribe();
+    this.unplacedLoading=true;this.unplacedError='';this.unplaced=[];this.unplacedTotal=0;this.unplacedPage=page;
+    this.unplacedRequest=this.locationService.getUnplacedCopies(page).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({next:r=>{
+      if(version!==this.unplacedVersion)return;
+      if(r.total>0 && page*50>=r.total){this.loadUnplaced(Math.floor((r.total-1)/50));return;}
+      this.unplaced=r.items;this.unplacedTotal=r.total;this.unplacedLoading=false;this.cdr.markForCheck();
+      if(r.total===0)this.unplacedPage=0;
+    },error:()=>{if(version!==this.unplacedVersion)return;this.unplacedLoading=false;this.unplacedError='Không tải được bản sao chưa xếp ngăn.';this.cdr.markForCheck();}});
+  }
+  placeUnlocated(book:ShelfBook):void {
+    const shelf=this.selectedShelf;if(!shelf || this.placingBarcode)return;
+    this.placingBarcode=book.barcode;
+    this.locationService.placeCopy(book.barcode,shelf.id).subscribe({next:()=>{
+      this.placingBarcode='';this.showSuccess(`Đã xếp ${book.barcode} vào ${shelf.name}.`);this.loadUnplaced(0);
+      if(this.selectedShelf?.id===shelf.id)this.loadShelfBooks(0);this.cdr.markForCheck();
+    },error:error=>{this.placingBarcode='';this.handleError(error?.error?.detail || error?.error?.message || 'Không thể xếp bản sao vào ngăn đã chọn.',error);this.cdr.markForCheck();}});
   }
 
   isSubjectSelected(subjectId: number): boolean {
@@ -182,9 +221,12 @@ export class ShelfMap implements OnInit {
   saveSubjectRules(): void {
     if (!this.selectedShelf || !this.isAdmin || this.isSavingSubjects) return;
     this.isSavingSubjects = true;
+    const shelf=this.selectedShelf;
     this.errorMessage = '';
     this.locationService.updateShelfSubjects(this.selectedShelf.id, this.selectedSubjectIds).subscribe({
       next: subjects => {
+        this.isSavingSubjects=false;
+        if(this.selectedShelf?.id!==shelf.id)return;
         this.selectedSubjectIds = (subjects || []).map(subject => subject.subjectId);
         this.isSavingSubjects = false;
         this.showSuccess(

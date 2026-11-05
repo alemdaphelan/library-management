@@ -1,0 +1,395 @@
+classDiagram
+    direction LR
+    %% Baseline: 2026-11-04 main HEAD 756870b plus uncommitted working tree
+    %% Analysis view: domain associations include logical references implemented by services.
+    %% This is not a physical FK map. Selected attributes only; common BaseEntity timestamps omitted.
+    %% Rooms, kiosk, shift handover and feedback processing are outside this active domain view.
+    namespace BanDoc {
+        class User {
+            +UUID userId
+            +String mssv
+            +String fullName
+            +String roleId
+            +String cardStatus
+            +LocalDateTime cardExpiryDate
+            +LocalDateTime circulationLockedUntil
+        }
+        class StaffRole {
+            +String roleId
+            +String roleName
+            +String permissions
+        }
+        class Wallet {
+            +Long walletId
+            +UUID userId
+            +BigDecimal depositBalance
+            +BigDecimal totalDebt
+        }
+        class OrientationClass {
+            +Long classId
+            +String classCode
+            +String title
+            +String location
+            +LocalDateTime startAt
+        }
+        class OrientationEnrollment {
+            +Long enrollmentId
+            +Long classId
+            +UUID userId
+            +String attendanceStatus
+            +String note
+        }
+    }
+    namespace DanhMuc {
+        class Category {
+            +Long categoryId
+            +String name
+            +String description
+        }
+        class Book {
+            +Long bookId
+            +String title
+            +String isbn
+            +String author
+            +String publisher
+            +BigDecimal defaultPrice
+        }
+        class BookCopy {
+            +String barcode
+            +Long bookId
+            +Long receiptDetailId
+            +String status
+            +Shelf shelf
+        }
+        class Floor {
+            +Long floorId
+            +String name
+        }
+        class Bookshelf {
+            +Long bookshelfId
+            +String name
+            +Floor floor
+        }
+        class Shelf {
+            +Long shelfId
+            +String name
+            +Bookshelf bookshelf
+        }
+        class ShelfSubjectRule {
+            +Long ruleId
+            +Shelf shelf
+            +RecommendationSubject subject
+            +Boolean active
+        }
+        class RecommendationSubject {
+            +Long subjectId
+            +String code
+            +String name
+            +String description
+            +Boolean active
+        }
+        class BookSubjectAssignment {
+            +Long assignmentId
+            +Book book
+            +RecommendationSubject subject
+            +BigDecimal confidence
+            +String classificationSource
+        }
+    }
+    namespace LuuThong {
+        class LoanTicket {
+            +Long ticketId
+            +UUID userId
+            +String ticketType
+            +String status
+            +UUID processedBy
+        }
+        class LoanDetail {
+            +Long detailId
+            +Long ticketId
+            +String barcode
+            +LocalDateTime dueDate
+            +LocalDateTime physicalReturnAt
+            +String returnStatus
+            +Integer renewalCount
+            +LocalDateTime lossReportedAt
+            +Boolean isRecalled
+        }
+        class LoanStatusHistory {
+            +Long historyId
+            +Long ticketId
+            +LoanTicketStatus fromStatus
+            +LoanTicketStatus toStatus
+            +UUID changedBy
+        }
+        class Waitlist {
+            +Long waitlistId
+            +Long bookId
+            +UUID userId
+            +String status
+            +LocalDateTime notifiedAt
+        }
+        class CirculationOperation {
+            +UUID operationId
+            +String idempotencyKey
+            +String operationType
+            +String requestHash
+            +String ticketIds
+        }
+    }
+    namespace MatHongVaTaiChinh {
+        class PenaltyCase {
+            +Long caseId
+            +UUID userId
+            +Long ticketId
+            +Long loanDetailId
+            +String barcode
+        }
+        class Transaction {
+            +Long transactionId
+            +UUID userId
+            +BigDecimal amount
+            +String type
+            +String status
+            +BigDecimal paidAmount
+            +Long penaltyCaseId
+        }
+        class PaymentAllocation {
+            +Long allocationId
+            +Long paymentTransactionId
+            +Long debtTransactionId
+            +BigDecimal amount
+        }
+        class TransactionAdjustment {
+            +Long adjustmentId
+            +Long transactionId
+            +BigDecimal requestedAmount
+            +String reason
+            +String status
+        }
+        class OnlinePaymentSession {
+            +Long paymentSessionId
+            +String reference
+            +UUID userId
+            +String provider
+            +String purpose
+        }
+        class LibraryViolation {
+            +Long violationId
+            +UUID userId
+            +Long ticketId
+            +String barcode
+            +String violationType
+        }
+    }
+    namespace Kho {
+        class Supplier {
+            +Long supplierId
+            +String name
+            +String contactInfo
+        }
+        class GoodsReceipt {
+            +Long receiptId
+            +Long supplierId
+            +String receiptCode
+            +BigDecimal totalAmount
+            +String status
+        }
+        class ReceiptDetail {
+            +Long detailId
+            +Long receiptId
+            +Long bookId
+            +Integer quantity
+            +BigDecimal unitPrice
+        }
+        class InventoryAudit {
+            +Long auditId
+            +UUID conductedBy
+            +Integer totalSystemBooks
+            +Integer totalActualBooks
+            +String status
+        }
+        class InventoryDetail {
+            +String detailId
+            +String auditId
+            +String barcode
+            +String scanStatus
+            +String scannedLocation
+        }
+        class DisposalBatch {
+            +UUID requestId
+            +UUID createdBy
+            +String requestPayload
+        }
+        class DisposalProposal {
+            +UUID proposalId
+            +UUID requestId
+            +String barcode
+            +Long bookId
+            +String bookTitle
+        }
+        class DisposalHistory {
+            +UUID eventId
+            +UUID proposalId
+            +Long proposalVersion
+            +String eventType
+            +UUID actorId
+        }
+    }
+    namespace PhanLoai {
+        class AcademicFaculty {
+            +String facultyId
+            +String facultyName
+        }
+        class AcademicMajor {
+            +String majorId
+            +String facultyId
+            +String majorName
+            +String majorCode
+            +String sourceReference
+        }
+        class MaterialClassification {
+            +UUID profileId
+            +String materialKind
+            +Long materialId
+            +Long version
+            +String sourceReference
+        }
+        class MaterialMajorAssignment {
+            +UUID assignmentId
+            +UUID profileId
+            +String majorId
+        }
+        class MaterialClassificationHistory {
+            +UUID eventId
+            +UUID profileId
+            +Long version
+            +UUID actorId
+            +String actorName
+        }
+    }
+    namespace TaiLieuVaTuongTac {
+        class DigitalDocument {
+            +Long documentId
+            +Long bookId
+            +String storageKey
+            +String accessLevel
+        }
+        class DigitalUsageLog {
+            +Long logId
+            +Long documentId
+            +UUID userId
+            +LocalDateTime accessTime
+            +Integer pagesRead
+        }
+        class BookProposal {
+            +Long proposalId
+            +UUID userId
+            +String title
+            +String authorName
+            +String publisher
+        }
+        class Review {
+            +Long reviewId
+            +Long bookId
+            +UUID userId
+            +Integer rating
+            +String comment
+        }
+        class Wishlist {
+            +UUID wishlistId
+            +UUID userId
+            +String bookId
+            +LocalDateTime addedAt
+        }
+    }
+    namespace ThongBaoVaChinhSach {
+        class Notification {
+            +UUID notifId
+            +UUID userId
+            +String type
+            +String content
+            +Boolean isRead
+        }
+        class NotificationPreference {
+            +UUID userId
+            +Boolean emailEnabled
+            +Boolean pushEnabled
+        }
+        class PushDeviceRegistration {
+            +UUID registrationId
+            +UUID userId
+            +String token
+            +String platform
+            +String deviceId
+        }
+        class LibraryPolicy {
+            +Long policyId
+            +Integer maximumOpenItems
+            +Integer homeLoanDays
+            +Integer renewalDays
+            +Integer maximumRenewalCount
+        }
+        class LibraryPolicyHistory {
+            +Long historyId
+            +Long policyId
+            +Integer maximumOpenItems
+            +Integer homeLoanDays
+            +Integer renewalDays
+        }
+    }
+    StaffRole --> User : role
+    User --> Wallet : wallet lookup
+    User --> LoanTicket : borrower logical
+    OrientationClass --> OrientationEnrollment : enrollments
+    User --> OrientationEnrollment : attendee logical
+    Category --> Book : category
+    Book --> BookCopy : copies logical
+    Floor --> Bookshelf : contains
+    Bookshelf --> Shelf : contains
+    Shelf --> BookCopy : location
+    Shelf --> ShelfSubjectRule : placement rules
+    RecommendationSubject --> ShelfSubjectRule : subject
+    Book --> BookSubjectAssignment : subjects
+    RecommendationSubject --> BookSubjectAssignment : subject
+    LoanTicket --> LoanDetail : items logical
+    BookCopy --> LoanDetail : circulation history logical
+    LoanTicket --> LoanStatusHistory : history
+    LoanTicket --> CirculationOperation : retry evidence logical
+    User --> Waitlist : waiting reader logical
+    Book --> Waitlist : requested title logical
+    LoanDetail --> PenaltyCase : penalty case
+    User --> Transaction : ledger
+    PenaltyCase --> Transaction : charges and adjustments
+    Transaction --> PaymentAllocation : payment and debt entries
+    Transaction --> TransactionAdjustment : adjustment request
+    User --> OnlinePaymentSession : payment session
+    Transaction --> OnlinePaymentSession : receipt
+    User --> LibraryViolation : recorded violation
+    Supplier --> GoodsReceipt : supplier logical
+    GoodsReceipt --> ReceiptDetail : receipt lines logical
+    ReceiptDetail --> BookCopy : import source
+    Shelf --> ReceiptDetail : import location
+    InventoryAudit --> InventoryDetail : snapshot and scans logical
+    DisposalBatch --> DisposalProposal : proposed copies
+    InventoryDetail --> DisposalProposal : evidence
+    BookCopy --> DisposalProposal : target copy
+    DisposalProposal --> DisposalHistory : proposal history
+    AcademicFaculty --> AcademicMajor : majors
+    MaterialClassification --> MaterialMajorAssignment : classified majors
+    AcademicMajor --> MaterialMajorAssignment : major
+    MaterialClassification --> MaterialClassificationHistory : history
+    Book --> MaterialClassification : BOOK material logical
+    DigitalDocument --> MaterialClassification : DIGITAL material logical
+    Book --> DigitalDocument : optional book multiple files
+    DigitalDocument --> DigitalUsageLog : access records
+    User --> DigitalUsageLog : reader
+    User --> BookProposal : purchase request logical
+    User --> Review : reviewer logical
+    Book --> Review : reviewed title logical
+    User --> Wishlist : saved title logical
+    Book --> Wishlist : saved title ID string logical
+    User --> Notification : recipient logical
+    User --> NotificationPreference : preferences
+    User --> PushDeviceRegistration : devices
+    LibraryPolicy --> LibraryPolicyHistory : policy revisions logical
