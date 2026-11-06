@@ -61,6 +61,24 @@ class AuthService {
     return normalized == 'ADMIN' || normalized == 'LIBRARIAN';
   }
 
+  /// Maps technical database/auth role strings to user-friendly Vietnamese labels.
+  static String roleDisplayName(Object? value) {
+    final normalized = normalizeRoleValue(value);
+    switch (normalized) {
+      case 'STUDENT':
+        return 'Sinh viên';
+      case 'LIBRARIAN':
+        return 'Thủ thư';
+      case 'ADMIN':
+        return 'Quản trị viên';
+      case 'LECTURER':
+      case 'TEACHER':
+        return 'Giảng viên';
+      default:
+        return normalized.isNotEmpty ? normalized : 'Sinh viên';
+    }
+  }
+
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     final previousToken = prefs.getString(tokenKey);

@@ -20,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _openInitialScreen() async {
-    await Future.delayed(const Duration(milliseconds: 900));
+    await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
     final token = await AuthService.getToken();
     if (token != null && token.isNotEmpty) {

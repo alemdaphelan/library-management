@@ -27,14 +27,69 @@ class LedgerDisplay {
       ? 'Khoản nộp vào quỹ thế chân, không phải khoản phạt. Số dư còn lại ở đầu màn hình đã tính các khoản đã sử dụng.'
       : null;
 
+  static bool isCredit(Object? value) {
+    final type = value?.toString().trim().toUpperCase();
+    return type == 'DEPOSIT_TOPUP' ||
+        type == 'PAYMENT' ||
+        type == 'WAIVER' ||
+        type == 'WAIVER_ADJUSTMENT';
+  }
+
+  static bool isDebit(Object? value) {
+    final type = value?.toString().trim().toUpperCase();
+    return type == 'FINE' ||
+        type == 'LATE_FINE' ||
+        type == 'OVERDUE_FINE' ||
+        type == 'REPAIR_FEE' ||
+        type == 'REPAIR' ||
+        type == 'COMPENSATION' ||
+        type == 'TECHNICAL_FEE';
+  }
+
+  static bool isPositiveImpact(dynamic rawAmount, Object? type) {
+    final t = type?.toString().trim().toUpperCase();
+    if (t == 'DEPOSIT_TOPUP' || t == 'PAYMENT') return true;
+    if (isDebit(t)) return false;
+    final val = num.tryParse(rawAmount?.toString() ?? '0') ?? 0;
+    // In ledger accounting: negative numbers are credits (money deposited or debt reduced)
+    return val < 0;
+  }
+
+  static String formatSignedAmount(dynamic rawAmount, Object? type) {
+    final val = num.tryParse(rawAmount?.toString() ?? '');
+    if (val == null) return '0 đ';
+    final absVal = val.abs();
+    final formatted = absVal
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
+
+    final t = type?.toString().trim().toUpperCase();
+    if (t == 'DEPOSIT_TOPUP' || t == 'PAYMENT') {
+      return '+$formatted đ';
+    } else if (isDebit(t)) {
+      return '-$formatted đ';
+    } else if (val < 0) {
+      return '+$formatted đ';
+    } else if (val > 0) {
+      return '-$formatted đ';
+    }
+    return '$formatted đ';
+  }
+
   static String typeLabel(Object? value) =>
       switch (value?.toString().toUpperCase()) {
         'DEPOSIT_TOPUP' => 'Nộp tiền thế chân',
         'DEPOSIT_ADJUSTMENT' => 'Điều chỉnh tiền thế chân',
-        'REPAIR_FEE' => 'Phí sửa chữa',
-        'FINE' => 'Khoản phạt',
+        'REPAIR_FEE' || 'REPAIR' => 'Phí sửa chữa',
+        'FINE' || 'LATE_FINE' || 'OVERDUE_FINE' => 'Khoản phạt quá hạn',
         'PAYMENT' => 'Thanh toán',
         'COMPENSATION' => 'Đền bù tài liệu',
+        'TECHNICAL_FEE' => 'Phí xử lý kỹ thuật',
+        'WAIVER' || 'WAIVER_ADJUSTMENT' => 'Miễn giảm',
+        'ADJUSTMENT' => 'Điều chỉnh giao dịch',
         _ => 'Giao dịch thư viện',
       };
 
@@ -46,6 +101,8 @@ class LedgerDisplay {
         'PARTIALLY_PAID' => 'Thanh toán một phần',
         'CANCELLED' => 'Đã hủy',
         'WAIVED' => 'Đã miễn giảm',
+        'PENDING_REVIEW' => 'Đang chờ duyệt',
+        'SETTLED' => 'Đã quyết toán',
         _ => value?.toString() ?? 'Chưa cập nhật',
       };
 }

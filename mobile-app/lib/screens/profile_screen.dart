@@ -10,9 +10,7 @@ import 'package:mobile_app/screens/notifications_screen.dart';
 import 'package:mobile_app/screens/penalties_screen.dart';
 import 'package:mobile_app/screens/suggest_book_screen.dart';
 import 'package:mobile_app/screens/saved_books_screen.dart';
-import 'package:mobile_app/services/librarian_qr_service.dart';
 import 'package:mobile_app/services/wishlist_service.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile_app/config/api_config.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -26,7 +24,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _user;
   int _unreadNotificationCount = 0;
   bool _isLoading = true;
-  bool _isIssuingLibraryCardQr = false;
 
   @override
   void initState() {
@@ -110,58 +107,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
-  }
-
-  Future<void> _showLibraryCardQr() async {
-    if (_isIssuingLibraryCardQr) return;
-    setState(() => _isIssuingLibraryCardQr = true);
-    try {
-      final response = await LibrarianQrService.issueMyCard();
-      if (!mounted) return;
-      final payload = response['payload']?.toString() ?? '';
-      if (payload.isEmpty) {
-        throw Exception('Backend không trả về dữ liệu QR thẻ thư viện.');
-      }
-      final expiresAt = DateTime.tryParse(
-        response['expiresAt']?.toString() ?? '',
-      );
-      await showDialog<void>(
-        context: context,
-        barrierColor: Colors.transparent,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Thẻ thư viện QR'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              QrImageView(data: payload, size: 230),
-              const SizedBox(height: 8),
-              const Text('Đưa mã này cho thủ thư quét tại quầy.'),
-              if (expiresAt != null)
-                Text(
-                  'Hết hạn lúc ${expiresAt.hour.toString().padLeft(2, '0')}:'
-                  '${expiresAt.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Đóng'),
-            ),
-          ],
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isIssuingLibraryCardQr = false);
-    }
   }
 
   Future<void> _showEditProfileSheet() async {
@@ -448,21 +393,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               onTap: _openNotifications,
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.qr_code_2, color: Colors.teal),
-              title: const Text('Thẻ thư viện QR'),
-              subtitle: const Text(
-                'Mã bảo mật có thời hạn để thủ thư xác thực',
-              ),
-              trailing: _isIssuingLibraryCardQr
-                  ? const SizedBox.square(
-                      dimension: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.chevron_right),
-              onTap: _isIssuingLibraryCardQr ? null : _showLibraryCardQr,
             ),
             const Divider(height: 1),
             ListTile(

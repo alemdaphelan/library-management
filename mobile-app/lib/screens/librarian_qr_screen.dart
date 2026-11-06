@@ -504,7 +504,7 @@ class _LibrarianQrScreenState extends State<LibrarianQrScreen> {
                           value:
                               map['priceKnown'] == true &&
                                   map['bookValue'] != null
-                              ? '${map['bookValue']} ${map['bookValueCurrency'] ?? 'VND'} (${map['bookValueSource'] ?? ''})'
+                              ? '${map['bookValue']} ${map['bookValueCurrency'] ?? 'VND'}'
                               : 'Chưa xác định giá',
                         ),
                         _InfoRow(

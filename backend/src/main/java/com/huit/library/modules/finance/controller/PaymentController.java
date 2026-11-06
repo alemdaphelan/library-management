@@ -3,6 +3,7 @@ package com.huit.library.modules.finance.controller;
 import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.modules.finance.dto.AdjustmentRequestDTO;
 import com.huit.library.modules.finance.dto.AdjustmentReviewRequestDTO;
+import com.huit.library.modules.finance.dto.CounterDepositRequestDTO;
 import com.huit.library.modules.finance.dto.DebtPaymentRequestDTO;
 import com.huit.library.modules.finance.service.DebtLedgerService;
 import com.huit.library.modules.circulation.service.LibraryHoursService;
@@ -33,6 +34,21 @@ public class PaymentController {
         libraryHoursService.requireCounterOpen("ghi nhận thanh toán");
         return ResponseEntity.ok(debtLedgerService.recordPayment(
                 request, operator.getUser().getUserId()));
+    }
+
+    @PostMapping("/deposit-topup")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    public ResponseEntity<?> recordDepositTopup(
+            @Valid @RequestBody CounterDepositRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails operator) {
+        libraryHoursService.requireCounterOpen("ghi nhận nạp tiền thế chân");
+        return ResponseEntity.ok(debtLedgerService.recordCounterDepositTopUp(
+                request.getUserId(),
+                request.getAmount(),
+                request.getMethod(),
+                operator.getUser().getUserId(),
+                request.getIdempotencyKey(),
+                request.getNote()));
     }
 
     @GetMapping("/ledger/{userId}")

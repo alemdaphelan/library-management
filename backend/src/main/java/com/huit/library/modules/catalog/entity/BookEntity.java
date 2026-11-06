@@ -24,12 +24,17 @@ public class BookEntity extends BaseEntity {
     private String language;
     private String labelColor;
     private BigDecimal defaultPrice;
-    private String priceCurrency;
+    private String priceCurrency = "VND";
     private String priceSource;
     private LocalDateTime priceUpdatedAt;
-    private String priceStatus;
-    private String materialType;
-    private Boolean isDigital;
+
+    @Column(nullable = false)
+    private String priceStatus = "UNKNOWN";
+
+    @Column(nullable = false)
+    private String materialType = "BOOK";
+
+    private Boolean isDigital = false;
 
     private String author;
     private String publisher;
@@ -52,4 +57,33 @@ public class BookEntity extends BaseEntity {
     
     @Column(name = "image_url_l")
     private String imageUrlL;
+
+    @PrePersist
+    public void prePersist() {
+        if (priceCurrency == null || priceCurrency.isBlank()) {
+            priceCurrency = "VND";
+        }
+        if (materialType == null || materialType.isBlank()) {
+            materialType = "BOOK";
+        }
+        if (priceStatus == null || priceStatus.isBlank()) {
+            if (defaultPrice != null && defaultPrice.compareTo(BigDecimal.ZERO) > 0) {
+                priceStatus = "KNOWN";
+                if (priceSource == null || priceSource.isBlank()) {
+                    priceSource = "CATALOG";
+                }
+                if (priceUpdatedAt == null) {
+                    priceUpdatedAt = LocalDateTime.now();
+                }
+            } else {
+                priceStatus = "UNKNOWN";
+            }
+        }
+        if (viewCount == null) {
+            viewCount = 0L;
+        }
+        if (isDigital == null) {
+            isDigital = false;
+        }
+    }
 }

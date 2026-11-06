@@ -5,6 +5,7 @@
 
 # Codex/local verification artifacts
 .codex-tmp/
+.tmp*/
 
 # MacOS
 .DS_Store

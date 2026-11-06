@@ -31,5 +31,14 @@ void main() {
       expect(AuthService.isStaffRole('STUDENT'), isFalse);
       expect(AuthService.isStudentRole('ADMIN'), isFalse);
     });
+
+    test('maps roles to Vietnamese display names', () {
+      expect(AuthService.roleDisplayName('STUDENT'), 'Sinh viên');
+      expect(AuthService.roleDisplayName('ROLE_STUDENT'), 'Sinh viên');
+      expect(AuthService.roleDisplayName('LIBRARIAN'), 'Thủ thư');
+      expect(AuthService.roleDisplayName('STAFF'), 'Thủ thư');
+      expect(AuthService.roleDisplayName('ADMIN'), 'Quản trị viên');
+      expect(AuthService.roleDisplayName(null), 'Sinh viên');
+    });
   });
 }

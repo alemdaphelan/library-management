@@ -179,6 +179,54 @@ public class DebtLedgerService {
     }
 
     @Transactional
+    public PaymentReceiptDTO recordCounterDepositTopUp(
+            UUID userId, BigDecimal amount, String method, UUID operatorId, String idempotencyKey, String note) {
+        String normalizedMethod = method == null ? "CASH" : method.trim().toUpperCase(Locale.ROOT);
+        if (!List.of("CASH", "BANK_TRANSFER").contains(normalizedMethod)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phương thức nạp tiền tại quầy phải là CASH hoặc BANK_TRANSFER");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.valueOf(1000)) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền nạp tối thiểu là 1.000 VNĐ");
+        }
+        String dedupKey = "DEPOSIT_COUNTER:" + (idempotencyKey != null && !idempotencyKey.isBlank() ? idempotencyKey.trim() : UUID.randomUUID().toString());
+        TransactionEntity replay = transactionRepository.findByDedupKey(dedupKey).orElse(null);
+        if (replay != null) {
+            return buildReceipt(replay, userId);
+        }
+
+        WalletEntity wallet = walletRepository.findByUserIdForUpdate(userId).orElseGet(() -> {
+            WalletEntity created = new WalletEntity();
+            created.setUserId(userId);
+            created.setDepositBalance(BigDecimal.ZERO);
+            created.setTotalDebt(BigDecimal.ZERO);
+            return walletRepository.save(created);
+        });
+        wallet.setDepositBalance(zero(wallet.getDepositBalance()).add(amount));
+        walletRepository.save(wallet);
+
+        TransactionEntity topUp = new TransactionEntity();
+        topUp.setUserId(userId);
+        topUp.setAmount(amount.negate());
+        topUp.setType("DEPOSIT_TOPUP");
+        topUp.setReason(note != null && !note.isBlank() ? note.trim() : "Nạp tiền thế chân tại quầy");
+        topUp.setStatus("COMPLETED");
+        topUp.setPaymentMethod(normalizedMethod);
+        topUp.setReceiptNumber("DEP-" + System.currentTimeMillis());
+        topUp.setConfirmedBy(operatorId);
+        topUp.setPaidAt(LocalDateTime.now());
+        topUp.setDedupKey(dedupKey);
+        topUp = transactionRepository.save(topUp);
+
+        notificationService.createOnce(
+                userId, "DEPOSIT_TOPUP",
+                "Đã nạp " + amount.toPlainString() + " đồng tiền thế chân tại quầy. Số dư hiện tại: "
+                        + wallet.getDepositBalance().toPlainString() + " đồng.",
+                "TRANSACTION", topUp.getTransactionId().toString(),
+                "DEPOSIT_TOPUP:" + topUp.getTransactionId(), LocalDateTime.now());
+        return buildReceipt(topUp, userId);
+    }
+
+    @Transactional
     public PaymentReceiptDTO recordMockDepositTopUp(UUID userId, BigDecimal amount, String reference) {
         return recordDepositTopUp(userId, amount, reference, true);
     }

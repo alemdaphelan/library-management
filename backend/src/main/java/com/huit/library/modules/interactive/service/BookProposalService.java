@@ -16,6 +16,8 @@ import com.huit.library.modules.notification.service.StaffNotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -237,6 +239,15 @@ public class BookProposalService {
         book.setIsbn(proposal.getIsbn());
         book.setPublishYear(proposal.getPublicationYear());
         book.setDefaultPrice(proposal.getEstimatedPrice());
+        book.setPriceCurrency("VND");
+        if (proposal.getEstimatedPrice() != null && proposal.getEstimatedPrice().compareTo(BigDecimal.ZERO) > 0) {
+            book.setPriceStatus("ESTIMATED");
+            book.setPriceSource("PROPOSAL");
+            book.setPriceUpdatedAt(LocalDateTime.now());
+        } else {
+            book.setPriceStatus("UNKNOWN");
+        }
+        book.setMaterialType("BOOK");
         book.setIsDigital(false);
         book.setViewCount(0L);
         book.setCategory(resolveCategory(proposal.getGenre()));
