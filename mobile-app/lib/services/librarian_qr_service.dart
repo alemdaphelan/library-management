@@ -16,7 +16,8 @@ class LibrarianQrService {
   }
 
   static Future<Map<String, dynamic>> issueMyCard() async {
-    final data = await ApiService.get('/api/v1/qr/cards/me');
+    final data = await ApiService.get('/api/v1/qr/cards/me')
+        .timeout(const Duration(seconds: 10));
     return Map<String, dynamic>.from(data as Map);
   }
 

@@ -482,7 +482,6 @@ class _SuggestBookScreenState extends State<SuggestBookScreen> {
             'Ngành học',
             proposal['majorName'] ?? 'Đề xuất cũ chưa gán ngành',
           ),
-          _historyLine('Nguồn ngành', proposal['majorSourceReference']),
           if (proposal['majorId'] == null)
             _historyLine('Thể loại cũ', proposal['genre']),
           _historyLine('Lý do', proposal['reason']),

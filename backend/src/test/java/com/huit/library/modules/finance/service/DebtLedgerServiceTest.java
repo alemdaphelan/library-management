@@ -51,7 +51,7 @@ class DebtLedgerServiceTest {
         service = new DebtLedgerService(transactions, adjustments, mock(PaymentAllocationRepository.class), wallets,
                 mock(PenaltyCaseRepository.class), mock(LoanDetailRepository.class),
                 mock(LoanTicketRepository.class), mock(UserRepository.class),
-                mock(NotificationService.class), mock(LibraryHoursService.class));
+                mock(NotificationService.class), mock(LibraryHoursService.class), mock(org.springframework.jdbc.core.JdbcTemplate.class));
     }
 
     @Test

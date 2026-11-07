@@ -1157,6 +1157,73 @@ class Week6IntegrationTest {
     }
 
     @Test
+    void counterDepositKeepsMobileReceiptContractAndSerializesFirstWalletCreation() throws Exception {
+        String password = "CounterDeposit@123";
+        UserEntity reader = createUserWithRole("counter-deposit-reader", "STUDENT", password);
+        UserEntity otherReader = createUserWithRole("counter-deposit-other", "STUDENT", password);
+        UserEntity librarian = createUserWithRole("counter-deposit-staff", "LIBRARIAN", password);
+        var executor = Executors.newFixedThreadPool(2);
+        String path = "/api/v1/transactions/deposit-topup";
+        try {
+            String staffToken = loginAndGetToken(librarian.getEmail(), password);
+            String key = "DEP_" + UUID.randomUUID();
+            var body = new java.util.HashMap<String, Object>();
+            body.put("userId", reader.getUserId());
+            body.put("amount", 50000);
+            body.put("method", "CASH");
+            body.put("idempotencyKey", key);
+            body.put("note", "Nạp tiền thế chân tại quầy");
+            String json = objectMapper.writeValueAsString(body);
+            var start = new CountDownLatch(1);
+            java.util.concurrent.Callable<PaymentReceiptDTO> submit = () -> {
+                start.await();
+                var result = mockMvc.perform(post(path).header("Authorization", "Bearer " + staffToken)
+                                .contentType("application/json").content(json))
+                        .andExpect(status().isOk()).andReturn();
+                return objectMapper.readValue(result.getResponse().getContentAsByteArray(), PaymentReceiptDTO.class);
+            };
+            var first = executor.submit(submit);
+            var second = executor.submit(submit);
+            start.countDown();
+            var receipt = first.get(30, TimeUnit.SECONDS);
+            assertThat(second.get(30, TimeUnit.SECONDS).getPaymentTransactionId()).isEqualTo(receipt.getPaymentTransactionId());
+            assertThat(receipt.getReceiptNumber()).startsWith("DEP-");
+            assertThat(receipt.getTotalAmount()).isEqualByComparingTo("50000");
+            assertThat(receipt.getRemainingDebt()).isZero();
+            assertThat(receipt.getPaymentMethod()).isEqualTo("CASH");
+            assertThat(receipt.getConfirmedBy()).isEqualTo(librarian.getUserId());
+            assertThat(jdbcTemplate.queryForObject("select count(*) from wallets where user_id = ?", Long.class, reader.getUserId())).isEqualTo(1L);
+
+            body.put("userId", otherReader.getUserId());
+            mockMvc.perform(post(path).header("Authorization", "Bearer " + staffToken)
+                            .contentType("application/json").content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+            assertThat(walletRepository.findByUserId(otherReader.getUserId())).isEmpty();
+            body.put("userId", reader.getUserId());
+            body.put("method", "BANK_TRANSFER");
+            mockMvc.perform(post(path).header("Authorization", "Bearer " + staffToken)
+                            .contentType("application/json").content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isConflict());
+            body.put("idempotencyKey", "DEP_" + UUID.randomUUID());
+            mockMvc.perform(post(path).header("Authorization", "Bearer " + staffToken)
+                            .contentType("application/json").content(objectMapper.writeValueAsString(body)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.paymentMethod").value("BANK_TRANSFER"));
+            assertThat(walletRepository.findByUserId(reader.getUserId()).orElseThrow().getDepositBalance()).isEqualByComparingTo("100000");
+            assertThat(transactionRepository.findByUserIdOrderByCreatedAtAsc(reader.getUserId()))
+                    .hasSize(2).extracting(com.huit.library.modules.finance.entity.TransactionEntity::getReceiptNumber)
+                    .doesNotHaveDuplicates();
+        } finally {
+            executor.shutdownNow();
+            jdbcTemplate.update("delete from notifications where user_id = ?", reader.getUserId());
+            jdbcTemplate.update("delete from transactions where user_id = ?", reader.getUserId());
+            jdbcTemplate.update("delete from wallets where user_id = ?", reader.getUserId());
+            userRepository.deleteById(reader.getUserId());
+            userRepository.deleteById(otherReader.getUserId());
+            userRepository.deleteById(librarian.getUserId());
+        }
+    }
+
+    @Test
     void inspectionHttpEnforcesStaffRoleValidatesSeverityAndAcceptsLostItemWithoutBarcode() throws Exception {
         InspectionFixture fixture = inspectionFixture(1, "0");
         UserEntity student = createUserWithRole("inspection-http-student", "STUDENT", "Inspection@123");

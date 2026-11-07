@@ -144,7 +144,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
               ),
               Text('Email: ${widget.user['email'] ?? 'Chưa cập nhật'}'),
               Text(
-                'Vai trò: ${widget.user['roleId'] ?? widget.user['role'] ?? 'STUDENT'}',
+                'Vai trò: ${AuthService.roleDisplayName(widget.user['roleId'] ?? widget.user['role'] ?? 'STUDENT')}',
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),

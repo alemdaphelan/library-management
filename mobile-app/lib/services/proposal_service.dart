@@ -56,4 +56,23 @@ class ProposalService {
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList();
   }
+
+  static Future<List<Map<String, dynamic>>> getAllForAdmin() async {
+    final data = await ApiService.get('/proposals/admin');
+    if (data is! List) return [];
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  static Future<Map<String, dynamic>> updateStatus({
+    required int proposalId,
+    required String status,
+    String? adminNote,
+  }) async {
+    final data = await ApiService.put('/proposals/admin/$proposalId/status', {
+      'status': status,
+      if (adminNote != null && adminNote.trim().isNotEmpty)
+        'adminNote': adminNote.trim(),
+    });
+    return Map<String, dynamic>.from(data as Map);
+  }
 }

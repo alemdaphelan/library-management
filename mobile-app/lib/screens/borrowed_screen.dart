@@ -997,30 +997,34 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
               ),
             const SizedBox(height: 14),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(statusColor),
-                    minHeight: 6,
-                    borderRadius: BorderRadius.circular(3),
+                Text(
+                  'Tiến độ mượn',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Flexible(
-                  flex: 2,
-                  child: Text(
-                    statusText,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
-                    ),
+                Text(
+                  statusText,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(3),
             ),
             if (canShowPickupQr || canShowReturnQr) ...[
               const SizedBox(height: 12),

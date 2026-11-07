@@ -56,8 +56,8 @@ try {
         "TestChucNang/05_THONG_TIN_BAN_GIAO_12D.md",
         "Word_PPTX/README.md",
         "Word_PPTX/DANH_MUC_TAI_LIEU.md",
-        "Docs/TUAN_12C_GOI_BAN_GIAO_MINH_CHUNG_KY_THUAT.md",
-        "Docs/TUAN_12D_CHOT_REPOSITORY_VA_BAN_GIAO.md"
+        "Docs/TUAN_12C_GOI_BAN_GIAO_MINH_CHUNG_KY_THUAT.docx",
+        "Docs/TUAN_12D_CHOT_REPOSITORY_VA_BAN_GIAO.docx"
     )
 
     $missingFiles = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })

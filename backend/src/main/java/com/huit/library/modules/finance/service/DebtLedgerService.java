@@ -25,6 +25,8 @@ import com.huit.library.modules.notification.service.NotificationService;
 import com.huit.library.modules.penalty.entity.PenaltyCaseEntity;
 import com.huit.library.modules.penalty.repository.PenaltyCaseRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.ConnectionCallback;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -48,6 +50,7 @@ public class DebtLedgerService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final LibraryHoursService libraryHoursService;
+    private final JdbcTemplate jdbc;
 
     public DebtLedgerService(
             TransactionRepository transactionRepository,
@@ -59,7 +62,8 @@ public class DebtLedgerService {
             LoanTicketRepository ticketRepository,
             UserRepository userRepository,
             NotificationService notificationService,
-            LibraryHoursService libraryHoursService) {
+            LibraryHoursService libraryHoursService,
+            JdbcTemplate jdbc) {
         this.transactionRepository = transactionRepository;
         this.adjustmentRepository = adjustmentRepository;
         this.allocationRepository = allocationRepository;
@@ -70,6 +74,7 @@ public class DebtLedgerService {
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.libraryHoursService = libraryHoursService;
+        this.jdbc = jdbc;
     }
 
     @Transactional
@@ -184,7 +189,8 @@ public class DebtLedgerService {
         userRepository.findById(userId).filter(user -> "STUDENT".equals(user.getUserType()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên"));
 
-        // Serialize writes and replays on the same wallet, including double submissions.
+        // Also serialize initial deposits before a wallet row exists.
+        lockDeposit("WALLET:" + userId);
         WalletEntity wallet = walletRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
                         "Sinh viên chưa có ví thư viện. Cần kiểm tra hồ sơ trước khi thu tiền thế chân."));
@@ -216,11 +222,54 @@ public class DebtLedgerService {
     }
 
     @Transactional
+    public PaymentReceiptDTO recordCounterDepositTopUp(
+            UUID userId, BigDecimal amount, String method, UUID operatorId, String idempotencyKey, String note) {
+        String normalizedMethod = method == null ? "CASH" : method.trim().toUpperCase(Locale.ROOT);
+        if (!List.of("CASH", "BANK_TRANSFER").contains(normalizedMethod)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phương thức nạp tiền tại quầy phải là CASH hoặc BANK_TRANSFER");
+        }
+        if (amount == null || amount.compareTo(BigDecimal.valueOf(1000)) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền nạp tối thiểu là 1.000 VNĐ");
+        }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cần mã lượt nạp tiền để thử lại an toàn");
+        }
+        String dedupKey = "DEPOSIT_COUNTER:" + idempotencyKey.trim();
+        lockDeposit(dedupKey);
+        lockDeposit("WALLET:" + userId);
+        String reason = note != null && !note.isBlank() ? note.trim() : "Nạp tiền thế chân tại quầy";
+        TransactionEntity replay = transactionRepository.findByDedupKey(dedupKey).orElse(null);
+        if (replay != null) {
+            if (!userId.equals(replay.getUserId()) || !operatorId.equals(replay.getConfirmedBy())
+                    || !normalizedMethod.equals(replay.getPaymentMethod())
+                    || amount.compareTo(replay.getAmount().abs()) != 0 || !reason.equals(replay.getReason())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã lượt thu đã được dùng cho giao dịch khác");
+            }
+            return buildReceipt(replay, userId);
+        }
+
+        libraryHoursService.requireCounterOpen("ghi nhận nạp tiền thế chân");
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
+        WalletEntity wallet = walletRepository.findByUserIdForUpdate(userId).orElseGet(() -> {
+            WalletEntity created = new WalletEntity();
+            created.setUserId(userId);
+            created.setDepositBalance(BigDecimal.ZERO);
+            created.setTotalDebt(BigDecimal.ZERO);
+            return walletRepository.save(created);
+        });
+        TransactionEntity topUp = applyDepositTopUp(wallet, amount, operatorId, normalizedMethod,
+                "DEP-" + UUID.randomUUID(), reason, dedupKey);
+        return buildReceipt(topUp, userId);
+    }
+
+    @Transactional
     public PaymentReceiptDTO recordMockDepositTopUp(UUID userId, BigDecimal amount, String reference) {
         return recordDepositTopUp(userId, amount, reference, true);
     }
 
     private PaymentReceiptDTO recordDepositTopUp(UUID userId, BigDecimal amount, String gatewayReference, boolean mock) {
+        lockDeposit("WALLET:" + userId);
         String dedupKey = "DEPOSIT_TOPUP:" + gatewayReference;
         TransactionEntity replay = transactionRepository.findByDedupKey(dedupKey).orElse(null);
         if (replay != null) {
@@ -266,6 +315,16 @@ public class DebtLedgerService {
                 "TRANSACTION", topUp.getTransactionId().toString(),
                 "DEPOSIT_TOPUP:" + topUp.getTransactionId(), LocalDateTime.now());
         return topUp;
+    }
+
+    private void lockDeposit(String key) {
+        jdbc.execute((ConnectionCallback<Void>) connection -> {
+            try (var statement = connection.prepareStatement("select pg_advisory_xact_lock(hashtextextended(?,0))")) {
+                statement.setString(1, "DEPOSIT:" + key);
+                statement.execute();
+            }
+            return null;
+        });
     }
 
     @Transactional

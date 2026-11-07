@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../services/auth_service.dart';
 import 'change_password_screen.dart';
+import 'librarian_payment_screen.dart';
+import 'librarian_proposal_screen.dart';
 import 'librarian_qr_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
@@ -36,11 +38,14 @@ class _StaffMainLayoutState extends State<StaffMainLayout> {
         ? [
             _AdminStartScreen(user: widget.user),
             const LibrarianQrScreen(),
-            const NotificationsScreen(),
+            const LibrarianProposalScreen(),
+            const LibrarianPaymentScreen(),
             _StaffAccountScreen(role: widget.role, user: widget.user),
           ]
         : [
             const LibrarianQrScreen(),
+            const LibrarianProposalScreen(),
+            const LibrarianPaymentScreen(),
             const NotificationsScreen(),
             _StaffAccountScreen(role: widget.role, user: widget.user),
           ];
@@ -57,9 +62,14 @@ class _StaffMainLayoutState extends State<StaffMainLayout> {
               label: 'Quét QR',
             ),
             NavigationDestination(
-              icon: Icon(Icons.notifications_outlined),
-              selectedIcon: Icon(Icons.notifications),
-              label: 'Thông báo',
+              icon: Icon(Icons.assignment_turned_in_outlined),
+              selectedIcon: Icon(Icons.assignment_turned_in),
+              label: 'Duyệt đề xuất',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.payments_outlined),
+              selectedIcon: Icon(Icons.payments),
+              label: 'Thu phí & cọc',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),
@@ -72,6 +82,16 @@ class _StaffMainLayoutState extends State<StaffMainLayout> {
               icon: Icon(Icons.qr_code_scanner_outlined),
               selectedIcon: Icon(Icons.qr_code_scanner),
               label: 'Quét QR',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.assignment_turned_in_outlined),
+              selectedIcon: Icon(Icons.assignment_turned_in),
+              label: 'Duyệt đề xuất',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.payments_outlined),
+              selectedIcon: Icon(Icons.payments),
+              label: 'Thu phí & cọc',
             ),
             NavigationDestination(
               icon: Icon(Icons.notifications_outlined),
@@ -133,6 +153,13 @@ class _AdminStartScreen extends StatelessWidget {
             title: 'Cổng quản trị Web',
             subtitle:
                 'Quản lý người dùng, kho sách, vị trí, quy định và báo cáo trên Web.',
+          ),
+          const SizedBox(height: 12),
+          const _ScopeCard(
+            icon: Icons.assignment_turned_in_outlined,
+            title: 'Duyệt đề xuất sách mới',
+            subtitle:
+                'Xem, lọc theo chuyên ngành và duyệt/từ chối các đề xuất mua sách từ sinh viên.',
           ),
           const SizedBox(height: 12),
           const _ScopeCard(
