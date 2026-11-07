@@ -2,6 +2,7 @@ package com.huit.library.integration;
 
 import com.fasterxml.jackson.databind.*;
 import com.huit.library.modules.catalog.controller.LocationController;
+import com.huit.library.modules.catalog.controller.BookCopyController;
 import com.huit.library.modules.catalog.repository.*;
 import com.huit.library.modules.catalog.service.*;
 import org.junit.jupiter.api.*;
@@ -12,8 +13,10 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.*;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
@@ -25,6 +28,7 @@ import java.net.URI;
 import java.net.http.*;
 import java.time.Duration;
 import java.util.*;
+import javax.sql.DataSource;
 import static org.assertj.core.api.Assertions.*;
 
 /** Actual HTTP and Hibernate/PostgreSQL queries; optional live mode is enforced read-only. */
@@ -48,14 +52,17 @@ public class ShelfLocationIntegrationTest {
             "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"})
     @EntityScan("com.huit.library.modules")
     @EnableJpaRepositories(basePackages={"com.huit.library.modules.catalog.repository","com.huit.library.modules.recommendation.repository"})
-    @Import({LocationService.class,ShelfSubjectRuleService.class,LocationController.class})
+    @Import({LocationService.class,ShelfSubjectRuleService.class,LocationController.class,
+            BookCopyService.class,ShelfPlacementService.class,BookCopyController.class})
     @EnableMethodSecurity
     public static class Config {
         @Bean UserDetailsService readers(){return new InMemoryUserDetailsManager(
                 User.withUsername("librarian").password("{noop}f09-test-only").roles("LIBRARIAN").build(),
+                User.withUsername("admin").password("{noop}f09-test-only").roles("ADMIN").build(),
                 User.withUsername("student").password("{noop}f09-test-only").roles("STUDENT").build());}
         @Bean SecurityFilterChain security(HttpSecurity http)throws Exception {
-            return http.authorizeHttpRequests(a->a.anyRequest().authenticated()).httpBasic(b->{}).build();
+            return http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(a->a.anyRequest().authenticated())
+                    .httpBasic(b->{}).build();
         }
     }
     @DynamicPropertySource static void database(DynamicPropertyRegistry r) {
@@ -73,13 +80,24 @@ public class ShelfLocationIntegrationTest {
         }
     }
     @AfterAll static void closeDatabase(){if(pg!=null)pg.stop();}
+    @BeforeAll static void installAuthorGroups(@Autowired DataSource dataSource) {
+        if (!LIVE) {
+            new ResourceDatabasePopulator(false, false, "UTF-8", new ClassPathResource(
+                    "db/changelog/changesets/47-shelf-author-groups.sql")).execute(dataSource);
+        }
+    }
     @Autowired JdbcTemplate jdbc;@Autowired ObjectMapper json;
     @LocalServerPort int port;
     final HttpClient client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     HttpResponse<String> get(String path,String user)throws Exception {
+        return request(path, user, "GET", "");
+    }
+
+    HttpResponse<String> request(String path, String user, String method, String body) throws Exception {
         var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path)).timeout(Duration.ofSeconds(30));
         if(user!=null)request.header("Authorization","Basic "+Base64.getEncoder().encodeToString((user+":f09-test-only").getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-        return client.send(request.GET().build(),HttpResponse.BodyHandlers.ofString());
+        return client.send(request.header("Content-Type", "application/json")
+                .method(method, HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
     }
     JsonNode ok(String path)throws Exception{var response=get(path,"librarian");assertThat(response.statusCode()).as(path+" "+response.body()).isEqualTo(200);return json.readTree(response.body());}
 
@@ -91,7 +109,7 @@ public class ShelfLocationIntegrationTest {
     }
     @Test void pagesPreserveOrphanAndNullBookIdsAndStableOrderingWithoutInventingLinks()throws Exception {
         long shelf=shelf();
-        long book=jdbc.queryForObject("INSERT INTO books(title,isbn,view_count) VALUES ('Giáo trình F09','F09-ISBN',0) RETURNING book_id",Long.class);
+        long book=jdbc.queryForObject("INSERT INTO books(title,isbn,view_count,material_type,price_status) VALUES ('Giáo trình F09','F09-ISBN',0,'BOOK','UNKNOWN') RETURNING book_id",Long.class);
         String prefix="F09-"+UUID.randomUUID();
         jdbc.update("INSERT INTO book_copies(barcode,book_id,shelf_id,status) VALUES (?,?,?,'AVAILABLE'),(?,999999999,?,'LOST'),(?,NULL,?,'MAINTENANCE')",
                 prefix+"-valid",book,shelf,prefix+"-orphan",shelf,prefix+"-null",shelf);
@@ -123,10 +141,78 @@ public class ShelfLocationIntegrationTest {
         assertThat(get("/locations/shelves/9223372036854775807/books/page","librarian").statusCode()).isEqualTo(404);
     }
 
+    @Test void unplacedCopiesFollowTheSelectedShelfSubjectRule() throws Exception {
+        long target = shelf(), other = shelf();
+        long book = jdbc.queryForObject("INSERT INTO books(title,view_count,material_type,price_status) VALUES ('Sách có chủ đề',0,'BOOK','UNKNOWN') RETURNING book_id", Long.class);
+        long subject = jdbc.queryForObject("INSERT INTO recommendation_subjects(code,name,active) VALUES ('SHELF-SCOPE','Chủ đề kiểm thử',true) RETURNING subject_id", Long.class);
+        jdbc.update("INSERT INTO book_subject_assignments(book_id,subject_id,confidence,classification_source,primary_subject) VALUES (?,?,1,'MANUAL',true)", book, subject);
+        jdbc.update("INSERT INTO shelf_subject_rules(shelf_id,subject_id,active) VALUES (?,?,true)", target, subject);
+        String barcode = "SCOPED-" + UUID.randomUUID();
+        jdbc.update("INSERT INTO book_copies(barcode,book_id,status) VALUES (?,?,'AVAILABLE')", barcode, book);
+
+        assertThat(ok("/locations/unplaced-copies?targetShelf=" + target).path("items").toString()).contains(barcode);
+        assertThat(ok("/locations/unplaced-copies?targetShelf=" + other).path("items").toString()).doesNotContain(barcode);
+    }
+
+    @Test void onlyAdminConfiguresShelvesAndLibrariansCanPlaceEligibleCopies() throws Exception {
+        long target = shelf(), unconfigured = shelf();
+        long book = jdbc.queryForObject("INSERT INTO books(title,view_count,material_type,price_status) VALUES ('Chưa có chủ đề',0,'BOOK','UNKNOWN') RETURNING book_id", Long.class);
+        long intake = jdbc.queryForObject("INSERT INTO recommendation_subjects(code,name,active) VALUES ('SHELF_UNCLASSIFIED','Chờ phân loại',true) RETURNING subject_id", Long.class);
+        String barcode = "INTAKE-" + UUID.randomUUID();
+        jdbc.update("INSERT INTO book_copies(barcode,book_id,status) VALUES (?,?,'AVAILABLE')", barcode, book);
+        String placement = "/book-copies/" + barcode + "/location?shelfId=";
+        String rule = "/locations/shelves/" + target + "/subjects";
+        String selected = "{\"subjectIds\":[" + intake + "]}";
+
+        assertThat(request(placement + unconfigured, "librarian", "PUT", "").statusCode()).isEqualTo(409);
+        assertThat(ok("/locations/unplaced-copies?targetShelf=" + unconfigured).path("total").asLong()).isZero();
+        assertThat(request(rule, "librarian", "PUT", selected).statusCode()).isEqualTo(403);
+        assertThat(request("/locations/shelves/" + target, "librarian", "PUT", "{\"name\":\"Ngăn A\"}").statusCode()).isEqualTo(403);
+        assertThat(request(rule, "admin", "PUT", "{\"subjectIds\":[]}").statusCode()).isEqualTo(400);
+        assertThat(request(rule, "admin", "PUT", selected).statusCode()).isEqualTo(200);
+        assertThat(ok("/locations/unplaced-copies?targetShelf=" + target + "&size=1").path("items").toString()).contains(barcode);
+
+        long classified = jdbc.queryForObject("INSERT INTO books(title,view_count,material_type,price_status) VALUES ('Sách đã phân loại',0,'BOOK','UNKNOWN') RETURNING book_id", Long.class);
+        long subject = jdbc.queryForObject("INSERT INTO recommendation_subjects(code,name,active) VALUES ('SHELF-KNOWN','Chủ đề đã biết',true) RETURNING subject_id", Long.class);
+        jdbc.update("INSERT INTO book_subject_assignments(book_id,subject_id,confidence,classification_source,primary_subject) VALUES (?,?,1,'MANUAL',true)", classified, subject);
+        String classifiedBarcode = "KNOWN-" + UUID.randomUUID();
+        jdbc.update("INSERT INTO book_copies(barcode,book_id,status) VALUES (?,?,'AVAILABLE')", classifiedBarcode, classified);
+        assertThat(request("/book-copies/" + classifiedBarcode + "/location?shelfId=" + target, "librarian", "PUT", "").statusCode()).isEqualTo(409);
+        assertThat(ok("/locations/unplaced-copies?targetShelf=" + target).path("total").asLong()).isEqualTo(1);
+        assertThat(request(placement + target, "librarian", "PUT", "").statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT shelf_id FROM book_copies WHERE barcode=?", Long.class, barcode)).isEqualTo(target);
+    }
+
+    @Test void authorGroupsUseCatalogMetadataAndRequireTheRightLetter() throws Exception {
+        long dShelf = shelf(), nShelf = shelf();
+        jdbc.update("""
+                INSERT INTO shelf_subject_rules(shelf_id,subject_id,active)
+                SELECT CASE WHEN code='SHELF_AUTHOR_D' THEN ? ELSE ? END,subject_id,true
+                FROM recommendation_subjects WHERE code IN ('SHELF_AUTHOR_D','SHELF_AUTHOR_N')
+                """, dShelf, nShelf);
+        long book = jdbc.queryForObject("""
+                INSERT INTO books(title,author,view_count,material_type,price_status)
+                VALUES ('Nhan đề', ' Đỗ Tác Giả', 0, 'BOOK', 'UNKNOWN') RETURNING book_id
+                """, Long.class);
+        String barcode = "AUTHOR-" + UUID.randomUUID();
+        jdbc.update("INSERT INTO book_copies(barcode,book_id,status) VALUES (?,?,'AVAILABLE')", barcode, book);
+        String placement = "/book-copies/" + barcode + "/location?shelfId=";
+
+        assertThat(jdbc.queryForObject("SELECT shelf_author_group('  ', '“Nhan đề”')", String.class))
+                .isEqualTo("SHELF_AUTHOR_N");
+        assertThat(jdbc.queryForObject("SELECT shelf_author_group('佐藤', 'Novel')", String.class))
+                .isEqualTo("SHELF_AUTHOR_OTHER");
+        assertThat(ok("/locations/unplaced-copies?targetShelf=" + dShelf).path("items").toString()).contains(barcode);
+        assertThat(ok("/locations/unplaced-copies?targetShelf=" + nShelf).path("total").asLong()).isZero();
+        assertThat(request(placement + nShelf, "librarian", "PUT", "").statusCode()).isEqualTo(409);
+        assertThat(request(placement + dShelf, "librarian", "PUT", "").statusCode()).isEqualTo(200);
+    }
+
     @Test @EnabledIfSystemProperty(named="f09.live",matches="true")
     void liveReadOnlyProbe()throws Exception {
         assertThat(jdbc.queryForObject("SHOW default_transaction_read_only",String.class)).isEqualTo("on");
         Long shelf=jdbc.queryForObject("SELECT min(c.shelf_id) FROM book_copies c LEFT JOIN books b ON b.book_id=c.book_id WHERE b.book_id IS NULL AND c.shelf_id IS NOT NULL",Long.class);
+        if (shelf == null) shelf = jdbc.queryForObject("SELECT min(shelf_id) FROM book_copies", Long.class);
         assertThat(shelf).isNotNull();
         var page=ok("/locations/shelves/"+shelf+"/books/page?page=0&size=50");
         long count=jdbc.queryForObject("SELECT count(*) FROM book_copies WHERE shelf_id=?",Long.class,shelf);

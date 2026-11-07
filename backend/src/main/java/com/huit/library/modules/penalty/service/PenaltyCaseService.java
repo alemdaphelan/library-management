@@ -274,14 +274,26 @@ public class PenaltyCaseService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Sách thay thế đã được xác nhận trước đó");
         }
         String replacementBarcode = request.getReplacementBarcode().trim();
-        if (copyRepository.existsById(replacementBarcode)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Barcode sách thay thế đã tồn tại");
+        boolean reuseBarcode = replacementBarcode.equals(penaltyCase.getBarcode());
+        BookCopyEntity replacementCopy;
+        if (reuseBarcode) {
+            replacementCopy = copyRepository.findAllByBarcodeInForUpdate(List.of(replacementBarcode)).stream().findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bản sao gốc"));
+            if (!"LOST".equals(replacementCopy.getStatus()) || detailRepository.findActiveByBarcode(replacementBarcode).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã vạch cũ đang được sử dụng; hãy đối chiếu bản sao trước khi tiếp nhận");
+            }
+            replacementCopy.setLockedByUser(null);
+            replacementCopy.setLockedUntil(null);
+        } else {
+            if (copyRepository.existsById(replacementBarcode)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Barcode sách thay thế đã tồn tại");
+            }
+            BookCopyEntity originalCopy = copyRepository.findById(penaltyCase.getBarcode())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bản sao gốc"));
+            replacementCopy = new BookCopyEntity();
+            replacementCopy.setBarcode(replacementBarcode);
+            replacementCopy.setBookId(originalCopy.getBookId());
         }
-        BookCopyEntity originalCopy = copyRepository.findById(penaltyCase.getBarcode())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bản sao gốc"));
-        BookCopyEntity replacementCopy = new BookCopyEntity();
-        replacementCopy.setBarcode(replacementBarcode);
-        replacementCopy.setBookId(originalCopy.getBookId());
         replacementCopy.setStatus("AVAILABLE");
         replacementCopy.setConditionNote("Sách đền bù đã được thủ thư kiểm tra: "
                 + request.getVerificationNote().trim());

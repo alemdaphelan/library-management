@@ -29,7 +29,8 @@ export class AuthGuard implements CanActivate, CanActivateChild {
     if (requiredRoles) {
       const userRole = this.authService.getRole();
       if (!requiredRoles.includes(userRole)) {
-        this.router.navigate(['/']);
+        const isStaff = userRole === 'ADMIN' || userRole === 'LIBRARIAN';
+        this.router.navigate([isStaff ? route.data['staffRedirect'] ?? '/' : '/']);
         return false;
       }
     }

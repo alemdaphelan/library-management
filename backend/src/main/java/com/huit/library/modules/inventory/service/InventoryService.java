@@ -74,10 +74,11 @@ public class InventoryService {
         SupplierEntity supplier = supplierRepository.findById(request.getSupplierId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy nhà cung cấp"));
         var shelfIds = request.getLines().stream().map(ImportReceiptRequestDTO.Line::getShelfId).distinct().toList();
-        // Shared hierarchy locks block moves/deletes while allowing concurrent receipts to use the same shelf.
+        // Shared hierarchy locks block moves/deletes and capacity edits during an import.
         var locations = shelfRepository.findImportLocationsForUpdate(shelfIds).stream()
                 .collect(Collectors.toMap(ShelfEntity::getShelfId, Function.identity()));
         var prepared = new ArrayList<PreparedLine>();
+        var incomingByShelf = new java.util.HashMap<Long, Long>();
         for (var line : request.getLines()) {
             ShelfEntity shelf = locations.get(line.getShelfId());
             if (shelf == null || shelf.getBookshelf() == null || shelf.getBookshelf().getFloor() == null) {
@@ -94,7 +95,17 @@ public class InventoryService {
             String path = bookshelf.getFloor().getName() + " / " + bookshelf.getName() + " / " + shelf.getName();
             var book=resolveBook(line);
             placement.requireAllowed(book.getBookId(),shelf.getShelfId());
+            incomingByShelf.merge(shelf.getShelfId(), line.getQuantity().longValue(), Long::sum);
             prepared.add(new PreparedLine(line,book,shelf,path));
+        }
+        // Only capacity-limited imports serialize. Unbounded shelves retain parallel receipts.
+        for (Long shelfId : incomingByShelf.keySet().stream().sorted().toList()) {
+            var shelf = locations.get(shelfId);
+            if (shelf.getCapacity() == null) continue;
+            shelfRepository.lockImportCapacity(shelfId);
+            if (bookCopyRepository.countByShelf_ShelfId(shelfId) + incomingByShelf.get(shelfId) > shelf.getCapacity()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Số bản sao nhập vượt sức chứa của ngăn " + shelf.getName());
+            }
         }
         BigDecimal total = request.getLines().stream()
                 .map(line -> line.getUnitPrice().multiply(BigDecimal.valueOf(line.getQuantity())))

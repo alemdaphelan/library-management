@@ -101,6 +101,22 @@ describe('ShelfMap', () => {
     expect(locationService.updateShelfSubjects).toHaveBeenCalledWith(3, [5, 8]);
   });
 
+  it('hides structure editing from librarians and explains why an unconfigured shelf cannot receive books', () => {
+    locationService.getShelfSubjects.mockReturnValueOnce(of([]));
+    authService.getRole.mockReturnValue('LIBRARIAN');
+    try {
+      component.selectShelf(shelf);
+      render();
+      expect(fixture.nativeElement.querySelector('.create-form')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.node-actions')).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('Admin cần lưu quy tắc chủ đề');
+      component.placeUnlocated({ barcode: 'BC-X', bookId: 9, title: 'A', status: 'AVAILABLE' });
+      expect(locationService.placeCopy).not.toHaveBeenCalled();
+    } finally {
+      authService.getRole.mockReturnValue('ADMIN');
+    }
+  });
+
   it('ignores a delayed book page from a previously selected shelf',()=>{
     const pending=new Subject<any>();locationService.getShelfBooksPage.mockReturnValueOnce(pending);
     component.selectShelf(shelf);component.selectShelf({...shelf,id:4,name:'Ngăn 02'});
@@ -112,7 +128,7 @@ describe('ShelfMap', () => {
     component.placeUnlocated(book);expect(locationService.placeCopy).not.toHaveBeenCalled();
     component.selectShelf(shelf);component.placeUnlocated(book);
     expect(locationService.placeCopy).toHaveBeenCalledWith('BC-X',3);expect(component.placingBarcode).toBe('');
-    expect(locationService.getUnplacedCopies).toHaveBeenLastCalledWith(0);
+    expect(locationService.getUnplacedCopies).toHaveBeenLastCalledWith(0, 3);
   });
 
   function render(){fixture.changeDetectorRef.markForCheck();fixture.detectChanges();}
@@ -142,6 +158,7 @@ describe('ShelfMap', () => {
     component.loadShelfBooks(1);expect(locationService.getShelfBooksPage).toHaveBeenLastCalledWith(3,0);expect(component.shelfPage).toBe(0);expect(component.shelfBooks[0].barcode).toBe('LAST');
   });
   it('hides stale unplaced copies on failure and recovers independently',()=>{
+    component.selectShelf(shelf);
     locationService.getUnplacedCopies.mockReturnValueOnce(throwError(()=>new Error('offline')));component.loadUnplaced();render();
     expect(component.unplacedError).toBeTruthy();expect(fixture.nativeElement.textContent).not.toContain('Không có bản sao chưa xếp ngăn.');
     component.loadUnplaced();render();expect(component.unplacedError).toBe('');expect(fixture.nativeElement.textContent).toContain('Không có bản sao chưa xếp ngăn.');

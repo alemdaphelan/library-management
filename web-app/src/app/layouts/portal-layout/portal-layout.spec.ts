@@ -62,6 +62,20 @@ describe('PortalLayout', () => {
     expect(component.cardStatusLabel(undefined)).toBe('Chưa được cấp thẻ');
   });
 
+  it('renders the borrowing history link only for readers', () => {
+    vi.spyOn(component.authService, 'isLoggedIn').mockReturnValue(true);
+    const role = vi.spyOn(component.authService, 'getRole').mockReturnValue('ADMIN');
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav a[href="/history"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/admin"]')).not.toBeNull();
+
+    role.mockReturnValue('STUDENT');
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav a[href="/history"]')).not.toBeNull();
+  });
+
   it('renders persisted notifications as soon as the modal is opened', () => {
     component.openNotifications();
     fixture.detectChanges();

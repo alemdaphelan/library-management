@@ -41,7 +41,8 @@ class InventoryAuditServiceTest {
         detailRepository = mock(InventoryDetailRepository.class);
         copyRepository = mock(BookCopyRepository.class);
         bookRepository = mock(BookRepository.class);
-        service = new InventoryAuditService(auditRepository, detailRepository, copyRepository, bookRepository);
+        service = new InventoryAuditService(auditRepository, detailRepository, copyRepository, bookRepository,
+                mock(com.huit.library.modules.catalog.repository.ShelfRepository.class));
 
         when(auditRepository.save(any())).thenAnswer(invocation -> {
             InventoryAuditEntity audit = invocation.getArgument(0);
@@ -78,7 +79,7 @@ class InventoryAuditServiceTest {
         BookEntity book = new BookEntity();
         book.setBookId(2L);
         book.setTitle("Clean Code");
-        when(auditRepository.findById(9L)).thenReturn(Optional.of(audit));
+        when(auditRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(audit));
         when(detailRepository.findByAuditIdAndBarcode("9", "BC-001")).thenReturn(Optional.empty());
         when(copyRepository.findById("BC-001")).thenReturn(Optional.of(copy));
         when(bookRepository.findById(2L)).thenReturn(Optional.of(book));
@@ -97,12 +98,13 @@ class InventoryAuditServiceTest {
     @Test
     void scanRecordsUnknownBarcodeWithoutIncreasingActualCount() {
         InventoryAuditEntity audit = inProgressAudit();
-        when(auditRepository.findById(9L)).thenReturn(Optional.of(audit));
+        when(auditRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(audit));
         when(detailRepository.findByAuditIdAndBarcode("9", "MISSING")).thenReturn(Optional.empty());
         when(copyRepository.findById("MISSING")).thenReturn(Optional.empty());
 
         InventoryScanRequestDTO request = new InventoryScanRequestDTO();
         request.setBarcode("MISSING");
+        request.setScannedLocation("Tầng 1 / Dãy A / Ngăn 01");
         InventoryScanResponseDTO result = service.scan(9L, request);
 
         assertThat(result.getScanStatus()).isEqualTo("UNKNOWN");
@@ -114,7 +116,7 @@ class InventoryAuditServiceTest {
     void scanFlagsCopyFoundAtDifferentLocation() {
         InventoryAuditEntity audit = inProgressAudit();
         BookCopyEntity copy = locatedCopy();
-        when(auditRepository.findById(9L)).thenReturn(Optional.of(audit));
+        when(auditRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(audit));
         when(detailRepository.findByAuditIdAndBarcode("9", "BC-001")).thenReturn(Optional.empty());
         when(copyRepository.findById("BC-001")).thenReturn(Optional.of(copy));
         when(bookRepository.findById(2L)).thenReturn(Optional.empty());
@@ -129,7 +131,7 @@ class InventoryAuditServiceTest {
     @Test
     void scanRejectsDuplicateBarcode() {
         InventoryAuditEntity audit = inProgressAudit();
-        when(auditRepository.findById(9L)).thenReturn(Optional.of(audit));
+        when(auditRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(audit));
         when(detailRepository.findByAuditIdAndBarcode("9", "BC-001"))
                 .thenReturn(Optional.of(new InventoryDetailEntity()));
 
@@ -148,7 +150,7 @@ class InventoryAuditServiceTest {
         InventoryDetailEntity found = detail("FOUND", "BC-001");
         InventoryDetailEntity misplaced = detail("MISPLACED", "BC-002");
         InventoryDetailEntity unknown = detail("UNKNOWN", "MISSING");
-        when(auditRepository.findById(9L)).thenReturn(Optional.of(audit));
+        when(auditRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(audit));
         when(detailRepository.findByAuditIdOrderByCreatedAtAsc("9"))
                 .thenReturn(List.of(found, misplaced, unknown));
         when(copyRepository.findById(anyString())).thenReturn(Optional.empty());
@@ -164,7 +166,7 @@ class InventoryAuditServiceTest {
     void completedAuditCannotReceiveMoreScans() {
         InventoryAuditEntity audit = inProgressAudit();
         audit.setStatus("COMPLETED");
-        when(auditRepository.findById(9L)).thenReturn(Optional.of(audit));
+        when(auditRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(audit));
         InventoryScanRequestDTO request = new InventoryScanRequestDTO();
         request.setBarcode("BC-001");
 

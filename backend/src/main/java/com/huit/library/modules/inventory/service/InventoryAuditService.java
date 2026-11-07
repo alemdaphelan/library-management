@@ -8,6 +8,7 @@ import com.huit.library.modules.catalog.entity.FloorEntity;
 import com.huit.library.modules.catalog.entity.ShelfEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.BookRepository;
+import com.huit.library.modules.catalog.repository.ShelfRepository;
 import com.huit.library.modules.inventory.dto.InventoryAuditResponseDTO;
 import com.huit.library.modules.inventory.dto.InventoryScanRequestDTO;
 import com.huit.library.modules.inventory.dto.InventoryScanResponseDTO;
@@ -35,15 +36,17 @@ public class InventoryAuditService {
     private final InventoryDetailRepository detailRepository;
     private final BookCopyRepository copyRepository;
     private final BookRepository bookRepository;
+    private final ShelfRepository shelfRepository;
 
     public InventoryAuditService(InventoryAuditRepository auditRepository,
                                  InventoryDetailRepository detailRepository,
                                  BookCopyRepository copyRepository,
-                                 BookRepository bookRepository) {
+                                 BookRepository bookRepository, ShelfRepository shelfRepository) {
         this.auditRepository = auditRepository;
         this.detailRepository = detailRepository;
         this.copyRepository = copyRepository;
         this.bookRepository = bookRepository;
+        this.shelfRepository = shelfRepository;
     }
 
     @Transactional
@@ -76,7 +79,7 @@ public class InventoryAuditService {
 
     @Transactional
     public InventoryScanResponseDTO scan(Long auditId, InventoryScanRequestDTO request) {
-        InventoryAuditEntity audit = findAudit(auditId);
+        InventoryAuditEntity audit = lockAudit(auditId);
         ensureInProgress(audit);
 
         String barcode = request.getBarcode().trim();
@@ -87,13 +90,21 @@ public class InventoryAuditService {
 
         Optional<BookCopyEntity> copy = copyRepository.findById(barcode);
         String scannedLocation = normalizeNullable(request.getScannedLocation());
+        ShelfEntity scannedShelf = request.getScannedShelfId() == null ? null : shelfRepository.findById(request.getScannedShelfId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngăn kiểm kê không tồn tại. Chọn lại vị trí."));
+        if (scannedShelf != null) scannedLocation = locationOfShelf(scannedShelf);
+        if (scannedLocation == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chọn vị trí đang kiểm kê trước khi quét");
         String expectedLocation = copy.map(this::locationOf).orElse(null);
 
         InventoryDetailEntity detail = new InventoryDetailEntity();
         detail.setAuditId(storedAuditId);
         detail.setBarcode(barcode);
         detail.setScannedLocation(scannedLocation);
-        detail.setScanStatus(resolveStatus(copy.isPresent(), scannedLocation, expectedLocation));
+        String status = resolveStatus(copy.isPresent(), scannedLocation, expectedLocation);
+        if (scannedShelf != null && copy.isPresent() && copy.get().getShelf() != null) {
+            status = scannedShelf.getShelfId().equals(copy.get().getShelf().getShelfId()) ? "MATCHED" : "MISPLACED";
+        }
+        detail.setScanStatus(status);
         detail = detailRepository.save(detail);
 
         if (copy.isPresent()) {
@@ -106,7 +117,7 @@ public class InventoryAuditService {
 
     @Transactional
     public InventoryAuditResponseDTO complete(Long auditId) {
-        InventoryAuditEntity audit = findAudit(auditId);
+        InventoryAuditEntity audit = lockAudit(auditId);
         ensureInProgress(audit);
 
         List<InventoryDetailEntity> details = detailRepository.findByAuditIdOrderByCreatedAtAsc(auditId.toString());
@@ -121,6 +132,11 @@ public class InventoryAuditService {
 
     private InventoryAuditEntity findAudit(Long auditId) {
         return auditRepository.findById(auditId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên kiểm kê"));
+    }
+
+    private InventoryAuditEntity lockAudit(Long auditId) {
+        return auditRepository.findByIdForUpdate(auditId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên kiểm kê"));
     }
 
@@ -185,6 +201,10 @@ public class InventoryAuditService {
     private String locationOf(BookCopyEntity copy) {
         ShelfEntity shelf = copy.getShelf();
         if (shelf == null) return null;
+        return locationOfShelf(shelf);
+    }
+
+    private String locationOfShelf(ShelfEntity shelf) {
         BookshelfEntity bookshelf = shelf.getBookshelf();
         FloorEntity floor = bookshelf == null ? null : bookshelf.getFloor();
         return String.join(" / ",

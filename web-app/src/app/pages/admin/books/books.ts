@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { BookService } from '../../../services/book.service';
 import { Category, CategoryService } from '../../../services/category.service';
 import { DialogService } from '../../../services/dialog.service';
+import { DashboardAnalyticsService } from '../../../services/dashboard-analytics.service';
+import { Faculty } from '../../../services/dashboard-analytics.models';
 
 @Component({
   selector: 'app-books',
@@ -19,6 +21,9 @@ export class Books implements OnInit {
 
   books: any[] = [];
   categories: Category[] = [];
+  faculties: Faculty[] = [];
+  selectedFaculty = '';
+  private requestVersion = 0;
   searchQuery = '';
   selectedCategoryId?: number;
   selectedAvailability: '' | 'AVAILABLE' | 'UNAVAILABLE' = '';
@@ -37,9 +42,12 @@ export class Books implements OnInit {
     private categoryService: CategoryService,
     private dialog: DialogService,
     private cdr: ChangeDetectorRef,
+    private analytics: DashboardAnalyticsService,
   ) {}
 
   ngOnInit() {
+    this.analytics.catalog().subscribe({next: catalog => {this.faculties = catalog.faculties; this.cdr.markForCheck();},
+      error: () => this.dialog.show({type:'error',message:'Không tải được bộ lọc khoa. Hãy tải lại danh mục.'})});
     this.categoryService.getCategories().subscribe({
       next: categories => { this.categories = categories; this.cdr.detectChanges(); },
       error: err => console.error('Failed to load categories', err)
@@ -48,6 +56,7 @@ export class Books implements OnInit {
   }
 
   loadBooks() {
+    const version = ++this.requestVersion;
     this.isLoading = true;
     this.errorMessage = '';
     this.bookService.getBooks(
@@ -55,9 +64,12 @@ export class Books implements OnInit {
       this.currentPage,
       this.pageSize,
       this.selectedCategoryId,
-      this.selectedAvailability || undefined
+      this.selectedAvailability || undefined,
+      undefined,
+      this.selectedFaculty || undefined
     ).subscribe({
       next: (data) => {
+        if (version !== this.requestVersion) return;
         this.books = data.content;
         this.totalPages = data.totalPages;
         this.totalElements = data.totalElements;
@@ -65,6 +77,7 @@ export class Books implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
+        if (version !== this.requestVersion) return;
         console.error('Failed to load books', err);
         this.isLoading = false;
         this.errorMessage = this.extractError(err, 'Không thể tải danh mục sách.');

@@ -93,3 +93,4 @@ td small { margin-top: 4px; color: #64748b; }
 .workspace-tabs button[aria-pressed="true"] { background: #e0f2fe; border-color: #0284c7; color: #075985; }
 .disposal-entry { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px; }
 .disposal-entry button:disabled { opacity: .5; cursor: default; }
+ .scan-fields select{width:100%;min-width:0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;font:inherit}.audit-camera{margin-top:14px}.audit-camera video{display:block;width:min(100%,480px);max-height:320px;background:#111827;border-radius:8px}

@@ -34,7 +34,7 @@
         </div>
 
         <div class="header-user-area" *ngIf="authService.isLoggedIn()">
-          <button class="btn-reader-card btn-borrow-cart" routerLink="/borrow-cart">
+          <button *ngIf="canUseReaderFeatures" class="btn-reader-card btn-borrow-cart" routerLink="/borrow-cart">
             <span class="icon">&#128722;</span> Giỏ mượn
             <ng-container *ngIf="borrowCartService.count$ | async as cartCount">
               <span class="cart-count" *ngIf="cartCount > 0">{{ cartCount }}</span>
@@ -44,7 +44,7 @@
             <span class="icon">&#128276;</span> Thông báo
             <span class="notification-count" *ngIf="unreadNotificationCount > 0">{{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}</span>
           </button>
-          <button class="btn-reader-card" type="button" (click)="openLibraryCard()">
+          <button *ngIf="canUseReaderFeatures" class="btn-reader-card" type="button" (click)="openLibraryCard()">
             <span class="icon">&#128179;</span> Thẻ thư viện
           </button>
           
@@ -56,10 +56,10 @@
             
             <div class="user-dropdown" *ngIf="isUserMenuOpen">
               <a *ngIf="canAccessAdmin" routerLink="/admin" (click)="isUserMenuOpen = false">Trang quản trị</a>
-              <a routerLink="/saved-books" (click)="isUserMenuOpen = false">Tủ sách cá nhân</a>
-              <a routerLink="/my-penalties" (click)="isUserMenuOpen = false">Công nợ & Khoản phạt</a>
+              <a *ngIf="canUseReaderFeatures" routerLink="/saved-books" (click)="isUserMenuOpen = false">Tủ sách cá nhân</a>
+              <a *ngIf="canUseReaderFeatures" routerLink="/my-penalties" (click)="isUserMenuOpen = false">Công nợ & Khoản phạt</a>
               <a routerLink="/profile" [queryParams]="{tab: 'settings'}">Cài đặt</a>
-              <a routerLink="/history">Lịch sử mượn & Phiếu QR</a>
+              <a *ngIf="canUseReaderFeatures" routerLink="/history">Lịch sử mượn & Phiếu QR</a>
               <a (click)="openNotifications()" style="cursor: pointer;">Thông báo & Nhắc hạn</a>
               <a routerLink="/profile" [queryParams]="{tab: 'password'}">Đổi mật khẩu</a>
               <a (click)="logout()" class="logout" style="cursor: pointer;">Đăng xuất</a>
@@ -76,8 +76,8 @@
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">TRANG CHỦ</a>
           <a routerLink="/about" routerLinkActive="active" class="nav-link">GIỚI THIỆU</a>
           <a routerLink="/search" routerLinkActive="active" class="nav-link">TÌM KIẾM & TRA CỨU</a>
-          <a *ngIf="authService.isLoggedIn()" routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
-          <a *ngIf="authService.isLoggedIn()" routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
+          <a *ngIf="canUseReaderFeatures" routerLink="/history" routerLinkActive="active" class="nav-link">LỊCH SỬ MƯỢN SÁCH</a>
+          <a *ngIf="canUseReaderFeatures" routerLink="/suggest" routerLinkActive="active" class="nav-link">ĐỀ XUẤT TÀI LIỆU</a>
           <a routerLink="/digital" routerLinkActive="active" class="nav-link">TÀI NGUYÊN SỐ & CSDL</a>
           <a routerLink="/guide" routerLinkActive="active" class="nav-link">HƯỚNG DẪN BẠN ĐỌC</a>
         </nav>
@@ -143,7 +143,7 @@
         <ul class="footer-links">
           <li><a routerLink="/search">Tra cứu Mục lục Trực tuyến</a></li>
           <li><a routerLink="/digital">Tài nguyên số & CSDL</a></li>
-          <li><a routerLink="/history">Gia hạn và theo dõi tài liệu</a></li>
+          <li *ngIf="canUseReaderFeatures"><a routerLink="/history">Gia hạn và theo dõi tài liệu</a></li>
         </ul>
       </div>
     </div>

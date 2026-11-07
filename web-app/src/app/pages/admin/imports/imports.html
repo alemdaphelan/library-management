@@ -46,6 +46,14 @@
   </div>
 
   <!-- Bảng Dữ Liệu -->
+  <div class="receipt-filters" aria-label="Bộ lọc phiếu nhập">
+    <label>Tìm phiếu<input [(ngModel)]="receiptSearch" placeholder="Mã phiếu hoặc nhà cung cấp"></label>
+    <label>Nhà cung cấp<select [(ngModel)]="receiptSupplier"><option [ngValue]="undefined">Tất cả</option><option *ngFor="let supplier of suppliers" [ngValue]="supplier.supplierId">{{supplier.name}}</option></select></label>
+    <label>Trạng thái<select [(ngModel)]="receiptStatus"><option value="">Tất cả</option><option value="COMPLETED">Hoàn thành</option><option value="PENDING">Đang xử lý</option></select></label>
+    <label>Từ ngày<input type="date" [(ngModel)]="receiptFrom"></label>
+    <label>Đến ngày<input type="date" [(ngModel)]="receiptTo"></label>
+    <button class="btn-outline" type="button" (click)="resetReceiptFilters()">Xóa lọc</button>
+  </div>
   <div class="table-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); padding: 20px; border: 1px solid #f1f5f9;">
     <table class="admin-table">
       <thead>
@@ -59,7 +67,7 @@
         </tr>
       </thead>
       <tbody *ngIf="!isLoading">
-        <tr *ngFor="let receipt of importReceipts" [class.highlighted-row]="receipt.receiptId === highlightedReceiptId">
+        <tr *ngFor="let receipt of filteredReceipts" [class.highlighted-row]="receipt.receiptId === highlightedReceiptId">
           <td style="font-weight: 600; color: #0284c7;">{{ receipt.receiptCode }}</td>
           <td>{{ receipt.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
           <td>{{ receipt.supplierName }}</td>
@@ -75,10 +83,10 @@
       </tbody>
     </table>
     <div class="table-state" *ngIf="isLoading">Đang tải dữ liệu nhập kho...</div>
-    <div class="table-state" *ngIf="!isLoading && !errorMessage && !importReceipts.length">Chưa có phiếu nhập nào.</div>
+    <div class="table-state" *ngIf="!isLoading && !errorMessage && !filteredReceipts.length">Không có phiếu nhập phù hợp.</div>
     
     <div style="margin-top: 15px;">
-      <span style="font-size: 0.85rem; color: #64748b;">Đang hiển thị {{ importReceipts.length }} phiếu nhập từ hệ thống.</span>
+      <span style="font-size: 0.85rem; color: #64748b;">Đang hiển thị {{ filteredReceipts.length }} / {{ importReceipts.length }} phiếu nhập.</span>
     </div>
   </div>
   <p *ngIf="detailLoading" role="status">Đang tải chi tiết phiếu nhập…</p>

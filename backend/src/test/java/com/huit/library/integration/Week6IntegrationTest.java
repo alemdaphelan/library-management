@@ -57,6 +57,7 @@ import com.huit.library.modules.digital.repository.DigitalDocumentRepository;
 import com.huit.library.modules.digital.repository.DigitalUsageLogRepository;
 import com.huit.library.modules.digital.service.DigitalAssetService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -117,6 +118,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
         "app.jwtSecret=week-6-integration-test-secret-key-with-more-than-32-characters"
 })
 class Week6IntegrationTest {
+    @BeforeAll
+    static void installAuthorGroups(@Autowired javax.sql.DataSource dataSource) {
+        new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(false, false, "UTF-8",
+                new org.springframework.core.io.ClassPathResource(
+                        "db/changelog/changesets/47-shelf-author-groups.sql")).execute(dataSource);
+    }
+
     private static final Path DIGITAL_TEST_STORAGE = Path.of(
             System.getProperty("java.io.tmpdir"), "huit-week7-digital-" + UUID.randomUUID());
 
@@ -412,6 +420,7 @@ class Week6IntegrationTest {
             audit = inventoryAuditService.createAudit(conductor);
             InventoryScanRequestDTO request = new InventoryScanRequestDTO();
             request.setBarcode(copy.getBarcode());
+            request.setScannedLocation("Tầng 1 / Dãy A / Ngăn 01");
 
             assertThat(inventoryAuditService.scan(audit.getAuditId(), request).getScanStatus())
                     .isEqualTo("FOUND");
@@ -1290,6 +1299,30 @@ class Week6IntegrationTest {
     }
 
     @Test
+    void receivingReplacementReactivatesTheOriginalBarcodeOnlyOnce() {
+        var fixture = inspectionFixture(1, "50000");
+        String key = "replacement-original-barcode-" + UUID.randomUUID();
+        try {
+            var incident = returnInspectionService.inspect(inspectionRequest(key, fixture, "LOST"), UUID.randomUUID()).items().get(0);
+            var copy = fixture.copies().get(0);
+            assertThat(bookCopyRepository.findByBookIdAndStatus(copy.getBookId(), "AVAILABLE")).isEmpty();
+            var acceptance = new ReplacementAcceptanceRequestDTO();
+            acceptance.setReplacementBarcode(copy.getBarcode());
+            acceptance.setVerificationNote("Đã đối chiếu ấn bản và dán lại mã vạch cũ");
+
+            var result = penaltyCaseService.acceptReplacement(incident.penaltyCaseId(), acceptance, UUID.randomUUID());
+            assertThat(result.getReplacementBarcode()).isEqualTo(copy.getBarcode());
+            assertThat(bookCopyRepository.findByBookIdAndStatus(copy.getBookId(), "AVAILABLE"))
+                    .singleElement().satisfies(available -> assertThat(available.getBarcode()).isEqualTo(copy.getBarcode()));
+            assertThat(loanDetailRepository.findById(incident.loanDetailId()).orElseThrow().getReturnStatus()).isEqualTo("SETTLED");
+            assertThatThrownBy(() -> penaltyCaseService.acceptReplacement(incident.penaltyCaseId(), acceptance, UUID.randomUUID()))
+                    .hasMessageContaining("đã được xác nhận");
+        } finally {
+            cleanupInspection(fixture, key);
+        }
+    }
+
+    @Test
     void damagedReceiptEndsCustodyBeforePaymentAndPartialTicketStaysOpen() {
         var fixture = inspectionFixture(2, "0");
         String key = "f03-partial-" + UUID.randomUUID();
@@ -1713,6 +1746,38 @@ class Week6IntegrationTest {
     }
 
     @Test
+    void concurrentImportsCannotOverfillACapacityLimitedShelf() throws Exception {
+        var supplier = createSupplier();
+        var book = createBook();
+        var item = line(book.getBookId(), 1, "100");
+        jdbcTemplate.update("UPDATE shelves SET capacity=1 WHERE shelf_id=?", item.getShelfId());
+        var request = importRequest(supplier.getSupplierId(), List.of(item));
+        var executor = Executors.newFixedThreadPool(2);
+        var start = new CountDownLatch(1);
+        try {
+            java.util.concurrent.Callable<Boolean> insert = () -> {
+                start.await();
+                try {
+                    inventoryService.importBooks(request);
+                    return true;
+                } catch (org.springframework.web.server.ResponseStatusException error) {
+                    assertThat(error.getStatusCode().value()).isEqualTo(409);
+                    assertThat(error.getReason()).contains("sức chứa");
+                    return false;
+                }
+            };
+            var first = executor.submit(insert);
+            var second = executor.submit(insert);
+            start.countDown();
+            assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(true, false);
+            assertThat(bookCopyRepository.countByShelf_ShelfId(item.getShelfId())).isEqualTo(1L);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     void identificationUsesCatalogEditionAndExistingClassificationButNeverInventsAdminRules() {
         var book = createBook(); book.setIsbn("9780132350884"); bookRepository.saveAndFlush(book);
         var anotherEdition = createBook(); anotherEdition.setIsbn("9780134494166"); bookRepository.saveAndFlush(anotherEdition);
@@ -1749,7 +1814,9 @@ class Week6IntegrationTest {
             var staff = createUserWithRole("b06-" + role, role, "Import@123"); String token = loginAndGetToken(staff.getEmail(), "Import@123");
             mockMvc.perform(get("/inventory/catalog-identification").param("isbn", "0-201-53082-1").header("Authorization", "Bearer " + token))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.bookId").value(book.getBookId()))
-                    .andExpect(jsonPath("$.placementStatus").value("NO_MATCHING_RULE"));
+                    .andExpect(jsonPath("$.placementStatus").value("SUGGESTED_BY_ADMIN_RULE"))
+                    .andExpect(jsonPath("$.placements[*].shelfId").value(
+                            org.hamcrest.Matchers.hasItem(request.getLines().get(0).getShelfId().intValue())));
             var line = request.getLines().get(0); Long shelf = line.getShelfId(); line.setShelfId(null);
             mockMvc.perform(post("/inventory/receipts").header("Authorization", "Bearer " + token).contentType("application/json").content(objectMapper.writeValueAsString(request))).andExpect(status().isBadRequest());
             line.setShelfId(shelf);
@@ -1777,6 +1844,14 @@ class Week6IntegrationTest {
         long floor = jdbcTemplate.queryForObject("INSERT INTO floors(name) VALUES ('Tầng nhập kiểm thử') RETURNING floor_id", Long.class);
         long bookshelf = jdbcTemplate.queryForObject("INSERT INTO bookshelves(name,floor_id) VALUES ('Kệ nhập kiểm thử',?) RETURNING bookshelf_id", Long.class, floor);
         long shelf = jdbcTemplate.queryForObject("INSERT INTO shelves(name,bookshelf_id) VALUES ('Ngăn nhập kiểm thử',?) RETURNING shelf_id", Long.class, bookshelf);
+        jdbcTemplate.update("""
+                INSERT INTO recommendation_subjects(code,name,active) VALUES ('SHELF_UNCLASSIFIED','Chờ phân loại',true)
+                ON CONFLICT (code) DO NOTHING
+                """);
+        jdbcTemplate.update("""
+                INSERT INTO shelf_subject_rules(shelf_id,subject_id,active)
+                SELECT ?,subject_id,true FROM recommendation_subjects WHERE code='SHELF_UNCLASSIFIED'
+                """, shelf);
         line.setShelfId(shelf); line.setFloorId(floor); line.setBookshelfId(bookshelf);
         return line;
     }
@@ -1897,6 +1972,25 @@ class Week6IntegrationTest {
             mockMvc.perform(get(path)).andExpect(status().isForbidden());mockMvc.perform(get(path).header("Authorization","Bearer "+studentToken)).andExpect(status().isForbidden());
         }
         mockMvc.perform(put(mapping).header("Authorization","Bearer "+studentToken).contentType("application/json").content("{\"version\":0,\"majorIds\":[\""+major+"\"],\"sourceReference\":\"Nguồn API\"}")).andExpect(status().isForbidden());
+        String hintFaculty = faculty + "-HINT";
+        jdbcTemplate.update("INSERT INTO academic_faculties(faculty_id,faculty_name) VALUES (?,?)", hintFaculty, "Khoa theo chủ đề");
+        String departmentAlias = "Ngành Dữ liệu API " + faculty;
+        jdbcTemplate.update("INSERT INTO academic_department_mappings(department_value,faculty_id,major_name) VALUES (?,?,?)",
+                departmentAlias, hintFaculty, "Ngành API");
+        long subject = jdbcTemplate.queryForObject(
+                "INSERT INTO recommendation_subjects(code,name,active) VALUES (?, 'Chủ đề lọc khoa', true) RETURNING subject_id",
+                Long.class, faculty);
+        jdbcTemplate.update("""
+                INSERT INTO department_subject_affinities(department_key,display_name,subject_id,weight,source,active)
+                VALUES (?,?,?,1,'HUIT_2026',true)
+                """, "nganh du lieu api " + faculty.toLowerCase(java.util.Locale.ROOT).replace('-', ' '), departmentAlias, subject);
+        jdbcTemplate.update("""
+                INSERT INTO book_subject_assignments(book_id,subject_id,confidence,classification_source,primary_subject)
+                VALUES (?,?,1,'MANUAL',true)
+                """, book.getBookId(), subject);
+        mockMvc.perform(get("/books").param("facultyId", hintFaculty).param("query", book.getIsbn()).param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].bookId").value(book.getBookId()));
         for(String role:List.of("LIBRARIAN","ADMIN")){
             var staff=createUserWithRole("b11-"+role,role,"Analytics@123");String token=loginAndGetToken(staff.getEmail(),"Analytics@123");
             for(String path:List.of(base+"/circulation",base+"/rankings",base+"/overdue",base+"/holdings",base+"/materials",base+"/academic-catalog",base+"/finance",base+"/finance/entries",base+"/stock-movements",base+"/stock-movements/receipts",mapping))mockMvc.perform(get(path).header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
@@ -1908,6 +2002,15 @@ class Week6IntegrationTest {
             String body=objectMapper.writeValueAsString(java.util.Map.of("version",version,"majorIds",List.of(major),"sourceReference","Nguồn API "+role));
             mockMvc.perform(put(mapping).header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.current.version").value(version+1)).andExpect(jsonPath("$.current.updatedBy").value(staff.getUserId().toString())).andExpect(jsonPath("$.current.majors[0].majorId").value(major));
             mockMvc.perform(get(base+"/holdings").header("Authorization","Bearer "+token).param("majorId",major)).andExpect(status().isOk()).andExpect(jsonPath("$.totals.materials").value(1));
+            mockMvc.perform(get("/books").header("Authorization", "Bearer " + token)
+                            .param("facultyId", faculty).param("query", book.getIsbn()).param("size", "1"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.content[0].bookId").value(book.getBookId()));
+            mockMvc.perform(get("/books").param("facultyId", hintFaculty).param("query", book.getIsbn()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+            mockMvc.perform(get("/books").header("Authorization", "Bearer " + token)
+                            .param("facultyId", "UNMATCHED-FACULTY").param("query", book.getIsbn()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
             mockMvc.perform(get(base+"/materials/BOOK/"+book.getBookId()+"/copies").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
             mockMvc.perform(get(base+"/circulation").header("Authorization","Bearer "+token).param("from","2026-02-01").param("until","2026-01-01")).andExpect(status().isBadRequest());
             mockMvc.perform(get(base+"/rankings").header("Authorization","Bearer "+token).param("size","101")).andExpect(status().isBadRequest());
@@ -1976,12 +2079,17 @@ class Week6IntegrationTest {
         var allowed=line(book.getBookId(),2,"1000");
         long subject=jdbcTemplate.queryForObject("INSERT INTO recommendation_subjects(code,name,active) VALUES (?, 'Chủ đề xếp sách',true) RETURNING subject_id",Long.class,"FIX-"+UUID.randomUUID());
         jdbcTemplate.update("INSERT INTO book_subject_assignments(book_id,subject_id,confidence,classification_source,evidence,primary_subject) VALUES (?,?,1,'MANUAL','Danh mục được xác minh',true)",book.getBookId(),subject);
+        jdbcTemplate.update("DELETE FROM shelf_subject_rules WHERE shelf_id=?", allowed.getShelfId());
+        long receiptsBefore=goodsReceiptRepository.count(),copiesBefore=bookCopyRepository.count();
+        assertThatThrownBy(() -> inventoryService.importBooks(importRequest(supplier.getSupplierId(),List.of(allowed))))
+                .hasMessageContaining("Admin cần cấu hình chủ đề");
+        assertThat(goodsReceiptRepository.count()).isEqualTo(receiptsBefore);
+        assertThat(bookCopyRepository.count()).isEqualTo(copiesBefore);
         jdbcTemplate.update("INSERT INTO shelf_subject_rules(shelf_id,subject_id,active) VALUES (?,?,true)",allowed.getShelfId(),subject);
         var result=inventoryIdentification.identify(null,book.getBookId());
         assertThat(result.placementStatus()).isEqualTo("SUGGESTED_BY_ADMIN_RULE");
         assertThat(result.suggestedShelfId()).isEqualTo(allowed.getShelfId());
         assertThat(result.placements().get(0).floorId()).isEqualTo(allowed.getFloorId());
-        long receiptsBefore=goodsReceiptRepository.count(),copiesBefore=bookCopyRepository.count();
         var rejected=new ImportReceiptRequestDTO.Line();rejected.setBookId(other.getBookId());rejected.setQuantity(1);rejected.setUnitPrice(BigDecimal.ONE);rejected.setShelfId(allowed.getShelfId());
         assertThatThrownBy(()->inventoryService.importBooks(importRequest(supplier.getSupplierId(),List.of(allowed,rejected)))).hasMessageContaining("409");
         assertThat(goodsReceiptRepository.count()).isEqualTo(receiptsBefore);assertThat(bookCopyRepository.count()).isEqualTo(copiesBefore);

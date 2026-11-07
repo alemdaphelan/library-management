@@ -45,8 +45,13 @@ public class BookService {
     @Transactional(readOnly = true)
     public Page<BookResponseDTO> searchBooks(
             String query, Long categoryId, String department, String availability, Pageable pageable) {
+        return searchBooks(query, categoryId, department, availability, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BookResponseDTO> searchBooks(
+            String query, Long categoryId, String department, String availability, String facultyId, Pageable pageable) {
         boolean hasQuery = query != null && !query.isBlank();
-        boolean hasCategory = categoryId != null;
         Page<BookEntity> books;
         String departmentKey = DepartmentKeyNormalizer.normalize(department);
         String availabilityFilter = normalizeAvailability(availability);
@@ -57,6 +62,7 @@ public class BookService {
                     resolveSubjectCode(hasQuery ? query.trim() : ""),
                     categoryId,
                     availabilityFilter,
+                    facultyId == null ? "" : facultyId.trim(),
                     pageable);
         } else {
             String normalizedQuery = hasQuery ? query.trim() : "";
@@ -65,6 +71,7 @@ public class BookService {
                     resolveSubjectCode(normalizedQuery),
                     categoryId,
                     availabilityFilter,
+                    facultyId == null ? "" : facultyId.trim(),
                     pageable);
         }
         return books.map(this::toResponse);

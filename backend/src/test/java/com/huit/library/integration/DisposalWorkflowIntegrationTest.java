@@ -101,7 +101,7 @@ class DisposalWorkflowIntegrationTest {
     }
     @Test void auditMustBeCompleteAndUnknownBorrowedHeldLostCopiesAreIneligible() {
         for (String state : List.of("AVAILABLE", "BORROWING", "BORROWED", "OVERDUE", "RESERVED", "LOST")) scanned(state);
-        var unknown = new InventoryScanRequestDTO(); unknown.setBarcode("unknown-" + UUID.randomUUID()); auditService.scan(auditId, unknown);
+        var unknown = new InventoryScanRequestDTO(); unknown.setBarcode("unknown-" + UUID.randomUUID()); unknown.setScannedLocation("Tầng 1 / Dãy A / Ngăn 01"); auditService.scan(auditId, unknown);
         assertThat(service.candidates(auditId)).allMatch(c -> !c.eligible());
         auditService.complete(auditId);
         assertThat(service.candidates(auditId).stream().filter(Candidate::eligible)).hasSize(1);
@@ -182,7 +182,7 @@ class DisposalWorkflowIntegrationTest {
     private String scanned(String status) {
         var book=new BookEntity();book.setTitle("B09 book");book.setIsDigital(false);book=books.saveAndFlush(book);
         var copy=new BookCopyEntity();copy.setBarcode("B09-"+UUID.randomUUID());copy.setBookId(book.getBookId());copy.setStatus(status);copies.saveAndFlush(copy);
-        var scan=new InventoryScanRequestDTO();scan.setBarcode(copy.getBarcode());auditService.scan(auditId,scan);return copy.getBarcode();
+        var scan=new InventoryScanRequestDTO();scan.setBarcode(copy.getBarcode());scan.setScannedLocation("Tầng 1 / Dãy A / Ngăn 01");auditService.scan(auditId,scan);return copy.getBarcode();
     }
     private UserEntity staff(String role) {var u=new UserEntity();u.setRoleId(role);u.setFullName("B09 "+role);u.setEmail(UUID.randomUUID()+"@test.local");u.setPasswordHash("unused");return users.saveAndFlush(u);}
 }

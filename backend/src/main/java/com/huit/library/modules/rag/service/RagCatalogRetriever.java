@@ -36,7 +36,7 @@ public class RagCatalogRetriever {
         LinkedHashMap<Long, BookEntity> matches = new LinkedHashMap<>();
         if (looksLikeMoodRecommendation(query)) {
             for (String term : List.of("tâm lý", "kỹ năng sống", "truyền cảm hứng", "tình cảm", "văn học")) {
-                bookRepository.searchCatalog(term, "", null, "", PageRequest.of(0, Math.max(10, limit * 4),
+                bookRepository.searchCatalog(term, "", null, "", "", PageRequest.of(0, Math.max(10, limit * 4),
                                 Sort.by(Sort.Direction.DESC, "view_count")))
                         .getContent()
                         .forEach(book -> matches.putIfAbsent(book.getBookId(), book));

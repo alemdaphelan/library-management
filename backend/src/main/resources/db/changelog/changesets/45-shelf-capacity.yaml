@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 45-shelf-capacity
+      author: codex
+      changes:
+        - addColumn:
+            tableName: shelves
+            columns:
+              - column:
+                  name: capacity
+                  type: integer
+        - sql:
+            sql: ALTER TABLE shelves ADD CONSTRAINT ck_shelf_capacity CHECK (capacity > 0)
+      rollback:
+        - sql:
+            sql: ALTER TABLE shelves DROP CONSTRAINT ck_shelf_capacity
+        - dropColumn:
+            tableName: shelves
+            columnName: capacity
+
+  - changeSet:
+      id: 45-inventory-location-snapshot
+      author: codex
+      comment: A full floor, row and shelf path can exceed 255 characters.
+      changes:
+        - modifyDataType:
+            tableName: inventory_details
+            columnName: scanned_location
+            newDataType: varchar(1000)

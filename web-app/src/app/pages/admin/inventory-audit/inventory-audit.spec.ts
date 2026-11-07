@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { LocationService } from '../../../services/location.service';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import { InventoryAudit } from './inventory-audit';
 import {
   InventoryAudit as InventoryAuditModel,
@@ -46,7 +48,8 @@ describe('InventoryAudit', () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [InventoryAudit],
-      providers: [{ provide: InventoryAuditService, useValue: service }],
+      providers: [{ provide: InventoryAuditService, useValue: service },
+        {provide: LocationService, useValue: {getFloors: () => of([])}}],
     }).compileComponents();
 
     fixture = TestBed.createComponent(InventoryAudit);
@@ -68,11 +71,12 @@ describe('InventoryAudit', () => {
 
   it('trims and submits a barcode before refreshing the audit', () => {
     component.barcode = '  BC-001  ';
+    component.shelfId = 3;
     component.scannedLocation = ' Tầng 1 / Dãy A / Ngăn 01 ';
 
     component.submitScan();
 
-    expect(service.scan).toHaveBeenCalledWith(9, 'BC-001', 'Tầng 1 / Dãy A / Ngăn 01');
+    expect(service.scan).toHaveBeenCalledWith(9, 'BC-001', 'Tầng 1 / Dãy A / Ngăn 01', 3);
     expect(service.getAudit).toHaveBeenCalledWith(9);
     expect(component.barcode).toBe('');
   });
@@ -83,6 +87,36 @@ describe('InventoryAudit', () => {
     expect(service.createAudit).toHaveBeenCalled();
     expect(component.selectedAudit?.auditId).toBe(9);
     expect(component.successMessage).toContain('Đã bắt đầu');
+  });
+
+  it('keeps the camera open across distinct scans and ignores the same code in view', async () => {
+    type ScanCallback = Parameters<BrowserMultiFormatReader['decodeFromConstraints']>[2];
+    let decode!: ScanCallback;
+    const controls = { stop: vi.fn() };
+    const decoder = vi.spyOn(BrowserMultiFormatReader.prototype, 'decodeFromConstraints').mockImplementation(async (_, __, callback) => {
+      decode = callback;
+      return controls;
+    });
+    try {
+      component.shelfId = 3;
+      component.scannedLocation = 'Tầng 1 / Dãy A / Ngăn 01';
+      await component.startCamera();
+      const read = (value: string) => decode({ getText: () => value } as Parameters<ScanCallback>[0], undefined, controls);
+      read('BC-002');
+      read('BC-002');
+      read('BC-003');
+
+      expect(service.scan.mock.calls).toEqual([
+        [9, 'BC-002', component.scannedLocation, 3],
+        [9, 'BC-003', component.scannedLocation, 3],
+      ]);
+      expect(component.cameraOpen).toBe(true);
+      expect(controls.stop).not.toHaveBeenCalled();
+      component.stopCamera();
+      expect(controls.stop).toHaveBeenCalledOnce();
+    } finally {
+      decoder.mockRestore();
+    }
   });
 
   it('opens the disposal workspace lazily with the selected audit as its source', () => {

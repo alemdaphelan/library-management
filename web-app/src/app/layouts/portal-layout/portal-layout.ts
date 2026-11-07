@@ -55,6 +55,10 @@ export class PortalLayout implements OnInit, OnDestroy {
     }
   }
 
+  get canUseReaderFeatures(): boolean {
+    return this.authService.isLoggedIn() && this.authService.getRole() === 'STUDENT';
+  }
+
   get canAccessAdmin(): boolean {
     if (!this.authService.isLoggedIn()) return false;
     const role = this.authService.getRole();

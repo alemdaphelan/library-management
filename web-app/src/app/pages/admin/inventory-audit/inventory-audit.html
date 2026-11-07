@@ -83,17 +83,35 @@
             </button>
           </div>
           <div class="scan-fields">
-            <label>
-              <span>Barcode bản sao *</span>
+            <label>Tầng đang kiểm kê
+              <select name="auditFloor" required [ngModel]="floorId" (ngModelChange)="selectFloor($event)" [disabled]="isSubmitting || cameraOpen">
+                <option [ngValue]="undefined">Chọn tầng</option><option *ngFor="let node of floors" [ngValue]="node.id">{{node.name}}</option>
+              </select>
+            </label>
+            <label>Dãy kệ
+              <select name="auditBookshelf" required [ngModel]="bookshelfId" (ngModelChange)="selectBookshelf($event)" [disabled]="!floorId || isSubmitting || cameraOpen">
+                <option [ngValue]="undefined">Chọn dãy kệ</option><option *ngFor="let node of bookshelves" [ngValue]="node.id">{{node.name}}</option>
+              </select>
+            </label>
+            <label>Ngăn đang quét
+              <select name="auditShelf" required [ngModel]="shelfId" (ngModelChange)="selectShelf($event)" [disabled]="!bookshelfId || isSubmitting || cameraOpen">
+                <option [ngValue]="undefined">Chọn ngăn</option><option *ngFor="let node of shelves" [ngValue]="node.id">{{node.name}}</option>
+              </select>
+            </label>
+          </div>
+          <div class="scan-fields">
+            <label>Barcode bản sao
               <input #barcodeInput name="barcode" [(ngModel)]="barcode" autocomplete="off" placeholder="Ví dụ: BC-001" [disabled]="isSubmitting" required />
             </label>
-            <label>
-              <span>Vị trí đang quét (không bắt buộc)</span>
-              <input name="scannedLocation" [(ngModel)]="scannedLocation" autocomplete="off" placeholder="Tầng 1 / Dãy A / Ngăn 01" [disabled]="isSubmitting" />
-            </label>
-            <button class="scan-button" type="submit" [disabled]="isSubmitting || !barcode.trim()">
+            <button class="scan-button" type="submit" [disabled]="isSubmitting || !barcode.trim() || !shelfId">
               {{ isSubmitting ? 'Đang lưu…' : 'Ghi nhận' }}
             </button>
+            <button type="button" class="scan-button" *ngIf="!cameraOpen" (click)="startCamera()" [disabled]="!shelfId || isSubmitting">Mở camera quét liên tục</button>
+          </div>
+          <div class="audit-camera" *ngIf="cameraOpen">
+            <video #auditVideo autoplay muted playsinline aria-label="Camera kiểm kê"></video>
+            <p role="status">{{isSubmitting ? 'Đang ghi nhận mã vạch…' : (errorMessage || successMessage || 'Đưa mã vạch vào khung để ghi nhận.')}}</p>
+            <button type="button" (click)="stopCamera()">Tắt camera</button>
           </div>
         </form>
 

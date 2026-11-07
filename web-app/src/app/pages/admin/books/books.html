@@ -25,6 +25,9 @@
                 (click)="selectedCategoryId = category.categoryId; applyFilters()">{{ category.name }}</button>
       </div>
       <div class="filter-actions" style="margin-left: auto; display: flex; gap: 10px;">
+        <select class="form-control" aria-label="Lọc theo khoa" [(ngModel)]="selectedFaculty" (change)="applyFilters()">
+          <option value="">Tất cả khoa</option><option *ngFor="let faculty of faculties" [value]="faculty.facultyId">{{faculty.facultyName}}</option>
+        </select>
         <select class="form-control" style="width: 150px;" [(ngModel)]="selectedAvailability" (change)="applyFilters()">
           <option value="">Tất cả trạng thái</option>
           <option value="AVAILABLE">Có sẵn</option>
@@ -32,6 +35,9 @@
         </select>
       </div>
     </div>
+    <p class="faculty-filter-note" *ngIf="selectedFaculty">
+      Kết quả gồm sách được gán ngành thuộc khoa và sách chưa gán ngành có chủ đề liên quan.
+    </p>
 
     <div class="table-responsive">
       <table class="admin-table">
@@ -90,11 +96,11 @@
         </tbody>
       </table>
       <div class="table-state" *ngIf="isLoading">Đang tải danh mục sách...</div>
-      <div class="table-state" *ngIf="!isLoading && !books.length">Không có đầu sách nào khớp bộ lọc.</div>
+      <div class="table-state" *ngIf="!isLoading && !books.length">{{ selectedFaculty ? "Không tìm thấy sách có ngành được gán hoặc chủ đề phù hợp với khoa và bộ lọc đã chọn." : "Không có đầu sách nào khớp bộ lọc." }}</div>
     </div>
     
     <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.85rem; color: #64748b;">Hiển thị {{ currentPage * pageSize + 1 }}-{{ (currentPage * pageSize) + books.length }} của {{ totalElements }} kết quả</span>
+      <span style="font-size: 0.85rem; color: #64748b;"><ng-container *ngIf="books.length; else zeroResults">Hiển thị {{ currentPage * pageSize + 1 }}–{{ (currentPage * pageSize) + books.length }} của {{ totalElements }} kết quả</ng-container><ng-template #zeroResults>0 kết quả</ng-template></span>
       <div style="display: flex; gap: 5px;" *ngIf="totalPages > 0">
         <button class="btn-outline btn-sm" (click)="prevPage()" [disabled]="currentPage === 0">Trước</button>
         <ng-container *ngFor="let p of visiblePages">

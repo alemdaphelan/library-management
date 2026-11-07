@@ -20,8 +20,8 @@ describe('AuthGuard', () => {
     guard = new AuthGuard(authService, router);
   });
 
-  function routeWithRoles(roles: Role[]): ActivatedRouteSnapshot {
-    return { data: { roles } } as unknown as ActivatedRouteSnapshot;
+  function routeWithRoles(roles: Role[], staffRedirect?: string): ActivatedRouteSnapshot {
+    return { data: { roles, staffRedirect } } as unknown as ActivatedRouteSnapshot;
   }
 
   const state = {} as RouterStateSnapshot;
@@ -45,5 +45,13 @@ describe('AuthGuard', () => {
 
     expect(guard.canActivateChild(routeWithRoles(['ADMIN', 'LIBRARIAN']), state)).toBe(true);
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('returns staff opening reader history directly to the staff dashboard', () => {
+    const readerRoute = routeWithRoles(['STUDENT'], '/admin');
+    expect(guard.canActivate(readerRoute, state)).toBe(false);
+    expect(navigate).toHaveBeenCalledWith(['/admin']);
+    role = 'STUDENT';
+    expect(guard.canActivate(readerRoute, state)).toBe(true);
   });
 });

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 46-shelf-unclassified-type
+      author: codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              INSERT INTO recommendation_subjects (code, name, description)
+              VALUES ('SHELF_UNCLASSIFIED', 'Chờ phân loại', 'Chỉ nhận bản sao của đầu sách chưa có chủ đề hoạt động.')
+              ON CONFLICT (code) DO NOTHING;

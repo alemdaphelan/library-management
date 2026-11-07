@@ -15,6 +15,35 @@ import java.util.Optional;
 
 @Repository
 public interface BookRepository extends JpaRepository<BookEntity, Long> {
+    String OFFICIAL_FACULTY_ASSIGNMENTS = """
+            FROM material_classifications profile
+            JOIN material_major_assignments assignment ON assignment.profile_id = profile.profile_id
+            JOIN academic_majors major ON major.major_id = assignment.major_id
+            WHERE profile.material_kind = 'BOOK' AND profile.material_id = b.book_id
+            """;
+
+    // Use sourced HUIT subject affinities for books without official assignments.
+    String FACULTY_FILTER = """
+            AND (:facultyId = '' OR EXISTS (SELECT 1
+            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
+                AND major.faculty_id = :facultyId
+            ) OR (
+                b.book_id IN (
+                    SELECT subject_assignment.book_id
+                    FROM academic_department_mappings mapping
+                    JOIN department_subject_affinities affinity ON affinity.active
+                      AND affinity.department_key = btrim(regexp_replace(translate(lower(regexp_replace(
+                        normalize(mapping.department_value, NFD), U&'[\\0300-\\036f]', '', 'g')), 'đ', 'd'),
+                        '[^a-z0-9]+', ' ', 'g'))
+                    JOIN recommendation_subjects subject ON subject.subject_id = affinity.subject_id AND subject.active
+                    JOIN book_subject_assignments subject_assignment ON subject_assignment.subject_id = subject.subject_id
+                    WHERE mapping.faculty_id = :facultyId AND affinity.source = 'HUIT_2026'
+                ) AND NOT EXISTS (SELECT 1
+            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
+                )
+            ))
+            """;
+
     @Query(value = """
             select * from books where regexp_replace(upper(coalesce(isbn, '')), '[[:space:]-]', '', 'g') = :isbn13
                or (:isbn10 <> '' and regexp_replace(upper(coalesce(isbn, '')), '[[:space:]-]', '', 'g') = :isbn10)
@@ -38,6 +67,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
+            """ + FACULTY_FILTER + """
               AND (
                     :availability = ''
                     OR (:availability = 'AVAILABLE' AND EXISTS (
@@ -79,6 +109,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
+            """ + FACULTY_FILTER + """
               AND (
                     :availability = ''
                     OR (:availability = 'AVAILABLE' AND EXISTS (
@@ -121,6 +152,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             @Param("subjectCode") String subjectCode,
             @Param("categoryId") Long categoryId,
             @Param("availability") String availability,
+            @Param("facultyId") String facultyId,
             Pageable pageable);
 
     @Query(value = """
@@ -181,6 +213,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
              AND affinity.active = TRUE
             WHERE affinity.department_key = :departmentKey
               AND (:categoryId IS NULL OR b.category_id = :categoryId)
+            """ + FACULTY_FILTER + """
               AND (
                     :availability = ''
                     OR (:availability = 'AVAILABLE' AND EXISTS (
@@ -217,6 +250,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
              AND affinity.active = TRUE
             WHERE affinity.department_key = :departmentKey
               AND (:categoryId IS NULL OR b.category_id = :categoryId)
+            """ + FACULTY_FILTER + """
               AND (
                     :availability = ''
                     OR (:availability = 'AVAILABLE' AND EXISTS (
@@ -249,5 +283,6 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             @Param("subjectCode") String subjectCode,
             @Param("categoryId") Long categoryId,
             @Param("availability") String availability,
+            @Param("facultyId") String facultyId,
             Pageable pageable);
 }

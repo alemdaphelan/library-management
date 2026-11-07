@@ -46,11 +46,12 @@ public class BookController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String availability,
+            @RequestParam(required = false) String facultyId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         org.springframework.data.domain.Page<BookResponseDTO> bookPage =
-                bookService.searchBooks(query, categoryId, department, availability, pageable);
+                bookService.searchBooks(query, categoryId, department, availability, facultyId, pageable);
         
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("content", bookPage.getContent());

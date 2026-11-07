@@ -25,7 +25,6 @@
       </button>
     }
   }
-  @if (error) { <p class="alert error" role="alert">{{ error }}</p> }
   @if (receipt; as result) {
     <article class="receipt" role="status">
       <strong>Biên nhận {{ result.receiptNumber }}</strong>

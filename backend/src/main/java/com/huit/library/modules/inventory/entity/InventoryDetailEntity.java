@@ -17,5 +17,6 @@ public class InventoryDetailEntity extends BaseEntity {
     private String auditId;
     private String barcode;
     private String scanStatus;
+    @Column(length = 1000)
     private String scannedLocation;
 }

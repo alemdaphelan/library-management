@@ -54,7 +54,8 @@ export class BookService {
     size: number = 10,
     categoryId?: number,
     availability?: 'AVAILABLE' | 'UNAVAILABLE',
-    department?: string
+    department?: string,
+    facultyId?: string
   ): Observable<any> {
     const params: Record<string, string> = {
       page: page.toString(),
@@ -64,6 +65,7 @@ export class BookService {
     if (categoryId) params['categoryId'] = categoryId.toString();
     if (availability) params['availability'] = availability;
     if (department?.trim()) params['department'] = department.trim();
+    if (facultyId?.trim()) params['facultyId'] = facultyId.trim();
     return this.http.get<any>(this.apiUrl, { params });
   }
 

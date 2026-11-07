@@ -1,6 +1,6 @@
 # B06/B07: nhập kho theo vị trí và quy tắc chủ đề Admin
 
-Cập nhật **04/11/2026**. Nhập kho đã nối với `shelf_subject_rules` của Admin đã merge. Nhận diện catalog thật và kiểm tra quy tắc hiện tại trước khi lưu; không seed quy tắc giả hoặc suy ngăn từ ISBN/từ khóa.
+Cập nhật **07/11/2026**. Nhập kho và chuyển bản sao dùng chung quy tắc chủ đề do Admin cấu hình. Hệ thống tra đầu sách trong biên mục và kiểm tra quy tắc hiện tại trước khi lưu.
 
 ## B06 — Hợp đồng thực tế đã triển khai
 
@@ -60,17 +60,17 @@ Caller cũ không gửi `shelfId` sẽ nhận 400; cần cập nhật payload tr
 
 Endpoint catalog-identification nhận **đúng một** `isbn` hoặc `bookId`. ISBN sai định dạng/checksum trả 400; không có catalog trả 404; trùng ISBN trả 409. Không gọi dịch vụ metadata ngoài và không tự tạo đầu sách. ISBN-13 chỉ prefix 978/979; ISBN-10 được chuyển sang 978 với check digit tính lại, 979 không được ghép với các bản ghi ISBN trống.
 
-Response có bookId/title/isbn/canonicalIsbn/author/publisher/publishYear/defaultPrice, categoryId/categoryName/ddcCallNumber và `subjects[{code,name,confidence,source,evidence,primary}]` lấy từ assignments có subject active. `classificationStatus` AVAILABLE hoặc MISSING. Không dùng department_subject_affinities của recommender để quyết định khoa/ngăn.
+Response có bookId/title/isbn/canonicalIsbn/author/publisher/publishYear/defaultPrice, categoryId/categoryName/ddcCallNumber và `subjects[{code,name,confidence,source,evidence,primary}]` lấy từ assignments có subject active. `classificationStatus` AVAILABLE hoặc MISSING. Quy tắc ngăn chỉ dùng chủ đề của đầu sách. Bộ lọc khoa trong biên mục là luồng riêng.
 
-Kết quả vị trí: `placementStatus=SUGGESTED_BY_ADMIN_RULE` khi có rule active/subject active khớp book_subject_assignments; `NO_MATCHING_RULE` nếu chưa khớp. `placements[]` chứa shelfId/bookshelfId/floorId và tên các cấp/subjectName, không lặp ngăn. Thứ tự ổn định floor → bookshelf → shelf → subject ID; `suggestedShelfId` là ngăn đầu tiên hoặc null. Web điền đủ vị trí sau khi tải lại cây và bỏ kết quả cũ nếu đổi định danh/vị trí trong lúc tra.
+`placementStatus=SUGGESTED_BY_ADMIN_RULE` khi có ngăn khớp chủ đề hoặc nhóm tác giả của đầu sách. Với sách chưa có chủ đề, nhóm tác giả dùng chữ cái đầu của tên tác giả như lưu trong biên mục, dùng nhan đề nếu thiếu tác giả và dùng nhóm “Ký tự khác” cho khóa ngoài A–Z. Nhóm này phục vụ xếp ngăn. API trả `NO_MATCHING_RULE` nếu chưa có ngăn phù hợp. Mỗi ngăn xuất hiện một lần trong `placements[]` cùng ID và tên từng cấp vị trí, kèm `subjectName`. Kết quả sắp theo ID tầng, dãy kệ, ngăn và chủ đề. `suggestedShelfId` là ngăn đầu tiên nếu có. Web điền đủ vị trí sau khi tải lại cây và bỏ kết quả cũ nếu đổi định danh hoặc vị trí trong lúc tra.
 
 Tham chiếu định dạng/check digit: [International ISBN Agency](https://www.isbn-international.org/content/what-isbn/10), [ISBN Users’ Manual](https://www.isbn-international.org/content/isbn-users-manual/29). Kiểm tra định dạng không chứng minh ISBN đã được cấp; nhận diện vẫn phải khớp catalog thật.
 
 ## Hợp đồng Admin hiện tại
 
-Admin PUT /locations/shelves/{id}/subjects thay danh sách subjectIds active. Thủ thư chỉ đọc quy tắc. Danh sách rỗng nghĩa là không giới hạn. Không có priority, version, hiệu lực theo ngày, capacity hoặc quyền override trong schema hiện tại; đề xuất cũ về các trường này chưa được triển khai.
+Admin dùng PUT /locations/shelves/{id}/subjects để lưu ít nhất một loại ngăn hoạt động. Danh sách rỗng trả 400. Chỉ Admin được tạo, sửa, xóa cây vị trí và chỉnh sức chứa. Thủ thư có thể xem quy tắc và xếp bản sao phù hợp. Migration 45 bổ sung sức chứa tùy chọn, 46 cung cấp loại “Chờ phân loại” cho dữ liệu cũ, và 47 cung cấp nhóm theo tác giả.
 
-InventoryService kiểm tra từng đầu sách thật với quy tắc của ngăn ngay trong transaction, trước khi ghi receipt/detail/copy. Ngăn có rule mà không có subject assignment phù hợp trả 409 và rollback cả lượt, kể cả dòng khác hợp lệ. Chọn ngăn thủ công vẫn phải qua kiểm tra này. Ngăn không giới hạn được chọn thủ công. Quy tắc thay đổi sau preview được đọc lại khi lưu; gợi ý không phải bằng chứng cấp quyền.
+InventoryService kiểm tra từng đầu sách thật với quy tắc của ngăn ngay trong transaction, trước khi ghi receipt/detail/copy. Ngăn chưa có quy tắc hoạt động hoặc sách không khớp quy tắc trả 409 và rollback cả phiếu. Cả ngăn tự chọn và ngăn được gợi ý đều được kiểm tra lại khi lưu. Nhóm tác giả chỉ nhận đầu sách chưa có chủ đề hoạt động. DB demo dùng nhóm tác giả cho toàn bộ sách thiếu chủ đề.
 
 Mỗi receipt line vẫn lưu vị trí lúc nhập; đổi tên/quy tắc sau này không viết lại lịch sử. Không ghi rule version/override reason vì Admin hiện không cung cấp các hợp đồng đó.
 

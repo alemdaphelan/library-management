@@ -29,7 +29,7 @@ class ShelfSubjectRuleServiceTest {
         shelf.setShelfId(5L);
         RecommendationSubjectEntity it = subject(8L, "IT_DATA_AI", "CNTT - Dữ liệu - AI");
         RecommendationSubjectEntity network = subject(9L, "NETWORK", "Mạng máy tính");
-        when(shelfRepository.findById(5L)).thenReturn(Optional.of(shelf));
+        when(shelfRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(shelf));
         when(subjectRepository.findBySubjectIdInAndActiveTrue(Set.of(8L, 9L)))
                 .thenReturn(List.of(network, it));
 
@@ -51,7 +51,7 @@ class ShelfSubjectRuleServiceTest {
                 shelfRepository, mock(ShelfSubjectRuleRepository.class), subjectRepository);
         ShelfEntity shelf = new ShelfEntity();
         shelf.setShelfId(5L);
-        when(shelfRepository.findById(5L)).thenReturn(Optional.of(shelf));
+        when(shelfRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(shelf));
         when(subjectRepository.findBySubjectIdInAndActiveTrue(Set.of(99L)))
                 .thenReturn(List.of());
 

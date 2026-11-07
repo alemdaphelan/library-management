@@ -5,10 +5,11 @@ import { forkJoin, of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
-import { PaymentReceipt, PenaltyCase, PenaltyCaseRequest, PenaltyService } from '../../../services/penalty.service';
+import { DebtEntry, PaymentReceipt, PenaltyCase, PenaltyCaseRequest, PenaltyService } from '../../../services/penalty.service';
 import { UserService, ReaderProfile } from '../../../services/user.service';
 import { CirculationService, LoanItem, LoanTicketDetail } from '../../../services/circulation.service';
 import { CounterDeposit } from './counter-deposit';
+import { DialogService } from '../../../services/dialog.service';
 
 @Component({
   selector: 'app-penalties',
@@ -18,6 +19,66 @@ import { CounterDeposit } from './counter-deposit';
   styleUrl: './penalties.css',
 })
 export class Penalties implements OnInit {
+  private readonly dialog = inject(DialogService);
+  tab = 'cases';
+  readonly tabs = [
+    { id: 'cases', label: 'Hồ sơ' }, { id: 'create', label: 'Lập hồ sơ' },
+    { id: 'payment', label: 'Thu công nợ' }, { id: 'deposit', label: 'Nạp thế chân' },
+    { id: 'replacement', label: 'Tiếp nhận sách thay thế' },
+    { id: 'adjustment', label: 'Điều chỉnh giao dịch' }, { id: 'admin', label: 'Xét duyệt và biểu phí' },
+  ];
+  adjustmentMssv = '';
+  adjustmentReader?: ReaderProfile;
+  adjustmentEntries: DebtEntry[] = [];
+  adjustmentLoading = false;
+  private adjustmentLookupVersion = 0;
+  private referencedTransactionId?: number;
+  get replacementCases(): PenaltyCase[] {
+    return this.cases.filter(item => item.settlementMethod === 'REPLACEMENT' && !item.replacementAcceptedAt
+      && !item.replacementBarcode && !['CANCELLED', 'REJECTED'].includes(item.status));
+  }
+  get selectedReplacement(): PenaltyCase | undefined {
+    return this.replacementCases.find(item => item.caseId === this.replacementForm.caseId);
+  }
+  get isRepair(): boolean {
+    return this.caseForm.incidentType === 'DAMAGED' && this.caseForm.damageSeverity === 'LIGHT';
+  }
+  get isCashCompensation(): boolean { return !this.isRepair && !this.caseForm.stillInMarket; }
+  resetAdjustmentReader(): void {
+    this.adjustmentLookupVersion++;
+    this.adjustmentReader = undefined;
+    this.adjustmentEntries = [];
+    this.adjustmentForm.transactionId = 0;
+    this.adjustmentLoading = false;
+  }
+  lookupAdjustmentReader(): void {
+    this.resetAdjustmentReader();
+    const mssv = this.adjustmentMssv.trim();
+    if (!mssv) return;
+    const version = this.adjustmentLookupVersion;
+    this.adjustmentLoading = true;
+    this.users.getReaderProfile(mssv).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: reader => {
+        if (version !== this.adjustmentLookupVersion) return;
+        this.adjustmentLoading = false;
+        this.adjustmentReader = reader;
+        this.adjustmentEntries = (reader.ledger || []).filter(entry => entry.amount > (entry.paidAmount ?? 0));
+        if (this.adjustmentEntries.some(entry => entry.transactionId === this.referencedTransactionId)) {
+          this.adjustmentForm.transactionId = this.referencedTransactionId!;
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        if (version !== this.adjustmentLookupVersion) return;
+        this.adjustmentLoading = false;
+        this.showError('Không tải được giao dịch của MSSV này. Kiểm tra MSSV và thử lại.');
+      },
+    });
+  }
+  incidentLabel(item: PenaltyCase): string {
+    if (item.incidentType === 'LOST') return 'Mất sách';
+    return item.damageSeverity === 'LIGHT' ? 'Hư hỏng nhẹ' : item.damageSeverity === 'HEAVY' ? 'Hư hỏng nặng' : 'Hư hỏng';
+  }
   private readonly destroyRef=inject(DestroyRef);
   private caseLookupVersion=0;
   private paymentLookupVersion=0;
@@ -51,7 +112,7 @@ export class Penalties implements OnInit {
     settlementMethod: 'REPLACEMENT',
   };
   paymentForm = { userId: '', amount: 0, method: 'CASH', note: '' };
-  replacementForm = { caseId: 0, replacementBarcode: '', verificationNote: '' };
+  replacementForm = { caseId: 0, verificationNote: '' };
   waiverForm = {
     caseId: 0, action: 'APPROVE', waiverAmount: 0, externalDecisionMaker: '',
     decisionDocumentNo: '', decisionDate: '', reason: '',
@@ -80,8 +141,11 @@ export class Penalties implements OnInit {
       this.caseStatusFilter = 'ALL';
     } else if (referenceType === 'TRANSACTION' && Number.isSafeInteger(numericReferenceId) && numericReferenceId > 0) {
       this.adjustmentForm.transactionId = numericReferenceId;
+      this.referencedTransactionId = numericReferenceId;
+      this.tab = 'adjustment';
     } else if (referenceType === 'USER' && referenceId) {
       this.paymentForm.userId = referenceId;
+      this.tab = 'payment';
     } else if (referenceType === 'LOAN_LOSS_REPORT' && Number.isSafeInteger(numericReferenceId) && numericReferenceId > 0) {
       this.lossReportId = numericReferenceId;
       this.loadLossReport();
@@ -116,12 +180,14 @@ export class Penalties implements OnInit {
         if (!report || !Array.isArray(report.items) || report.items.length !== 1 || report.items[0].detailId !== this.lossReportId
             || !report.items[0].lossReportedAt || !report.userId) {
           this.lossReportError = 'Thông tin báo mất không khớp tài liệu. Vui lòng tải lại.';
+          this.showError(this.lossReportError);
         } else this.lossReport = report;
         this.cdr.markForCheck();
       },
       error: () => {
         this.lossReportLoading = false;
         this.lossReportError = 'Không tải được báo mất. Vui lòng thử lại.';
+        this.showError(this.lossReportError);
         this.cdr.markForCheck();
       },
     });
@@ -131,15 +197,18 @@ export class Penalties implements OnInit {
     if (!this.canPrepareLossReport || this.submitting || this.caseLookupLoading) return;
     if (!this.lossReport?.mssv) {
       this.lossReportError = 'Bạn đọc chưa có MSSV; cần đối chiếu hồ sơ trước khi lập hồ sơ phạt.';
+      this.showError(this.lossReportError);
       return;
     }
     this.caseMssv = this.lossReport.mssv;
+    this.tab = 'create';
     this.lookupCaseReader(this.lossReport);
   }
 
   openLossReportCase(): void {
     if (!this.lossReportCase) return;
     this.highlightedCaseId = this.lossReportCase.caseId;
+    this.tab = 'cases';
     this.caseStatusFilter = 'ALL';
     this.focusReferencedCase();
   }
@@ -158,6 +227,7 @@ export class Penalties implements OnInit {
   paymentStatusLabel(item: PenaltyCase): string {
     const total = Number(item.totalAmount || 0);
     const paid = Number(item.paidAmount || 0);
+    if (item.status === 'WAITING_REPLACEMENT') return 'Chờ nộp sách thay thế';
     if (total <= 0 || paid >= total || ['PAID', 'WAIVED'].includes(item.status)) return 'Đã thanh toán';
     if (paid > 0) return 'Đã thanh toán một phần';
     return 'Chưa thanh toán';
@@ -185,18 +255,33 @@ export class Penalties implements OnInit {
   createCase(): void {
     if(this.submitting)return;
     if (!this.caseReader || !this.caseItems.some(i=>i.detailId===this.caseForm.loanDetailId) || !this.caseForm.description.trim()) {
-      this.errorMessage = 'Tra cứu MSSV, chọn tài liệu đang mượn và nhập mô tả sự cố.';
+      this.showError('Tra cứu MSSV, chọn tài liệu đang mượn và nhập mô tả sự cố.');
       return;
     }
     const payload: PenaltyCaseRequest = { ...this.caseForm, description: this.caseForm.description.trim() };
     if (payload.incidentType === 'LOST') payload.damageSeverity = undefined;
+    payload.settlementMethod = this.isRepair ? 'REPAIR' : this.isCashCompensation ? 'CASH' : 'REPLACEMENT';
+    if (this.isRepair && !(Number(payload.repairFee) > 0)) {
+      this.showError('Nhập phí sửa chữa lớn hơn 0 đồng.');
+      return;
+    }
+    if (!this.isRepair) delete payload.repairFee;
+    if (!this.isCashCompensation) {
+      delete payload.coverPrice;
+      delete payload.fxRate;
+      delete payload.fxSource;
+      delete payload.originalCurrency;
+    } else if ((payload.coverPrice ?? 0) < 0 || (payload.fxRate ?? 0) < 0) {
+      this.showError('Giá bìa và tỷ giá phải là số không âm.');
+      return;
+    }
     this.run(this.penaltyService.createCase(payload), 'Đã lập hồ sơ mất/hỏng.');
   }
 
   pay(): void {
     if(this.submitting)return;
     if (!this.paymentReader || this.paymentReader.student.userId!==this.paymentForm.userId || this.paymentForm.amount <= 0) {
-      this.errorMessage = 'Tra cứu MSSV người nộp và nhập số tiền thu hợp lệ.';
+      this.showError('Tra cứu MSSV người nộp và nhập số tiền thu hợp lệ.');
       return;
     }
     this.submitting = true;
@@ -220,13 +305,14 @@ export class Penalties implements OnInit {
 
   acceptReplacement(): void {
     const form = this.replacementForm;
-    if (!form.caseId || !form.replacementBarcode.trim() || !form.verificationNote.trim()) {
-      this.errorMessage = 'Cần nhập hồ sơ, barcode mới và nội dung xác minh.';
+    const selected = this.selectedReplacement;
+    if (!selected || !form.verificationNote.trim()) {
+      this.showError('Chọn hồ sơ chờ thay thế và nhập nội dung xác minh.');
       return;
     }
     this.run(this.penaltyService.acceptReplacement(
-      form.caseId, form.replacementBarcode.trim(), form.verificationNote.trim()),
-      'Đã tiếp nhận sách thay thế và tạo bản sao mới.',
+      form.caseId, selected.barcode, form.verificationNote.trim()),
+      'Đã tiếp nhận sách thay thế. Dùng lại mã vạch cũ trên cuốn đã nhận.',
     );
   }
 
@@ -255,6 +341,16 @@ export class Penalties implements OnInit {
   }
 
   requestAdjustment(): void {
+    const entry = this.adjustmentEntries.find(item => item.transactionId === this.adjustmentForm.transactionId);
+    if (!entry
+        || !(this.adjustmentForm.amount > 0) || !this.adjustmentForm.reason.trim()) {
+      this.showError('Chọn giao dịch còn nợ, nhập số tiền và lý do điều chỉnh.');
+      return;
+    }
+    if (this.adjustmentForm.amount > entry.amount - (entry.paidAmount ?? 0)) {
+      this.showError('Số tiền điều chỉnh không được vượt khoản còn nợ.');
+      return;
+    }
     this.run(this.penaltyService.requestAdjustment(this.adjustmentForm), 'Đã gửi yêu cầu điều chỉnh cho Admin.');
   }
 
@@ -294,14 +390,19 @@ export class Penalties implements OnInit {
   private fail(error: any, fallback: string): void {
     this.loading = false;
     this.submitting = false;
-    const message = error?.error?.detail ?? error?.error?.message ?? error?.error;
-    this.errorMessage = typeof message === 'string' && message.trim() ? message : fallback;
+    const message = error?.error?.detail;
+    this.showError([400, 404, 409, 422].includes(error?.status) && typeof message === 'string'
+      && /[à-ỹđ]/iu.test(message) && !/[<>\r\n]|exception|sql|stack trace/i.test(message)
+      && message.length <= 300 ? message : fallback);
     this.cdr.markForCheck();
+  }
+  private showError(message: string): void {
+    this.dialog.show({ title: 'Không thể hoàn tất', message, type: 'error', confirmText: 'Đã hiểu' });
   }
   resetCaseReader(){this.caseLookupVersion++;this.caseReader=undefined;this.caseItems=[];this.caseForm.loanDetailId=0;this.caseLookupError='';this.caseLookupLoading=false;}
   resetPaymentReader(){this.paymentLookupVersion++;this.paymentReader=undefined;this.paymentForm.userId='';this.paymentLookupError='';this.paymentLookupLoading=false;}
   lookupCaseReader(source?: LoanTicketDetail):void {
-    this.resetCaseReader();const mssv=this.caseMssv.trim();if(!mssv){this.caseLookupError='Nhập MSSV cần tra cứu.';return;}
+    this.resetCaseReader();const mssv=this.caseMssv.trim();if(!mssv){this.caseLookupError='Nhập MSSV cần tra cứu.';this.showError(this.caseLookupError);return;}
     const version=this.caseLookupVersion;this.caseLookupLoading=true;
     this.users.getReaderProfile(mssv).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:profile=>{
       if(version!==this.caseLookupVersion)return;
@@ -320,6 +421,7 @@ export class Penalties implements OnInit {
             this.caseItems = [];
             this.caseForm.loanDetailId = 0;
             this.caseLookupError = 'Báo mất không còn khớp tài liệu đang mượn của bạn đọc. Hãy kiểm tra hồ sơ hiện tại.';
+            this.showError(this.caseLookupError);
           } else {
             this.caseForm.loanDetailId = selected.detailId;
             this.caseForm.incidentType = 'LOST';
@@ -328,15 +430,15 @@ export class Penalties implements OnInit {
           }
         }
         this.cdr.markForCheck();
-      },error:()=>{if(version!==this.caseLookupVersion)return;this.caseLookupLoading=false;this.caseLookupError='Không tải được các tài liệu đang mượn. Hãy tra cứu lại.';this.cdr.markForCheck();}});
-    },error:()=>{if(version!==this.caseLookupVersion)return;this.caseLookupLoading=false;this.caseLookupError='Không tìm thấy MSSV hoặc không tải được hồ sơ sinh viên.';this.cdr.markForCheck();}});
+      },error:()=>{if(version!==this.caseLookupVersion)return;this.caseLookupLoading=false;this.caseLookupError='Không tải được các tài liệu đang mượn. Hãy tra cứu lại.';this.showError(this.caseLookupError);this.cdr.markForCheck();}});
+    },error:()=>{if(version!==this.caseLookupVersion)return;this.caseLookupLoading=false;this.caseLookupError='Không tìm thấy MSSV hoặc không tải được hồ sơ sinh viên.';this.showError(this.caseLookupError);this.cdr.markForCheck();}});
   }
   lookupPaymentReader():void {
-    this.resetPaymentReader();const mssv=this.paymentMssv.trim();if(!mssv){this.paymentLookupError='Nhập MSSV người nộp.';return;}
+    this.resetPaymentReader();const mssv=this.paymentMssv.trim();if(!mssv){this.paymentLookupError='Nhập MSSV người nộp.';this.showError(this.paymentLookupError);return;}
     const version=this.paymentLookupVersion;this.paymentLookupLoading=true;
     this.users.getReaderProfile(mssv).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:profile=>{
       if(version!==this.paymentLookupVersion)return;this.paymentReader=profile;this.paymentForm.userId=profile.student.userId;
       this.paymentForm.amount=profile.card.totalDebt;this.paymentLookupLoading=false;this.cdr.markForCheck();
-    },error:()=>{if(version!==this.paymentLookupVersion)return;this.paymentLookupLoading=false;this.paymentLookupError='Không tìm thấy MSSV hoặc không tải được công nợ.';this.cdr.markForCheck();}});
+    },error:()=>{if(version!==this.paymentLookupVersion)return;this.paymentLookupLoading=false;this.paymentLookupError='Không tìm thấy MSSV hoặc không tải được công nợ.';this.showError(this.paymentLookupError);this.cdr.markForCheck();}});
   }
 }

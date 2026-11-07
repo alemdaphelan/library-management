@@ -47,16 +47,16 @@ export const routes: Routes = [
     children: [
       { path: '', component: Home, title: 'Trang chủ' },
       { path: 'search', component: Search, title: 'Tra cứu sách' },
-      { path: 'history', component: History, canActivate: [AuthGuard], title: 'Lịch sử mượn' },
-      { path: 'suggest', component: Suggest, canActivate: [AuthGuard], title: 'Đề xuất sách' },
+      { path: 'history', component: History, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Lịch sử mượn' },
+      { path: 'suggest', component: Suggest, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Đề xuất sách' },
       { path: 'book/:id', component: Detail, title: 'Chi tiết sách' },
       { path: 'about', component: About, title: 'Giới thiệu Thư viện' },
       { path: 'digital', component: Digital, title: 'Tài nguyên số & CSDL' },
       { path: 'guide', component: Guide, title: 'Hướng dẫn độc giả' },
       { path: 'profile', component: Profile, canActivate: [AuthGuard], title: 'Quản lý tài khoản' },
-      { path: 'borrow-cart', component: BorrowCart, canActivate: [AuthGuard], title: 'Giỏ mượn sách' },
-      { path: 'saved-books', component: SavedBooks, canActivate: [AuthGuard], title: 'Tủ sách cá nhân' },
-      { path: 'my-penalties', component: MyPenalties, canActivate: [AuthGuard], title: 'Công nợ và khoản phạt' },
+      { path: 'borrow-cart', component: BorrowCart, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Giỏ mượn sách' },
+      { path: 'saved-books', component: SavedBooks, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Tủ sách cá nhân' },
+      { path: 'my-penalties', component: MyPenalties, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Công nợ và khoản phạt' },
     ]
   },
   {

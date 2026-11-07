@@ -5,12 +5,9 @@ import com.huit.library.modules.catalog.entity.BookCopyEntity;
 import com.huit.library.modules.catalog.entity.BookshelfEntity;
 import com.huit.library.modules.catalog.entity.FloorEntity;
 import com.huit.library.modules.catalog.entity.ShelfEntity;
-import com.huit.library.modules.catalog.entity.ShelfSubjectRuleEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.ShelfRepository;
 import com.huit.library.modules.catalog.repository.ShelfSubjectRuleRepository;
-import com.huit.library.modules.recommendation.entity.RecommendationSubjectEntity;
-import com.huit.library.modules.recommendation.repository.BookSubjectAssignmentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +22,6 @@ class BookCopyServiceTest {
     private BookCopyRepository repository;
     private ShelfRepository shelfRepository;
     private ShelfSubjectRuleRepository shelfSubjectRuleRepository;
-    private BookSubjectAssignmentRepository assignmentRepository;
     private BookCopyService service;
 
     @BeforeEach
@@ -33,9 +29,8 @@ class BookCopyServiceTest {
         repository = mock(BookCopyRepository.class);
         shelfRepository = mock(ShelfRepository.class);
         shelfSubjectRuleRepository = mock(ShelfSubjectRuleRepository.class);
-        assignmentRepository = mock(BookSubjectAssignmentRepository.class);
         service = new BookCopyService(
-                repository, shelfRepository, shelfSubjectRuleRepository, assignmentRepository);
+                repository, shelfRepository, new ShelfPlacementService(shelfSubjectRuleRepository));
     }
 
     @Test
@@ -78,25 +73,32 @@ class BookCopyServiceTest {
         copy.setBookId(10L);
         ShelfEntity shelf = new ShelfEntity();
         shelf.setShelfId(3L);
-        RecommendationSubjectEntity subject = new RecommendationSubjectEntity();
-        subject.setSubjectId(8L);
-        subject.setCode("IT_DATA_AI");
-        subject.setName("CNTT - Dữ liệu - AI");
-        ShelfSubjectRuleEntity rule = new ShelfSubjectRuleEntity();
-        rule.setShelf(shelf);
-        rule.setSubject(subject);
-
-        when(repository.findById("BC-001")).thenReturn(Optional.of(copy));
-        when(shelfRepository.findById(3L)).thenReturn(Optional.of(shelf));
-        when(shelfSubjectRuleRepository
-                .findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(3L))
-                .thenReturn(List.of(rule));
-        when(assignmentRepository.existsByBook_BookIdAndSubject_SubjectIdIn(10L, List.of(8L)))
-                .thenReturn(false);
+        when(repository.findAllByBarcodeInForUpdate(List.of("BC-001"))).thenReturn(List.of(copy));
+        when(shelfRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(shelf));
+        when(shelfSubjectRuleRepository.hasActiveRules(3L)).thenReturn(true);
 
         assertThatThrownBy(() -> service.updateLocation("BC-001", 3L))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
                 .hasMessageContaining("không thuộc chủ đề");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void updateLocationRejectsCopyWhenShelfIsFull() {
+        BookCopyEntity copy = new BookCopyEntity();
+        copy.setBarcode("BC-001");
+        copy.setBookId(10L);
+        ShelfEntity shelf = new ShelfEntity();
+        shelf.setShelfId(3L);
+        shelf.setCapacity(1);
+        when(repository.findAllByBarcodeInForUpdate(List.of("BC-001"))).thenReturn(List.of(copy));
+        when(shelfRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(shelf));
+        when(shelfSubjectRuleRepository.allowsPlacement(3L, 10L)).thenReturn(true);
+        when(repository.countByShelf_ShelfId(3L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.updateLocation("BC-001", 3L))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("đủ sức chứa");
         verify(repository, never()).save(any());
     }
 
@@ -109,19 +111,9 @@ class BookCopyServiceTest {
         ShelfEntity shelf = new ShelfEntity();
         shelf.setShelfId(3L);
         shelf.setName("Ngăn AI");
-        RecommendationSubjectEntity subject = new RecommendationSubjectEntity();
-        subject.setSubjectId(8L);
-        ShelfSubjectRuleEntity rule = new ShelfSubjectRuleEntity();
-        rule.setShelf(shelf);
-        rule.setSubject(subject);
-
-        when(repository.findById("BC-001")).thenReturn(Optional.of(copy));
-        when(shelfRepository.findById(3L)).thenReturn(Optional.of(shelf));
-        when(shelfSubjectRuleRepository
-                .findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(3L))
-                .thenReturn(List.of(rule));
-        when(assignmentRepository.existsByBook_BookIdAndSubject_SubjectIdIn(10L, List.of(8L)))
-                .thenReturn(true);
+        when(repository.findAllByBarcodeInForUpdate(List.of("BC-001"))).thenReturn(List.of(copy));
+        when(shelfRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(shelf));
+        when(shelfSubjectRuleRepository.allowsPlacement(3L, 10L)).thenReturn(true);
         when(repository.save(copy)).thenReturn(copy);
 
         BookCopyResponseDTO result = service.updateLocation("BC-001", 3L);

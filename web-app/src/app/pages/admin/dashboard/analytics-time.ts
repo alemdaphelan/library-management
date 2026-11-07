@@ -7,13 +7,14 @@ export const unitLabel = (unit: BucketUnit): string => ({HOUR:'Giờ',DAY:'Ngày
 export function dateText(value: string): string {
   const date=value.slice(0,10).split('-');return `${date[2]}/${date[1]}/${date[0]}`;
 }
-export function axisLabel(value: string, unit: BucketUnit): string {
+export function axisLabel(value: string, unit: BucketUnit, period?: Period): string {
   if(unit==='HOUR')return value.slice(11,16);
-  if(unit==='DAY')return dateText(value).slice(0,5);
+  if(unit==='DAY')return period === 'WEEK' ? weekdayDate(value) : dateText(value).slice(0,5);
   if(unit==='MONTH')return `${value.slice(5,7)}/${value.slice(0,4)}`;
   return `Q${Math.floor((Number(value.slice(5,7))-1)/3)+1}/${value.slice(0,4)}`;
 }
-export function intervalText(start: string, until: string, unit: BucketUnit): string {
+export function intervalText(start: string, until: string, unit: BucketUnit, period?: Period): string {
+  if (unit === 'DAY' && period === 'WEEK') return weekdayDate(start);
   if(unit==='HOUR') {
     const end=until.slice(11,16)==='00:00'&&until.slice(0,10)!==start.slice(0,10)?'24:00':until.slice(11,16);
     return `${dateText(start)} · ${start.slice(11,16)}–${end}`;
@@ -22,7 +23,11 @@ export function intervalText(start: string, until: string, unit: BucketUnit): st
 }
 @Pipe({name:'analyticsInterval',standalone:true})
 export class AnalyticsIntervalPipe implements PipeTransform {
-  transform(start: string, until: string, unit: BucketUnit): string {return intervalText(start,until,unit);}
+  transform(start: string, until: string, unit: BucketUnit, period?: Period): string {return intervalText(start,until,unit,period);}
+}
+function weekdayDate(value: string): string {
+  const day = parsedDate(value.slice(0,10))?.getUTCDay();
+  return day === undefined ? dateText(value) : `${day === 0 ? 'CN' : 'T' + (day + 1)} (${dateText(value)})`;
 }
 function parsedDate(value: string): Date | undefined {
   if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||value<'0001-01-01'||value>'9999-12-31')return;

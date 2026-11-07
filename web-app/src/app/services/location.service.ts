@@ -11,6 +11,7 @@ export interface LocationNode {
   type: LocationType;
   parentId?: number | null;
   parentName?: string | null;
+  capacity?: number | null;
 }
 
 export interface ShelfBook {
@@ -81,8 +82,9 @@ export class LocationService {
   getShelfBooksPage(shelfId:number,page=0):Observable<ShelfBooksPage> {
     return this.http.get<ShelfBooksPage>(`${this.apiUrl}/shelves/${shelfId}/books/page`,{params:{page,size:50}});
   }
-  getUnplacedCopies(page=0):Observable<ShelfBooksPage> {
-    return this.http.get<ShelfBooksPage>(`${this.apiUrl}/unplaced-copies`,{params:{page,size:50}});
+  getUnplacedCopies(page=0,targetShelf?:number):Observable<ShelfBooksPage> {
+    const params = new HttpParams().set('page',page).set('size',50);
+    return this.http.get<ShelfBooksPage>(`${this.apiUrl}/unplaced-copies`,{params:targetShelf ? params.set('targetShelf',targetShelf) : params});
   }
   placeCopy(barcode:string,shelfId:number):Observable<unknown> {
     return this.http.put(`${environment.apiUrl}/book-copies/${encodeURIComponent(barcode)}/location`,null,{params:{shelfId}});
@@ -104,8 +106,8 @@ export class LocationService {
     return this.http.post<LocationNode>(`${this.apiUrl}/shelves`, { name, parentId: bookshelfId });
   }
 
-  updateShelf(id: number, name: string, bookshelfId: number): Observable<LocationNode> {
-    return this.http.put<LocationNode>(`${this.apiUrl}/shelves/${id}`, { name, parentId: bookshelfId });
+  updateShelf(id: number, name: string, bookshelfId: number, capacity?: number): Observable<LocationNode> {
+    return this.http.put<LocationNode>(`${this.apiUrl}/shelves/${id}`, { name, parentId: bookshelfId, capacity });
   }
 
   deleteShelf(id: number): Observable<void> {

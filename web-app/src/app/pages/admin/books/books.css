@@ -24,6 +24,7 @@
 /* Toolbar & Filter Chips */
 .table-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 20px;
   align-items: center;
@@ -31,7 +32,12 @@
 
 .search-box {
   position: relative;
+  max-width: 100%;
 }
+.search-box input { max-width: 100%; }
+.filter-actions { flex-wrap: wrap; }
+.filter-actions select { max-width: 100%; }
+.faculty-filter-note { margin: 0 0 16px; color: var(--text-muted); font-size: 0.875rem; }
 
 .search-icon {
   position: absolute;
@@ -43,10 +49,12 @@
 
 .filter-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .chip {
+  white-space: nowrap;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   color: #475569;

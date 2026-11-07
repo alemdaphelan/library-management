@@ -21,15 +21,21 @@ public class LocationService {
 
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public CopiesPage getCopiesPage(Long shelfId, int page, int size) {
+        return getCopiesPage(shelfId, null, page, size);
+    }
+
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public CopiesPage getCopiesPage(Long shelfId, Long targetShelf, int page, int size) {
         if (page < 0 || size < 1 || size > 100 || (long) page * size > Integer.MAX_VALUE) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
                     "Trang phải từ 0; số dòng từ 1 đến 100; vị trí phân trang không vượt giới hạn hỗ trợ");
         }
-        if (shelfId != null && !shelfRepository.existsById(shelfId)) {
+        Long selectedShelf = shelfId == null ? targetShelf : shelfId;
+        if (selectedShelf != null && !shelfRepository.existsById(selectedShelf)) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,
                     "Không tìm thấy ngăn kệ");
         }
-        var result = bookCopyRepository.findLocationBooks(shelfId, org.springframework.data.domain.PageRequest.of(page, size));
+        var result = bookCopyRepository.findLocationBooks(shelfId, targetShelf, org.springframework.data.domain.PageRequest.of(page, size));
         return new CopiesPage(result.getContent(), result.getTotalElements(), page, size);
     }
     private final FloorRepository floorRepository;
@@ -112,12 +118,21 @@ public class LocationService {
         ShelfEntity shelf = new ShelfEntity();
         shelf.setName(request.getName().trim());
         shelf.setBookshelf(bookshelf);
+        if (request.getCapacity() != null && request.getCapacity() > 0) shelf.setCapacity(request.getCapacity());
         return toShelf(shelfRepository.save(shelf));
     }
 
     @Transactional
     public LocationNodeDTO updateShelf(Long id, LocationRequestDTO request) {
-        ShelfEntity shelf = shelfRepository.findById(id).orElseThrow(() -> new RuntimeException("Shelf not found"));
+        ShelfEntity shelf = shelfRepository.findByIdForUpdate(id).orElseThrow(() -> new RuntimeException("Shelf not found"));
+        Integer capacity = request.getCapacity();
+        if (capacity != null) {
+            if (capacity > 0 && bookCopyRepository.countByShelf_ShelfId(id) > capacity) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                        "Sức chứa không được nhỏ hơn số bản sao đang xếp trong ngăn");
+            }
+            shelf.setCapacity(capacity == 0 ? null : capacity);
+        }
         shelf.setName(request.getName().trim());
         if (request.getParentId() != null) {
             shelf.setBookshelf(bookshelfRepository.findById(request.getParentId())
@@ -159,7 +174,7 @@ public class LocationService {
 
     private LocationNodeDTO toShelf(ShelfEntity shelf) {
         BookshelfEntity bookshelf = shelf.getBookshelf();
-        return LocationNodeDTO.builder().id(shelf.getShelfId()).name(shelf.getName())
+        return LocationNodeDTO.builder().id(shelf.getShelfId()).name(shelf.getName()).capacity(shelf.getCapacity())
                 .type("SHELF").parentId(bookshelf == null ? null : bookshelf.getBookshelfId())
                 .parentName(bookshelf == null ? null : bookshelf.getName()).build();
     }

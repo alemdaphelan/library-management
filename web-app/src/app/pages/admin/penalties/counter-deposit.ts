@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { DialogService } from '../../../services/dialog.service';
 import { AuthService } from '../../../services/auth.service';
 import { CashDepositReceipt, CashDepositRequest, PenaltyService } from '../../../services/penalty.service';
 import { ReaderProfile, UserService } from '../../../services/user.service';
@@ -24,6 +25,7 @@ export class CounterDeposit implements OnInit {
   private readonly users = inject(UserService);
   private readonly penalties = inject(PenaltyService);
   private readonly auth = inject(AuthService);
+  private readonly dialog = inject(DialogService);
   private readonly destroyRef = inject(DestroyRef);
   private lookupVersion = 0;
   private storageKey?: string;
@@ -37,7 +39,6 @@ export class CounterDeposit implements OnInit {
   receipt?: CashDepositReceipt & { mssv: string; readerName: string };
   lookingUp = false;
   submitting = false;
-  error = '';
 
   ngOnInit(): void {
     const operator = this.auth.getUserProfile();
@@ -53,7 +54,7 @@ export class CounterDeposit implements OnInit {
       }
       this.pending = pending;
     } catch {
-      this.error = 'Không đọc được lượt thu đã lưu trong trình duyệt.';
+      this.showError('Không đọc được lượt thu đã lưu trong trình duyệt.');
     }
   }
 
@@ -61,7 +62,6 @@ export class CounterDeposit implements OnInit {
     this.lookupVersion++;
     this.reader = undefined;
     this.lookingUp = false;
-    this.error = '';
   }
 
   lookup(): void {
@@ -80,7 +80,7 @@ export class CounterDeposit implements OnInit {
       error: () => {
         if (version !== this.lookupVersion) return;
         this.lookingUp = false;
-        this.error = 'Không tìm thấy MSSV hoặc không tải được hồ sơ sinh viên.';
+        this.showError('Không tìm thấy MSSV hoặc không tải được hồ sơ sinh viên.');
       },
     });
   }
@@ -91,7 +91,7 @@ export class CounterDeposit implements OnInit {
     if (!this.pending) {
       if (!this.reader || this.lookingUp || this.amount === null || !Number.isSafeInteger(this.amount)
           || this.amount < 1 || this.amount > this.maxAmount || this.note.trim().length > 200) {
-        this.error = 'Tra cứu sinh viên và nhập số tiền nguyên hợp lệ.';
+        this.showError('Tra cứu sinh viên và nhập số tiền nguyên hợp lệ.');
         return;
       }
       try {
@@ -105,7 +105,7 @@ export class CounterDeposit implements OnInit {
         sessionStorage.setItem(this.storageKey, JSON.stringify(pending));
         this.pending = pending;
       } catch {
-        this.error = 'Không lưu được lượt thu để thử lại an toàn. Kiểm tra phiên đăng nhập và bộ nhớ trình duyệt.';
+        this.showError('Không lưu được lượt thu để thử lại an toàn. Kiểm tra phiên đăng nhập và bộ nhớ trình duyệt.');
         return;
       }
     }
@@ -113,7 +113,6 @@ export class CounterDeposit implements OnInit {
     const pending = this.pending;
     this.submitting = true;
     this.receipt = undefined;
-    this.error = '';
     this.penalties.recordCashDeposit(pending.request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: receipt => {
         this.clearPending();
@@ -129,12 +128,17 @@ export class CounterDeposit implements OnInit {
         const detail = error?.error?.detail;
         if (!retry && [400, 401, 403, 404, 409, 422].includes(error?.status)) {
           this.clearPending();
-          this.error = typeof detail === 'string' ? detail : 'Máy chủ từ chối ghi nhận tiền thế chân.';
+          this.showError(typeof detail === 'string' && /quầy thư viện đã đóng cửa|chưa có ví thư viện/i.test(detail)
+            ? detail : 'Máy chủ từ chối ghi nhận tiền thế chân. Kiểm tra tài khoản và số tiền.');
         } else {
-          this.error = typeof detail === 'string' ? detail : 'Chưa nhận được kết quả ghi nhận tiền thế chân.';
+          this.showError('Chưa nhận được kết quả nạp cọc. Hãy thử lại lượt thu đang chờ.');
         }
       },
     });
+  }
+
+  private showError(message: string): void {
+    this.dialog.show({ title: 'Không thể ghi nhận tiền thế chân', message, type: 'error', confirmText: 'Đã hiểu' });
   }
 
   private clearPending(): void {

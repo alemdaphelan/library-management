@@ -25,16 +25,19 @@ public class LocationController {
     public ResponseEntity<?> getFloors() { return ResponseEntity.ok(locationService.getFloors()); }
 
     @PostMapping("/floors")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createFloor(@Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.createFloor(request));
     }
 
     @PutMapping("/floors/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateFloor(@PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.updateFloor(id, request));
     }
 
     @DeleteMapping("/floors/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteFloor(@PathVariable Long id) {
         locationService.deleteFloor(id);
         return ResponseEntity.noContent().build();
@@ -46,16 +49,19 @@ public class LocationController {
     }
 
     @PostMapping("/bookshelves")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createBookshelf(@Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.createBookshelf(request));
     }
 
     @PutMapping("/bookshelves/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateBookshelf(@PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.updateBookshelf(id, request));
     }
 
     @DeleteMapping("/bookshelves/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteBookshelf(@PathVariable Long id) {
         locationService.deleteBookshelf(id);
         return ResponseEntity.noContent().build();
@@ -84,8 +90,9 @@ public class LocationController {
 
     @GetMapping("/unplaced-copies")
     public ResponseEntity<?> getUnplacedCopies(@RequestParam(defaultValue="0") int page,
+                                             @RequestParam(required=false) Long targetShelf,
                                              @RequestParam(defaultValue="50") int size) {
-        return ResponseEntity.ok(locationService.getCopiesPage(null, page, size));
+        return ResponseEntity.ok(locationService.getCopiesPage(null, targetShelf, page, size));
     }
 
     @GetMapping("/shelves/{id}/subjects")
@@ -102,16 +109,19 @@ public class LocationController {
     }
 
     @PostMapping("/shelves")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createShelf(@Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.createShelf(request));
     }
 
     @PutMapping("/shelves/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateShelf(@PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.updateShelf(id, request));
     }
 
     @DeleteMapping("/shelves/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteShelf(@PathVariable Long id) {
         locationService.deleteShelf(id);
         return ResponseEntity.noContent().build();

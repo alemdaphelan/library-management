@@ -23,6 +23,7 @@ export interface PenaltyCase {
   reportedAt: string;
   settlementDueAt: string;
   replacementBarcode?: string;
+  replacementAcceptedAt?: string;
   waiverAmount?: number;
   decisionReason?: string;
   decisionDocumentNo?: string;

@@ -11,4 +11,5 @@ public class LocationNodeDTO {
     private String type;
     private Long parentId;
     private String parentName;
+    private Integer capacity;
 }

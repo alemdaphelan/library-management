@@ -44,17 +44,20 @@ public class ShelfSubjectRuleService {
         requireShelf(shelfId);
         return ruleRepository.findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(shelfId)
                 .stream()
+                .filter(rule -> Boolean.TRUE.equals(rule.getSubject().getActive()))
                 .map(rule -> toDto(rule.getSubject()))
                 .toList();
     }
 
     @Transactional
     public List<ShelfSubjectDTO> replaceShelfSubjects(Long shelfId, ShelfSubjectRuleRequestDTO request) {
-        ShelfEntity shelf = requireShelf(shelfId);
+        ShelfEntity shelf = shelfRepository.findByIdForUpdate(shelfId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy ngăn kệ"));
         Set<Long> requestedIds = new LinkedHashSet<>(request.subjectIds());
-        List<RecommendationSubjectEntity> subjects = requestedIds.isEmpty()
-                ? List.of()
-                : subjectRepository.findBySubjectIdInAndActiveTrue(requestedIds);
+        if (requestedIds.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chọn ít nhất một chủ đề cho ngăn");
+        }
+        List<RecommendationSubjectEntity> subjects = subjectRepository.findBySubjectIdInAndActiveTrue(requestedIds);
 
         if (subjects.size() != requestedIds.size()) {
             throw new ResponseStatusException(
@@ -68,16 +71,14 @@ public class ShelfSubjectRuleService {
         // otherwise insert first and violate the (shelf_id, subject_id) key
         // when an existing subject remains selected.
         ruleRepository.flush();
-        if (!subjects.isEmpty()) {
-            List<ShelfSubjectRuleEntity> rules = subjects.stream().map(subject -> {
-                ShelfSubjectRuleEntity rule = new ShelfSubjectRuleEntity();
-                rule.setShelf(shelf);
-                rule.setSubject(subject);
-                rule.setActive(true);
-                return rule;
-            }).toList();
-            ruleRepository.saveAll(rules);
-        }
+        List<ShelfSubjectRuleEntity> rules = subjects.stream().map(subject -> {
+            ShelfSubjectRuleEntity rule = new ShelfSubjectRuleEntity();
+            rule.setShelf(shelf);
+            rule.setSubject(subject);
+            rule.setActive(true);
+            return rule;
+        }).toList();
+        ruleRepository.saveAll(rules);
 
         return subjects.stream()
                 .sorted(java.util.Comparator.comparing(RecommendationSubjectEntity::getName))

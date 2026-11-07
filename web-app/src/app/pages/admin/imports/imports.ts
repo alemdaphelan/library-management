@@ -13,6 +13,26 @@ export class Imports implements OnInit, OnDestroy {
   isDrawerOpen = false;
   stats: ImportStats | null = null;
   importReceipts: ImportReceipt[] = [];
+  receiptSearch = '';
+  receiptStatus = '';
+  receiptSupplier?: number;
+  receiptFrom = '';
+  receiptTo = '';
+  get filteredReceipts(): ImportReceipt[] {
+    const q = this.receiptSearch.trim().toLocaleLowerCase('vi');
+    return this.importReceipts.filter(receipt => {
+      const day = receipt.createdAt?.slice(0,10);
+      return (!q || `${receipt.receiptCode} ${receipt.supplierName}`.toLocaleLowerCase('vi').includes(q))
+        && (!this.receiptStatus || receipt.status === this.receiptStatus)
+        && (!this.receiptSupplier || receipt.supplierId === this.receiptSupplier)
+        && (!this.receiptFrom || !!day && day >= this.receiptFrom)
+        && (!this.receiptTo || !!day && day <= this.receiptTo);
+    });
+  }
+  resetReceiptFilters(): void {
+    this.receiptSearch = this.receiptStatus = this.receiptFrom = this.receiptTo = '';
+    this.receiptSupplier = undefined;
+  }
   suppliers: { supplierId: number; name: string }[] = [];
   selectedSupplierId?: number;
   isLoading = false; isSaving = false; detailLoading = false;

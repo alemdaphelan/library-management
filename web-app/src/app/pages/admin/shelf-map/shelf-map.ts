@@ -36,6 +36,7 @@ export class ShelfMap implements OnInit {
   isLoadingShelfBooks = false;
   availableSubjects: ShelfSubject[] = [];
   selectedSubjectIds: number[] = [];
+  savedSubjectCount?: number;
   isLoadingSubjects = false;
   isSavingSubjects = false;
 
@@ -59,7 +60,6 @@ export class ShelfMap implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadUnplaced();
     this.loadAvailableSubjects();
     this.loadFloors();
   }
@@ -154,12 +154,15 @@ export class ShelfMap implements OnInit {
   selectShelf(shelf: LocationNode): void {
     this.selectedShelf = shelf;
     this.selectedSubjectIds = [];
+    this.savedSubjectCount = undefined;
     this.loadShelfBooks(0);
+    this.loadUnplaced(0);
     this.isLoadingSubjects = true;
     this.locationService.getShelfSubjects(shelf.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: subjects => {
         if(this.selectedShelf?.id!==shelf.id)return;
         this.selectedSubjectIds = (subjects || []).map(subject => subject.subjectId);
+        this.savedSubjectCount = this.selectedSubjectIds.length;
         this.isLoadingSubjects = false;
         this.cdr.detectChanges();
       },
@@ -188,10 +191,10 @@ export class ShelfMap implements OnInit {
     }});
   }
   loadUnplaced(page=0):void {
-    if(!Number.isInteger(page)||page<0)return;
+    if(!this.selectedShelf || !Number.isInteger(page)||page<0)return;
     const version=++this.unplacedVersion;this.unplacedRequest?.unsubscribe();
     this.unplacedLoading=true;this.unplacedError='';this.unplaced=[];this.unplacedTotal=0;this.unplacedPage=page;
-    this.unplacedRequest=this.locationService.getUnplacedCopies(page).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({next:r=>{
+    this.unplacedRequest=this.locationService.getUnplacedCopies(page,this.selectedShelf?.id).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({next:r=>{
       if(version!==this.unplacedVersion)return;
       if(r.total>0 && page*50>=r.total){this.loadUnplaced(Math.floor((r.total-1)/50));return;}
       this.unplaced=r.items;this.unplacedTotal=r.total;this.unplacedLoading=false;this.cdr.markForCheck();
@@ -199,7 +202,7 @@ export class ShelfMap implements OnInit {
     },error:()=>{if(version!==this.unplacedVersion)return;this.unplacedLoading=false;this.unplacedError='Không tải được bản sao chưa xếp ngăn.';this.cdr.markForCheck();}});
   }
   placeUnlocated(book:ShelfBook):void {
-    const shelf=this.selectedShelf;if(!shelf || this.placingBarcode)return;
+    const shelf=this.selectedShelf;if(!shelf || this.placingBarcode || !this.savedSubjectCount)return;
     this.placingBarcode=book.barcode;
     this.locationService.placeCopy(book.barcode,shelf.id).subscribe({next:()=>{
       this.placingBarcode='';this.showSuccess(`Đã xếp ${book.barcode} vào ${shelf.name}.`);this.loadUnplaced(0);
@@ -219,7 +222,7 @@ export class ShelfMap implements OnInit {
   }
 
   saveSubjectRules(): void {
-    if (!this.selectedShelf || !this.isAdmin || this.isSavingSubjects) return;
+    if (!this.selectedShelf || !this.isAdmin || this.isSavingSubjects || !this.selectedSubjectIds.length) return;
     this.isSavingSubjects = true;
     const shelf=this.selectedShelf;
     this.errorMessage = '';
@@ -228,12 +231,10 @@ export class ShelfMap implements OnInit {
         this.isSavingSubjects=false;
         if(this.selectedShelf?.id!==shelf.id)return;
         this.selectedSubjectIds = (subjects || []).map(subject => subject.subjectId);
+        this.savedSubjectCount = this.selectedSubjectIds.length;
         this.isSavingSubjects = false;
-        this.showSuccess(
-          this.selectedSubjectIds.length
-            ? `Đã lưu ${this.selectedSubjectIds.length} chủ đề cho ${this.selectedShelf!.name}.`
-            : `Đã bỏ giới hạn chủ đề của ${this.selectedShelf!.name}.`
-        );
+        this.loadUnplaced(0);
+        this.showSuccess(`Đã lưu ${this.selectedSubjectIds.length} chủ đề cho ${shelf.name}.`);
         this.cdr.detectChanges();
       },
       error: error => {
@@ -341,6 +342,30 @@ export class ShelfMap implements OnInit {
         this.loadShelves(this.selectedBookshelf!.id);
       },
       error: error => this.handleError('Không thể cập nhật ngăn kệ.', error)
+    });
+  }
+
+  async editCapacity(shelf: LocationNode): Promise<void> {
+    if (!shelf.parentId) return;
+    const value = await this.dialog.prompt({
+      title: 'Sức chứa ngăn kệ', message: `Nhập số bản sao tối đa cho ${shelf.name}. Nhập 0 để bỏ giới hạn.`,
+      inputLabel: 'Số bản sao tối đa', inputValue: String(shelf.capacity ?? 0), confirmText: 'Lưu sức chứa',
+    });
+    if (value === null) return;
+    const capacity = Number(value.trim());
+    if (!value.trim() || !Number.isSafeInteger(capacity) || capacity < 0 || capacity > 2147483647) {
+      this.dialog.show({type:'error',message:'Nhập một số nguyên từ 0 đến 2.147.483.647.'});
+      return;
+    }
+    this.locationService.updateShelf(shelf.id, shelf.name, shelf.parentId, capacity).subscribe({
+      next: updated => {
+        this.shelves = this.shelves.map(item => item.id === updated.id ? updated : item);
+        if (this.selectedShelf?.id === updated.id) this.selectedShelf = updated;
+        this.showSuccess('Đã cập nhật sức chứa ngăn.');
+        this.cdr.markForCheck();
+      },
+      error: error => this.dialog.show({type:'error',message:error?.status === 409
+        ? 'Sức chứa không được thấp hơn số bản sao hiện có trong ngăn.' : 'Không lưu được sức chứa ngăn.'}),
     });
   }
 

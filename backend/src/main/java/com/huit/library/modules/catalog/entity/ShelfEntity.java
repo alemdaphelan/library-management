@@ -12,6 +12,7 @@ public class ShelfEntity {
     private Long shelfId;
 
     private String name;
+    private Integer capacity;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bookshelf_id")

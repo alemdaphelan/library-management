@@ -3,7 +3,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { UserService } from '../../../services/user.service';
 import { CirculationService } from '../../../services/circulation.service';
 import { AuthService } from '../../../services/auth.service';
-import { PenaltyService } from '../../../services/penalty.service';
+import { PenaltyCaseRequest, PenaltyService } from '../../../services/penalty.service';
 import { Penalties } from './penalties';
 
 describe('Penalties', () => {
@@ -18,7 +18,7 @@ describe('Penalties', () => {
       reportedAt: '2026-10-18T09:00:00', settlementDueAt: '2026-11-17T09:00:00',
     }])),
     getAdjustments: vi.fn(() => of([])),
-    createCase: vi.fn(() => of({})),
+    createCase: vi.fn((_request: PenaltyCaseRequest) => of({})),
     recordPayment: vi.fn(() => of({ receiptNumber: 'RCPT-01', allocations: [], remainingDebt: 0 })),
     acceptReplacement: vi.fn(() => of({})),
     submitReview: vi.fn(() => of({})),
@@ -60,6 +60,20 @@ describe('Penalties', () => {
   it('submits an outstanding case for external waiver review', () => {
     component.submitReview(9);
     expect(service.submitReview).toHaveBeenCalledWith(9);
+  });
+
+  it('drops previously entered fees when a lost book must be replaced', () => {
+    component.caseMssv = '2001240001';
+    component.lookupCaseReader();
+    component.caseForm = { ...component.caseForm, loanDetailId: 81, description: 'Mất sách',
+      stillInMarket: true, settlementMethod: 'CASH', coverPrice: -10000, repairFee: -10000 };
+
+    component.createCase();
+
+    const request = service.createCase.mock.lastCall?.[0];
+    expect(request).toMatchObject({ loanDetailId: 81, settlementMethod: 'REPLACEMENT' });
+    expect(request).not.toHaveProperty('coverPrice');
+    expect(request).not.toHaveProperty('repairFee');
   });
 
   it('highlights the exact penalty case referenced by a notification', () => {
@@ -108,6 +122,7 @@ describe('Penalties', () => {
   });
 
   it('looks up MSSV and submits only a selected active loan item',()=>{
+    component.tab = 'create';
     component.caseMssv=' 2001240001 ';component.lookupCaseReader();
     expect(users.getReaderProfile).toHaveBeenLastCalledWith('2001240001');
     expect(component.caseItems.map(i=>i.detailId)).toEqual([81]);
