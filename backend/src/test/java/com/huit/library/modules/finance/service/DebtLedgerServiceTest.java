@@ -3,6 +3,7 @@ package com.huit.library.modules.finance.service;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
+import com.huit.library.modules.circulation.service.LibraryHoursService;
 import com.huit.library.modules.finance.dto.AdjustmentReviewRequestDTO;
 import com.huit.library.modules.finance.dto.DebtPaymentRequestDTO;
 import com.huit.library.modules.finance.dto.PaymentReceiptDTO;
@@ -50,7 +51,7 @@ class DebtLedgerServiceTest {
         service = new DebtLedgerService(transactions, adjustments, mock(PaymentAllocationRepository.class), wallets,
                 mock(PenaltyCaseRepository.class), mock(LoanDetailRepository.class),
                 mock(LoanTicketRepository.class), mock(UserRepository.class),
-                mock(NotificationService.class));
+                mock(NotificationService.class), mock(LibraryHoursService.class));
     }
 
     @Test

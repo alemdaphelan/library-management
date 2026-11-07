@@ -6,8 +6,11 @@ import com.huit.library.modules.circulation.entity.LoanDetailEntity;
 import com.huit.library.modules.circulation.entity.LoanTicketEntity;
 import com.huit.library.modules.circulation.repository.LoanDetailRepository;
 import com.huit.library.modules.circulation.repository.LoanTicketRepository;
+import com.huit.library.modules.circulation.service.LibraryHoursService;
 import com.huit.library.modules.finance.dto.AdjustmentRequestDTO;
 import com.huit.library.modules.finance.dto.AdjustmentReviewRequestDTO;
+import com.huit.library.modules.finance.dto.CashDepositReceiptDTO;
+import com.huit.library.modules.finance.dto.CashDepositRequestDTO;
 import com.huit.library.modules.finance.dto.DebtPaymentRequestDTO;
 import com.huit.library.modules.finance.dto.PaymentReceiptDTO;
 import com.huit.library.modules.finance.entity.PaymentAllocationEntity;
@@ -44,6 +47,7 @@ public class DebtLedgerService {
     private final LoanTicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final LibraryHoursService libraryHoursService;
 
     public DebtLedgerService(
             TransactionRepository transactionRepository,
@@ -54,7 +58,8 @@ public class DebtLedgerService {
             LoanDetailRepository detailRepository,
             LoanTicketRepository ticketRepository,
             UserRepository userRepository,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            LibraryHoursService libraryHoursService) {
         this.transactionRepository = transactionRepository;
         this.adjustmentRepository = adjustmentRepository;
         this.allocationRepository = allocationRepository;
@@ -64,6 +69,7 @@ public class DebtLedgerService {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.libraryHoursService = libraryHoursService;
     }
 
     @Transactional
@@ -173,6 +179,37 @@ public class DebtLedgerService {
     }
 
     @Transactional
+    public CashDepositReceiptDTO recordCashDeposit(CashDepositRequestDTO request, UUID operatorId) {
+        UUID userId = request.userId();
+        userRepository.findById(userId).filter(user -> "STUDENT".equals(user.getUserType()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên"));
+
+        // Serialize writes and replays on the same wallet, including double submissions.
+        WalletEntity wallet = walletRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Sinh viên chưa có ví thư viện. Cần kiểm tra hồ sơ trước khi thu tiền thế chân."));
+        String dedupKey = "CASH-DEPOSIT:" + userId + ":" + request.idempotencyKey();
+        String reason = "Nạp tiền thế chân tại quầy";
+        if (request.note() != null && !request.note().isBlank()) {
+            reason += " — " + request.note().trim();
+        }
+
+        TransactionEntity deposit = transactionRepository.findByDedupKey(dedupKey).orElse(null);
+        if (deposit == null) {
+            libraryHoursService.requireCounterOpen("nạp tiền thế chân tại quầy");
+            deposit = applyDepositTopUp(wallet, request.amount(), operatorId, "CASH",
+                    "COC-" + UUID.randomUUID(), reason, dedupKey);
+        } else if (!operatorId.equals(deposit.getConfirmedBy())
+                || request.amount().compareTo(deposit.getAmount().abs()) != 0
+                || !reason.equals(deposit.getReason())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã lượt thu đã được dùng cho giao dịch khác");
+        }
+        return new CashDepositReceiptDTO(deposit.getTransactionId(), deposit.getReceiptNumber(), userId,
+                deposit.getAmount().abs(), deposit.getPaymentMethod(), deposit.getConfirmedBy(), deposit.getPaidAt(),
+                zero(wallet.getDepositBalance()));
+    }
+
+    @Transactional
     public PaymentReceiptDTO recordDepositTopUp(
             UUID userId, BigDecimal amount, String gatewayReference) {
         return recordDepositTopUp(userId, amount, gatewayReference, false);
@@ -197,6 +234,15 @@ public class DebtLedgerService {
             created.setTotalDebt(BigDecimal.ZERO);
             return walletRepository.save(created);
         });
+        String reason = mock ? "GIẢ LẬP: nạp tiền thế chân để kiểm thử" : "Nạp tiền thế chân trực tuyến qua VNPAY";
+        TransactionEntity deposit = applyDepositTopUp(wallet, amount, userId, mock ? "MOCK" : "VNPAY",
+                (mock ? "MOCK-" : "VNP-") + gatewayReference, reason, dedupKey);
+        return buildReceipt(deposit, userId);
+    }
+
+    private TransactionEntity applyDepositTopUp(WalletEntity wallet, BigDecimal amount, UUID confirmedBy,
+            String method, String receiptNumber, String reason, String dedupKey) {
+        UUID userId = wallet.getUserId();
         wallet.setDepositBalance(zero(wallet.getDepositBalance()).add(amount));
         walletRepository.save(wallet);
 
@@ -204,11 +250,11 @@ public class DebtLedgerService {
         topUp.setUserId(userId);
         topUp.setAmount(amount.negate());
         topUp.setType("DEPOSIT_TOPUP");
-        topUp.setReason(mock ? "GIẢ LẬP: nạp tiền thế chân để kiểm thử" : "Nạp tiền thế chân trực tuyến qua VNPAY");
+        topUp.setReason(reason);
         topUp.setStatus("COMPLETED");
-        topUp.setPaymentMethod(mock ? "MOCK" : "VNPAY");
-        topUp.setReceiptNumber((mock ? "MOCK-" : "VNP-") + gatewayReference);
-        topUp.setConfirmedBy(userId);
+        topUp.setPaymentMethod(method);
+        topUp.setReceiptNumber(receiptNumber);
+        topUp.setConfirmedBy(confirmedBy);
         topUp.setPaidAt(LocalDateTime.now());
         topUp.setDedupKey(dedupKey);
         topUp = transactionRepository.save(topUp);
@@ -219,7 +265,7 @@ public class DebtLedgerService {
                         + wallet.getDepositBalance().toPlainString() + " đồng.",
                 "TRANSACTION", topUp.getTransactionId().toString(),
                 "DEPOSIT_TOPUP:" + topUp.getTransactionId(), LocalDateTime.now());
-        return buildReceipt(topUp, userId);
+        return topUp;
     }
 
     @Transactional

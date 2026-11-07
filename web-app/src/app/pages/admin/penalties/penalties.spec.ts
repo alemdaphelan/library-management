@@ -31,7 +31,7 @@ describe('Penalties', () => {
   const users={getReaderProfile:vi.fn(()=>of(profile))};
   const lossReport:any={ticketId:71,userId:'reader-1',mssv:'2001240001',readerName:'Sinh viên A',status:'BORROWING',items:[{detailId:81,ticketId:71,bookTitle:'Giáo trình A',barcode:'BC-A',itemStatus:'BORROWING',lossReportedAt:'2026-11-04T10:00:00',lossReportDescription:'Mất trên xe buýt'}]};
   const circulation={getLoan:vi.fn(()=>of({userId:'reader-1',items:[{detailId:81,ticketId:71,bookTitle:'Giáo trình A',barcode:'BC-A',itemStatus:'BORROWING'}]})),getLossReport:vi.fn(()=>of(lossReport))};
-  const auth = { getRole: vi.fn(() => 'LIBRARIAN') };
+  const auth = { getRole: vi.fn(() => 'LIBRARIAN'), getUserProfile: vi.fn(() => null) };
 
   beforeEach(async () => {
     vi.clearAllMocks();

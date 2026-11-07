@@ -62,6 +62,24 @@ export interface PaymentReceipt {
   }>;
 }
 
+export interface CashDepositRequest {
+  userId: string;
+  amount: number;
+  idempotencyKey: string;
+  note: string;
+}
+
+export interface CashDepositReceipt {
+  transactionId: number;
+  receiptNumber: string;
+  userId: string;
+  amount: number;
+  paymentMethod: 'CASH';
+  confirmedBy: string;
+  paidAt: string;
+  depositBalance: number;
+}
+
 export interface DebtEntry {
   transactionId: number;
   parentTransactionId?: number;
@@ -160,6 +178,10 @@ export class PenaltyService {
 
   recordPayment(payload: object): Observable<PaymentReceipt> {
     return this.http.post<PaymentReceipt>(`${this.transactionUrl}/payments`, payload);
+  }
+
+  recordCashDeposit(payload: CashDepositRequest): Observable<CashDepositReceipt> {
+    return this.http.post<CashDepositReceipt>(`${this.transactionUrl}/cash-deposits`, payload);
   }
 
   requestAdjustment(payload: object): Observable<object> {

@@ -8,11 +8,12 @@ import { AuthService } from '../../../services/auth.service';
 import { PaymentReceipt, PenaltyCase, PenaltyCaseRequest, PenaltyService } from '../../../services/penalty.service';
 import { UserService, ReaderProfile } from '../../../services/user.service';
 import { CirculationService, LoanItem, LoanTicketDetail } from '../../../services/circulation.service';
+import { CounterDeposit } from './counter-deposit';
 
 @Component({
   selector: 'app-penalties',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CounterDeposit],
   templateUrl: './penalties.html',
   styleUrl: './penalties.css',
 })

@@ -25,6 +25,8 @@ import com.huit.library.modules.finance.repository.TransactionRepository;
 import com.huit.library.modules.finance.repository.PaymentAllocationRepository;
 import com.huit.library.modules.finance.repository.WalletRepository;
 import com.huit.library.modules.finance.dto.DebtPaymentRequestDTO;
+import com.huit.library.modules.finance.dto.CashDepositRequestDTO;
+import com.huit.library.modules.finance.dto.CashDepositReceiptDTO;
 import com.huit.library.modules.finance.dto.PaymentReceiptDTO;
 import com.huit.library.modules.finance.service.DebtLedgerService;
 import com.huit.library.modules.finance.entity.WalletEntity;
@@ -1083,6 +1085,74 @@ class Week6IntegrationTest {
         } finally {
             executor.shutdownNow();
             cleanupInspection(fixture, key);
+        }
+    }
+
+    @Test
+    void cashDepositRequiresStaffAndCreditsTheWalletOnceOnConcurrentRetry() throws Exception {
+        String password = "CashDeposit@123";
+        UserEntity reader = createUserWithRole("cash-deposit-reader", "STUDENT", password);
+        reader.setUserType("STUDENT");
+        userRepository.saveAndFlush(reader);
+        UserEntity librarian = createUserWithRole("cash-deposit-librarian", "LIBRARIAN", password);
+        WalletEntity wallet = new WalletEntity();
+        wallet.setUserId(reader.getUserId());
+        wallet.setDepositBalance(new BigDecimal("50000"));
+        wallet.setTotalDebt(new BigDecimal("30000"));
+        walletRepository.save(wallet);
+        UUID key = UUID.randomUUID();
+        var request = new CashDepositRequestDTO(reader.getUserId(), new BigDecimal("50000"), key, "Thu tại quầy 1");
+        String body = objectMapper.writeValueAsString(request);
+        String path = "/api/v1/transactions/cash-deposits";
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            String studentToken = loginAndGetToken(reader.getEmail(), password);
+            String staffToken = loginAndGetToken(librarian.getEmail(), password);
+            mockMvc.perform(post(path).header("Authorization", "Bearer " + studentToken)
+                            .contentType("application/json").content(body))
+                    .andExpect(status().isForbidden());
+            var invalid = new CashDepositRequestDTO(reader.getUserId(), new BigDecimal("1.25"), key, null);
+            mockMvc.perform(post(path).header("Authorization", "Bearer " + staffToken)
+                            .contentType("application/json").content(objectMapper.writeValueAsString(invalid)))
+                    .andExpect(status().isBadRequest());
+            assertThat(transactionRepository.findByUserIdOrderByCreatedAtAsc(reader.getUserId())).isEmpty();
+
+            var start = new CountDownLatch(1);
+            java.util.concurrent.Callable<CashDepositReceiptDTO> submit = () -> {
+                start.await();
+                var result = mockMvc.perform(post(path).header("Authorization", "Bearer " + staffToken)
+                                .contentType("application/json").content(body))
+                        .andExpect(status().isOk()).andReturn();
+                return objectMapper.readValue(result.getResponse().getContentAsByteArray(), CashDepositReceiptDTO.class);
+            };
+            var first = executor.submit(submit);
+            var second = executor.submit(submit);
+            start.countDown();
+            var receipt = first.get(30, TimeUnit.SECONDS);
+            assertThat(second.get(30, TimeUnit.SECONDS).receiptNumber()).isEqualTo(receipt.receiptNumber());
+            assertThat(receipt.depositBalance()).isEqualByComparingTo("100000");
+            assertThat(receipt.confirmedBy()).isEqualTo(librarian.getUserId());
+            var changed = new CashDepositRequestDTO(reader.getUserId(), new BigDecimal("60000"), key, request.note());
+            mockMvc.perform(post(path).header("Authorization", "Bearer " + staffToken)
+                            .contentType("application/json").content(objectMapper.writeValueAsString(changed)))
+                    .andExpect(status().isConflict());
+            var current = walletRepository.findByUserId(reader.getUserId()).orElseThrow();
+            assertThat(current.getDepositBalance()).isEqualByComparingTo("100000");
+            assertThat(current.getTotalDebt()).isEqualByComparingTo("30000");
+            assertThat(transactionRepository.findByUserIdOrderByCreatedAtAsc(reader.getUserId())).singleElement()
+                    .satisfies(entry -> {
+                        assertThat(entry.getType()).isEqualTo("DEPOSIT_TOPUP");
+                        assertThat(entry.getPaymentMethod()).isEqualTo("CASH");
+                        assertThat(entry.getAmount()).isEqualByComparingTo("-50000");
+                        assertThat(entry.getReason()).contains(request.note());
+                    });
+        } finally {
+            executor.shutdownNow();
+            jdbcTemplate.update("delete from notifications where user_id = ?", reader.getUserId());
+            jdbcTemplate.update("delete from transactions where user_id = ?", reader.getUserId());
+            jdbcTemplate.update("delete from wallets where user_id = ?", reader.getUserId());
+            userRepository.deleteById(reader.getUserId());
+            userRepository.deleteById(librarian.getUserId());
         }
     }
 

@@ -88,6 +88,8 @@
       <article class="receipt" *ngIf="receipt"><strong>Biên nhận {{ receipt.receiptNumber }}</strong><p>Tổng thu: {{ receipt.totalAmount | number:'1.0-0':'en-US' }} VNĐ · Còn nợ: {{ receipt.remainingDebt | number:'1.0-0':'en-US' }} VNĐ</p><ul><li *ngFor="let line of receipt.allocations">{{ line.feeType }}: {{ line.amount | number:'1.0-0':'en-US' }} VNĐ — {{ line.reason }}</li></ul></article>
     </form>
 
+    <app-counter-deposit />
+
     <form class="panel" (ngSubmit)="acceptReplacement()">
       <h2>Tiếp nhận sách thay thế</h2>
       <label>Hồ sơ ID<input type="number" name="replacementCase" [(ngModel)]="replacementForm.caseId" min="1" required></label>

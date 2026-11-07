@@ -3,6 +3,8 @@ package com.huit.library.modules.finance.controller;
 import com.huit.library.core.security.CustomUserDetails;
 import com.huit.library.modules.finance.dto.AdjustmentRequestDTO;
 import com.huit.library.modules.finance.dto.AdjustmentReviewRequestDTO;
+import com.huit.library.modules.finance.dto.CashDepositReceiptDTO;
+import com.huit.library.modules.finance.dto.CashDepositRequestDTO;
 import com.huit.library.modules.finance.dto.DebtPaymentRequestDTO;
 import com.huit.library.modules.finance.service.DebtLedgerService;
 import com.huit.library.modules.circulation.service.LibraryHoursService;
@@ -39,6 +41,14 @@ public class PaymentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<?> getLedger(@PathVariable UUID userId) {
         return ResponseEntity.ok(debtLedgerService.getUserLedger(userId));
+    }
+
+    @PostMapping("/cash-deposits")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
+    public CashDepositReceiptDTO recordCashDeposit(
+            @Valid @RequestBody CashDepositRequestDTO request,
+            @AuthenticationPrincipal CustomUserDetails operator) {
+        return debtLedgerService.recordCashDeposit(request, operator.getUser().getUserId());
     }
 
     @GetMapping("/my-ledger")
