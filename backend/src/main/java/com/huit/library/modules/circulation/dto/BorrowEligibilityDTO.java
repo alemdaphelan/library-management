@@ -18,6 +18,7 @@ public class BorrowEligibilityDTO {
     private BigDecimal remainingBorrowingValue;
     private boolean priceKnown;
     private boolean monetaryEligible;
+    private boolean cardEligible;
     private boolean eligible;
     private String message;
 }

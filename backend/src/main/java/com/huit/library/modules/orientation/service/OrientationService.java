@@ -70,7 +70,7 @@ public class OrientationService {
     @Transactional
     public OrientationDtos.ClassResponse update(Long id, OrientationDtos.ClassRequest request) {
         validateTimes(request.startAt(), request.endAt());
-        OrientationClassEntity entity = find(id);
+        OrientationClassEntity entity = findForUpdate(id);
         if (!"SCHEDULED".equals(entity.getStatus()) || !entity.getStartAt().isAfter(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Không thể sửa lớp đã bắt đầu hoặc hoàn tất");
         }
@@ -87,7 +87,7 @@ public class OrientationService {
 
     @Transactional
     public void delete(Long id) {
-        OrientationClassEntity entity = find(id);
+        OrientationClassEntity entity = findForUpdate(id);
         if (entity.getStartAt().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Không thể xóa lớp đã bắt đầu; hãy lưu làm lịch sử");
         }
@@ -96,7 +96,7 @@ public class OrientationService {
 
     @Transactional
     public void unassign(Long classId, Long enrollmentId) {
-        OrientationClassEntity orientationClass = find(classId);
+        OrientationClassEntity orientationClass = findForUpdate(classId);
         if (!"SCHEDULED".equals(orientationClass.getStatus())
                 || !orientationClass.getStartAt().isAfter(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -112,11 +112,9 @@ public class OrientationService {
     @Transactional(readOnly = true)
     public List<OrientationDtos.Person> availableStudents(Long classId) {
         find(classId);
-        return userRepository.findByUserTypeOrderByFullNameAsc("STUDENT").stream()
-                .filter(user -> user.getCardStatus() == null || user.getCardStatus().isBlank())
-                .filter(user -> enrollmentRepository.findByClassIdAndUserId(classId, user.getUserId()).isEmpty())
-                .filter(user -> !enrollmentRepository.existsByUserIdAndAttendanceStatus(user.getUserId(), "ABSENT"))
-                .map(this::person).toList();
+        return enrollmentRepository.findAvailableStudents(classId).stream()
+                .map(user -> new OrientationDtos.Person(user.getUserId(), user.getFullName(), user.getMssv(), user.getEmail()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -130,12 +128,17 @@ public class OrientationService {
 
     @Transactional
     public OrientationDtos.ClassResponse assign(Long classId, OrientationDtos.AssignmentRequest request) {
-        OrientationClassEntity orientationClass = find(classId);
+        OrientationClassEntity orientationClass = findForUpdate(classId);
+        if (!"SCHEDULED".equals(orientationClass.getStatus())
+                || !orientationClass.getStartAt().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể xếp sinh viên vào lớp chưa bắt đầu");
+        }
         List<UUID> selected = new ArrayList<>(request.userIds() == null ? List.of() : request.userIds());
         int randomCount = request.randomCount() == null ? 0 : request.randomCount();
         if (randomCount > 0) {
-            List<UUID> candidates = new ArrayList<>(availableStudents(classId).stream()
-                    .map(OrientationDtos.Person::userId).filter(id -> !selected.contains(id)).toList());
+            List<UUID> candidates = new ArrayList<>(enrollmentRepository.findAvailableStudents(classId).stream()
+                    .map(OrientationEnrollmentRepository.StudentCandidate::getUserId)
+                    .filter(id -> !selected.contains(id)).toList());
             Collections.shuffle(candidates);
             selected.addAll(candidates.stream().limit(randomCount).toList());
         }
@@ -145,11 +148,12 @@ public class OrientationService {
         if (current + newCount > orientationClass.getCapacity()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Sĩ số lớp tối đa là " + orientationClass.getCapacity());
         }
-        for (UUID userId : selected.stream().distinct().toList()) {
-            UserEntity student = userRepository.findById(userId)
+        for (UUID userId : selected.stream().distinct().sorted().toList()) {
+            if (enrollmentRepository.findByClassIdAndUserId(classId, userId).isPresent()) continue;
+            UserEntity student = userRepository.findByIdForUpdate(userId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên"));
             if (!"STUDENT".equalsIgnoreCase(student.getUserType())) continue;
-            if (student.getCardStatus() != null && !student.getCardStatus().isBlank()) {
+            if (student.hasLibraryCard()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "Chỉ sinh viên chưa được cấp thẻ mới thuộc diện xếp lớp hướng dẫn");
             }
@@ -157,7 +161,6 @@ public class OrientationService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "Sinh viên có lịch sử vắng không phép; Admin cần xác minh trước khi xếp lại");
             }
-            if (enrollmentRepository.findByClassIdAndUserId(classId, userId).isPresent()) continue;
             OrientationEnrollmentEntity enrollment = new OrientationEnrollmentEntity();
             enrollment.setClassId(classId);
             enrollment.setUserId(userId);
@@ -175,8 +178,17 @@ public class OrientationService {
 
     @Transactional
     public OrientationDtos.ClassResponse markAttendance(Long classId, OrientationDtos.AttendanceRequest request, UUID actorId) {
-        OrientationClassEntity orientationClass = find(classId);
-        for (OrientationDtos.AttendanceItem item : request.items()) {
+        OrientationClassEntity orientationClass = findForUpdate(classId);
+        LocalDateTime now = LocalDateTime.now();
+        if (orientationClass.getStartAt().isAfter(now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể điểm danh sau khi lớp bắt đầu");
+        }
+        List<OrientationDtos.AttendanceItem> items = request.items();
+        if (items.isEmpty() || items.stream().map(OrientationDtos.AttendanceItem::userId).distinct().count() != items.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách điểm danh phải có dữ liệu và mỗi sinh viên chỉ xuất hiện một lần");
+        }
+        for (OrientationDtos.AttendanceItem item : items.stream()
+                .sorted(Comparator.comparing(OrientationDtos.AttendanceItem::userId)).toList()) {
             String status = item.status().trim().toUpperCase(Locale.ROOT);
             if (!ATTENDANCE.contains(status) || "ASSIGNED".equals(status)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái điểm danh không hợp lệ");
@@ -186,8 +198,11 @@ public class OrientationService {
             enrollment.setAttendanceStatus(status);
             enrollment.setNote(item.note());
             enrollment.setMarkedBy(actorId);
-            enrollment.setMarkedAt(LocalDateTime.now());
+            enrollment.setMarkedAt(now);
             enrollmentRepository.save(enrollment);
+            if ("ATTENDED".equals(status)) {
+                issueLibraryCard(orientationClass, item.userId(), now);
+            }
         }
         if (enrollmentRepository.findByClassIdOrderByEnrollmentIdAsc(classId).stream()
                 .noneMatch(enrollment -> "ASSIGNED".equals(enrollment.getAttendanceStatus()))) {
@@ -197,6 +212,25 @@ public class OrientationService {
         return response(orientationClass);
     }
 
+    private void issueLibraryCard(OrientationClassEntity orientationClass, UUID userId, LocalDateTime now) {
+        UserEntity student = userRepository.findByIdForUpdate(userId)
+                .filter(user -> "STUDENT".equalsIgnoreCase(user.getUserType()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên"));
+        if (student.hasLibraryCard()) {
+            return;
+        }
+        student.setCardStatus("ACTIVE");
+        student.setCardIssuedAt(now);
+        student.setCardExpiryDate(now.plusYears(1));
+        userRepository.save(student);
+        notificationService.createOnce(userId, "ORIENTATION_CARD_ACTIVATED",
+                "Bạn đã hoàn thành lớp hướng dẫn " + orientationClass.getClassCode()
+                        + ". Thẻ thư viện đã được kích hoạt và có hiệu lực đến "
+                        + student.getCardExpiryDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ".",
+                "ORIENTATION_CLASS", orientationClass.getClassId().toString(),
+                "ORIENTATION_CARD_ACTIVATED:" + userId, now);
+    }
+
     @Transactional(readOnly = true)
     public byte[] attendanceTemplate(Long classId) {
         OrientationClassEntity orientationClass = find(classId);
@@ -204,6 +238,7 @@ public class OrientationService {
             Sheet sheet = workbook.createSheet("Diem danh");
             Row title = sheet.createRow(0);
             title.createCell(0).setCellValue("Lớp"); title.createCell(1).setCellValue(orientationClass.getClassCode());
+            sheet.createRow(1).createCell(0).setCellValue("Đánh dấu x vào một cột. Bỏ trống cả hai cột để ghi vắng không phép.");
             Row header = sheet.createRow(2);
             String[] headers = {"MSSV", "Họ tên", "Có mặt (x)", "Vắng có phép (x)", "Ghi chú"};
             for (int i = 0; i < headers.length; i++) header.createCell(i).setCellValue(headers[i]);
@@ -214,8 +249,12 @@ public class OrientationService {
                 Row row = sheet.createRow(rowIndex++);
                 row.createCell(0).setCellValue(user.getMssv());
                 row.createCell(1).setCellValue(user.getFullName());
+                if ("ATTENDED".equals(enrollment.getAttendanceStatus())) row.createCell(2).setCellValue("x");
+                if ("EXCUSED".equals(enrollment.getAttendanceStatus())) row.createCell(3).setCellValue("x");
+                if (enrollment.getNote() != null) row.createCell(4).setCellValue(enrollment.getNote());
             }
             for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(0, 18 * 256);
             workbook.write(output);
             return output.toByteArray();
         } catch (Exception exception) {
@@ -225,7 +264,6 @@ public class OrientationService {
 
     @Transactional
     public OrientationDtos.ClassResponse importAttendance(Long classId, MultipartFile file, UUID actorId) {
-        find(classId);
         List<OrientationDtos.AttendanceItem> items = new ArrayList<>();
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -234,10 +272,18 @@ public class OrientationService {
                 if (row == null) continue;
                 String mssv = cell(row, 0);
                 if (mssv.isBlank()) continue;
-                UserEntity user = userRepository.findByMssv(mssv)
+                UUID userId = userRepository.findUserIdByMssv(mssv)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không tìm thấy MSSV " + mssv));
-                String status = !cell(row, 2).isBlank() ? "ATTENDED" : (!cell(row, 3).isBlank() ? "EXCUSED" : "ABSENT");
-                items.add(new OrientationDtos.AttendanceItem(user.getUserId(), status, cell(row, 4)));
+                String present = cell(row, 2);
+                String excused = cell(row, 3);
+                if ((!present.isBlank() && !"x".equalsIgnoreCase(present))
+                        || (!excused.isBlank() && !"x".equalsIgnoreCase(excused))
+                        || (!present.isBlank() && !excused.isBlank())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Chỉ đánh dấu x ở một cột điểm danh tại dòng " + (index + 1));
+                }
+                String status = !present.isBlank() ? "ATTENDED" : (!excused.isBlank() ? "EXCUSED" : "ABSENT");
+                items.add(new OrientationDtos.AttendanceItem(userId, status, cell(row, 4)));
             }
         } catch (ResponseStatusException exception) {
             throw exception;
@@ -250,9 +296,12 @@ public class OrientationService {
     private OrientationDtos.ClassResponse response(OrientationClassEntity entity) {
         UserEntity facilitator = entity.getFacilitatorId() == null ? null : userRepository.findById(entity.getFacilitatorId()).orElse(null);
         List<OrientationDtos.Enrollment> enrollments = enrollmentRepository.findByClassIdOrderByEnrollmentIdAsc(entity.getClassId())
-                .stream().map(enrollment -> new OrientationDtos.Enrollment(
-                        enrollment.getEnrollmentId(), userRepository.findById(enrollment.getUserId()).map(this::person).orElse(null),
-                        enrollment.getAttendanceStatus(), enrollment.getNote())).toList();
+                .stream().map(enrollment -> {
+                    UserEntity student = userRepository.findById(enrollment.getUserId()).orElse(null);
+                    return new OrientationDtos.Enrollment(enrollment.getEnrollmentId(),
+                            student == null ? null : person(student), enrollment.getAttendanceStatus(), enrollment.getNote(),
+                            student == null ? null : student.getCardStatus());
+                }).toList();
         return new OrientationDtos.ClassResponse(entity.getClassId(), entity.getClassCode(), entity.getTitle(), entity.getLocation(),
                 entity.getStartAt(), entity.getEndAt(), entity.getCapacity(), entity.getFacilitatorId(),
                 facilitator == null ? null : facilitator.getFullName(), entity.getStatus(), enrollments.size(), enrollments);
@@ -271,6 +320,10 @@ public class OrientationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Người phụ trách đã có lớp trùng thời gian");
     }
     private OrientationClassEntity find(Long id) { return classRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp hướng dẫn")); }
+    private OrientationClassEntity findForUpdate(Long id) {
+        return classRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp hướng dẫn"));
+    }
     private OrientationDtos.Person person(UserEntity user) { return new OrientationDtos.Person(user.getUserId(), user.getFullName(), user.getMssv(), user.getEmail()); }
     private String cell(Row row, int index) { Cell cell = row.getCell(index); return cell == null ? "" : new DataFormatter().formatCellValue(cell).trim(); }
 }

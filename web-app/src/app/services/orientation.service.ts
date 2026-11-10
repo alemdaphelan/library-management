@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface OrientationPerson { userId: string; fullName: string; mssv?: string; email?: string; }
-export interface OrientationEnrollment { enrollmentId: number; student: OrientationPerson; status: string; note?: string; }
+export interface OrientationEnrollment { enrollmentId: number; student: OrientationPerson | null; status: string; note?: string; cardStatus?: string | null; }
 export interface OrientationClass {
   classId: number; classCode: string; title: string; location: string; startAt: string; endAt: string;
   capacity: number; facilitatorId?: string; facilitatorName?: string; status: string;

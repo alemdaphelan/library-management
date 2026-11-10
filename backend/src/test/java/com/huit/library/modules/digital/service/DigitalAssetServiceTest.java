@@ -5,17 +5,26 @@ import com.huit.library.modules.digital.dto.DigitalAssetResponseDTO;
 import com.huit.library.modules.digital.entity.DigitalDocumentEntity;
 import com.huit.library.modules.digital.repository.DigitalDocumentRepository;
 import com.huit.library.modules.digital.repository.DigitalUsageLogRepository;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,8 +50,12 @@ class DigitalAssetServiceTest {
         DigitalAssetService service = new DigitalAssetService(
                 documents, usageLogs, books, tempDirectory.toString(), 1024);
         service.initializeStorage();
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "lecture.pdf", "application/pdf", "%PDF-test".getBytes());
+        ByteArrayOutputStream pdf = new ByteArrayOutputStream();
+        try (PDDocument document = new PDDocument()) {
+            document.addPage(new PDPage());
+            document.save(pdf);
+        }
+        MockMultipartFile file = new MockMultipartFile("file", "lecture.pdf", "application/pdf", pdf.toByteArray());
 
         DigitalAssetResponseDTO response = service.upload(
                 file, 5L, "AUTHENTICATED", UUID.randomUUID());
@@ -54,18 +67,33 @@ class DigitalAssetServiceTest {
         verify(documents, times(2)).save(any(DigitalDocumentEntity.class));
     }
 
-    @Test
-    void uploadRejectsExtensionWhoseContentDoesNotMatch() {
+    @ParameterizedTest
+    @ValueSource(strings = {"pdf", "epub", "pptx"})
+    void uploadRejectsFakeDocumentsWithoutKeepingFileOrMetadata(String extension) throws Exception {
+        DigitalDocumentRepository documents = mock(DigitalDocumentRepository.class);
         DigitalAssetService service = new DigitalAssetService(
-                mock(DigitalDocumentRepository.class), mock(DigitalUsageLogRepository.class),
+                documents, mock(DigitalUsageLogRepository.class),
                 mock(BookRepository.class), tempDirectory.toString(), 1024);
         service.initializeStorage();
+        ByteArrayOutputStream archive = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(archive)) {
+            zip.putNextEntry(new ZipEntry("notes.txt"));
+            zip.write("Not a document".getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+        }
+        byte[] bytes = extension.equals("pdf")
+                ? "%PDF-1.7\nTruncated file with no document structure".getBytes(StandardCharsets.US_ASCII)
+                : archive.toByteArray();
         MockMultipartFile file = new MockMultipartFile(
-                "file", "fake.pdf", "application/pdf", "not-a-pdf".getBytes());
+                "file", "fake." + extension, "application/octet-stream", bytes);
 
         assertThatThrownBy(() -> service.upload(file, null, "AUTHENTICATED", UUID.randomUUID()))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Nội dung tệp không khớp");
+                .hasMessageContaining("Nội dung tệp không khớp")
+                .satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
+                        .isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
+        assertThat(tempDirectory).isEmptyDirectory();
+        verifyNoInteractions(documents);
     }
 
     @Test

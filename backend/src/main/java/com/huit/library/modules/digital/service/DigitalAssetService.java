@@ -110,36 +110,40 @@ public class DigitalAssetService {
                     "Chỉ hỗ trợ PDF, EPUB, MP3 và PPTX");
         }
         validateBook(bookId);
-        validateFileSignature(file, extension);
 
         String safeAccessLevel = normalizeAccess(accessLevel);
         String storageKey = UUID.randomUUID() + "." + extension;
         Path destination = resolveStorageKey(storageKey);
-        try (InputStream input = file.getInputStream()) {
-            Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
+        boolean stored = false;
+        try {
+            try (InputStream input = file.getInputStream()) {
+                Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+            DigitalFileFormatValidator.validate(destination, extension);
+
+            DigitalDocumentEntity document = new DigitalDocumentEntity();
+            document.setBookId(bookId);
+            document.setOriginalFilename(originalName);
+            document.setDisplayName(originalName);
+            document.setFormat(extension.toUpperCase(Locale.ROOT));
+            document.setContentType(expectedContentType);
+            document.setFileSize(file.getSize());
+            document.setStorageKey(storageKey);
+            document.setFileUrl("/digital-assets/pending/download");
+            document.setAccessLevel(safeAccessLevel);
+            document.setUploadedBy(uploadedBy);
+            DigitalDocumentEntity saved = documentRepository.save(document);
+            saved.setFileUrl("/digital-assets/" + saved.getDocumentId() + "/download");
+            DigitalAssetResponseDTO response = toResponse(documentRepository.save(saved));
+            stored = true;
+            return response;
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Không thể lưu tệp tài liệu số", exception);
-        }
-
-        DigitalDocumentEntity document = new DigitalDocumentEntity();
-        document.setBookId(bookId);
-        document.setOriginalFilename(originalName);
-        document.setDisplayName(originalName);
-        document.setFormat(extension.toUpperCase(Locale.ROOT));
-        document.setContentType(expectedContentType);
-        document.setFileSize(file.getSize());
-        document.setStorageKey(storageKey);
-        document.setFileUrl("/digital-assets/pending/download");
-        document.setAccessLevel(safeAccessLevel);
-        document.setUploadedBy(uploadedBy);
-        try {
-            DigitalDocumentEntity saved = documentRepository.save(document);
-            saved.setFileUrl("/digital-assets/" + saved.getDocumentId() + "/download");
-            return toResponse(documentRepository.save(saved));
-        } catch (RuntimeException exception) {
-            deleteQuietly(destination);
-            throw exception;
+        } finally {
+            if (!stored) {
+                deleteQuietly(destination);
+            }
         }
     }
 
@@ -250,26 +254,6 @@ public class DigitalAssetService {
     private String extensionOf(String filename) {
         int dot = filename.lastIndexOf('.');
         return dot < 0 ? "" : filename.substring(dot + 1).toLowerCase(Locale.ROOT);
-    }
-
-    private void validateFileSignature(MultipartFile file, String extension) {
-        try (InputStream input = file.getInputStream()) {
-            byte[] header = input.readNBytes(4);
-            boolean valid = switch (extension) {
-                case "pdf" -> header.length == 4 && header[0] == '%' && header[1] == 'P'
-                        && header[2] == 'D' && header[3] == 'F';
-                case "epub", "pptx" -> header.length >= 2 && header[0] == 'P' && header[1] == 'K';
-                case "mp3" -> header.length >= 2 && ((header[0] == 'I' && header[1] == 'D')
-                        || ((header[0] & 0xFF) == 0xFF && (header[1] & 0xE0) == 0xE0));
-                default -> false;
-            };
-            if (!valid) {
-                throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                        "Nội dung tệp không khớp với định dạng " + extension.toUpperCase(Locale.ROOT));
-            }
-        } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể kiểm tra tệp", exception);
-        }
     }
 
     private void deleteQuietly(Path path) {

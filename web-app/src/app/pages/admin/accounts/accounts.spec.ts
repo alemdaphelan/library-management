@@ -65,13 +65,16 @@ describe('Accounts', () => {
   it('allows admins to create a student through the real service contract', () => {
     component.openCreate();
     component.form = {
+      ...component.form,
       mssv: '20012345', fullName: 'Nguyễn Văn A', email: 'a@huit.edu.vn',
-      department: 'CNTT', phone: '', cardStatus: 'ACTIVE', cardExpiryDate: null,
+      department: 'CNTT', phone: '',
     };
 
     component.saveStudent();
 
-    expect(userService.createStudent).toHaveBeenCalledWith(expect.objectContaining({ mssv: '20012345' }));
+    expect(userService.createStudent).toHaveBeenCalledWith(expect.objectContaining({
+      mssv: '20012345', cardStatus: null, cardExpiryDate: null
+    }));
   });
 
   it('loads a complete operational profile for both admin and librarian review', () => {

@@ -27,6 +27,7 @@ class LibraryCardServiceTest {
         user.setFullName("Nguyễn Văn A");
         user.setDepartment("Công nghệ thông tin");
         user.setCardStatus("ACTIVE");
+        user.setCardIssuedAt(LocalDateTime.of(2026, 10, 23, 0, 0));
         user.setCardExpiryDate(LocalDateTime.of(2027, 10, 23, 0, 0));
         WalletEntity wallet = new WalletEntity();
         wallet.setUserId(userId);
@@ -40,6 +41,7 @@ class LibraryCardServiceTest {
         assertThat(result.issued()).isTrue();
         assertThat(result.cardNumber()).isEqualTo("20012345");
         assertThat(result.cardStatus()).isEqualTo("ACTIVE");
+        assertThat(result.issuedAt()).isEqualTo(user.getCardIssuedAt());
         assertThat(result.depositBalance()).isEqualByComparingTo("50000");
         assertThat(result.totalDebt()).isEqualByComparingTo("1000");
     }

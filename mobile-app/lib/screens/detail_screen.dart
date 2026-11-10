@@ -33,6 +33,7 @@ class _DetailScreenState extends State<DetailScreen> {
   num _remainingBorrowingValue = 0;
   bool _priceKnown = false;
   bool _monetaryEligible = true;
+  bool _cardEligible = true;
   bool _eligibilityLoaded = false;
   bool _hasActiveLoanForBook = false;
   bool _hasActiveWaitlistForBook = false;
@@ -188,6 +189,7 @@ class _DetailScreenState extends State<DetailScreen> {
             eligibility['priceKnown'] == true &&
             eligibility['requestedBookValue'] != null;
         _monetaryEligible = eligibility['monetaryEligible'] == true;
+        _cardEligible = eligibility['cardEligible'] != false;
         _eligibilityLoaded = eligibility.isNotEmpty;
         _hasActiveLoanForBook = hasLoanForBook;
         _hasActiveWaitlistForBook = hasWaitingForBook;
@@ -468,7 +470,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     ],
                   ),
                 ),
-                if (!_priceKnown || !_monetaryEligible) ...[
+                if (!_cardEligible || !_priceKnown || !_monetaryEligible) ...[
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
@@ -510,7 +512,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(
-                        onPressed: _priceKnown && _monetaryEligible
+                        onPressed: _cardEligible && _priceKnown && _monetaryEligible
                             ? () => Navigator.pop(ctx, true)
                             : null,
                         style: ElevatedButton.styleFrom(
@@ -797,18 +799,21 @@ class _DetailScreenState extends State<DetailScreen> {
         : 'Chưa xếp vị trí';
 
     final reachedThreeDocLimit = _remainingSlots <= 0;
+    final cardBlocked = _eligibilityLoaded && !_cardEligible;
     final monetaryBlocked =
         _eligibilityLoaded && (!_priceKnown || !_monetaryEligible);
     final canRegisterBorrow =
         !_hasActiveLoanForBook &&
         !_hasActiveWaitlistForBook &&
         !reachedThreeDocLimit &&
+        !cardBlocked &&
         !monetaryBlocked &&
         (isAvailable || _hasNotifiedWaitlistHold);
     final canJoinWaitlist =
         !_hasActiveLoanForBook &&
         !_hasActiveWaitlistForBook &&
         !reachedThreeDocLimit &&
+        !cardBlocked &&
         !monetaryBlocked &&
         !isAvailable &&
         !_hasNotifiedWaitlistHold &&
@@ -832,6 +837,11 @@ class _DetailScreenState extends State<DetailScreen> {
           'Bạn đã có tên trong hàng đợi đặt trước của đầu sách này. Thư viện sẽ thông báo ngay khi có bản sao được hoàn trả.';
       helperBannerColor = Colors.amber.shade50;
       helperTextColor = Colors.amber.shade900;
+    } else if (cardBlocked) {
+      buttonLabel = 'THẺ CHƯA ĐỦ ĐIỀU KIỆN';
+      helperBannerText = _eligibilityMessage ?? 'Vui lòng kiểm tra thẻ thư viện.';
+      helperBannerColor = Colors.red.shade50;
+      helperTextColor = Colors.red.shade900;
     } else if (reachedThreeDocLimit) {
       buttonLabel = 'ĐÃ ĐẠT GIỚI HẠN $_maxOpenItems TÀI LIỆU';
       helperBannerText =

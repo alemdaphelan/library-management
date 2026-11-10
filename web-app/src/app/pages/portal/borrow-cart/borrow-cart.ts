@@ -66,7 +66,7 @@ export class BorrowCart implements OnInit {
   submit(): void {
     if (this.isSubmitting || this.requiresReview || this.result || this.isCheckingEligibility || !this.items.length) return;
     if (!this.pickupDate) { this.errorMessage = 'Vui lòng chọn ngày đến nhận sách.'; return; }
-    if (this.eligibility && this.items.length > this.eligibility.remainingSlots) {
+    if (this.eligibility && (this.eligibility.cardEligible === false || this.items.length > this.eligibility.remainingSlots)) {
       this.errorMessage = this.eligibility.message; return;
     }
     const bookIds = this.items.map(item => item.bookId);

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
-import { OrientationClass, OrientationPerson, OrientationService } from '../../../services/orientation.service';
+import { OrientationClass, OrientationEnrollment, OrientationPerson, OrientationService } from '../../../services/orientation.service';
 import { DialogService } from '../../../services/dialog.service';
 
 @Component({ selector: 'app-orientation', standalone: true, imports: [CommonModule, FormsModule], templateUrl: './orientation.html', styleUrls: ['./orientation.css'] })
@@ -16,6 +16,7 @@ export class Orientation implements OnInit {
   ngOnInit() { this.load(); }
   get isAdmin() { return this.auth.getRole() === 'ADMIN'; }
   canManage(item: OrientationClass) { return this.isAdmin && item.status === 'SCHEDULED' && new Date(item.startAt).getTime() > Date.now(); }
+  canMarkAttendance(item: OrientationClass) { return new Date(item.startAt).getTime() <= Date.now(); }
   get weekDays() { return Array.from({length: 7}, (_, i) => { const d = new Date(this.weekStart); d.setDate(d.getDate() + i); return d; }); }
   classesFor(day: Date) { return this.classes.filter(item => new Date(item.startAt).toDateString() === day.toDateString()); }
   dayLabel(day: Date) { return ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'][day.getDay()]; }
@@ -30,11 +31,20 @@ export class Orientation implements OnInit {
   toggleStudent(id: string, checked: boolean) { this.selectedStudentIds = checked ? [...this.selectedStudentIds, id] : this.selectedStudentIds.filter(x => x !== id); }
   assign() { if (!this.selected) return; this.service.assign(this.selected.classId, this.selectedStudentIds, Number(this.randomCount) || 0).subscribe({ next: value => { this.selected = value; this.success = 'Đã cập nhật danh sách lớp.'; this.load(); }, error: e => this.fail(e, 'Không thể xếp lớp.') }); }
   async unassign(enrollment: any) { if (!this.selected || !this.canManage(this.selected)) return; const confirmed = await this.dialog.confirm({ title: 'Gỡ sinh viên khỏi lớp', message: `Gỡ ${enrollment.student?.fullName || 'sinh viên này'} khỏi ${this.selected.classCode}?`, type: 'warning', confirmText: 'Gỡ khỏi lớp' }); if (!confirmed) return; this.service.unassign(this.selected.classId, enrollment.enrollmentId).subscribe({ next: () => { this.success = 'Đã gỡ sinh viên khỏi lớp.'; this.refreshSelected(); }, error: e => this.fail(e, 'Không thể gỡ sinh viên khỏi lớp.') }); }
-  setAttendance(enrollment: any, status: string) { if (!this.selected) return; this.service.attendance(this.selected.classId, [{ userId: enrollment.student.userId, status, note: enrollment.note || '' }]).subscribe({ next: value => { this.selected = value; this.success = 'Đã lưu điểm danh.'; this.load(); }, error: e => this.fail(e, 'Không thể lưu điểm danh.') }); }
+  setAttendance(enrollment: OrientationEnrollment, status: string) {
+    if (!this.selected || !enrollment.student || !this.canMarkAttendance(this.selected)) return;
+    this.service.attendance(this.selected.classId, [{ userId: enrollment.student.userId, status, note: enrollment.note || '' }]).subscribe({
+      next: value => { this.selected = value; this.success = 'Đã lưu điểm danh.'; this.load(); },
+      error: e => this.fail(e, 'Không thể lưu điểm danh.')
+    });
+  }
   downloadTemplate() { if (!this.selected) return; this.service.template(this.selected.classId).subscribe(response => { if (!response.body) return; const url = URL.createObjectURL(response.body); const a = document.createElement('a'); a.href = url; a.download = `diem-danh-${this.selected!.classCode}.xlsx`; a.click(); URL.revokeObjectURL(url); }); }
-  importExcel(event: Event) { const file = (event.target as HTMLInputElement).files?.[0]; if (!file || !this.selected) return; this.service.importAttendance(this.selected.classId, file).subscribe({ next: value => { this.selected = value; this.success = 'Đã nhập điểm danh từ Excel.'; this.load(); }, error: e => this.fail(e, 'Không thể nhập tệp Excel.') }); }
+  importExcel(event: Event) { const input = event.target as HTMLInputElement; const file = input.files?.[0]; input.value = ''; if (!file || !this.selected || !this.canMarkAttendance(this.selected)) return; this.service.importAttendance(this.selected.classId, file).subscribe({ next: value => { this.selected = value; this.success = 'Đã nhập điểm danh từ Excel.'; this.load(); }, error: e => this.fail(e, 'Không thể nhập tệp Excel.') }); }
   async deleteClass(item: OrientationClass) { if (!this.canManage(item)) return; const confirmed = await this.dialog.confirm({ title: 'Xóa lớp hướng dẫn', message: `Xóa lớp ${item.classCode}?`, type: 'warning', confirmText: 'Xóa lớp' }); if (!confirmed) return; this.service.delete(item.classId).subscribe({ next: () => { this.selected = null; this.success = 'Đã xóa lớp hướng dẫn.'; this.load(); }, error: e => this.fail(e, 'Không thể xóa lớp.') }); }
   statusLabel(status: string) { return ({ SCHEDULED: 'Đã lên lịch', COMPLETED: 'Đã hoàn tất', ASSIGNED: 'Chưa điểm danh', ATTENDED: 'Có mặt', ABSENT: 'Vắng', EXCUSED: 'Vắng có phép' } as any)[status] || status; }
+  cardLabel(status?: string | null): string {
+    return ({ ACTIVE: 'Thẻ hoạt động', LOCKED: 'Thẻ bị khóa', EXPIRED: 'Thẻ hết hạn' } as Record<string, string>)[status ?? ''] || 'Chưa cấp thẻ';
+  }
   private monday(date: Date) { const d = new Date(date); const day = d.getDay() || 7; d.setDate(d.getDate() - day + 1); d.setHours(0,0,0,0); return d; }
   private orientationRange() { if (!this.form.date || !this.form.startTime || !this.form.endTime || this.form.endTime <= this.form.startTime) return null; return { startAt: `${this.form.date}T${this.form.startTime}:00`, endAt: `${this.form.date}T${this.form.endTime}:00` }; }
   private localDate(value: Date) { const local = new Date(value.getTime() - value.getTimezoneOffset() * 60000); return local.toISOString().slice(0,10); }

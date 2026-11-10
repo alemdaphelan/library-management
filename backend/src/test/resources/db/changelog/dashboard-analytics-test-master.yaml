@@ -12,6 +12,19 @@ databaseChangeLog:
               - column:
                   name: author
                   type: text
+  - changeSet:
+      id: test-analytics-book-category-prerequisite
+      author: test
+      changes:
+        - addColumn:
+            tableName: books
+            columns:
+              - column:
+                  name: category_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_test_analytics_book_category
+                    references: categories(category_id)
   - include:
       file: db/changelog/changesets/33-circulation-business-timestamps.yaml
   - include:

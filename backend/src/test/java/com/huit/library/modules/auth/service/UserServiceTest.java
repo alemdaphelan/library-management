@@ -40,10 +40,10 @@ class UserServiceTest {
         UserEntity result = service.createStudent(request("20012345", "student@huit.edu.vn"));
 
         assertThat(result.getRoleId()).isEqualTo("STUDENT");
-        assertThat(result.getCardStatus()).isEqualTo("ACTIVE");
+        assertThat(result.hasLibraryCard()).isFalse();
         assertThat(result.getPasswordHash()).isEqualTo("encoded");
         assertThat(result.getIsFirstLogin()).isTrue();
-        assertThat(result.getCardExpiryDate()).isNotNull();
+        assertThat(result.getCardExpiryDate()).isNull();
         verify(walletRepository).save(argThat(wallet ->
                 wallet.getUserId().equals(result.getUserId())
                         && wallet.getDepositBalance().compareTo(new BigDecimal("100000")) == 0
@@ -75,6 +75,7 @@ class UserServiceTest {
         existing.setCardStatus("ACTIVE");
 
         when(repository.findByMssv("20012345")).thenReturn(Optional.of(existing));
+        when(repository.findByMssvAndUserType("20012345", "STUDENT")).thenReturn(Optional.of(existing));
         when(repository.findByEmail("student@huit.edu.vn")).thenReturn(Optional.of(existing));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -93,8 +94,25 @@ class UserServiceTest {
                 eq(userId), eq("CIRCULATION_UNLOCKED"), anyString(), eq("USER"), eq(userId.toString()), anyString(), any());
     }
 
+    @Test
+    void refusesFirstIssueViaStudentCrudButAllowsProfileUpdates() {
+        UserRepository repository = mock(UserRepository.class);
+        UserEntity pending = new UserEntity();
+        pending.setUserId(UUID.randomUUID());
+        when(repository.findByMssvAndUserType("20012345", "STUDENT")).thenReturn(Optional.of(pending));
+        when(repository.save(pending)).thenReturn(pending);
+        UserService service = new UserService(
+                repository, mock(PasswordEncoder.class), mock(WalletRepository.class), BigDecimal.ZERO);
+        var bypass = new StudentUpsertRequestDTO("20012345", "Nguyễn Văn A", "student@huit.edu.vn",
+                "CNTT", null, "ACTIVE", null);
+
+        assertThatThrownBy(() -> service.createStudent(bypass)).hasMessageContaining("điểm danh Có mặt");
+        assertThatThrownBy(() -> service.updateStudent("20012345", bypass)).hasMessageContaining("điểm danh Có mặt");
+        assertThat(service.updateStudent("20012345", request("20012345", "student@huit.edu.vn")).hasLibraryCard()).isFalse();
+    }
+
     private StudentUpsertRequestDTO request(String mssv, String email) {
         return new StudentUpsertRequestDTO(
-                mssv, "Nguyễn Văn A", email, "CNTT", "0901234567", "ACTIVE", null);
+                mssv, "Nguyễn Văn A", email, "CNTT", "0901234567", null, null);
     }
 }

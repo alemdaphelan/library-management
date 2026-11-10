@@ -143,8 +143,9 @@
         <label>Email<input class="form-control" name="email" type="email" [(ngModel)]="form.email" required></label>
         <label>Số điện thoại<input class="form-control" name="phone" [(ngModel)]="form.phone"></label>
         <label>Khoa/Đơn vị<input class="form-control" name="department" [(ngModel)]="form.department"></label>
-        <label>Trạng thái thẻ<select class="form-control" name="cardStatus" [(ngModel)]="form.cardStatus" required><option value="ACTIVE">Hoạt động</option><option value="LOCKED">Bị khóa</option><option value="EXPIRED">Hết hạn</option></select></label>
-        <label>Ngày hết hạn thẻ<input class="form-control" name="cardExpiryDate" type="datetime-local" [(ngModel)]="form.cardExpiryDate"></label>
+        <label *ngIf="form.cardStatus">Trạng thái thẻ<select class="form-control" name="cardStatus" [(ngModel)]="form.cardStatus" required><option value="ACTIVE">Hoạt động</option><option value="LOCKED">Bị khóa</option><option value="EXPIRED">Hết hạn</option></select></label>
+        <label *ngIf="form.cardStatus">Ngày hết hạn thẻ<input class="form-control" name="cardExpiryDate" type="datetime-local" [(ngModel)]="form.cardExpiryDate"></label>
+        <p class="password-note" *ngIf="!form.cardStatus">Chưa cấp thẻ. Hệ thống tự cấp thẻ khi sinh viên được điểm danh Có mặt ở lớp hướng dẫn thư viện.</p>
         <p class="password-note" *ngIf="!editingMssv">Mật khẩu ban đầu là MSSV; sinh viên phải đổi mật khẩu ở lần đăng nhập đầu tiên.</p>
       </div>
       <div class="modal-footer"><button class="btn-outline" type="button" (click)="showForm = false">Hủy</button><button class="btn-primary" type="submit" [disabled]="saving">{{ saving ? 'Đang lưu…' : 'Lưu hồ sơ' }}</button></div>

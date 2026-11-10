@@ -722,3 +722,5 @@ Tài liệu tham khảo nền tảng:
 ## 4. Bước tiếp theo
 
 ALG-1 và ALG-2 đã hoàn thành. Bước tiếp theo là **ALG-3 — hoàn thiện Hybrid và lựa chọn trọng số trên Validation**. Không dùng Test để chọn trọng số và không diễn giải các chỉ số ALG-2 hiện tại như một kết luận thống kê vì nhóm đánh giá mới chỉ có một người dùng.
+
+Đã có [benchmark pilot với mốc thời gian chung](BENCHMARK_GOI_Y_KHOA_LUAN.md) cho Hybrid, baseline và các biến thể bỏ tín hiệu. Lượt chạy local ngày 08 tháng 11 năm 2026 chưa có sinh viên đủ điều kiện chấm Validation hoặc Test. ALG-3 và ALG-4 vẫn cần tập lịch sử mượn phù hợp để chốt trọng số và kết luận.

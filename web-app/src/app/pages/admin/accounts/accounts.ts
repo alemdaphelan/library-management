@@ -124,7 +124,7 @@ export class Accounts implements OnInit {
     const keyword = this.searchTerm.trim().toLocaleLowerCase('vi');
     return this.students.filter(student => {
       const matchesStatus = !this.statusFilter
-        || (this.statusFilter === 'UNISSUED' ? !student.cardStatus : student.cardStatus === this.statusFilter);
+        || (this.statusFilter === 'UNISSUED' ? !student.cardStatus?.trim() : student.cardStatus === this.statusFilter);
       const text = `${student.fullName} ${student.mssv} ${student.email} ${student.department || ''}`.toLocaleLowerCase('vi');
       return matchesStatus && (!keyword || text.includes(keyword));
     });
@@ -147,8 +147,8 @@ export class Accounts implements OnInit {
       email: student.email,
       department: student.department || '',
       phone: student.phone || '',
-      cardStatus: (student.cardStatus as StudentUpsert['cardStatus']) || 'ACTIVE',
-      cardExpiryDate: student.cardExpiryDate ? student.cardExpiryDate.slice(0, 16) : null
+      cardStatus: (student.cardStatus?.trim() as StudentUpsert['cardStatus']) || null,
+      cardExpiryDate: student.cardStatus?.trim() && student.cardExpiryDate ? student.cardExpiryDate.slice(0, 16) : null
     };
     this.showForm = true;
     this.clearMessages();
@@ -166,7 +166,7 @@ export class Accounts implements OnInit {
       next: () => {
         this.saving = false;
         this.showForm = false;
-        this.successMessage = this.editingMssv ? 'Đã cập nhật hồ sơ bạn đọc.' : 'Đã tạo tài khoản sinh viên.';
+        this.successMessage = this.editingMssv ? 'Đã cập nhật hồ sơ bạn đọc.' : 'Đã tạo tài khoản. Sinh viên sẽ được cấp thẻ sau khi tham dự lớp hướng dẫn.';
         this.loadStudents();
       },
       error: err => {
@@ -197,7 +197,7 @@ export class Accounts implements OnInit {
   }
 
   private emptyForm(): StudentUpsert {
-    return { mssv: '', fullName: '', email: '', department: '', phone: '', cardStatus: 'ACTIVE', cardExpiryDate: null };
+    return { mssv: '', fullName: '', email: '', department: '', phone: '', cardStatus: null, cardExpiryDate: null };
   }
 
   private clearMessages() {

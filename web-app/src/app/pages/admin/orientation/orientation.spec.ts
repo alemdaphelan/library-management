@@ -71,4 +71,21 @@ describe('Orientation', () => {
 
     expect(component.showForm).toBe(false);
   });
+
+  it('permits attendance after class starts and displays the updated card status', () => {
+    const enrollment = { enrollmentId: 1, student: { userId: 'student-id', fullName: 'Sinh viên A' }, status: 'ASSIGNED' };
+    component.openClass(orientationClass);
+    component.setAttendance(enrollment, 'ATTENDED');
+    expect(service.attendance).not.toHaveBeenCalled();
+
+    const started = { ...orientationClass, startAt: '2000-01-01T08:00:00', enrolledCount: 1, enrollments: [enrollment] };
+    const activated = { ...started, status: 'COMPLETED', enrollments: [{ ...enrollment, status: 'ATTENDED', cardStatus: 'ACTIVE' }] };
+    service.attendance.mockReturnValueOnce(of(activated));
+    service.list.mockReturnValueOnce(of([activated]));
+    component.openClass(started);
+    component.setAttendance(enrollment, 'ATTENDED');
+
+    expect(service.attendance).toHaveBeenCalledWith(1, [{ userId: 'student-id', status: 'ATTENDED', note: '' }]);
+    expect(fixture.nativeElement.textContent).toContain('Thẻ hoạt động');
+  });
 });

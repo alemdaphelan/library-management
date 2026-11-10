@@ -10,6 +10,8 @@ import lombok.EqualsAndHashCode;
 @Entity
 @Table(name = "categories")
 public class CategoryEntity extends BaseEntity {
+    public static final String GENERAL_EDUCATION = "Giáo dục đại cương";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long categoryId;

@@ -22,7 +22,7 @@ public class HoldingsAnalyticsService {
     public DetailPage<DigitalAsset> assets(Kind kind,long id,int page,int size){page(page,size);repository.requireMaterial(kind,id,false);return new DetailPage<>(now(),CirculationAnalyticsService.TIMEZONE,kind,id,page,size,repository.assetCount(kind,id),repository.assets(kind,id,page,size));}
     private Filter filter(String faculty,String major,MaterialType type,State state){
         faculty=clean(faculty);major=clean(major);var catalog=repository.catalog();
-        if(faculty!=null&&!faculty.equals("UNCLASSIFIED")){String id=faculty;if(catalog.faculties().stream().noneMatch(f->f.facultyId().equals(id)))throw bad("Khoa không thuộc danh mục");}
+        if(faculty!=null&&!faculty.equals("UNCLASSIFIED")&&!faculty.equals(HoldingsAnalyticsRepository.GENERAL_GROUP)){String id=faculty;if(catalog.faculties().stream().noneMatch(f->f.facultyId().equals(id)))throw bad("Khoa không thuộc danh mục");}
         if(major!=null&&!major.equals("UNCLASSIFIED")){String id=major;var m=catalog.majors().stream().filter(a->a.majorId().equals(id)).findFirst().orElseThrow(()->bad("Ngành không thuộc danh mục"));if(faculty!=null&&!faculty.equals(m.facultyId()))throw bad("Ngành không thuộc khoa đã chọn");}
         if("UNCLASSIFIED".equals(major)&&faculty!=null&&!faculty.equals("UNCLASSIFIED"))throw bad("Chưa phân loại không có khoa xác định");
         return new Filter(faculty,major,type==null?MaterialType.ALL:type,state==null?State.ALL:state);

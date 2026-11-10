@@ -77,7 +77,7 @@ export interface StudentUpsert {
   email: string;
   department?: string;
   phone?: string;
-  cardStatus: 'ACTIVE' | 'LOCKED' | 'EXPIRED';
+  cardStatus?: 'ACTIVE' | 'LOCKED' | 'EXPIRED' | null;
   cardExpiryDate?: string | null;
 }
 

@@ -100,6 +100,26 @@ class DashboardAnalyticsIntegrationTest {
         assertThat(r.totals().materials()).isEqualTo(1);assertThat(r.totals().unmappedMaterials()).isEqualTo(1);assertThat(r.faculties().get(0).facultyId()).isEqualTo("UNCLASSIFIED");
         assertThat(holdings.materials("B12_A",null,MaterialType.ALL,State.ALL,0,25).totalMaterials()).isZero();
     }
+
+    @Test void generalEducationIsReportedOnceOutsideFacultiesAndUnclassified() {
+        long shared = book("Đại số tuyến tính", false);
+        long category = jdbc.queryForObject("INSERT INTO categories(name) VALUES ('Giáo dục đại cương') RETURNING category_id", Long.class);
+        jdbc.update("UPDATE books SET category_id=? WHERE book_id=?", category, shared);
+        book("Sách chưa gán ngành", false);
+
+        var totals = holdings.summary(null, null, MaterialType.ALL, State.ALL);
+        assertThat(totals.totals().unmappedMaterials()).isEqualTo(1);
+        assertThat(totals.faculties()).extracting(Group::facultyId).containsExactlyInAnyOrder("GENERAL_EDUCATION", "UNCLASSIFIED");
+        var sharedOnly = holdings.summary("GENERAL_EDUCATION", null, MaterialType.ALL, State.ALL);
+        assertThat(sharedOnly.totals().materials()).isEqualTo(1);
+        assertThat(sharedOnly.majors()).extracting(Group::majorId).containsExactly("GENERAL_EDUCATION");
+        assertThat(holdings.materials("GENERAL_EDUCATION", null, MaterialType.ALL, State.ALL, 0, 25).materials())
+                .singleElement().satisfies(item -> {
+                    assertThat(item.id()).isEqualTo(shared);
+                    assertThat(item.mappingStatus()).isEqualTo("GENERAL_EDUCATION");
+                    assertThat(item.majors()).isEmpty();
+                });
+    }
     @Test void multiMajorAndHybridResourcesDoNotMultiplyGlobalOrFacultyCounts(){
         long b=book("Hybrid",false);copy(b,"AVAILABLE");copy(b,"BORROWING");copy(b,"LOST");file(b,"file-1");file(b,"file-2");
         file(null,"standalone");long digital=book("Digital",true);file(digital,"file-3");

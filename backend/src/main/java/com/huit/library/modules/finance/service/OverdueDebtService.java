@@ -60,7 +60,9 @@ public class OverdueDebtService {
             if (user == null) {
                 continue;
             }
-            user.setCardStatus("LOCKED");
+            if (user.hasLibraryCard()) {
+                user.setCardStatus("LOCKED");
+            }
             user.setCirculationLockedUntil(null);
             user.setCirculationLockReason(OVERDUE_DEBT_LOCK_REASON);
             userRepository.save(user);

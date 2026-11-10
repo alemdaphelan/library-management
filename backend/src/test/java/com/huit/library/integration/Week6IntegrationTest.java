@@ -56,6 +56,8 @@ import com.huit.library.modules.digital.dto.DigitalAssetResponseDTO;
 import com.huit.library.modules.digital.repository.DigitalDocumentRepository;
 import com.huit.library.modules.digital.repository.DigitalUsageLogRepository;
 import com.huit.library.modules.digital.service.DigitalAssetService;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -76,6 +78,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.net.URI;
@@ -252,13 +256,18 @@ class Week6IntegrationTest {
     }
 
     @Test
-    void week7DigitalAssetPersistsFileMetadataAndUsageOnPostgres() {
+    void week7DigitalAssetPersistsFileMetadataAndUsageOnPostgres() throws IOException {
         UserEntity librarian = createUser("librarian-digital");
         BookEntity book = createBook();
         Long documentId = null;
         try {
+            ByteArrayOutputStream pdf = new ByteArrayOutputStream();
+            try (PDDocument document = new PDDocument()) {
+                document.addPage(new PDPage());
+                document.save(pdf);
+            }
             MockMultipartFile file = new MockMultipartFile(
-                    "file", "week7.pdf", "application/pdf", "%PDF-week7".getBytes());
+                    "file", "week7.pdf", "application/pdf", pdf.toByteArray());
 
             DigitalAssetResponseDTO uploaded = digitalAssetService.upload(
                     file, book.getBookId(), "AUTHENTICATED", librarian.getUserId());

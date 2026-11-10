@@ -3,6 +3,7 @@ package com.huit.library.modules.catalog.service;
 import com.huit.library.modules.catalog.dto.BookResponseDTO;
 import com.huit.library.modules.catalog.entity.BookCopyEntity;
 import com.huit.library.modules.catalog.entity.BookEntity;
+import com.huit.library.modules.catalog.entity.CategoryEntity;
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.repository.BookRepository;
 import com.huit.library.modules.catalog.repository.CategoryRepository;
@@ -259,8 +260,14 @@ public class BookService {
     }
 
     private String resolveDepartment(BookEntity book) {
+        if (book.getCategory() != null && CategoryEntity.GENERAL_EDUCATION.equals(book.getCategory().getName())) {
+            return "Giáo dục đại cương · Dùng chung";
+        }
         if (book.getBookId() != null) {
-            List<String> names = bookRepository.findDepartmentNamesByBookId(book.getBookId());
+            List<String> names = bookRepository.findOfficialMajorNamesByBookId(book.getBookId());
+            if (names == null || names.isEmpty()) {
+                names = bookRepository.findDepartmentNamesByBookId(book.getBookId());
+            }
             if (names != null && !names.isEmpty()) {
                 String joined = names.stream()
                         .filter(value -> value != null && !value.isBlank())
@@ -276,7 +283,7 @@ public class BookService {
                 && !book.getCategory().getName().isBlank()) {
             return book.getCategory().getName();
         }
-        return "Tài liệu đại cương & chuyên ngành";
+        return "Chưa gán ngành";
     }
 
     private String resolveDescription(BookEntity book) {

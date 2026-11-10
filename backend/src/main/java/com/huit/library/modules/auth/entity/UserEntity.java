@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -12,6 +13,7 @@ import java.util.UUID;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
+@DynamicUpdate
 @Table(name = "users")
 public class UserEntity extends BaseEntity {
     @Id
@@ -29,6 +31,7 @@ public class UserEntity extends BaseEntity {
     private String phone;
     private String userType;
     private String cardStatus;
+    private LocalDateTime cardIssuedAt;
     private LocalDateTime cardExpiryDate;
     private Boolean disciplineFlag;
     private Integer roomViolationCount = 0;
@@ -39,4 +42,8 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime circulationLockedUntil;
     private String circulationLockReason;
     private String avatarUrl;
+
+    public boolean hasLibraryCard() {
+        return cardStatus != null && !cardStatus.isBlank();
+    }
 }

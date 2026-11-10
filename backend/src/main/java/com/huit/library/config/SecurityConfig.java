@@ -53,8 +53,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:4200,http://127.0.0.1:4200}")
-            String allowedOrigins) {
+            @Value("${app.cors.allowed-origins:http://localhost:4200,http://127.0.0.1:4200}") String allowedOrigins) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
@@ -77,27 +76,30 @@ public class SecurityConfig {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> 
-                        auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                                .requestMatchers(HttpMethod.POST,
-                                        "/api/v1/auth/login",
-                                        "/api/v1/auth/refresh-token",
-                                        "/api/v1/auth/forgot-password",
-                                        "/api/v1/auth/verify-otp",
-                                        "/api/v1/auth/reset-password").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/feedback/complaints", "/api/v1/feedback/complaints").permitAll()
-                                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
-                                .requestMatchers(HttpMethod.GET,
-                                        "/api/v1/online-payments/vnpay-return",
-                                        "/api/v1/online-payments/vnpay-ipn").permitAll()
-                                .requestMatchers(HttpMethod.POST, "/api/v1/chatbot/query").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/books", "/books/**", "/categories", "/categories/**", "/library-policy").permitAll()
-                                .anyRequest().authenticated()
-                );
+                .authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh-token",
+                                "/api/v1/auth/forgot-password",
+                                "/api/v1/auth/verify-otp",
+                                "/api/v1/auth/reset-password")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/feedback/complaints", "/api/v1/feedback/complaints")
+                        .permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/online-payments/vnpay-return",
+                                "/api/v1/online-payments/vnpay-ipn")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/chatbot/query").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/books", "/books/**", "/categories", "/categories/**",
+                                "/library-policy")
+                        .permitAll()
+                        .anyRequest().authenticated());
 
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-}  
+}

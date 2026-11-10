@@ -516,6 +516,9 @@ public class DebtLedgerService {
             user.setCardStatus("ACTIVE");
         }
         userRepository.save(user);
+        if (!user.hasLibraryCard()) {
+            return;
+        }
         notificationService.createOnce(
                 userId, "CIRCULATION_UNLOCKED",
                 "Quyền mượn, đặt giữ và gia hạn đã được khôi phục.",

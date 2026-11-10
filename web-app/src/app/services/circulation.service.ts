@@ -48,6 +48,7 @@ export interface BorrowEligibility {
   maximumItems: number;
   openItems: number;
   remainingSlots: number;
+  cardEligible?: boolean;
   eligible: boolean;
   message: string;
 }

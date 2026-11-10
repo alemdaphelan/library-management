@@ -1,6 +1,7 @@
 package com.huit.library.modules.catalog.repository;
 
 import com.huit.library.modules.catalog.entity.BookEntity;
+import com.huit.library.modules.catalog.entity.CategoryEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Modifying;
@@ -22,9 +23,14 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             WHERE profile.material_kind = 'BOOK' AND profile.material_id = b.book_id
             """;
 
+    String GENERAL_EDUCATION = "c.name = '" + CategoryEntity.GENERAL_EDUCATION + "'";
+
     // Use sourced HUIT subject affinities for books without official assignments.
     String FACULTY_FILTER = """
-            AND (:facultyId = '' OR EXISTS (SELECT 1
+            AND (:facultyId = '' OR (
+                """ + GENERAL_EDUCATION + """
+                AND EXISTS (SELECT 1 FROM academic_faculties f WHERE f.faculty_id = :facultyId)
+            ) OR EXISTS (SELECT 1
             """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
                 AND major.faculty_id = :facultyId
             ) OR (
@@ -62,12 +68,10 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     @Query("update BookEntity book set book.viewCount = coalesce(book.viewCount, 0) + 1 where book.bookId = :bookId")
     int incrementViewCount(@Param("bookId") Long bookId);
 
-    @Query(value = """
-            SELECT DISTINCT b.*
+    String CATALOG_MATCH = """
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
-            """ + FACULTY_FILTER + """
               AND (
                     :availability = ''
                     OR (:availability = 'AVAILABLE' AND EXISTS (
@@ -103,49 +107,10 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
                               )
                     )
                   )
-            """,
-            countQuery = """
-            SELECT COUNT(DISTINCT b.book_id)
-            FROM books b
-            LEFT JOIN categories c ON c.category_id = b.category_id
-            WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
-            """ + FACULTY_FILTER + """
-              AND (
-                    :availability = ''
-                    OR (:availability = 'AVAILABLE' AND EXISTS (
-                        SELECT 1 FROM book_copies available_copy
-                        WHERE available_copy.book_id = b.book_id
-                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
-                    ))
-                    OR (:availability = 'UNAVAILABLE' AND NOT EXISTS (
-                        SELECT 1 FROM book_copies available_copy
-                        WHERE available_copy.book_id = b.book_id
-                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
-                    ))
-                  )
-              AND (
-                    :query = ''
-                    OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.isbn, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.publisher, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(c.name, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR EXISTS (
-                        SELECT 1
-                        FROM book_subject_assignments assignment
-                        JOIN recommendation_subjects subject
-                          ON subject.subject_id = assignment.subject_id
-                        WHERE assignment.book_id = b.book_id
-                          AND (
-                                LOWER(subject.name) LIKE LOWER(CONCAT('%', :query, '%'))
-                                OR LOWER(COALESCE(subject.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                                OR LOWER(COALESCE(assignment.evidence, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                                OR (:subjectCode <> '' AND subject.code = :subjectCode)
-                              )
-                    )
-                  )
-            """,
+            """;
+
+    @Query(value = "SELECT b.* " + CATALOG_MATCH + FACULTY_FILTER,
+            countQuery = "SELECT COUNT(*) " + CATALOG_MATCH + FACULTY_FILTER,
             nativeQuery = true)
     Page<BookEntity> searchCatalog(
             @Param("query") String query,
@@ -193,6 +158,16 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     List<String> findDepartmentNamesByBookId(@Param("bookId") Long bookId);
 
     @Query(value = """
+            SELECT DISTINCT major.major_name
+            FROM material_classifications profile
+            JOIN material_major_assignments assignment ON assignment.profile_id = profile.profile_id
+            JOIN academic_majors major ON major.major_id = assignment.major_id
+            WHERE profile.material_kind = 'BOOK' AND profile.material_id = :bookId
+            ORDER BY major.major_name
+            """, nativeQuery = true)
+    List<String> findOfficialMajorNamesByBookId(@Param("bookId") Long bookId);
+
+    @Query(value = """
             SELECT DISTINCT assignment.book_id
             FROM book_subject_assignments assignment
             JOIN department_subject_affinities affinity
@@ -202,80 +177,38 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             """, nativeQuery = true)
     List<Long> findBookIdsWithActiveDepartmentMapping();
 
-    @Query(value = """
-            SELECT DISTINCT b.*
-            FROM books b
-            JOIN book_subject_assignments assignment ON assignment.book_id = b.book_id
-            JOIN recommendation_subjects assigned_subject
-              ON assigned_subject.subject_id = assignment.subject_id
-            JOIN department_subject_affinities affinity
-              ON affinity.subject_id = assignment.subject_id
-             AND affinity.active = TRUE
-            WHERE affinity.department_key = :departmentKey
-              AND (:categoryId IS NULL OR b.category_id = :categoryId)
-            """ + FACULTY_FILTER + """
-              AND (
-                    :availability = ''
-                    OR (:availability = 'AVAILABLE' AND EXISTS (
-                        SELECT 1 FROM book_copies available_copy
-                        WHERE available_copy.book_id = b.book_id
-                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
-                    ))
-                    OR (:availability = 'UNAVAILABLE' AND NOT EXISTS (
-                        SELECT 1 FROM book_copies available_copy
-                        WHERE available_copy.book_id = b.book_id
-                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
-                    ))
-                  )
-              AND (
-                    :query = ''
-                    OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.isbn, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.publisher, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(assigned_subject.name) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(assigned_subject.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR (:subjectCode <> '' AND assigned_subject.code = :subjectCode)
-                  )
-            """,
-            countQuery = """
-            SELECT COUNT(DISTINCT b.book_id)
-            FROM books b
-            JOIN book_subject_assignments assignment ON assignment.book_id = b.book_id
-            JOIN recommendation_subjects assigned_subject
-              ON assigned_subject.subject_id = assignment.subject_id
-            JOIN department_subject_affinities affinity
-              ON affinity.subject_id = assignment.subject_id
-             AND affinity.active = TRUE
-            WHERE affinity.department_key = :departmentKey
-              AND (:categoryId IS NULL OR b.category_id = :categoryId)
-            """ + FACULTY_FILTER + """
-              AND (
-                    :availability = ''
-                    OR (:availability = 'AVAILABLE' AND EXISTS (
-                        SELECT 1 FROM book_copies available_copy
-                        WHERE available_copy.book_id = b.book_id
-                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
-                    ))
-                    OR (:availability = 'UNAVAILABLE' AND NOT EXISTS (
-                        SELECT 1 FROM book_copies available_copy
-                        WHERE available_copy.book_id = b.book_id
-                          AND UPPER(COALESCE(available_copy.status, '')) = 'AVAILABLE'
-                    ))
-                  )
-              AND (
-                    :query = ''
-                    OR LOWER(COALESCE(b.title, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.author, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.isbn, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.publisher, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(b.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(assigned_subject.name) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR LOWER(COALESCE(assigned_subject.description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
-                    OR (:subjectCode <> '' AND assigned_subject.code = :subjectCode)
-                  )
-            """,
+    // Official assignments override inferred subjects. Shared books do not need a major assignment.
+    String MAJOR_KEY = """
+            btrim(regexp_replace(translate(lower(regexp_replace(
+                normalize(major.major_name, NFD), U&'[\\0300-\\036f]', '', 'g')), 'đ', 'd'), '[^a-z0-9]+', ' ', 'g'))
+            """;
+    String DEPARTMENT_FILTER = """
+            AND ((
+                """ + GENERAL_EDUCATION + """
+                AND (EXISTS (SELECT 1 FROM department_subject_affinities affinity
+                             WHERE affinity.active AND affinity.department_key = :departmentKey)
+                     OR EXISTS (SELECT 1 FROM academic_majors major
+                                WHERE major.major_code = :departmentKey OR (""" + MAJOR_KEY + """
+                                    = :departmentKey)))
+            ) OR EXISTS (SELECT 1
+            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
+                AND (major.major_code = :departmentKey OR (""" + MAJOR_KEY + """
+                    = :departmentKey))
+            ) OR (
+                NOT EXISTS (SELECT 1
+            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
+                ) AND b.book_id IN (
+                    SELECT assignment.book_id
+                    FROM department_subject_affinities affinity
+                    JOIN book_subject_assignments assignment ON assignment.subject_id = affinity.subject_id
+                    JOIN recommendation_subjects subject ON subject.subject_id = affinity.subject_id AND subject.active
+                    WHERE affinity.active AND affinity.department_key = :departmentKey
+                )
+            ))
+            """;
+
+    @Query(value = "SELECT b.* " + CATALOG_MATCH + FACULTY_FILTER + DEPARTMENT_FILTER,
+            countQuery = "SELECT COUNT(*) " + CATALOG_MATCH + FACULTY_FILTER + DEPARTMENT_FILTER,
             nativeQuery = true)
     Page<BookEntity> searchByDepartment(
             @Param("departmentKey") String departmentKey,

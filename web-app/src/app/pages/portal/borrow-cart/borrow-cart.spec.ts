@@ -28,6 +28,18 @@ describe('Borrow cart request completion', () => {
   });
   afterEach(()=>{fixture.destroy();sessionStorage.removeItem(key);vi.useRealTimers();});
 
+  it('blocks reservation while the reader is waiting for card activation', async () => {
+    api.getMyBorrowEligibility.mockReturnValueOnce(of({maximumItems: 3, openItems: 0, remainingSlots: 3,
+      eligible: false, cardEligible: false, message: 'Vui lòng hoàn thành lớp hướng dẫn thư viện'}));
+    component.loadEligibility();
+    await fixture.whenStable();
+
+    component.submit();
+    expect(api.reserveBooks).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.submit-button').disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('.eligibility-note').textContent).toContain('lớp hướng dẫn');
+  });
+
   it('shows a valid delayed response without waiting for another request, completion or user click',async()=>{
     const pending=new Subject<BatchBorrowResponse>();api.reserveBooks.mockReturnValueOnce(pending);
     component.submit();component.submit();expect(api.reserveBooks).toHaveBeenCalledTimes(1);expect(component.isSubmitting).toBe(true);

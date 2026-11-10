@@ -109,6 +109,9 @@ public class LibrarianQrService {
     }
 
     public QrPayloadResponseDTO issueCardPayload(UserEntity requester) {
+        if (!requester.hasLibraryCard()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Thẻ thư viện chưa được cấp");
+        }
         return issue("USER_CARD", requester.getUserId().toString(), requester.getUserId());
     }
 

@@ -108,7 +108,8 @@ public class DatabaseSeeder implements CommandLineRunner {
             "  ('Kinh tế', 'Sách kinh tế, tài chính, quản trị'), " +
             "  ('Lịch sử', 'Sách lịch sử, văn hóa xã hội'), " +
             "  ('Kỹ năng sống', 'Sách kỹ năng sống, phát triển bản thân'), " +
-            "  ('Văn học', 'Sách văn học, tiểu thuyết, truyện ngắn') " +
+            "  ('Văn học', 'Sách văn học, tiểu thuyết, truyện ngắn'), " +
+            "  ('Giáo dục đại cương', 'Tài liệu nền tảng dùng chung cho các khoa và ngành') " +
             ") AS v(name, description) " +
             "WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE c.name = v.name)";
         entityManager.createNativeQuery(insertQuery).executeUpdate();
@@ -116,12 +117,12 @@ public class DatabaseSeeder implements CommandLineRunner {
         // 2. Chuyển hướng các sách đang trỏ vào category cũ/rác sang category 'Khoa học' để tránh lỗi Foreign Key
         entityManager.createNativeQuery(
             "UPDATE books SET category_id = (SELECT category_id FROM categories WHERE name = 'Khoa học' LIMIT 1) " +
-            "WHERE category_id IN (SELECT category_id FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học'))"
+            "WHERE category_id IN (SELECT category_id FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học', 'Giáo dục đại cương'))"
         ).executeUpdate();
 
         // 3. Xóa các category rác không thuộc danh sách chuẩn
         entityManager.createNativeQuery(
-            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học')"
+            "DELETE FROM categories WHERE name NOT IN ('Khoa học', 'Tình cảm', 'Hành động', 'Công nghệ thông tin', 'Kinh tế', 'Lịch sử', 'Kỹ năng sống', 'Văn học', 'Giáo dục đại cương')"
         ).executeUpdate();
     }
 

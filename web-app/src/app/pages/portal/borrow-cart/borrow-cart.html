@@ -78,7 +78,7 @@
         <button type="button" (click)="unlockAfterReview()" [disabled]="isSubmitting">Tôi đã kiểm tra lịch sử, mở lại giỏ</button>
       </div>
 
-      <button type="button" class="submit-button" (click)="submit()" [attr.aria-busy]="isSubmitting" [disabled]="isSubmitting || requiresReview || isCheckingEligibility || (eligibility !== null && items.length > eligibility.remainingSlots)">
+      <button type="button" class="submit-button" (click)="submit()" [attr.aria-busy]="isSubmitting" [disabled]="isSubmitting || requiresReview || isCheckingEligibility || eligibility?.cardEligible === false || (eligibility !== null && items.length > eligibility.remainingSlots)">
         {{ isSubmitting ? 'Đang tạo phiếu...' : (isCheckingEligibility ? 'Đang kiểm tra hạn mức...' : 'Tạo một phiếu cho ' + items.length + ' tài liệu') }}
       </button>
     </section>

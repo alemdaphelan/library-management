@@ -60,9 +60,10 @@ public class UserService {
 
     @Transactional
     public UserEntity createStudent(StudentUpsertRequestDTO request) {
+        requireNoCardChangesBeforeOrientation(request);
         ensureUnique(request.mssv(), request.email(), null);
         UserEntity student = new UserEntity();
-        apply(student, request, true);
+        applyProfile(student, request);
         student.setUserType("STUDENT");
         student.setRoleId("STUDENT");
         student.setPasswordHash(passwordEncoder.encode(student.getMssv()));
@@ -75,10 +76,20 @@ public class UserService {
 
     @Transactional
     public UserEntity updateStudent(String mssv, StudentUpsertRequestDTO request) {
-        UserEntity existing = getStudentByMssv(mssv);
+        UserEntity existing = userRepository.findByMssvAndUserType(mssv, "STUDENT")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên"));
         String previousCardStatus = existing.getCardStatus();
+        if (!existing.hasLibraryCard()) {
+            requireNoCardChangesBeforeOrientation(request);
+        }
         ensureUnique(request.mssv(), request.email(), existing);
-        apply(existing, request, false);
+        applyProfile(existing, request);
+        if (request.cardStatus() != null) {
+            existing.setCardStatus(request.cardStatus());
+        }
+        if (request.cardExpiryDate() != null) {
+            existing.setCardExpiryDate(request.cardExpiryDate());
+        }
         UserEntity saved = userRepository.save(existing);
         notifyCardStatusChangeIfNeeded(saved, previousCardStatus);
         return saved;
@@ -146,13 +157,8 @@ public class UserService {
                 userRepository.save(existing);
                 ensureWallet(existing);
             } else {
-                // Create new
-                uniUser.setUserType("STUDENT");
-                uniUser.setRoleId("STUDENT");
-                uniUser.setPasswordHash(passwordEncoder.encode(uniUser.getMssv()));
-                uniUser.setIsFirstLogin(true);
-                uniUser = userRepository.save(uniUser);
-                ensureWallet(uniUser);
+                createStudent(new StudentUpsertRequestDTO(uniUser.getMssv(), uniUser.getFullName(),
+                        uniUser.getEmail(), uniUser.getDepartment(), uniUser.getPhone(), null, null));
             }
         }
     }
@@ -168,17 +174,18 @@ public class UserService {
         walletRepository.save(wallet);
     }
 
-    private void apply(UserEntity student, StudentUpsertRequestDTO request, boolean creating) {
+    private void applyProfile(UserEntity student, StudentUpsertRequestDTO request) {
         student.setMssv(request.mssv().trim());
         student.setFullName(request.fullName().trim());
         student.setEmail(request.email().trim().toLowerCase());
         student.setDepartment(trimToNull(request.department()));
         student.setPhone(trimToNull(request.phone()));
-        student.setCardStatus(request.cardStatus() == null ? "ACTIVE" : request.cardStatus());
-        if (request.cardExpiryDate() != null) {
-            student.setCardExpiryDate(request.cardExpiryDate());
-        } else if (creating) {
-            student.setCardExpiryDate(LocalDateTime.now().plusYears(1));
+    }
+
+    private void requireNoCardChangesBeforeOrientation(StudentUpsertRequestDTO request) {
+        if (request.cardStatus() != null || request.cardExpiryDate() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Thẻ chỉ được cấp khi sinh viên được điểm danh Có mặt tại lớp hướng dẫn thư viện");
         }
     }
 

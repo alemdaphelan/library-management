@@ -2,6 +2,7 @@ package com.huit.library.modules.circulation.service;
 
 import com.huit.library.modules.catalog.repository.BookCopyRepository;
 import com.huit.library.modules.catalog.entity.BookCopyEntity;
+import com.huit.library.modules.auth.entity.UserEntity;
 import com.huit.library.modules.auth.repository.UserRepository;
 import com.huit.library.modules.circulation.dto.CheckoutRequestDTO;
 import com.huit.library.modules.circulation.dto.BorrowEligibilityDTO;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class CirculationStateService {
+    private static final String ORIENTATION_REQUIRED = "Thẻ thư viện chưa được cấp. Vui lòng hoàn thành lớp hướng dẫn thư viện";
     private final LoanTicketRepository loanTicketRepository;
     private final LoanDetailRepository loanDetailRepository;
     private final LoanStatusHistoryRepository historyRepository;
@@ -268,13 +270,15 @@ public class CirculationStateService {
         BorrowingValuePolicyService.BorrowingValueSnapshot valueSnapshot = borrowingValuePolicyService.getSnapshot(
                 userId,
                 requestedBookId == null ? List.of() : List.of(requestedBookId));
-        boolean eligible = remainingSlots > 0 && valueSnapshot.eligible();
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
+        String cardBlock = cardBlockReason(user, LocalDateTime.now());
         String itemMessage = remainingSlots > 0
                 ? "Bạn còn có thể đăng ký " + remainingSlots + " tài liệu."
                 : "Bạn đã đủ " + maximumOpenItems
                         + " tài liệu đang chờ duyệt, chờ nhận hoặc đang mượn. "
                         + "Hãy trả hoặc hủy một tài liệu trước khi đăng ký tiếp.";
-        String message = remainingSlots <= 0 ? itemMessage : valueSnapshot.message();
+        String message = cardBlock != null ? cardBlock : (remainingSlots <= 0 ? itemMessage : valueSnapshot.message());
         return BorrowEligibilityDTO.builder()
                 .maximumItems(maximumOpenItems)
                 .openItems(openItems)
@@ -286,7 +290,8 @@ public class CirculationStateService {
                 .remainingBorrowingValue(valueSnapshot.remainingBorrowingValue())
                 .priceKnown(valueSnapshot.priceKnown())
                 .monetaryEligible(valueSnapshot.eligible())
-                .eligible(eligible)
+                .cardEligible(cardBlock == null)
+                .eligible(cardBlock == null && remainingSlots > 0 && valueSnapshot.eligible())
                 .message(message)
                 .build();
     }
@@ -643,19 +648,10 @@ public class CirculationStateService {
         var user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
-        if (Boolean.TRUE.equals(user.getDisciplineFlag())
-                || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Thẻ thư viện đang bị khóa");
-        }
         LocalDateTime now = LocalDateTime.now();
-        if (user.getCardStatus() != null && !"ACTIVE".equalsIgnoreCase(user.getCardStatus())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Thẻ thư viện không ở trạng thái hoạt động");
-        }
-        if (user.getCardExpiryDate() != null && user.getCardExpiryDate().isBefore(now)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Thẻ thư viện đã hết hạn");
+        String cardBlock = cardBlockReason(user, now);
+        if (cardBlock != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, cardBlock);
         }
         boolean hasDebt = walletRepository.findByUserId(userId)
                 .map(wallet -> wallet.getTotalDebt() != null && wallet.getTotalDebt().signum() > 0)
@@ -691,6 +687,20 @@ public class CirculationStateService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Bạn đọc đang có tài liệu quá hạn nên không thể mượn thêm");
         }
+    }
+
+    private String cardBlockReason(UserEntity user, LocalDateTime now) {
+        if (!user.hasLibraryCard()) {
+            return ORIENTATION_REQUIRED;
+        }
+        if (Boolean.TRUE.equals(user.getDisciplineFlag()) || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
+            return "Thẻ thư viện đang bị khóa";
+        }
+        if ("EXPIRED".equalsIgnoreCase(user.getCardStatus())
+                || (user.getCardExpiryDate() != null && user.getCardExpiryDate().isBefore(now))) {
+            return "Thẻ thư viện đã hết hạn";
+        }
+        return "ACTIVE".equalsIgnoreCase(user.getCardStatus()) ? null : "Thẻ thư viện không ở trạng thái hoạt động";
     }
 
     private List<String> normalizeBarcodes(List<String> rawBarcodes) {

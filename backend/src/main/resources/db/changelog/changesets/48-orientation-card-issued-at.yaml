@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: orientation-card-issued-at
+      author: codex
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: card_issued_at
+                  type: timestamp
+  - changeSet:
+      id: orientation-enrollment-user-reference
+      author: codex
+      changes:
+        - createIndex:
+            tableName: library_orientation_enrollments
+            indexName: idx_orientation_enrollment_user
+            columns:
+              - column: { name: user_id }
+        - addForeignKeyConstraint:
+            baseTableName: library_orientation_enrollments
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_orientation_enrollment_user
+            validate: false

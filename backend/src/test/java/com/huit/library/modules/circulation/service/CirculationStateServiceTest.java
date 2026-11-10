@@ -133,6 +133,7 @@ class CirculationStateServiceTest {
         ticket.setUserId(readerId);
         UserEntity reader = new UserEntity();
         reader.setUserId(readerId);
+        reader.setCardStatus("ACTIVE");
         when(ticketRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(ticket));
         when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
         when(detailRepository.countOpenItemsByUserId(eq(readerId), any())).thenReturn(1L);
@@ -261,6 +262,9 @@ class CirculationStateServiceTest {
     @Test
     void eligibilityCountsAllOpenItemsAndExplainsWhenLimitIsReached() {
         UUID readerId = UUID.randomUUID();
+        UserEntity reader = new UserEntity();
+        reader.setCardStatus("ACTIVE");
+        when(userRepository.findById(readerId)).thenReturn(Optional.of(reader));
         when(detailRepository.countOpenItemsByUserId(eq(readerId), any())).thenReturn(3L);
 
         var result = service.getBorrowEligibility(readerId);
@@ -272,12 +276,31 @@ class CirculationStateServiceTest {
     }
 
     @Test
+    void blocksReservationAndEligibilityUntilTheCardIsIssued() {
+        UUID readerId = UUID.randomUUID();
+        UserEntity pending = new UserEntity();
+        when(userRepository.findById(readerId)).thenReturn(Optional.of(pending));
+        when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(pending));
+
+        var eligibility = service.getBorrowEligibility(readerId);
+
+        assertThat(eligibility.isCardEligible()).isFalse();
+        assertThat(eligibility.isEligible()).isFalse();
+        assertThat(eligibility.getMessage()).contains("lớp hướng dẫn");
+        assertThatThrownBy(() -> service.ensureEligibleForReservation(readerId))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("lớp hướng dẫn");
+        assertThatThrownBy(() -> service.ensureEligibleForRenewal(readerId))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("lớp hướng dẫn");
+    }
+
+    @Test
     void approvalIsRejectedWhenReaderAlreadyHasMoreThanThreeOpenItems() {
         UUID readerId = UUID.randomUUID();
         LoanTicketEntity ticket = ticket(13L, "PENDING");
         ticket.setUserId(readerId);
         UserEntity reader = new UserEntity();
         reader.setUserId(readerId);
+        reader.setCardStatus("ACTIVE");
         when(ticketRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(ticket));
         when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
         when(detailRepository.countOpenItemsByUserId(eq(readerId), any())).thenReturn(4L);
@@ -421,6 +444,7 @@ class CirculationStateServiceTest {
         reader.setUserId(readerId);
         reader.setCardStatus("ACTIVE");
         when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
+        when(userRepository.findById(readerId)).thenReturn(Optional.of(reader));
         when(walletRepository.findByUserId(readerId)).thenReturn(Optional.empty());
         when(detailRepository.countOverdueItemsByUserId(eq(readerId), any())).thenReturn(0L);
         when(detailRepository.countOpenItemsByUserId(

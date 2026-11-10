@@ -463,7 +463,9 @@ class _BorrowedScreenState extends State<BorrowedScreen> {
             openItems: openItems,
             maximumItems: maxItems,
             remainingSlots: remainingSlots,
-            cardStatus: _userProfile?['cardStatus']?.toString() ?? 'ACTIVE',
+            cardStatus: _userProfile == null
+                ? 'Chưa tải trạng thái thẻ'
+                : (_userProfile?['cardStatus']?.toString() ?? 'Chưa cấp thẻ'),
           ),
         ],
       ),
