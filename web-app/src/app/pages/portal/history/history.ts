@@ -1,4 +1,11 @@
-import { Component, OnInit, ChangeDetectorRef, HostListener, DestroyRef, inject } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  ChangeDetectorRef,
+  HostListener,
+  DestroyRef,
+  inject,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -52,7 +59,7 @@ export interface LoanTicketGroup extends LoanItem {
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './history.html',
-  styleUrls: ['./history.css']
+  styleUrls: ['./history.css'],
 })
 export class History implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
@@ -118,7 +125,7 @@ export class History implements OnInit {
 
   private loadPolicy(): void {
     this.policyService.getPublicPolicy().subscribe({
-      next: policy => {
+      next: (policy) => {
         this.maximumRenewalCount = policy.maximumRenewalCount;
         this.renewalDays = policy.renewalDays;
         this.policyLoaded = true;
@@ -126,7 +133,8 @@ export class History implements OnInit {
       },
       error: () => {
         this.policyLoaded = false;
-        this.errorMessage = this.errorMessage || 'Không thể tải quy định gia hạn. Vui lòng tải lại trang.';
+        this.errorMessage =
+          this.errorMessage || 'Không thể tải quy định gia hạn. Vui lòng tải lại trang.';
         this.cdr.detectChanges();
       },
     });
@@ -135,12 +143,26 @@ export class History implements OnInit {
   get outstandingDebt(): number {
     return this.debtEntries.reduce((sum, entry) => sum + remainingDebt(entry), 0);
   }
-  get openDebtEntries():DebtEntry[]{return this.debtEntries.filter(entry=>remainingDebt(entry)>0);}
-  amountDue(entry:DebtEntry):number{return remainingDebt(entry);}
+  get openDebtEntries(): DebtEntry[] {
+    return this.debtEntries.filter((entry) => remainingDebt(entry) > 0);
+  }
+  amountDue(entry: DebtEntry): number {
+    return remainingDebt(entry);
+  }
 
   loadFinancials(): void {
-    this.penaltyService.getMyLedger().subscribe({ next: value => { this.debtEntries = value || []; this.cdr.markForCheck(); } });
-    this.penaltyService.getMyCases().subscribe({ next: value => { this.penaltyCases = value || []; this.cdr.markForCheck(); } });
+    this.penaltyService.getMyLedger().subscribe({
+      next: (value) => {
+        this.debtEntries = value || [];
+        this.cdr.markForCheck();
+      },
+    });
+    this.penaltyService.getMyCases().subscribe({
+      next: (value) => {
+        this.penaltyCases = value || [];
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   refresh(): void {
@@ -184,7 +206,7 @@ export class History implements OnInit {
           this.errorMessage = 'Không thể tải lịch sử mượn sách. Vui lòng thử lại sau!';
         }
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -195,7 +217,7 @@ export class History implements OnInit {
     const cancelled: LoanItem[] = [];
     const all: LoanItem[] = [];
 
-    items.forEach(raw => {
+    items.forEach((raw) => {
       const statusUpper = (raw.status || '').toUpperCase();
       const days = raw.daysRemaining != null ? Number(raw.daysRemaining) : null;
 
@@ -244,7 +266,7 @@ export class History implements OnInit {
         daysRemaining: days !== null ? days : undefined,
         progress,
         statusType,
-        renewalCount: raw.renewalCount != null ? Number(raw.renewalCount) : 0
+        renewalCount: raw.renewalCount != null ? Number(raw.renewalCount) : 0,
       };
 
       all.push(item);
@@ -278,13 +300,20 @@ export class History implements OnInit {
 
   private groupLoans(items: LoanItem[]): LoanTicketGroup[] {
     const byTicket = new Map<number, LoanItem[]>();
-    items.forEach(item => byTicket.set(item.ticketId, [...(byTicket.get(item.ticketId) || []), item]));
-    return [...byTicket.values()].map(ticketItems => ({
-      ...ticketItems[0],
-      bookTitle: ticketItems.length === 1 ? ticketItems[0].bookTitle : `${ticketItems.length} tài liệu trong phiếu`,
-      items: ticketItems,
-      timeGroup: this.timeGroup(ticketItems[0].createdAt),
-    })).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    items.forEach((item) =>
+      byTicket.set(item.ticketId, [...(byTicket.get(item.ticketId) || []), item]),
+    );
+    return [...byTicket.values()]
+      .map((ticketItems) => ({
+        ...ticketItems[0],
+        bookTitle:
+          ticketItems.length === 1
+            ? ticketItems[0].bookTitle
+            : `${ticketItems.length} tài liệu trong phiếu`,
+        items: ticketItems,
+        timeGroup: this.timeGroup(ticketItems[0].createdAt),
+      }))
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }
 
   private timeGroup(createdAt?: string): string {
@@ -297,7 +326,10 @@ export class History implements OnInit {
   }
 
   showTimeHeader(index: number): boolean {
-    return index === 0 || this.visibleAllList[index - 1]?.timeGroup !== this.visibleAllList[index]?.timeGroup;
+    return (
+      index === 0 ||
+      this.visibleAllList[index - 1]?.timeGroup !== this.visibleAllList[index]?.timeGroup
+    );
   }
 
   itemStatusLabel(item: LoanItem): string {
@@ -306,25 +338,51 @@ export class History implements OnInit {
     if (item.physicalReturnAt) {
       return ['DAMAGED', 'LOST', 'SETTLED'].includes(status) ? 'Đã trả · sách hỏng' : 'Đã trả';
     }
-    return ({ BORROWING: 'Đang giữ', OVERDUE: 'Quá hạn', RETURNED: 'Đã trả', DAMAGED: 'Hồ sơ hỏng · chưa xác nhận nhận lại', LOST: 'Báo mất · đang xử lý', SETTLED: 'Đã giải quyết hồ sơ', CANCELLED: 'Đã hủy', PENDING: 'Chờ nhận', RESERVED: 'Đã giữ chỗ' } as Record<string, string>)[status] || status;
+    return (
+      (
+        {
+          BORROWING: 'Đang giữ',
+          OVERDUE: 'Quá hạn',
+          RETURNED: 'Đã trả',
+          DAMAGED: 'Hồ sơ hỏng · chưa xác nhận nhận lại',
+          LOST: 'Báo mất · đang xử lý',
+          SETTLED: 'Đã giải quyết hồ sơ',
+          CANCELLED: 'Đã hủy',
+          PENDING: 'Chờ nhận',
+          RESERVED: 'Đã giữ chỗ',
+        } as Record<string, string>
+      )[status] || status
+    );
   }
 
   canRenewItem(item: LoanItem): boolean {
-    return item.status === 'BORROWING' && item.itemStatus === 'BORROWING'
-      && item.detailId != null && !item.returnDate && !item.physicalReturnAt && !item.lossReportedAt && !item.isRecalled;
+    return (
+      item.status === 'BORROWING' &&
+      item.itemStatus === 'BORROWING' &&
+      item.detailId != null &&
+      !item.returnDate &&
+      !item.physicalReturnAt &&
+      !item.lossReportedAt &&
+      !item.isRecalled
+    );
   }
 
   canReportLoss(item: LoanItem): boolean {
-    return ['BORROWING', 'OVERDUE'].includes(item.status) && item.detailId != null
-      && this.isHeldItem(item) && !item.lossReportedAt;
+    return (
+      ['BORROWING', 'OVERDUE'].includes(item.status) &&
+      item.detailId != null &&
+      this.isHeldItem(item) &&
+      !item.lossReportedAt
+    );
   }
 
   reportableItems(ticket: LoanTicketGroup): LoanItem[] {
-    return ticket.items.filter(item => this.canReportLoss(item));
+    return ticket.items.filter((item) => this.canReportLoss(item));
   }
 
   openLossReport(item: LoanItem): void {
-    if (!this.canReportLoss(item) || this.lossReportSubmitting || this.renewingTicketId !== null) return;
+    if (!this.canReportLoss(item) || this.lossReportSubmitting || this.renewingTicketId !== null)
+      return;
     this.lossReportItem = item;
     this.lossReportDescription = '';
     this.lossReportError = '';
@@ -346,51 +404,78 @@ export class History implements OnInit {
     }
     this.lossReportSubmitting = true;
     this.lossReportError = '';
-    this.circulationService.reportLoss(item.ticketId, item.detailId!, description)
-      .pipe(timeout(30_000), takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: updated => {
+    this.circulationService
+      .reportLoss(item.ticketId, item.detailId!, description)
+      .pipe(timeout(30_000), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
           this.lossReportSubmitting = false;
-          if (!updated || updated.ticketId !== item.ticketId || updated.detailId !== item.detailId
-              || !updated.lossReportedAt || Number.isNaN(Date.parse(updated.lossReportedAt))
-              || typeof updated.lossReportDescription !== 'string' || !updated.lossReportDescription.trim()) {
-            this.lossReportError = 'Chưa xác nhận được kết quả. Làm mới lịch sử để kiểm tra hoặc gửi lại báo mất.';
+          if (
+            !updated ||
+            updated.ticketId !== item.ticketId ||
+            updated.detailId !== item.detailId ||
+            !updated.lossReportedAt ||
+            Number.isNaN(Date.parse(updated.lossReportedAt)) ||
+            typeof updated.lossReportDescription !== 'string' ||
+            !updated.lossReportDescription.trim()
+          ) {
+            this.lossReportError =
+              'Chưa xác nhận được kết quả. Làm mới lịch sử để kiểm tra hoặc gửi lại báo mất.';
           } else {
-            this.processLoans(this.allList.flatMap(ticket => ticket.items).map(book =>
-              book.detailId === updated.detailId && book.ticketId === updated.ticketId ? { ...book, ...updated } : book));
+            this.processLoans(
+              this.allList
+                .flatMap((ticket) => ticket.items)
+                .map((book) =>
+                  book.detailId === updated.detailId && book.ticketId === updated.ticketId
+                    ? { ...book, ...updated }
+                    : book,
+                ),
+            );
             this.lossReportItem = null;
-            this.showToast('Đã gửi báo mất đến thủ thư. Vui lòng liên hệ thư viện để được hướng dẫn xử lý.');
+            this.showToast(
+              'Đã gửi báo mất đến thủ thư. Vui lòng liên hệ thư viện để được hướng dẫn xử lý.',
+            );
           }
           this.cdr.markForCheck();
         },
-        error: error => {
+        error: (error) => {
           this.lossReportSubmitting = false;
           const reason = error?.error?.detail ?? error?.error?.message ?? error?.error;
-          this.lossReportError = typeof reason === 'string' && reason.trim() ? reason
-            : 'Chưa xác nhận được kết quả. Mô tả được giữ lại; kiểm tra lịch sử hoặc gửi lại báo mất.';
+          this.lossReportError =
+            typeof reason === 'string' && reason.trim()
+              ? reason
+              : 'Chưa xác nhận được kết quả. Mô tả được giữ lại; kiểm tra lịch sử hoặc gửi lại báo mất.';
           this.cdr.markForCheck();
         },
       });
   }
 
   isHeldItem(item: LoanItem): boolean {
-    return ['BORROWING', 'OVERDUE'].includes(item.itemStatus || '')
-      && !item.returnDate && !item.physicalReturnAt;
+    return (
+      ['BORROWING', 'OVERDUE'].includes(item.itemStatus || '') &&
+      !item.returnDate &&
+      !item.physicalReturnAt
+    );
   }
 
   renewableItems(ticket: LoanTicketGroup): LoanItem[] {
-    return ticket.items.filter(item => this.canRenewItem(item));
+    return ticket.items.filter((item) => this.canRenewItem(item));
   }
 
   statusLabel(status: string): string {
-    return ({
-      BORROWING: 'Đang mượn',
-      OVERDUE: 'Quá hạn',
-      PENDING: 'Chờ thủ thư duyệt',
-      RESERVED: 'Chờ nhận sách',
-      RETURNED: 'Đã hoàn trả',
-      CANCELLED: 'Đã hủy',
-      REJECTED: 'Đã từ chối',
-    } as Record<string, string>)[status] || status;
+    return (
+      (
+        {
+          BORROWING: 'Đang mượn',
+          OVERDUE: 'Quá hạn',
+          PENDING: 'Chờ thủ thư duyệt',
+          RESERVED: 'Chờ nhận sách',
+          RETURNED: 'Đã hoàn trả',
+          CANCELLED: 'Đã hủy',
+          REJECTED: 'Đã từ chối',
+        } as Record<string, string>
+      )[status] || status
+    );
   }
 
   statusClass(status: string): string {
@@ -413,14 +498,16 @@ export class History implements OnInit {
           margin: 1.5,
           color: {
             dark: '#0f172a',
-            light: '#ffffff'
+            light: '#ffffff',
           },
-          errorCorrectionLevel: 'M'
-        }).then((url: string) => {
-          this.qrCodeDataUrl = url;
-          this.isGeneratingQr = false;
-          this.cdr.detectChanges();
-        }).catch((err: any) => this.handleQrError(err));
+          errorCorrectionLevel: 'M',
+        })
+          .then((url: string) => {
+            this.qrCodeDataUrl = url;
+            this.isGeneratingQr = false;
+            this.cdr.detectChanges();
+          })
+          .catch((err: any) => this.handleQrError(err));
       },
       error: (err) => this.handleQrError(err),
     });
@@ -449,9 +536,15 @@ export class History implements OnInit {
   }
 
   async renewBook(item: LoanItem): Promise<void> {
-    if (!this.canRenewItem(item) || this.renewingTicketId !== null || this.lossReportSubmitting) return;
+    if (!this.canRenewItem(item) || this.renewingTicketId !== null || this.lossReportSubmitting)
+      return;
     if (!this.policyLoaded) {
-      this.dialog.show({ title: 'Chưa tải được quy định', message: 'Vui lòng tải lại trang trước khi gia hạn.', type: 'warning', confirmText: 'Đã hiểu' });
+      this.dialog.show({
+        title: 'Chưa tải được quy định',
+        message: 'Vui lòng tải lại trang trước khi gia hạn.',
+        type: 'warning',
+        confirmText: 'Đã hiểu',
+      });
       return;
     }
     if (item.renewalCount !== undefined && item.renewalCount >= this.maximumRenewalCount) {
@@ -478,8 +571,12 @@ export class History implements OnInit {
     this.circulationService.renewLoan(item.ticketId, item.detailId).subscribe({
       next: (res: any) => {
         this.renewingTicketId = null;
-        const newDueStr = res.dueDate ? new Date(res.dueDate).toLocaleDateString('vi-VN') : `thêm ${this.renewalDays} ngày`;
-        this.showToast(`Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/${this.maximumRenewalCount})`);
+        const newDueStr = res.dueDate
+          ? new Date(res.dueDate).toLocaleDateString('vi-VN')
+          : `thêm ${this.renewalDays} ngày`;
+        this.showToast(
+          `Gia hạn thành công! Hạn trả mới: ${newDueStr} (Lần ${res.renewalCount}/${this.maximumRenewalCount})`,
+        );
         this.loadLoans();
       },
       error: (err: any) => {
@@ -491,8 +588,13 @@ export class History implements OnInit {
         } else if (err.error?.message) {
           msg = err.error.message;
         }
-        this.dialog.show({ title: 'Không thể gia hạn', message: msg, type: 'error', confirmText: 'Đóng' });
-      }
+        this.dialog.show({
+          title: 'Không thể gia hạn',
+          message: msg,
+          type: 'error',
+          confirmText: 'Đóng',
+        });
+      },
     });
   }
 
@@ -517,15 +619,20 @@ export class History implements OnInit {
       error: (err) => {
         this.cancellingTicketId = null;
         console.error('Error cancelling reservation:', err);
-        const rawMessage = typeof err?.error === 'string'
-          ? err.error
-          : (err?.error?.detail ?? err?.error?.message);
-        const msg = typeof rawMessage === 'string' && rawMessage.trim()
-          ? rawMessage
-          : 'Không thể hủy phiếu mượn vào lúc này!';
-        this.dialog.show({ title: 'Không thể hủy phiếu', message: msg, type: 'error', confirmText: 'Đóng' });
+        const rawMessage =
+          typeof err?.error === 'string' ? err.error : (err?.error?.detail ?? err?.error?.message);
+        const msg =
+          typeof rawMessage === 'string' && rawMessage.trim()
+            ? rawMessage
+            : 'Không thể hủy phiếu mượn vào lúc này!';
+        this.dialog.show({
+          title: 'Không thể hủy phiếu',
+          message: msg,
+          type: 'error',
+          confirmText: 'Đóng',
+        });
         this.loadLoans();
-      }
+      },
     });
   }
 

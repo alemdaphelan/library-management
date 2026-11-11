@@ -75,9 +75,17 @@ describe('Notifications', () => {
 
   it('opens the exact loss report in the penalty preparation screen', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    const report = { ...unread, isRead: true, type: 'LOAN_LOSS_REPORTED', referenceType: 'LOAN_LOSS_REPORT', referenceId: '48' };
+    const report = {
+      ...unread,
+      isRead: true,
+      type: 'LOAN_LOSS_REPORTED',
+      referenceType: 'LOAN_LOSS_REPORT',
+      referenceId: '48',
+    };
     component.openNotification(report);
-    expect(navigate).toHaveBeenCalledWith(['/admin/penalties'], { queryParams: { referenceType: 'LOAN_LOSS_REPORT', referenceId: '48' } });
+    expect(navigate).toHaveBeenCalledWith(['/admin/penalties'], {
+      queryParams: { referenceType: 'LOAN_LOSS_REPORT', referenceId: '48' },
+    });
     expect(component.typeLabel(report.type)).toBe('Bạn đọc báo mất sách');
     expect(component.actionLabel(report)).toBe('Tiếp nhận báo mất');
   });

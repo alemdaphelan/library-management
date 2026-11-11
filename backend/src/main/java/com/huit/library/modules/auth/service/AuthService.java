@@ -32,8 +32,9 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthService {
-    private static final java.util.regex.Pattern STRONG_PASSWORD = java.util.regex.Pattern.compile(
-            "^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9\\s]).{8,128}$");
+    private static final java.util.regex.Pattern STRONG_PASSWORD =
+            java.util.regex.Pattern.compile(
+                    "^(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9\\s]).{8,128}$");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -60,11 +61,16 @@ public class AuthService {
     private final String fromEmail;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public AuthService(AuthenticationManager authenticationManager, JwtUtils jwtUtils,
-            UserRepository userRepository, PasswordEncoder passwordEncoder,
+    public AuthService(
+            AuthenticationManager authenticationManager,
+            JwtUtils jwtUtils,
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
             com.huit.library.core.security.TokenService tokenService,
-            JavaMailSender mailSender, StringRedisTemplate redisTemplate,
-            @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}") String fromEmail) {
+            JavaMailSender mailSender,
+            StringRedisTemplate redisTemplate,
+            @org.springframework.beans.factory.annotation.Value("${spring.mail.username:}")
+                    String fromEmail) {
         this.authenticationManager = authenticationManager;
         this.jwtUtils = jwtUtils;
         this.userRepository = userRepository;
@@ -76,8 +82,10 @@ public class AuthService {
     }
 
     public JwtResponseDTO authenticateUser(LoginRequestDTO loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+        Authentication authentication =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                loginRequest.getEmail(), loginRequest.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
@@ -103,8 +111,10 @@ public class AuthService {
 
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
         ensureStrongPassword(newPassword);
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Tài khoản không tồn tại"));
+        UserEntity user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException("Tài khoản không tồn tại"));
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new IllegalArgumentException("Mật khẩu cũ không chính xác");
         }
@@ -124,14 +134,17 @@ public class AuthService {
             throw new BadCredentialsException("Invalid refresh token");
         }
 
-        UserEntity user = userRepository.findFirstByEmailOrMssv(email, email)
-                .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
+        UserEntity user =
+                userRepository
+                        .findFirstByEmailOrMssv(email, email)
+                        .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
 
-        org.springframework.security.core.userdetails.UserDetails userDetails = new com.huit.library.core.security.CustomUserDetails(
-                user);
+        org.springframework.security.core.userdetails.UserDetails userDetails =
+                new com.huit.library.core.security.CustomUserDetails(user);
 
-        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                userDetails, null, userDetails.getAuthorities());
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
 
         String newJwt = jwtUtils.generateJwtToken(authentication);
         String newRefreshToken = tokenService.generateAndStoreRefreshToken(email);
@@ -158,7 +171,8 @@ public class AuthService {
             return;
         }
 
-        UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
+        UserEntity user =
+                userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
             return;
         }
@@ -173,7 +187,9 @@ public class AuthService {
 
         // Store in Redis with 10 mins expiry under user's email and user's input key
         for (String identifier : identifiers(input, primaryEmail)) {
-            redisTemplate.opsForValue().set(OTP_PREFIX + identifier, otp, OTP_TTL_MINUTES, TimeUnit.MINUTES);
+            redisTemplate
+                    .opsForValue()
+                    .set(OTP_PREFIX + identifier, otp, OTP_TTL_MINUTES, TimeUnit.MINUTES);
             redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier);
             redisTemplate.delete(OTP_LOCK_PREFIX + identifier);
         }
@@ -183,12 +199,18 @@ public class AuthService {
         if (fromEmail != null && !fromEmail.isBlank()) {
             message.setFrom(fromEmail);
         }
-        message.setTo(user.getEmail() != null && !user.getEmail().isEmpty() ? user.getEmail() : email);
+        message.setTo(
+                user.getEmail() != null && !user.getEmail().isEmpty() ? user.getEmail() : email);
         message.setSubject("Mã xác nhận khôi phục mật khẩu – Thư viện HUIT");
-        message.setText("Xin chào " + user.getFullName() + ",\n\n" +
-                "Mã xác nhận (OTP) của bạn là: " + otp + "\n" +
-                "Mã này có hiệu lực trong 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n" +
-                "Trân trọng,\nThư viện HUIT.");
+        message.setText(
+                "Xin chào "
+                        + user.getFullName()
+                        + ",\n\n"
+                        + "Mã xác nhận (OTP) của bạn là: "
+                        + otp
+                        + "\n"
+                        + "Mã này có hiệu lực trong 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n"
+                        + "Trân trọng,\nThư viện HUIT.");
 
         try {
             // Sending before returning prevents the request from reporting success when the
@@ -218,38 +240,49 @@ public class AuthService {
             throw new IllegalArgumentException("Thông tin xác thực không hợp lệ");
         }
         String input = normalizeIdentifier(email);
-        UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
+        UserEntity user =
+                userRepository.findFirstByEmailOrMssv(email.trim(), email.trim()).orElse(null);
         String primaryEmail = user == null ? null : normalizeIdentifier(user.getEmail());
         Set<String> identifiers = identifiers(input, primaryEmail);
 
-        if (identifiers.stream().anyMatch(identifier -> Boolean.TRUE.equals(
-                redisTemplate.hasKey(OTP_LOCK_PREFIX + identifier)))) {
-            throw new IllegalArgumentException("Bạn đã nhập sai OTP quá nhiều lần. Vui lòng thử lại sau 15 phút");
+        if (identifiers.stream()
+                .anyMatch(
+                        identifier ->
+                                Boolean.TRUE.equals(
+                                        redisTemplate.hasKey(OTP_LOCK_PREFIX + identifier)))) {
+            throw new IllegalArgumentException(
+                    "Bạn đã nhập sai OTP quá nhiều lần. Vui lòng thử lại sau 15 phút");
         }
 
-        String storedOtp = identifiers.stream()
-                .map(identifier -> redisTemplate.opsForValue().get(OTP_PREFIX + identifier))
-                .filter(value -> value != null)
-                .findFirst()
-                .orElse(null);
+        String storedOtp =
+                identifiers.stream()
+                        .map(identifier -> redisTemplate.opsForValue().get(OTP_PREFIX + identifier))
+                        .filter(value -> value != null)
+                        .findFirst()
+                        .orElse(null);
 
         if (storedOtp != null && storedOtp.equals(otp.trim())) {
-            identifiers.forEach(identifier -> redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier));
+            identifiers.forEach(
+                    identifier -> redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier));
             return true;
         }
 
         String attemptIdentifier = primaryEmail == null ? input : primaryEmail;
-        Long attempts = redisTemplate.opsForValue().increment(OTP_ATTEMPTS_PREFIX + attemptIdentifier);
+        Long attempts =
+                redisTemplate.opsForValue().increment(OTP_ATTEMPTS_PREFIX + attemptIdentifier);
         if (attempts != null && attempts == 1L) {
-            redisTemplate.expire(OTP_ATTEMPTS_PREFIX + attemptIdentifier, OTP_TTL_MINUTES, TimeUnit.MINUTES);
+            redisTemplate.expire(
+                    OTP_ATTEMPTS_PREFIX + attemptIdentifier, OTP_TTL_MINUTES, TimeUnit.MINUTES);
         }
         if (attempts != null && attempts >= OTP_MAX_ATTEMPTS) {
             for (String identifier : identifiers) {
-                redisTemplate.opsForValue().set(OTP_LOCK_PREFIX + identifier, "1", OTP_LOCK_MINUTES,
-                        TimeUnit.MINUTES);
+                redisTemplate
+                        .opsForValue()
+                        .set(OTP_LOCK_PREFIX + identifier, "1", OTP_LOCK_MINUTES, TimeUnit.MINUTES);
                 redisTemplate.delete(OTP_PREFIX + identifier);
             }
-            throw new IllegalArgumentException("Bạn đã nhập sai OTP quá nhiều lần. Vui lòng thử lại sau 15 phút");
+            throw new IllegalArgumentException(
+                    "Bạn đã nhập sai OTP quá nhiều lần. Vui lòng thử lại sau 15 phút");
         }
         throw new IllegalArgumentException("Mã OTP không hợp lệ hoặc đã hết hạn");
     }
@@ -257,8 +290,10 @@ public class AuthService {
     public void resetPassword(String email, String otp, String newPassword) {
         ensureStrongPassword(newPassword);
         if (verifyOtp(email, otp)) {
-            UserEntity user = userRepository.findFirstByEmailOrMssv(email.trim(), email.trim())
-                    .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
+            UserEntity user =
+                    userRepository
+                            .findFirstByEmailOrMssv(email.trim(), email.trim())
+                            .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
             user.setPasswordHash(passwordEncoder.encode(newPassword));
             user.setIsFirstLogin(false);
             userRepository.save(user);
@@ -266,7 +301,8 @@ public class AuthService {
             sendPasswordChangedAlert(user);
 
             // Delete all password-recovery state after a successful reset.
-            for (String identifier : identifiers(normalizeIdentifier(email), normalizeIdentifier(user.getEmail()))) {
+            for (String identifier :
+                    identifiers(normalizeIdentifier(email), normalizeIdentifier(user.getEmail()))) {
                 redisTemplate.delete(OTP_PREFIX + identifier);
                 redisTemplate.delete(OTP_ATTEMPTS_PREFIX + identifier);
                 redisTemplate.delete(OTP_LOCK_PREFIX + identifier);
@@ -276,8 +312,14 @@ public class AuthService {
     }
 
     private boolean acquireResendWindow(String identifier) {
-        return !Boolean.FALSE.equals(redisTemplate.opsForValue().setIfAbsent(
-                OTP_RESEND_PREFIX + identifier, "1", OTP_RESEND_SECONDS, TimeUnit.SECONDS));
+        return !Boolean.FALSE.equals(
+                redisTemplate
+                        .opsForValue()
+                        .setIfAbsent(
+                                OTP_RESEND_PREFIX + identifier,
+                                "1",
+                                OTP_RESEND_SECONDS,
+                                TimeUnit.SECONDS));
     }
 
     private String normalizeIdentifier(String identifier) {
@@ -289,19 +331,19 @@ public class AuthService {
 
     private Set<String> identifiers(String input, String primaryEmail) {
         Set<String> identifiers = new LinkedHashSet<>();
-        if (input != null)
-            identifiers.add(input);
-        if (primaryEmail != null)
-            identifiers.add(primaryEmail);
+        if (input != null) identifiers.add(input);
+        if (primaryEmail != null) identifiers.add(primaryEmail);
         return identifiers;
     }
 
     public UserEntity getFreshUser(UUID userId) {
-        return userRepository.findById(userId)
+        return userRepository
+                .findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    public UserEntity updateProfile(UUID userId, com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
+    public UserEntity updateProfile(
+            UUID userId, com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
         UserEntity user = getFreshUser(userId);
         if (request.getFullName() != null) {
             String fullName = request.getFullName().trim();
@@ -355,18 +397,24 @@ public class AuthService {
             }
             message.setTo(user.getEmail());
             message.setSubject("Mật khẩu tài khoản đã được thay đổi – Thư viện HUIT");
-            message.setText("Xin chào " + user.getFullName() + ",\n\n"
-                    + "Mật khẩu tài khoản Thư viện HUIT của bạn đã được thay đổi lúc "
-                    + ZonedDateTime.now(LIBRARY_TIME_ZONE).format(SECURITY_EVENT_TIME) + ".\n"
-                    + "Tất cả phiên đăng nhập cũ đã bị khóa. Bạn cần đăng nhập lại bằng mật khẩu mới.\n\n"
-                    + "Nếu bạn không thực hiện thay đổi này, vui lòng liên hệ Thư viện HUIT ngay.\n\n"
-                    + "Trân trọng,\nThư viện HUIT.");
+            message.setText(
+                    "Xin chào "
+                            + user.getFullName()
+                            + ",\n\n"
+                            + "Mật khẩu tài khoản Thư viện HUIT của bạn đã được thay đổi lúc "
+                            + ZonedDateTime.now(LIBRARY_TIME_ZONE).format(SECURITY_EVENT_TIME)
+                            + ".\n"
+                            + "Tất cả phiên đăng nhập cũ đã bị khóa. Bạn cần đăng nhập lại bằng mật khẩu mới.\n\n"
+                            + "Nếu bạn không thực hiện thay đổi này, vui lòng liên hệ Thư viện HUIT ngay.\n\n"
+                            + "Trân trọng,\nThư viện HUIT.");
             mailSender.send(message);
         } catch (RuntimeException exception) {
             // Password/session security must remain effective even when the optional
             // security-alert email provider is temporarily unavailable.
-            LOGGER.warn("Không thể gửi email cảnh báo đổi mật khẩu cho {}: {}",
-                    user.getEmail(), exception.getMessage());
+            LOGGER.warn(
+                    "Không thể gửi email cảnh báo đổi mật khẩu cho {}: {}",
+                    user.getEmail(),
+                    exception.getMessage());
         }
     }
 }

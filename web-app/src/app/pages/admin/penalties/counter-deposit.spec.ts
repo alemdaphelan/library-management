@@ -19,10 +19,12 @@ describe('CounterDeposit', () => {
 
   beforeEach(() => {
     sessionStorage.removeItem(storageKey);
-    getReaderProfile.mockReset().mockReturnValue(of({
-      student: { userId: 'reader-1', mssv: '2001240001', fullName: 'Sinh viên A' },
-      card: { depositBalance: 50000, totalDebt: 30000 },
-    }));
+    getReaderProfile.mockReset().mockReturnValue(
+      of({
+        student: { userId: 'reader-1', mssv: '2001240001', fullName: 'Sinh viên A' },
+        card: { depositBalance: 50000, totalDebt: 30000 },
+      }),
+    );
     recordCashDeposit.mockReset();
     TestBed.configureTestingModule({
       imports: [CounterDeposit],
@@ -49,10 +51,18 @@ describe('CounterDeposit', () => {
     expect(request).toMatchObject({ userId: 'reader-1', amount: 50000, note: 'Quầy 1' });
     fixture.destroy();
 
-    recordCashDeposit.mockReturnValueOnce(of({
-      transactionId: 12, receiptNumber: 'COC-12', userId: 'reader-1', amount: 50000,
-      paymentMethod: 'CASH', confirmedBy: 'staff-1', paidAt: '2026-11-06T10:00:00', depositBalance: 100000,
-    }));
+    recordCashDeposit.mockReturnValueOnce(
+      of({
+        transactionId: 12,
+        receiptNumber: 'COC-12',
+        userId: 'reader-1',
+        amount: 50000,
+        paymentMethod: 'CASH',
+        confirmedBy: 'staff-1',
+        paidAt: '2026-11-06T10:00:00',
+        depositBalance: 100000,
+      }),
+    );
     fixture = mount();
     expect(recordCashDeposit).toHaveBeenCalledTimes(1);
     const retry: HTMLButtonElement = fixture.nativeElement.querySelector('button[type=submit]');

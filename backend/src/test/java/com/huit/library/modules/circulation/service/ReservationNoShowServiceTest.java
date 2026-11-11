@@ -28,18 +28,23 @@ class ReservationNoShowServiceTest {
         user.setReservationNoShowCount(2);
         LocalDateTime occurredAt = LocalDateTime.of(2026, 10, 23, 17, 1);
         when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
-        ReservationNoShowService service = new ReservationNoShowService(
-                users, notifications, 3, 3, 8, 1);
+        ReservationNoShowService service =
+                new ReservationNoShowService(users, notifications, 3, 3, 8, 1);
 
         int count = service.record(userId, occurredAt, "LOAN_TICKET", "10");
 
         assertThat(count).isEqualTo(3);
         assertThat(user.getCirculationLockedUntil()).isEqualTo(occurredAt.plusMonths(3));
         assertThat(user.getCirculationLockReason()).contains("3 lần");
-        verify(notifications).createOnce(
-                eq(userId), eq("CIRCULATION_LOCKED"), anyString(),
-                eq("USER"), eq(userId.toString()),
-                eq("RESERVATION_NO_SHOW_LOCK:2026-2027"), eq(occurredAt));
+        verify(notifications)
+                .createOnce(
+                        eq(userId),
+                        eq("CIRCULATION_LOCKED"),
+                        anyString(),
+                        eq("USER"),
+                        eq(userId.toString()),
+                        eq("RESERVATION_NO_SHOW_LOCK:2026-2027"),
+                        eq(occurredAt));
     }
 
     @Test
@@ -53,8 +58,8 @@ class ReservationNoShowServiceTest {
         user.setReservationNoShowCount(2);
         LocalDateTime occurredAt = LocalDateTime.of(2026, 10, 23, 17, 1);
         when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
-        ReservationNoShowService service = new ReservationNoShowService(
-                users, notifications, 3, 3, 8, 1);
+        ReservationNoShowService service =
+                new ReservationNoShowService(users, notifications, 3, 3, 8, 1);
 
         assertThat(service.record(userId, occurredAt, "WAITLIST", "11")).isEqualTo(1);
         assertThat(user.getReservationViolationAcademicYear()).isEqualTo("2026-2027");

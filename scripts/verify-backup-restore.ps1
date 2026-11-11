@@ -19,15 +19,24 @@ $containerBackup = "/tmp/huit-week11-verify.dump"
 
 try {
     docker exec $Container createdb -U $User $verificationDatabase
-    if ($LASTEXITCODE -ne 0) { throw "Could not create verification database" }
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not create verification database"
+    }
     docker cp $resolvedBackup "${Container}:$containerBackup"
-    if ($LASTEXITCODE -ne 0) { throw "Could not copy backup into container" }
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not copy backup into container"
+    }
     docker exec $Container pg_restore -U $User -d $verificationDatabase --no-owner --no-privileges $containerBackup
-    if ($LASTEXITCODE -ne 0) { throw "pg_restore failed" }
+    if ($LASTEXITCODE -ne 0) {
+        throw "pg_restore failed"
+    }
     $tableCount = docker exec $Container psql -U $User -d $verificationDatabase -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"
-    if ($LASTEXITCODE -ne 0 -or [int]$tableCount -lt 1) { throw "Restored database contains no public tables" }
+    if ($LASTEXITCODE -ne 0 -or [int]$tableCount -lt 1) {
+        throw "Restored database contains no public tables"
+    }
     [pscustomobject]@{ Verified = $true; PublicTableCount = [int]$tableCount; Database = $verificationDatabase } | ConvertTo-Json
-} finally {
+}
+finally {
     docker exec $Container rm -f $containerBackup 2>$null | Out-Null
     docker exec $Container dropdb -U $User --if-exists $verificationDatabase 2>$null | Out-Null
 }

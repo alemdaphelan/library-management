@@ -11,15 +11,13 @@ import java.util.UUID;
 
 @Data
 public class CounterDepositRequestDTO {
-    @NotNull
-    private UUID userId;
+    @NotNull private UUID userId;
 
     @NotNull
     @DecimalMin(value = "1000")
     private BigDecimal amount;
 
-    @NotBlank
-    private String method;
+    @NotBlank private String method;
 
     @NotBlank
     @Size(max = 100)

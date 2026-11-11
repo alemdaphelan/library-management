@@ -53,7 +53,8 @@ public final class ContentTfIdfBaselineModel implements Alg2RecommendationModel 
         long startedAt = System.nanoTime();
         Map<String, Double> profile = userProfiles.get(userId);
         if (profile == null || profile.isEmpty()) {
-            RecommendationResult fallback = popularityFallback.recommend(userId, k, excludedBookIds);
+            RecommendationResult fallback =
+                    popularityFallback.recommend(userId, k, excludedBookIds);
             return new RecommendationResult(
                     userId,
                     method(),
@@ -64,8 +65,9 @@ public final class ContentTfIdfBaselineModel implements Alg2RecommendationModel 
         }
 
         Set<Long> excluded = excludedBookIds == null ? Set.of() : excludedBookIds;
-        Comparator<ScoredBook> worstFirst = Comparator.comparingDouble(ScoredBook::score)
-                .thenComparing(ScoredBook::bookId, Comparator.reverseOrder());
+        Comparator<ScoredBook> worstFirst =
+                Comparator.comparingDouble(ScoredBook::score)
+                        .thenComparing(ScoredBook::bookId, Comparator.reverseOrder());
         PriorityQueue<ScoredBook> top = new PriorityQueue<>(Math.max(k, 1), worstFirst);
         for (Alg2CatalogBook candidate : catalog) {
             if (excluded.contains(candidate.bookId())) {
@@ -82,8 +84,10 @@ public final class ContentTfIdfBaselineModel implements Alg2RecommendationModel 
         }
 
         List<ScoredBook> ordered = new ArrayList<>(top);
-        ordered.sort(Comparator.comparingDouble(ScoredBook::score).reversed()
-                .thenComparing(ScoredBook::bookId));
+        ordered.sort(
+                Comparator.comparingDouble(ScoredBook::score)
+                        .reversed()
+                        .thenComparing(ScoredBook::bookId));
         List<RecommendationItem> items = new ArrayList<>(ordered.size());
         for (int index = 0; index < ordered.size(); index++) {
             ScoredBook item = ordered.get(index);
@@ -107,8 +111,9 @@ public final class ContentTfIdfBaselineModel implements Alg2RecommendationModel 
         }
         Map<String, Double> idf = new HashMap<>();
         double documentCount = books.size();
-        documentFrequency.forEach((term, frequency) ->
-                idf.put(term, Math.log((documentCount + 1.0) / (frequency + 1.0)) + 1.0));
+        documentFrequency.forEach(
+                (term, frequency) ->
+                        idf.put(term, Math.log((documentCount + 1.0) / (frequency + 1.0)) + 1.0));
         return Map.copyOf(idf);
     }
 
@@ -117,28 +122,40 @@ public final class ContentTfIdfBaselineModel implements Alg2RecommendationModel 
         Map<UUID, Double> weights = new HashMap<>();
         interactions.stream()
                 .filter(interaction -> interaction.split() == Split.TRAIN)
-                .forEach(interaction -> {
-                    Alg2CatalogBook book = catalogById.get(interaction.bookId());
-                    if (book == null) {
-                        return;
-                    }
-                    Map<String, Double> profile = profiles.computeIfAbsent(
-                            interaction.userId(), ignored -> new HashMap<>());
-                    tfIdfVector(book).forEach((term, value) -> profile.merge(
-                            term, value * interaction.preferenceWeight(), Double::sum));
-                    weights.merge(interaction.userId(), interaction.preferenceWeight(), Double::sum);
+                .forEach(
+                        interaction -> {
+                            Alg2CatalogBook book = catalogById.get(interaction.bookId());
+                            if (book == null) {
+                                return;
+                            }
+                            Map<String, Double> profile =
+                                    profiles.computeIfAbsent(
+                                            interaction.userId(), ignored -> new HashMap<>());
+                            tfIdfVector(book)
+                                    .forEach(
+                                            (term, value) ->
+                                                    profile.merge(
+                                                            term,
+                                                            value * interaction.preferenceWeight(),
+                                                            Double::sum));
+                            weights.merge(
+                                    interaction.userId(),
+                                    interaction.preferenceWeight(),
+                                    Double::sum);
+                        });
+        profiles.forEach(
+                (userId, profile) -> {
+                    double totalWeight = weights.getOrDefault(userId, 1.0);
+                    profile.replaceAll((term, value) -> value / totalWeight);
+                    normalize(profile);
                 });
-        profiles.forEach((userId, profile) -> {
-            double totalWeight = weights.getOrDefault(userId, 1.0);
-            profile.replaceAll((term, value) -> value / totalWeight);
-            normalize(profile);
-        });
         return Map.copyOf(profiles);
     }
 
     private Map<String, Double> tfIdfVector(Alg2CatalogBook book) {
         Map<String, Double> vector = weightedTerms(book);
-        vector.replaceAll((term, value) -> value * inverseDocumentFrequency.getOrDefault(term, 1.0));
+        vector.replaceAll(
+                (term, value) -> value * inverseDocumentFrequency.getOrDefault(term, 1.0));
         normalize(vector);
         return vector;
     }
@@ -158,8 +175,12 @@ public final class ContentTfIdfBaselineModel implements Alg2RecommendationModel 
         if (text == null || text.isBlank()) {
             return;
         }
-        String normalized = DIACRITICS.matcher(Normalizer.normalize(
-                text.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)).replaceAll("");
+        String normalized =
+                DIACRITICS
+                        .matcher(
+                                Normalizer.normalize(
+                                        text.toLowerCase(Locale.ROOT), Normalizer.Form.NFD))
+                        .replaceAll("");
         for (String term : NON_TERM.split(normalized)) {
             if (term.length() >= 2) {
                 terms.merge(term, weight, Double::sum);
@@ -186,6 +207,5 @@ public final class ContentTfIdfBaselineModel implements Alg2RecommendationModel 
         return Math.round(value * 1_000_000.0) / 1_000_000.0;
     }
 
-    private record ScoredBook(Long bookId, double score) {
-    }
+    private record ScoredBook(Long bookId, double score) {}
 }

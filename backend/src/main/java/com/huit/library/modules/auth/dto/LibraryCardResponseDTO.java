@@ -14,5 +14,4 @@ public record LibraryCardResponseDTO(
         BigDecimal depositBalance,
         BigDecimal totalDebt,
         LocalDateTime circulationLockedUntil,
-        String circulationLockReason) {
-}
+        String circulationLockReason) {}

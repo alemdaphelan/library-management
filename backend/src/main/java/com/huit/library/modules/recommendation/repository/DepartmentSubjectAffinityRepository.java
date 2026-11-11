@@ -12,7 +12,8 @@ public interface DepartmentSubjectAffinityRepository
     List<DepartmentSubjectAffinityEntity> findByDepartmentKeyAndActiveTrueOrderByWeightDesc(
             String departmentKey);
 
-    @Query("""
+    @Query(
+            """
             select affinity
             from DepartmentSubjectAffinityEntity affinity
             join fetch affinity.subject
@@ -21,7 +22,8 @@ public interface DepartmentSubjectAffinityRepository
             """)
     List<DepartmentSubjectAffinityEntity> findAllActiveForEvaluation();
 
-    @Query("""
+    @Query(
+            """
             select distinct new com.huit.library.modules.catalog.dto.DepartmentOptionDTO(
                 affinity.departmentKey, affinity.displayName)
             from DepartmentSubjectAffinityEntity affinity

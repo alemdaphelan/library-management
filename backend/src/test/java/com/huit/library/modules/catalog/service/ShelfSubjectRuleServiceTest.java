@@ -22,9 +22,10 @@ class ShelfSubjectRuleServiceTest {
     void replaceShelfSubjectsPersistsTheSelectedActiveSubjects() {
         ShelfRepository shelfRepository = mock(ShelfRepository.class);
         ShelfSubjectRuleRepository ruleRepository = mock(ShelfSubjectRuleRepository.class);
-        RecommendationSubjectRepository subjectRepository = mock(RecommendationSubjectRepository.class);
-        ShelfSubjectRuleService service = new ShelfSubjectRuleService(
-                shelfRepository, ruleRepository, subjectRepository);
+        RecommendationSubjectRepository subjectRepository =
+                mock(RecommendationSubjectRepository.class);
+        ShelfSubjectRuleService service =
+                new ShelfSubjectRuleService(shelfRepository, ruleRepository, subjectRepository);
         ShelfEntity shelf = new ShelfEntity();
         shelf.setShelfId(5L);
         RecommendationSubjectEntity it = subject(8L, "IT_DATA_AI", "CNTT - Dữ liệu - AI");
@@ -33,10 +34,11 @@ class ShelfSubjectRuleServiceTest {
         when(subjectRepository.findBySubjectIdInAndActiveTrue(Set.of(8L, 9L)))
                 .thenReturn(List.of(network, it));
 
-        var result = service.replaceShelfSubjects(
-                5L, new ShelfSubjectRuleRequestDTO(Set.of(8L, 9L)));
+        var result =
+                service.replaceShelfSubjects(5L, new ShelfSubjectRuleRequestDTO(Set.of(8L, 9L)));
 
-        assertThat(result).extracting(item -> item.name())
+        assertThat(result)
+                .extracting(item -> item.name())
                 .containsExactly("CNTT - Dữ liệu - AI", "Mạng máy tính");
         verify(ruleRepository).deleteByShelf_ShelfId(5L);
         verify(ruleRepository).flush();
@@ -46,17 +48,20 @@ class ShelfSubjectRuleServiceTest {
     @Test
     void replaceShelfSubjectsRejectsUnknownOrInactiveSubjects() {
         ShelfRepository shelfRepository = mock(ShelfRepository.class);
-        RecommendationSubjectRepository subjectRepository = mock(RecommendationSubjectRepository.class);
-        ShelfSubjectRuleService service = new ShelfSubjectRuleService(
-                shelfRepository, mock(ShelfSubjectRuleRepository.class), subjectRepository);
+        RecommendationSubjectRepository subjectRepository =
+                mock(RecommendationSubjectRepository.class);
+        ShelfSubjectRuleService service =
+                new ShelfSubjectRuleService(
+                        shelfRepository, mock(ShelfSubjectRuleRepository.class), subjectRepository);
         ShelfEntity shelf = new ShelfEntity();
         shelf.setShelfId(5L);
         when(shelfRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(shelf));
-        when(subjectRepository.findBySubjectIdInAndActiveTrue(Set.of(99L)))
-                .thenReturn(List.of());
+        when(subjectRepository.findBySubjectIdInAndActiveTrue(Set.of(99L))).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.replaceShelfSubjects(
-                5L, new ShelfSubjectRuleRequestDTO(Set.of(99L))))
+        assertThatThrownBy(
+                        () ->
+                                service.replaceShelfSubjects(
+                                        5L, new ShelfSubjectRuleRequestDTO(Set.of(99L))))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
                 .hasMessageContaining("không tồn tại");
     }

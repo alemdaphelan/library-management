@@ -8,11 +8,19 @@ import {
 } from '../../../services/library-policy.service';
 
 type PolicyValueKey =
-  'maximumOpenItems' | 'homeLoanDays' | 'renewalDays' | 'maximumRenewalCount'
-  | 'minimumSecurityDeposit' | 'borrowingValueMargin' | 'recallReturnDays'
+  | 'maximumOpenItems'
+  | 'homeLoanDays'
+  | 'renewalDays'
+  | 'maximumRenewalCount'
+  | 'minimumSecurityDeposit'
+  | 'borrowingValueMargin'
+  | 'recallReturnDays'
   | 'overdueDebtProcessingDays'
-  | 'waitlistHoldHours' | 'homeLateFinePerDay' | 'onsiteLateFinePerDay'
-  | 'technicalProcessingFee' | 'compensationSettlementDays';
+  | 'waitlistHoldHours'
+  | 'homeLateFinePerDay'
+  | 'onsiteLateFinePerDay'
+  | 'technicalProcessingFee'
+  | 'compensationSettlementDays';
 
 interface PolicyChange {
   label: string;
@@ -37,23 +45,41 @@ export class LibraryPolicy implements OnInit {
   historyError = '';
   success = '';
 
-  private readonly historyFields: Array<{ key: PolicyValueKey; label: string; unit: string; money?: boolean }> = [
+  private readonly historyFields: Array<{
+    key: PolicyValueKey;
+    label: string;
+    unit: string;
+    money?: boolean;
+  }> = [
     { key: 'maximumOpenItems', label: 'Số tài liệu tối đa', unit: 'tài liệu' },
     { key: 'homeLoanDays', label: 'Thời hạn mượn về nhà', unit: 'ngày' },
     { key: 'renewalDays', label: 'Thời gian mỗi lần gia hạn', unit: 'ngày' },
     { key: 'maximumRenewalCount', label: 'Số lần gia hạn tối đa', unit: 'lần' },
     { key: 'minimumSecurityDeposit', label: 'Tiền thế chân tối thiểu', unit: 'VNĐ', money: true },
-    { key: 'borrowingValueMargin', label: 'Mức vượt giá trị sách cho phép', unit: 'VNĐ', money: true },
+    {
+      key: 'borrowingValueMargin',
+      label: 'Mức vượt giá trị sách cho phép',
+      unit: 'VNĐ',
+      money: true,
+    },
     { key: 'recallReturnDays', label: 'Thời hạn trả sách bị thu hồi', unit: 'ngày' },
     { key: 'overdueDebtProcessingDays', label: 'Thời hạn xử lý nợ quá hạn', unit: 'ngày' },
     { key: 'waitlistHoldHours', label: 'Thời gian giữ sách', unit: 'giờ' },
     { key: 'homeLateFinePerDay', label: 'Phạt mượn về quá hạn', unit: 'VNĐ/ngày', money: true },
-    { key: 'onsiteLateFinePerDay', label: 'Phạt đọc tại chỗ quá hạn', unit: 'VNĐ/ngày', money: true },
+    {
+      key: 'onsiteLateFinePerDay',
+      label: 'Phạt đọc tại chỗ quá hạn',
+      unit: 'VNĐ/ngày',
+      money: true,
+    },
     { key: 'technicalProcessingFee', label: 'Phí xử lý kỹ thuật', unit: 'VNĐ', money: true },
     { key: 'compensationSettlementDays', label: 'Thời hạn đền bù', unit: 'ngày' },
   ];
 
-  constructor(private service: LibraryPolicyService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private service: LibraryPolicyService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     this.refresh();
@@ -68,14 +94,15 @@ export class LibraryPolicy implements OnInit {
     this.loadingHistory = true;
     this.historyError = '';
     this.service.getHistory().subscribe({
-      next: value => {
+      next: (value) => {
         this.history = value;
         this.loadingHistory = false;
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.loadingHistory = false;
-        this.historyError = error?.error?.message || error?.error?.detail || 'Không thể tải lịch sử thay đổi.';
+        this.historyError =
+          error?.error?.message || error?.error?.detail || 'Không thể tải lịch sử thay đổi.';
         this.cdr.detectChanges();
       },
     });
@@ -85,12 +112,12 @@ export class LibraryPolicy implements OnInit {
     this.loading = true;
     this.error = '';
     this.service.getPolicy().subscribe({
-      next: value => {
+      next: (value) => {
         this.policy = value;
         this.loading = false;
         this.cdr.detectChanges();
       },
-      error: error => this.fail(error, 'Không thể tải quy định thư viện.'),
+      error: (error) => this.fail(error, 'Không thể tải quy định thư viện.'),
     });
   }
 
@@ -100,14 +127,14 @@ export class LibraryPolicy implements OnInit {
     this.error = '';
     this.success = '';
     this.service.updatePolicy(this.policy).subscribe({
-      next: value => {
+      next: (value) => {
         this.policy = value;
         this.saving = false;
         this.success = 'Đã cập nhật quy định. Các giao dịch mới sẽ áp dụng ngay.';
         this.loadHistory();
         this.cdr.detectChanges();
       },
-      error: error => this.fail(error, 'Không thể lưu quy định thư viện.'),
+      error: (error) => this.fail(error, 'Không thể lưu quy định thư viện.'),
     });
   }
 
@@ -116,8 +143,8 @@ export class LibraryPolicy implements OnInit {
     const previous = this.history[index + 1];
     if (!current || !previous) return [];
     return this.historyFields
-      .filter(field => Number(current[field.key]) !== Number(previous[field.key]))
-      .map(field => ({
+      .filter((field) => Number(current[field.key]) !== Number(previous[field.key]))
+      .map((field) => ({
         label: field.label,
         before: this.formatValue(previous[field.key], field.unit, field.money),
         after: this.formatValue(current[field.key], field.unit, field.money),
@@ -151,13 +178,16 @@ export class LibraryPolicy implements OnInit {
       this.policy!.technicalProcessingFee,
       this.policy!.borrowingValueMargin,
     ];
-    if (values.some(value => !Number.isFinite(Number(value)) || Number(value) < 1)
-        || !Number.isFinite(Number(this.policy!.maximumRenewalCount))
-        || Number(this.policy!.maximumRenewalCount) < 0
-        || !Number.isFinite(Number(this.policy!.minimumSecurityDeposit))
-        || Number(this.policy!.minimumSecurityDeposit) < 100000
-        || money.some(value => !Number.isFinite(Number(value)) || Number(value) < 0)) {
-      this.error = 'Vui lòng nhập số hợp lệ; thời hạn phải lớn hơn 0, tiền thế chân tối thiểu từ 100.000 VNĐ và các mức tiền không được âm.';
+    if (
+      values.some((value) => !Number.isFinite(Number(value)) || Number(value) < 1) ||
+      !Number.isFinite(Number(this.policy!.maximumRenewalCount)) ||
+      Number(this.policy!.maximumRenewalCount) < 0 ||
+      !Number.isFinite(Number(this.policy!.minimumSecurityDeposit)) ||
+      Number(this.policy!.minimumSecurityDeposit) < 100000 ||
+      money.some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)
+    ) {
+      this.error =
+        'Vui lòng nhập số hợp lệ; thời hạn phải lớn hơn 0, tiền thế chân tối thiểu từ 100.000 VNĐ và các mức tiền không được âm.';
       return false;
     }
     return true;

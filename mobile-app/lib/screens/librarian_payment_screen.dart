@@ -22,12 +22,15 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _mssvController = TextEditingController();
   final TextEditingController _debtAmountController = TextEditingController();
-  final TextEditingController _debtNoteController =
-      TextEditingController(text: 'Thu tiền mặt tại quầy');
-  final TextEditingController _depositAmountController =
-      TextEditingController(text: '100000');
-  final TextEditingController _depositNoteController =
-      TextEditingController(text: 'Nạp tiền thế chân tại quầy');
+  final TextEditingController _debtNoteController = TextEditingController(
+    text: 'Thu tiền mặt tại quầy',
+  );
+  final TextEditingController _depositAmountController = TextEditingController(
+    text: '100000',
+  );
+  final TextEditingController _depositNoteController = TextEditingController(
+    text: 'Nạp tiền thế chân tại quầy',
+  );
 
   late TabController _tabController;
   bool _loading = false;
@@ -102,7 +105,9 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
       setState(() {
         _readerProfile = profile;
         _loading = false;
-        _debtAmountController.text = totalDebt > 0 ? totalDebt.toStringAsFixed(0) : '';
+        _debtAmountController.text = totalDebt > 0
+            ? totalDebt.toStringAsFixed(0)
+            : '';
       });
     } catch (e) {
       if (!mounted) return;
@@ -249,13 +254,17 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
             : 'Thu tiền phạt tại quầy',
       };
 
-      final res = await ApiService.post('/api/v1/transactions/payments', payload);
+      final res = await ApiService.post(
+        '/api/v1/transactions/payments',
+        payload,
+      );
       final receiptNumber = res is Map ? res['receiptNumber'] ?? '' : '';
 
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _success = 'Đã lập biên nhận thành công${receiptNumber.isNotEmpty ? ' #$receiptNumber' : ''}!';
+        _success =
+            'Đã lập biên nhận thành công${receiptNumber.isNotEmpty ? ' #$receiptNumber' : ''}!';
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -375,7 +384,8 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
     final totalDebt = num.tryParse(card?['totalDebt']?.toString() ?? '0') ?? 0;
     final depositBalance =
         num.tryParse(card?['depositBalance']?.toString() ?? '0') ?? 0;
-    final ledger = (_readerProfile?['ledger'] as List?)
+    final ledger =
+        (_readerProfile?['ledger'] as List?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
             .toList() ??
         [];
@@ -425,7 +435,9 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                     ),
                     textInputAction: TextInputAction.search,
                     onSubmitted: _searchReader,
@@ -479,7 +491,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                     Expanded(
                       child: Text(
                         _error!,
-                        style: TextStyle(color: Colors.red.shade900, fontSize: 13),
+                        style: TextStyle(
+                          color: Colors.red.shade900,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -497,12 +512,18 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline, color: Colors.green.shade700),
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green.shade700,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _success!,
-                        style: TextStyle(color: Colors.green.shade900, fontSize: 13),
+                        style: TextStyle(
+                          color: Colors.green.shade900,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -521,7 +542,11 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.badge_outlined, size: 56, color: Colors.grey.shade400),
+                    Icon(
+                      Icons.badge_outlined,
+                      size: 56,
+                      color: Colors.grey.shade400,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       'Kiểm tra và xử lý tài chính tại quầy',
@@ -535,7 +560,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                     Text(
                       'Nhập MSSV hoặc bấm biểu tượng quét QR góc trên để tra cứu hồ sơ bạn đọc, thu phạt hoặc nạp cọc thế chân.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -559,7 +587,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                           CircleAvatar(
                             radius: 22,
                             backgroundColor: Colors.white24,
-                            child: const Icon(Icons.person, color: Colors.white),
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -732,8 +763,14 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                   final amount = item['amount'];
                   final status = LedgerDisplay.statusLabel(item['status']);
                   final reason = LedgerDisplay.title(item);
-                  final isPositive = LedgerDisplay.isPositiveImpact(amount, rawType);
-                  final formattedAmount = LedgerDisplay.formatSignedAmount(amount, rawType);
+                  final isPositive = LedgerDisplay.isPositiveImpact(
+                    amount,
+                    rawType,
+                  );
+                  final formattedAmount = LedgerDisplay.formatSignedAmount(
+                    amount,
+                    rawType,
+                  );
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -788,7 +825,9 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
-                            color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+                            color: isPositive
+                                ? Colors.green.shade700
+                                : Colors.red.shade700,
                           ),
                         ),
                       ],
@@ -815,7 +854,11 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline, size: 48, color: Colors.green.shade700),
+            Icon(
+              Icons.check_circle_outline,
+              size: 48,
+              color: Colors.green.shade700,
+            ),
             const SizedBox(height: 8),
             Text(
               'Bạn đọc không có công nợ cần thu',
@@ -858,7 +901,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                       labelText: 'Số tiền thu (VNĐ)',
                       prefixIcon: Icon(Icons.attach_money),
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -879,7 +925,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Text('Phương thức: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Phương thức: ',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 ChoiceChip(
                   label: const Text('Tiền mặt (CASH)'),
                   selected: _debtMethod == 'CASH',
@@ -903,7 +952,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
               decoration: const InputDecoration(
                 labelText: 'Ghi chú thu tiền',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -922,12 +974,18 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Icon(Icons.check),
               label: Text(
                 _submitting ? 'Đang xử lý...' : 'Xác nhận thu tiền xóa nợ',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
             ),
           ],
@@ -956,7 +1014,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                 labelText: 'Số tiền nạp thế chân (VNĐ)',
                 prefixIcon: Icon(Icons.add_card),
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -983,7 +1044,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Text('Phương thức: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Phương thức: ',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 ChoiceChip(
                   label: const Text('Tiền mặt (CASH)'),
                   selected: _depositMethod == 'CASH',
@@ -1007,7 +1071,10 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
               decoration: const InputDecoration(
                 labelText: 'Ghi chú nạp tiền',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -1026,12 +1093,18 @@ class _LibrarianPaymentScreenState extends State<LibrarianPaymentScreen>
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Icon(Icons.add_circle_outline),
               label: Text(
                 _submitting ? 'Đang xử lý...' : 'Xác nhận nạp tiền cọc',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
               ),
             ),
           ],

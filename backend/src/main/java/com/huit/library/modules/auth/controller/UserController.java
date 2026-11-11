@@ -29,8 +29,10 @@ public class UserController {
     private final BookInteractionService bookInteractionService;
     private final ReaderProfileService readerProfileService;
 
-    public UserController(UserService userService, BookInteractionService bookInteractionService,
-                          ReaderProfileService readerProfileService) {
+    public UserController(
+            UserService userService,
+            BookInteractionService bookInteractionService,
+            ReaderProfileService readerProfileService) {
         this.userService = userService;
         this.bookInteractionService = bookInteractionService;
         this.readerProfileService = readerProfileService;
@@ -52,7 +54,9 @@ public class UserController {
 
     @GetMapping("/students/{mssv}/profile")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Get complete reader profile", description = "Returns card, circulation, debt and penalty data for one student.")
+    @Operation(
+            summary = "Get complete reader profile",
+            description = "Returns card, circulation, debt and penalty data for one student.")
     public ResponseEntity<?> getReaderProfile(@PathVariable String mssv) {
         return ResponseEntity.ok(readerProfileService.getByMssv(mssv));
     }
@@ -67,8 +71,8 @@ public class UserController {
     @PutMapping("/students/{mssv}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update an existing student")
-    public ResponseEntity<?> updateStudent(@PathVariable String mssv,
-                                           @Valid @RequestBody StudentUpsertRequestDTO student) {
+    public ResponseEntity<?> updateStudent(
+            @PathVariable String mssv, @Valid @RequestBody StudentUpsertRequestDTO student) {
         return ResponseEntity.ok(userService.updateStudent(mssv, student));
     }
 
@@ -80,10 +84,11 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-
     @PostMapping("/sync")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Sync University Data", description = "Trigger sync with University Academic Dept (matching Student ID).")
+    @Operation(
+            summary = "Sync University Data",
+            description = "Trigger sync with University Academic Dept (matching Student ID).")
     public ResponseEntity<?> syncWithUniversity(@RequestBody List<UserEntity> universityData) {
         userService.syncWithUniversity(universityData);
         return ResponseEntity.ok("Sync completed successfully!");
@@ -100,37 +105,40 @@ public class UserController {
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Check wishlist status")
     public ResponseEntity<?> getWishlistStatus(
-            @PathVariable Long bookId,
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(java.util.Map.of(
-                "saved", bookInteractionService.isSaved(requireUserId(principal), bookId)));
+            @PathVariable Long bookId, @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(
+                java.util.Map.of(
+                        "saved", bookInteractionService.isSaved(requireUserId(principal), bookId)));
     }
 
     @PostMapping("/wishlist")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Add to Wishlist", description = "Add a specific book to the user's wishlist.")
+    @Operation(
+            summary = "Add to Wishlist",
+            description = "Add a specific book to the user's wishlist.")
     public ResponseEntity<?> addToWishlist(
             @Valid @RequestBody WishlistRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(bookInteractionService.addToWishlist(
-                requireUserId(principal), request.getBookId()));
+        return ResponseEntity.ok(
+                bookInteractionService.addToWishlist(
+                        requireUserId(principal), request.getBookId()));
     }
 
     @DeleteMapping("/wishlist/{bookId}")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Remove from Wishlist")
     public ResponseEntity<Void> removeFromWishlist(
-            @PathVariable Long bookId,
-            @AuthenticationPrincipal CustomUserDetails principal) {
+            @PathVariable Long bookId, @AuthenticationPrincipal CustomUserDetails principal) {
         bookInteractionService.removeFromWishlist(requireUserId(principal), bookId);
         return ResponseEntity.noContent().build();
     }
 
     private UUID requireUserId(CustomUserDetails principal) {
-        if (principal == null || principal.getUser() == null || principal.getUser().getUserId() == null) {
+        if (principal == null
+                || principal.getUser() == null
+                || principal.getUser().getUserId() == null) {
             throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Vui lòng đăng nhập để sử dụng danh sách sách đã lưu");
+                    HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập để sử dụng danh sách sách đã lưu");
         }
         return principal.getUser().getUserId();
     }

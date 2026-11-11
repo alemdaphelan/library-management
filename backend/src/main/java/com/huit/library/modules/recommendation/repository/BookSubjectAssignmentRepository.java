@@ -9,14 +9,16 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 
-public interface BookSubjectAssignmentRepository extends JpaRepository<BookSubjectAssignmentEntity, Long> {
+public interface BookSubjectAssignmentRepository
+        extends JpaRepository<BookSubjectAssignmentEntity, Long> {
     List<BookSubjectAssignmentEntity> findByBook_BookIdOrderByConfidenceDesc(Long bookId);
 
     List<BookSubjectAssignmentEntity> findByBook_BookIdIn(Collection<Long> bookIds);
 
     boolean existsByBook_BookIdAndSubject_SubjectIdIn(Long bookId, Collection<Long> subjectIds);
 
-    @Query("""
+    @Query(
+            """
             select distinct book
             from BookSubjectAssignmentEntity assignment
             join assignment.book book
@@ -29,7 +31,8 @@ public interface BookSubjectAssignmentRepository extends JpaRepository<BookSubje
             @Param("bookId") Long bookId,
             Pageable pageable);
 
-    @Query("""
+    @Query(
+            """
             select distinct book
             from BookSubjectAssignmentEntity assignment
             join assignment.book book
@@ -37,10 +40,10 @@ public interface BookSubjectAssignmentRepository extends JpaRepository<BookSubje
             order by book.bookId
             """)
     List<com.huit.library.modules.catalog.entity.BookEntity> findCandidateBooksBySubjects(
-            @Param("subjectIds") Collection<Long> subjectIds,
-            Pageable pageable);
+            @Param("subjectIds") Collection<Long> subjectIds, Pageable pageable);
 
-    @Query("""
+    @Query(
+            """
             select assignment
             from BookSubjectAssignmentEntity assignment
             join fetch assignment.book book

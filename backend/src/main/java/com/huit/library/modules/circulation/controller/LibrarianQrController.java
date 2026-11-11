@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/qr")
-@Tag(name = "Librarian QR", description = "Signed, expiring QR payloads for circulation desk workflows")
+@Tag(
+        name = "Librarian QR",
+        description = "Signed, expiring QR payloads for circulation desk workflows")
 public class LibrarianQrController {
     private final LibrarianQrService qrService;
 
@@ -32,8 +34,7 @@ public class LibrarianQrController {
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Create a short-lived signed QR for a loan ticket")
     public ResponseEntity<QrPayloadResponseDTO> issueTicketQr(
-            @PathVariable Long ticketId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @PathVariable Long ticketId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(qrService.issueTicketPayload(ticketId, userDetails.getUser()));
     }
 
@@ -48,7 +49,8 @@ public class LibrarianQrController {
     @PostMapping("/resolve")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Validate and resolve a signed QR at the circulation desk")
-    public ResponseEntity<QrResolveResponseDTO> resolve(@Valid @RequestBody QrResolveRequestDTO request) {
+    public ResponseEntity<QrResolveResponseDTO> resolve(
+            @Valid @RequestBody QrResolveRequestDTO request) {
         return ResponseEntity.ok(qrService.resolve(request.getPayload()));
     }
 }

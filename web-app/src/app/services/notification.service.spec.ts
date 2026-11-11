@@ -10,7 +10,9 @@ describe('NotificationService', () => {
   const apiUrl = `${environment.apiUrl}/api/v1/notifications`;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [NotificationService, provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [NotificationService, provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(NotificationService);
     httpTesting = TestBed.inject(HttpTestingController);
   });

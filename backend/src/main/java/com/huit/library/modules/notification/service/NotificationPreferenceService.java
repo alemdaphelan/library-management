@@ -19,7 +19,8 @@ public class NotificationPreferenceService {
 
     @Transactional(readOnly = true)
     public NotificationPreferenceResponseDTO get(UUID userId) {
-        return repository.findById(userId)
+        return repository
+                .findById(userId)
                 .map(this::toResponse)
                 .orElseGet(() -> new NotificationPreferenceResponseDTO(userId, true, true));
     }
@@ -27,12 +28,16 @@ public class NotificationPreferenceService {
     @Transactional
     public NotificationPreferenceResponseDTO update(
             UUID userId, NotificationPreferenceRequestDTO request) {
-        NotificationPreferenceEntity preference = repository.findById(userId)
-                .orElseGet(() -> {
-                    NotificationPreferenceEntity created = new NotificationPreferenceEntity();
-                    created.setUserId(userId);
-                    return created;
-                });
+        NotificationPreferenceEntity preference =
+                repository
+                        .findById(userId)
+                        .orElseGet(
+                                () -> {
+                                    NotificationPreferenceEntity created =
+                                            new NotificationPreferenceEntity();
+                                    created.setUserId(userId);
+                                    return created;
+                                });
         preference.setEmailEnabled(request.emailEnabled());
         preference.setPushEnabled(request.pushEnabled());
         return toResponse(repository.save(preference));
@@ -40,14 +45,16 @@ public class NotificationPreferenceService {
 
     @Transactional(readOnly = true)
     public boolean isEmailEnabled(UUID userId) {
-        return repository.findById(userId)
+        return repository
+                .findById(userId)
                 .map(NotificationPreferenceEntity::getEmailEnabled)
                 .orElse(true);
     }
 
     @Transactional(readOnly = true)
     public boolean isPushEnabled(UUID userId) {
-        return repository.findById(userId)
+        return repository
+                .findById(userId)
                 .map(NotificationPreferenceEntity::getPushEnabled)
                 .orElse(true);
     }

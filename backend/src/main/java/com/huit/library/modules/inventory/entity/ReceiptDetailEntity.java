@@ -21,6 +21,7 @@ public class ReceiptDetailEntity extends BaseEntity {
     private Integer quantity;
     private BigDecimal unitPrice;
     private Long shelfId;
+
     @Column(length = 1000)
     private String locationPath;
 }

@@ -58,14 +58,16 @@ class LibrarianQrServiceTest {
         LoanItemDTO item = LoanItemDTO.builder().barcode("BC-001").status("RESERVED").build();
 
         when(loanTicketRepository.findById(91L)).thenReturn(Optional.of(ticket));
-        when(loanService.getLoan(91L)).thenReturn(LoanTicketDetailDTO.builder()
-                .ticketId(91L)
-                .userId(userId)
-                .readerName("Nguyen Van A")
-                .mssv("20010001")
-                .status("RESERVED")
-                .items(List.of(item))
-                .build());
+        when(loanService.getLoan(91L))
+                .thenReturn(
+                        LoanTicketDetailDTO.builder()
+                                .ticketId(91L)
+                                .userId(userId)
+                                .readerName("Nguyen Van A")
+                                .mssv("20010001")
+                                .status("RESERVED")
+                                .items(List.of(item))
+                                .build());
 
         var issued = service.issueTicketPayload(91L, reader);
         var resolved = service.resolve(issued.getPayload());
@@ -73,46 +75,57 @@ class LibrarianQrServiceTest {
         assertThat(issued.getPayload()).startsWith("HUITQR1.");
         assertThat(resolved.getTicketId()).isEqualTo(91L);
         assertThat(resolved.getAllowedActions()).containsExactly("CHECKOUT");
-        assertThat(resolved.getItems()).extracting(LoanItemDTO::getBarcode).containsExactly("BC-001");
+        assertThat(resolved.getItems())
+                .extracting(LoanItemDTO::getBarcode)
+                .containsExactly("BC-001");
     }
 
     @Test
     void rejectsPayloadWhenSignatureWasChanged() {
         UUID userId = UUID.randomUUID();
-        when(loanTicketRepository.findById(5L)).thenReturn(Optional.of(ticket(5L, userId, "PENDING")));
+        when(loanTicketRepository.findById(5L))
+                .thenReturn(Optional.of(ticket(5L, userId, "PENDING")));
         String payload = service.issueTicketPayload(5L, user(userId, "READER")).getPayload();
         char replacement = payload.endsWith("A") ? 'B' : 'A';
         String tampered = payload.substring(0, payload.length() - 1) + replacement;
 
         assertThatThrownBy(() -> service.resolve(tampered))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
+                .satisfies(
+                        error ->
+                                assertThat(((ResponseStatusException) error).getStatusCode())
+                                        .isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test
     void rejectsExpiredPayload() {
         UUID userId = UUID.randomUUID();
-        when(loanTicketRepository.findById(7L)).thenReturn(Optional.of(ticket(7L, userId, "PENDING")));
+        when(loanTicketRepository.findById(7L))
+                .thenReturn(Optional.of(ticket(7L, userId, "PENDING")));
         String payload = service.issueTicketPayload(7L, user(userId, "READER")).getPayload();
-        LibrarianQrService later = createService(
-                Clock.fixed(NOW.plusSeconds(11 * 60), ZoneOffset.UTC));
+        LibrarianQrService later =
+                createService(Clock.fixed(NOW.plusSeconds(11 * 60), ZoneOffset.UTC));
 
         assertThatThrownBy(() -> later.resolve(payload))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.GONE));
+                .satisfies(
+                        error ->
+                                assertThat(((ResponseStatusException) error).getStatusCode())
+                                        .isEqualTo(HttpStatus.GONE));
     }
 
     @Test
     void readerCannotIssueQrForAnotherUsersTicket() {
         UUID ownerId = UUID.randomUUID();
-        when(loanTicketRepository.findById(8L)).thenReturn(Optional.of(ticket(8L, ownerId, "PENDING")));
+        when(loanTicketRepository.findById(8L))
+                .thenReturn(Optional.of(ticket(8L, ownerId, "PENDING")));
 
         assertThatThrownBy(() -> service.issueTicketPayload(8L, user(UUID.randomUUID(), "READER")))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.FORBIDDEN));
+                .satisfies(
+                        error ->
+                                assertThat(((ResponseStatusException) error).getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
     }
 
     @Test
@@ -124,32 +137,49 @@ class LibrarianQrServiceTest {
         borrowingHistory.setTicketId(92L);
         borrowingHistory.setToStatus(LoanTicketStatus.BORROWING);
         borrowingHistory.setCreatedAt(borrowedAt);
-        when(loanTicketRepository.findById(92L)).thenReturn(Optional.of(ticket(92L, userId, "BORROWING")));
+        when(loanTicketRepository.findById(92L))
+                .thenReturn(Optional.of(ticket(92L, userId, "BORROWING")));
         when(loanStatusHistoryRepository.findFirstByTicketIdAndToStatusOrderByCreatedAtAsc(
-                92L, LoanTicketStatus.BORROWING)).thenReturn(Optional.of(borrowingHistory));
-        when(loanService.getLoan(92L)).thenReturn(LoanTicketDetailDTO.builder()
-                .ticketId(92L)
-                .userId(userId)
-                .readerName("Nguyen Van A")
-                .mssv("20010001")
-                .status("BORROWING")
-                .items(List.of(LoanItemDTO.builder()
-                        .barcode("BC-RETURN-001")
-                        .itemStatus("BORROWING")
-                        .build(),
-                        LoanItemDTO.builder().barcode("DAMAGED-ALREADY").itemStatus("DAMAGED").build(),
-                        LoanItemDTO.builder().barcode("LOST-ALREADY").itemStatus("LOST").build(),
-                        LoanItemDTO.builder().barcode("PHYSICAL-RETURN").itemStatus("BORROWING")
-                                .physicalReturnAt(borrowedAt.plusDays(1)).build()))
-                .build());
+                        92L, LoanTicketStatus.BORROWING))
+                .thenReturn(Optional.of(borrowingHistory));
+        when(loanService.getLoan(92L))
+                .thenReturn(
+                        LoanTicketDetailDTO.builder()
+                                .ticketId(92L)
+                                .userId(userId)
+                                .readerName("Nguyen Van A")
+                                .mssv("20010001")
+                                .status("BORROWING")
+                                .items(
+                                        List.of(
+                                                LoanItemDTO.builder()
+                                                        .barcode("BC-RETURN-001")
+                                                        .itemStatus("BORROWING")
+                                                        .build(),
+                                                LoanItemDTO.builder()
+                                                        .barcode("DAMAGED-ALREADY")
+                                                        .itemStatus("DAMAGED")
+                                                        .build(),
+                                                LoanItemDTO.builder()
+                                                        .barcode("LOST-ALREADY")
+                                                        .itemStatus("LOST")
+                                                        .build(),
+                                                LoanItemDTO.builder()
+                                                        .barcode("PHYSICAL-RETURN")
+                                                        .itemStatus("BORROWING")
+                                                        .physicalReturnAt(borrowedAt.plusDays(1))
+                                                        .build()))
+                                .build());
 
         var issued = service.issueTicketPayload(92L, reader);
         var resolved = service.resolve(issued.getPayload());
 
         assertThat(resolved.getAllowedActions()).containsExactly("RETURN");
-        assertThat(resolved.getItems()).extracting(LoanItemDTO::getBarcode)
+        assertThat(resolved.getItems())
+                .extracting(LoanItemDTO::getBarcode)
                 .containsExactly("BC-RETURN-001");
-        assertThat(resolved.getItems()).extracting(LoanItemDTO::getBorrowedAt)
+        assertThat(resolved.getItems())
+                .extracting(LoanItemDTO::getBorrowedAt)
                 .containsExactly(borrowedAt);
     }
 
@@ -157,18 +187,29 @@ class LibrarianQrServiceTest {
     void rejectsTicketQrAfterTicketWasReturned() {
         UUID userId = UUID.randomUUID();
         UserEntity reader = user(userId, "READER");
-        when(loanTicketRepository.findById(93L)).thenReturn(Optional.of(ticket(93L, userId, "RETURNED")));
+        when(loanTicketRepository.findById(93L))
+                .thenReturn(Optional.of(ticket(93L, userId, "RETURNED")));
 
         assertThatThrownBy(() -> service.issueTicketPayload(93L, reader))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.CONFLICT))
+                .satisfies(
+                        error ->
+                                assertThat(((ResponseStatusException) error).getStatusCode())
+                                        .isEqualTo(HttpStatus.CONFLICT))
                 .hasMessageContaining("không còn thao tác tại quầy hợp lệ");
     }
 
     private LibrarianQrService createService(Clock clock) {
-        return new LibrarianQrService(new ObjectMapper(), loanService, loanTicketRepository,
-                loanStatusHistoryRepository, userRepository, walletRepository, SECRET, 10, clock);
+        return new LibrarianQrService(
+                new ObjectMapper(),
+                loanService,
+                loanTicketRepository,
+                loanStatusHistoryRepository,
+                userRepository,
+                walletRepository,
+                SECRET,
+                10,
+                clock);
     }
 
     private UserEntity user(UUID userId, String role) {

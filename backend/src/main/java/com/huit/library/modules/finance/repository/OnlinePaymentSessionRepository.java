@@ -10,10 +10,13 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface OnlinePaymentSessionRepository extends JpaRepository<OnlinePaymentSessionEntity, Long> {
+public interface OnlinePaymentSessionRepository
+        extends JpaRepository<OnlinePaymentSessionEntity, Long> {
     Optional<OnlinePaymentSessionEntity> findByReferenceAndUserId(String reference, UUID userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select payment from OnlinePaymentSessionEntity payment where payment.reference = :reference")
-    Optional<OnlinePaymentSessionEntity> findByReferenceForUpdate(@Param("reference") String reference);
+    @Query(
+            "select payment from OnlinePaymentSessionEntity payment where payment.reference = :reference")
+    Optional<OnlinePaymentSessionEntity> findByReferenceForUpdate(
+            @Param("reference") String reference);
 }

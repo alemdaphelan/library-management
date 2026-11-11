@@ -20,10 +20,14 @@ describe('Profile', () => {
         {
           provide: AuthService,
           useValue: {
-            fetchMyProfile: () => of({
-              fullName: 'Nguyễn Văn A', mssv: '20010001', email: 'a@huit.edu.vn',
-              department: 'Công nghệ thông tin', cardStatus: null,
-            }),
+            fetchMyProfile: () =>
+              of({
+                fullName: 'Nguyễn Văn A',
+                mssv: '20010001',
+                email: 'a@huit.edu.vn',
+                department: 'Công nghệ thông tin',
+                cardStatus: null,
+              }),
             getRole: () => 'STUDENT',
             getUserProfile: () => null,
             logout: vi.fn(),

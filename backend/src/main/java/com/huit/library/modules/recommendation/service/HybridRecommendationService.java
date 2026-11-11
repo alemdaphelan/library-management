@@ -70,14 +70,19 @@ public class HybridRecommendationService {
     }
 
     @Transactional(readOnly = true)
-    public RecommendationResponseDTO getPersonalizedRecommendations(UUID userId, int requestedLimit) {
+    public RecommendationResponseDTO getPersonalizedRecommendations(
+            UUID userId, int requestedLimit) {
         int limit = clamp(requestedLimit, 1, 50);
         int historyLimit = clamp(properties.getHistoryLimit(), 1, 500);
         int candidatePool = clamp(properties.getCandidatePool(), 100, 10_000);
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-        List<UserBookInteractionProjection> interactions = loanDetailRepository.findUserBookInteractions(
-                userId, PageRequest.of(0, historyLimit));
+        UserEntity user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(
+                                () -> new IllegalArgumentException("User not found: " + userId));
+        List<UserBookInteractionProjection> interactions =
+                loanDetailRepository.findUserBookInteractions(
+                        userId, PageRequest.of(0, historyLimit));
         String departmentKey = DepartmentKeyNormalizer.normalize(user.getDepartment());
         String fingerprint = interactionFingerprint(departmentKey, interactions);
         var cached = cacheService.get(userId, limit, fingerprint);
@@ -85,29 +90,42 @@ public class HybridRecommendationService {
             return cached.get();
         }
 
-        Set<Long> borrowedBookIds = interactions.stream()
-                .map(UserBookInteractionProjection::getBookId)
-                .collect(Collectors.toCollection(HashSet::new));
-        Map<Long, BookEntity> historyBooksById = bookRepository.findAllById(borrowedBookIds).stream()
-                .collect(Collectors.toMap(BookEntity::getBookId, Function.identity()));
-        List<TfIdfSimilarityEngine.WeightedBook> profileBooks = interactions.stream()
-                .filter(interaction -> historyBooksById.containsKey(interaction.getBookId()))
-                .map(interaction -> new TfIdfSimilarityEngine.WeightedBook(
-                        historyBooksById.get(interaction.getBookId()),
-                        interactionWeight(interaction)))
-                .toList();
+        Set<Long> borrowedBookIds =
+                interactions.stream()
+                        .map(UserBookInteractionProjection::getBookId)
+                        .collect(Collectors.toCollection(HashSet::new));
+        Map<Long, BookEntity> historyBooksById =
+                bookRepository.findAllById(borrowedBookIds).stream()
+                        .collect(Collectors.toMap(BookEntity::getBookId, Function.identity()));
+        List<TfIdfSimilarityEngine.WeightedBook> profileBooks =
+                interactions.stream()
+                        .filter(
+                                interaction ->
+                                        historyBooksById.containsKey(interaction.getBookId()))
+                        .map(
+                                interaction ->
+                                        new TfIdfSimilarityEngine.WeightedBook(
+                                                historyBooksById.get(interaction.getBookId()),
+                                                interactionWeight(interaction)))
+                        .toList();
 
-        List<DepartmentSubjectAffinityEntity> affinities = departmentKey.isEmpty()
-                ? List.of()
-                : departmentAffinityRepository.findByDepartmentKeyAndActiveTrueOrderByWeightDesc(departmentKey);
-        Map<Long, Double> affinityBySubjectId = affinities.stream().collect(Collectors.toMap(
-                affinity -> affinity.getSubject().getSubjectId(),
-                affinity -> affinity.getWeight().doubleValue(),
-                Math::max));
+        List<DepartmentSubjectAffinityEntity> affinities =
+                departmentKey.isEmpty()
+                        ? List.of()
+                        : departmentAffinityRepository
+                                .findByDepartmentKeyAndActiveTrueOrderByWeightDesc(departmentKey);
+        Map<Long, Double> affinityBySubjectId =
+                affinities.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        affinity -> affinity.getSubject().getSubjectId(),
+                                        affinity -> affinity.getWeight().doubleValue(),
+                                        Math::max));
 
-        List<BookSubjectAssignmentEntity> historyAssignments = borrowedBookIds.isEmpty()
-                ? List.of()
-                : subjectAssignmentRepository.findByBook_BookIdIn(borrowedBookIds);
+        List<BookSubjectAssignmentEntity> historyAssignments =
+                borrowedBookIds.isEmpty()
+                        ? List.of()
+                        : subjectAssignmentRepository.findByBook_BookIdIn(borrowedBookIds);
         Set<Long> targetSubjectIds = new HashSet<>(affinityBySubjectId.keySet());
         historyAssignments.stream()
                 .map(assignment -> assignment.getSubject().getSubjectId())
@@ -123,10 +141,11 @@ public class HybridRecommendationService {
                     candidatePool);
         }
 
-        Set<Long> historyCategoryIds = historyBooksById.values().stream()
-                .filter(book -> book.getCategory() != null)
-                .map(book -> book.getCategory().getCategoryId())
-                .collect(Collectors.toSet());
+        Set<Long> historyCategoryIds =
+                historyBooksById.values().stream()
+                        .filter(book -> book.getCategory() != null)
+                        .map(book -> book.getCategory().getCategoryId())
+                        .collect(Collectors.toSet());
         if (!historyCategoryIds.isEmpty() && candidatesById.size() < candidatePool) {
             addCandidates(
                     candidatesById,
@@ -139,15 +158,20 @@ public class HybridRecommendationService {
 
         LocalDateTime asOf = LocalDateTime.now();
         int popularityWindowDays = clamp(properties.getPopularityWindowDays(), 30, 3_650);
-        List<BookPopularityProjection> popularity = loanDetailRepository.findPopularityScores(
-                asOf.minusDays(popularityWindowDays),
-                asOf,
-                Math.max(30.0, popularityWindowDays / 4.0),
-                PageRequest.of(0, Math.min(candidatePool, 1_000)));
-        Map<Long, BookEntity> popularBooksById = bookRepository.findAllById(
-                        popularity.stream().map(BookPopularityProjection::getBookId).toList())
-                .stream()
-                .collect(Collectors.toMap(BookEntity::getBookId, Function.identity()));
+        List<BookPopularityProjection> popularity =
+                loanDetailRepository.findPopularityScores(
+                        asOf.minusDays(popularityWindowDays),
+                        asOf,
+                        Math.max(30.0, popularityWindowDays / 4.0),
+                        PageRequest.of(0, Math.min(candidatePool, 1_000)));
+        Map<Long, BookEntity> popularBooksById =
+                bookRepository
+                        .findAllById(
+                                popularity.stream()
+                                        .map(BookPopularityProjection::getBookId)
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(BookEntity::getBookId, Function.identity()));
         addCandidates(
                 candidatesById,
                 popularity.stream().map(score -> popularBooksById.get(score.getBookId())).toList(),
@@ -157,8 +181,9 @@ public class HybridRecommendationService {
         if (candidatesById.size() < candidatePool) {
             addCandidates(
                     candidatesById,
-                    bookRepository.findRecommendationFallback(PageRequest.of(
-                            0, Math.min(candidatePool - candidatesById.size(), 1_000))),
+                    bookRepository.findRecommendationFallback(
+                            PageRequest.of(
+                                    0, Math.min(candidatePool - candidatesById.size(), 1_000))),
                     borrowedBookIds,
                     candidatePool);
         }
@@ -173,52 +198,71 @@ public class HybridRecommendationService {
         List<BookEntity> candidates = new ArrayList<>(candidatesById.values());
         Set<Long> allDocumentIds = new HashSet<>(borrowedBookIds);
         allDocumentIds.addAll(candidatesById.keySet());
-        List<BookSubjectAssignmentEntity> allAssignments = allDocumentIds.isEmpty()
-                ? List.of()
-                : subjectAssignmentRepository.findByBook_BookIdIn(allDocumentIds);
+        List<BookSubjectAssignmentEntity> allAssignments =
+                allDocumentIds.isEmpty()
+                        ? List.of()
+                        : subjectAssignmentRepository.findByBook_BookIdIn(allDocumentIds);
         Map<Long, List<String>> subjectTerms = toSubjectTerms(allAssignments);
-        Map<Long, List<BookSubjectAssignmentEntity>> assignmentsByBookId = allAssignments.stream()
-                .collect(Collectors.groupingBy(assignment -> assignment.getBook().getBookId()));
+        Map<Long, List<BookSubjectAssignmentEntity>> assignmentsByBookId =
+                allAssignments.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        assignment -> assignment.getBook().getBookId()));
 
-        Map<Long, Double> contentScores = profileBooks.isEmpty()
-                ? Map.of()
-                : similarityEngine.scoreProfile(profileBooks, candidates, subjectTerms);
-        Map<Long, Double> departmentScores = candidates.stream().collect(Collectors.toMap(
-                BookEntity::getBookId,
-                book -> departmentScore(
-                        assignmentsByBookId.getOrDefault(book.getBookId(), List.of()),
-                        affinityBySubjectId)));
+        Map<Long, Double> contentScores =
+                profileBooks.isEmpty()
+                        ? Map.of()
+                        : similarityEngine.scoreProfile(profileBooks, candidates, subjectTerms);
+        Map<Long, Double> departmentScores =
+                candidates.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        BookEntity::getBookId,
+                                        book ->
+                                                departmentScore(
+                                                        assignmentsByBookId.getOrDefault(
+                                                                book.getBookId(), List.of()),
+                                                        affinityBySubjectId)));
         Map<Long, Double> popularityScores = normalizePopularity(popularity);
-        Map<Long, Long> borrowCounts = popularity.stream().collect(Collectors.toMap(
-                BookPopularityProjection::getBookId,
-                BookPopularityProjection::getBorrowCount,
-                Math::max));
+        Map<Long, Long> borrowCounts =
+                popularity.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        BookPopularityProjection::getBookId,
+                                        BookPopularityProjection::getBorrowCount,
+                                        Math::max));
         double[] weights = normalizedWeights();
 
-        List<RecommendationItemDTO> items = candidates.stream()
-                .map(book -> scoredItem(
-                        book,
-                        contentScores.getOrDefault(book.getBookId(), 0.0),
-                        departmentScores.getOrDefault(book.getBookId(), 0.0),
-                        popularityScores.getOrDefault(book.getBookId(), 0.0),
-                        borrowCounts.getOrDefault(book.getBookId(), 0L),
-                        weights,
-                        user.getDepartment(),
-                        profileBooks.isEmpty()))
-                .sorted(Comparator
-                        .comparingDouble(RecommendationItemDTO::score)
-                        .reversed()
-                        .thenComparing(RecommendationItemDTO::bookId))
-                .limit(limit)
-                .toList();
+        List<RecommendationItemDTO> items =
+                candidates.stream()
+                        .map(
+                                book ->
+                                        scoredItem(
+                                                book,
+                                                contentScores.getOrDefault(book.getBookId(), 0.0),
+                                                departmentScores.getOrDefault(
+                                                        book.getBookId(), 0.0),
+                                                popularityScores.getOrDefault(
+                                                        book.getBookId(), 0.0),
+                                                borrowCounts.getOrDefault(book.getBookId(), 0L),
+                                                weights,
+                                                user.getDepartment(),
+                                                profileBooks.isEmpty()))
+                        .sorted(
+                                Comparator.comparingDouble(RecommendationItemDTO::score)
+                                        .reversed()
+                                        .thenComparing(RecommendationItemDTO::bookId))
+                        .limit(limit)
+                        .toList();
 
         boolean coldStart = profileBooks.isEmpty();
-        RecommendationResponseDTO response = new RecommendationResponseDTO(
-                coldStart ? "HYBRID_COLD_START" : "HYBRID_PERSONALIZED",
-                !profileBooks.isEmpty() || !affinities.isEmpty(),
-                candidates.size(),
-                asOf,
-                items);
+        RecommendationResponseDTO response =
+                new RecommendationResponseDTO(
+                        coldStart ? "HYBRID_COLD_START" : "HYBRID_PERSONALIZED",
+                        !profileBooks.isEmpty() || !affinities.isEmpty(),
+                        candidates.size(),
+                        asOf,
+                        items);
         cacheService.put(userId, limit, fingerprint, response);
         return response;
     }
@@ -255,16 +299,19 @@ public class HybridRecommendationService {
         double departmentContribution = weights[1] * departmentScore;
         double popularityContribution = weights[2] * popularityScore;
         double hybridScore = contentContribution + departmentContribution + popularityContribution;
-        String reason = reason(
-                contentContribution,
-                departmentContribution,
-                popularityContribution,
-                department,
-                coldStart);
+        String reason =
+                reason(
+                        contentContribution,
+                        departmentContribution,
+                        popularityContribution,
+                        department,
+                        coldStart);
         String categoryName = book.getCategory() == null ? null : book.getCategory().getName();
-        String imageUrl = firstNonBlank(book.getImageUrlM(), book.getImageUrlL(), book.getImageUrlS());
+        String imageUrl =
+                firstNonBlank(book.getImageUrlM(), book.getImageUrlL(), book.getImageUrlS());
         long copies = bookCopyRepository.findByBookId(book.getBookId()).size();
-        long availableCopies = bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE");
+        long availableCopies =
+                bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE");
         return new RecommendationItemDTO(
                 book.getBookId(),
                 book.getTitle(),
@@ -308,44 +355,58 @@ public class HybridRecommendationService {
     }
 
     private Map<Long, Double> normalizePopularity(List<BookPopularityProjection> popularity) {
-        double max = popularity.stream()
-                .mapToDouble(BookPopularityProjection::getWeightedScore)
-                .filter(Double::isFinite)
-                .max()
-                .orElse(0.0);
+        double max =
+                popularity.stream()
+                        .mapToDouble(BookPopularityProjection::getWeightedScore)
+                        .filter(Double::isFinite)
+                        .max()
+                        .orElse(0.0);
         if (max <= 0) {
             return Map.of();
         }
-        return popularity.stream().collect(Collectors.toMap(
-                BookPopularityProjection::getBookId,
-                score -> Math.log1p(Math.max(score.getWeightedScore(), 0.0)) / Math.log1p(max),
-                Math::max));
+        return popularity.stream()
+                .collect(
+                        Collectors.toMap(
+                                BookPopularityProjection::getBookId,
+                                score ->
+                                        Math.log1p(Math.max(score.getWeightedScore(), 0.0))
+                                                / Math.log1p(max),
+                                Math::max));
     }
 
     private double departmentScore(
-            List<BookSubjectAssignmentEntity> assignments,
-            Map<Long, Double> affinityBySubjectId) {
+            List<BookSubjectAssignmentEntity> assignments, Map<Long, Double> affinityBySubjectId) {
         return assignments.stream()
-                .mapToDouble(assignment -> affinityBySubjectId.getOrDefault(
-                                assignment.getSubject().getSubjectId(), 0.0)
-                        * assignment.getConfidence().doubleValue())
+                .mapToDouble(
+                        assignment ->
+                                affinityBySubjectId.getOrDefault(
+                                                assignment.getSubject().getSubjectId(), 0.0)
+                                        * assignment.getConfidence().doubleValue())
                 .max()
                 .orElse(0.0);
     }
 
-    private Map<Long, List<String>> toSubjectTerms(Collection<BookSubjectAssignmentEntity> assignments) {
-        return assignments.stream().collect(Collectors.groupingBy(
-                assignment -> assignment.getBook().getBookId(),
-                Collectors.mapping(
-                        assignment -> assignment.getSubject().getCode() + " " + assignment.getSubject().getName(),
-                        Collectors.toList())));
+    private Map<Long, List<String>> toSubjectTerms(
+            Collection<BookSubjectAssignmentEntity> assignments) {
+        return assignments.stream()
+                .collect(
+                        Collectors.groupingBy(
+                                assignment -> assignment.getBook().getBookId(),
+                                Collectors.mapping(
+                                        assignment ->
+                                                assignment.getSubject().getCode()
+                                                        + " "
+                                                        + assignment.getSubject().getName(),
+                                        Collectors.toList())));
     }
 
     private double interactionWeight(UserBookInteractionProjection interaction) {
         LocalDateTime lastInteraction = interaction.getLastInteractedAt();
-        long ageDays = lastInteraction == null
-                ? 365
-                : Math.max(0, Duration.between(lastInteraction, LocalDateTime.now()).toDays());
+        long ageDays =
+                lastInteraction == null
+                        ? 365
+                        : Math.max(
+                                0, Duration.between(lastInteraction, LocalDateTime.now()).toDays());
         double recency = Math.pow(0.5, ageDays / 180.0);
         double frequency = 1.0 + Math.log1p(Math.max(1, interaction.getBorrowCount()));
         double renewal = 1.0 + 0.25 * Math.max(0, interaction.getRenewalCount());
@@ -358,23 +419,28 @@ public class HybridRecommendationService {
         double popularity = Math.max(0.0, properties.getPopularityWeight());
         double total = content + department + popularity;
         if (total == 0) {
-            return new double[]{0.50, 0.35, 0.15};
+            return new double[] {0.50, 0.35, 0.15};
         }
-        return new double[]{content / total, department / total, popularity / total};
+        return new double[] {content / total, department / total, popularity / total};
     }
 
     private String interactionFingerprint(
-            String departmentKey,
-            List<UserBookInteractionProjection> interactions) {
+            String departmentKey, List<UserBookInteractionProjection> interactions) {
         StringBuilder source = new StringBuilder(departmentKey).append('|');
-        interactions.forEach(interaction -> source
-                .append(interaction.getBookId()).append(':')
-                .append(interaction.getBorrowCount()).append(':')
-                .append(interaction.getRenewalCount()).append(':')
-                .append(interaction.getLastInteractedAt()).append(';'));
+        interactions.forEach(
+                interaction ->
+                        source.append(interaction.getBookId())
+                                .append(':')
+                                .append(interaction.getBorrowCount())
+                                .append(':')
+                                .append(interaction.getRenewalCount())
+                                .append(':')
+                                .append(interaction.getLastInteractedAt())
+                                .append(';'));
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(source.toString().getBytes(StandardCharsets.UTF_8));
+            byte[] digest =
+                    MessageDigest.getInstance("SHA-256")
+                            .digest(source.toString().getBytes(StandardCharsets.UTF_8));
             return java.util.HexFormat.of().formatHex(digest, 0, 12);
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is required", exception);

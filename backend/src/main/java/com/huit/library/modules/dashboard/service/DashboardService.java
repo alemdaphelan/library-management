@@ -45,7 +45,8 @@ public class DashboardService {
             LoanTicketRepository loanTicketRepository,
             LoanDetailRepository loanDetailRepository,
             UserRepository userRepository,
-            FinanceAnalyticsRepository financeAnalytics, CirculationAnalyticsRepository analytics) {
+            FinanceAnalyticsRepository financeAnalytics,
+            CirculationAnalyticsRepository analytics) {
         this.bookCopyRepository = bookCopyRepository;
         this.bookRepository = bookRepository;
         this.loanTicketRepository = loanTicketRepository;
@@ -61,7 +62,9 @@ public class DashboardService {
         return new DashboardStatsDTO(
                 bookCopyRepository.count(),
                 bookCopyRepository.countByStatus("AVAILABLE"),
-                bookCopyRepository.countByStatus("BORROWED") + bookCopyRepository.countByStatus("BORROWING") + bookCopyRepository.countByStatus("OVERDUE"),
+                bookCopyRepository.countByStatus("BORROWED")
+                        + bookCopyRepository.countByStatus("BORROWING")
+                        + bookCopyRepository.countByStatus("OVERDUE"),
                 bookCopyRepository.countByStatus("RESERVED"),
                 analytics.currentOverdueCount(now),
                 fineCollected == null ? BigDecimal.ZERO : fineCollected,
@@ -72,14 +75,21 @@ public class DashboardService {
         LocalDate today = LocalDate.now();
         LocalDate firstDay = today.minusDays(6);
         Map<LocalDate, Long> countByDate = analytics.dailyBorrowCounts(firstDay, today.plusDays(1));
-        long maximum = Math.max(1, countByDate.values().stream().mapToLong(Long::longValue).max().orElse(0));
+        long maximum =
+                Math.max(
+                        1,
+                        countByDate.values().stream().mapToLong(Long::longValue).max().orElse(0));
 
         List<WeeklyStatDTO> result = new ArrayList<>();
         for (int index = 0; index < 7; index++) {
             LocalDate date = firstDay.plusDays(index);
             long count = countByDate.getOrDefault(date, 0L);
-            result.add(new WeeklyStatDTO(date, vietnameseDay(date), count,
-                    (int) Math.round(count * 100.0 / maximum)));
+            result.add(
+                    new WeeklyStatDTO(
+                            date,
+                            vietnameseDay(date),
+                            count,
+                            (int) Math.round(count * 100.0 / maximum)));
         }
         return result;
     }
@@ -92,19 +102,34 @@ public class DashboardService {
 
     public List<TrendingBookDTO> getTrendingBooks() {
         return loanDetailRepository.findTrendingBooks(PageRequest.of(0, 5)).stream()
-                .map(book -> new TrendingBookDTO(
-                        book.getBookId(), book.getTitle(), book.getAuthor(), book.getBorrows()))
+                .map(
+                        book ->
+                                new TrendingBookDTO(
+                                        book.getBookId(),
+                                        book.getTitle(),
+                                        book.getAuthor(),
+                                        book.getBorrows()))
                 .toList();
     }
 
     private RecentActivityDTO toActivity(LoanTicketEntity ticket) {
-        LoanDetailEntity detail = loanDetailRepository.findFirstByTicketId(ticket.getTicketId()).orElse(null);
+        LoanDetailEntity detail =
+                loanDetailRepository.findFirstByTicketId(ticket.getTicketId()).orElse(null);
         String item = resolveBookTitle(detail);
-        String user = ticket.getUserId() == null ? "Bạn đọc" : userRepository.findById(ticket.getUserId())
-                .map(person -> person.getFullName() != null ? person.getFullName() : person.getMssv())
-                .orElse("Bạn đọc");
+        String user =
+                ticket.getUserId() == null
+                        ? "Bạn đọc"
+                        : userRepository
+                                .findById(ticket.getUserId())
+                                .map(
+                                        person ->
+                                                person.getFullName() != null
+                                                        ? person.getFullName()
+                                                        : person.getMssv())
+                                .orElse("Bạn đọc");
 
-        String status = ticket.getStatus() == null ? "" : ticket.getStatus().toUpperCase(Locale.ROOT);
+        String status =
+                ticket.getStatus() == null ? "" : ticket.getStatus().toUpperCase(Locale.ROOT);
         String type;
         String action;
         if ("RETURNED".equals(status) || detail != null && detail.getReturnDate() != null) {
@@ -113,7 +138,9 @@ public class DashboardService {
         } else if ("CANCELLED".equals(status)) {
             type = "cancel";
             action = "đã hủy phiếu cho";
-        } else if (detail != null && detail.getRenewalCount() != null && detail.getRenewalCount() > 0) {
+        } else if (detail != null
+                && detail.getRenewalCount() != null
+                && detail.getRenewalCount() > 0) {
             type = "renew";
             action = "đã gia hạn";
         } else {
@@ -122,13 +149,15 @@ public class DashboardService {
         }
 
         LocalDateTime time = latest(ticket.getUpdatedAt(), ticket.getCreatedAt());
-        if (detail != null) time = latest(time, latest(detail.getUpdatedAt(), detail.getCreatedAt()));
+        if (detail != null)
+            time = latest(time, latest(detail.getUpdatedAt(), detail.getCreatedAt()));
         return new RecentActivityDTO(type, user, action, item, time);
     }
 
     private String resolveBookTitle(LoanDetailEntity detail) {
         if (detail == null || detail.getBarcode() == null) return "phiếu thư viện";
-        return bookCopyRepository.findById(detail.getBarcode())
+        return bookCopyRepository
+                .findById(detail.getBarcode())
                 .map(BookCopyEntity::getBookId)
                 .flatMap(bookRepository::findById)
                 .map(BookEntity::getTitle)

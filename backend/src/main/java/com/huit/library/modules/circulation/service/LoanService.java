@@ -53,7 +53,8 @@ public class LoanService {
     private final StaffNotificationService staffNotificationService;
     private final LibraryPolicyService policyService;
     private final BorrowingValuePolicyService borrowingValuePolicyService;
-    private final com.huit.library.modules.catalog.service.BookValuationService bookValuationService;
+    private final com.huit.library.modules.catalog.service.BookValuationService
+            bookValuationService;
 
     public LoanService(
             LoanTicketRepository loanTicketRepository,
@@ -84,34 +85,48 @@ public class LoanService {
 
     @Transactional
     public BorrowResponseDTO reserveOrBorrowBook(BorrowRequestDTO request, UUID userId) {
-        UserEntity user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy thông tin người dùng trong hệ thống"));
+        UserEntity user =
+                userRepository
+                        .findByIdForUpdate(userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy thông tin người dùng trong hệ thống"));
 
-        if (Boolean.TRUE.equals(user.getDisciplineFlag()) || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
+        if (Boolean.TRUE.equals(user.getDisciplineFlag())
+                || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Tài khoản của bạn đang bị khóa hoặc hạn chế mượn sách. Vui lòng liên hệ thủ thư!");
         }
         circulationStateService.ensureEligibleForReservation(userId);
 
-        BookEntity book = bookRepository.findById(request.getBookId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy cuốn sách này trong cơ sở dữ liệu"));
+        BookEntity book =
+                bookRepository
+                        .findById(request.getBookId())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy cuốn sách này trong cơ sở dữ liệu"));
 
         if (loanDetailRepository.countOpenItemsByUserIdAndBookId(userId, book.getBookId()) > 0) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Bạn đã có đầu sách \"" + book.getTitle()
+                    "Bạn đã có đầu sách \""
+                            + book.getTitle()
                             + "\" trong một phiếu đặt giữ hoặc mượn đang hoạt động. "
                             + "Vui lòng hoàn tất hoặc hủy phiếu hiện tại trước khi đăng ký lại.");
         }
 
         // Người đứng đầu hàng đợi có thể nhận đúng bản sao đã được khóa cho mình.
-        WaitlistEntity notifiedEntry = waitlistRepository
-                .findFirstByBookIdAndUserIdAndStatus(book.getBookId(), userId, "NOTIFIED")
-                .orElse(null);
-        Optional<BookCopyEntity> availableCopy = findReservableCopy(book.getBookId(), userId, notifiedEntry);
+        WaitlistEntity notifiedEntry =
+                waitlistRepository
+                        .findFirstByBookIdAndUserIdAndStatus(book.getBookId(), userId, "NOTIFIED")
+                        .orElse(null);
+        Optional<BookCopyEntity> availableCopy =
+                findReservableCopy(book.getBookId(), userId, notifiedEntry);
 
         // If no available copies, join waitlist (if physical circulating copies exist)
         if (availableCopy.isEmpty()) {
@@ -121,28 +136,37 @@ public class LoanService {
                         "Tài liệu số không hỗ trợ đăng ký mượn bản in hoặc hàng đợi đặt trước.");
             }
             List<BookCopyEntity> allCopies = bookCopyRepository.findByBookId(book.getBookId());
-            boolean hasCirculatingCopy = allCopies.stream()
-                    .anyMatch(c -> c.getStatus() == null
-                            || !List.of("LOST", "DAMAGED").contains(c.getStatus().toUpperCase()));
+            boolean hasCirculatingCopy =
+                    allCopies.stream()
+                            .anyMatch(
+                                    c ->
+                                            c.getStatus() == null
+                                                    || !List.of("LOST", "DAMAGED")
+                                                            .contains(c.getStatus().toUpperCase()));
             if (!hasCirculatingCopy) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
-                        "Đầu sách \"" + book.getTitle()
+                        "Đầu sách \""
+                                + book.getTitle()
                                 + "\" hiện không có bản sao lưu thông nên không hỗ trợ đăng ký mượn hoặc hàng đợi.");
             }
-            if (waitlistRepository.findFirstByBookIdAndUserIdAndStatus(
-                    book.getBookId(), userId, "NOTIFIED").isPresent()) {
+            if (waitlistRepository
+                    .findFirstByBookIdAndUserIdAndStatus(book.getBookId(), userId, "NOTIFIED")
+                    .isPresent()) {
                 return BorrowResponseDTO.builder()
                         .success(false)
-                        .message("Lượt giữ từ hàng đợi đã hết hiệu lực hoặc đang được hệ thống xử lý.")
+                        .message(
+                                "Lượt giữ từ hàng đợi đã hết hiệu lực hoặc đang được hệ thống xử lý.")
                         .status("WAITLIST")
                         .bookTitle(book.getTitle())
                         .build();
             }
-            if (waitlistRepository.existsByBookIdAndUserIdAndStatus(book.getBookId(), userId, "WAITING")) {
+            if (waitlistRepository.existsByBookIdAndUserIdAndStatus(
+                    book.getBookId(), userId, "WAITING")) {
                 return BorrowResponseDTO.builder()
                         .success(false)
-                        .message("Tài liệu hiện đã hết bản in sẵn sàng. Bạn đã có tên trong hàng đợi đặt trước rồi!")
+                        .message(
+                                "Tài liệu hiện đã hết bản in sẵn sàng. Bạn đã có tên trong hàng đợi đặt trước rồi!")
                         .status("WAITLIST")
                         .bookTitle(book.getTitle())
                         .build();
@@ -156,7 +180,8 @@ public class LoanService {
 
             return BorrowResponseDTO.builder()
                     .success(true)
-                    .message("Tài liệu hiện đang được mượn hết. Hệ thống đã thêm bạn vào Hàng đợi đặt trước (Waitlist). Thư viện sẽ gửi thông báo ngay khi có sách hoàn trả!")
+                    .message(
+                            "Tài liệu hiện đang được mượn hết. Hệ thống đã thêm bạn vào Hàng đợi đặt trước (Waitlist). Thư viện sẽ gửi thông báo ngay khi có sách hoàn trả!")
                     .status("WAITLIST")
                     .bookTitle(book.getTitle())
                     .build();
@@ -167,10 +192,13 @@ public class LoanService {
         borrowingValuePolicyService.ensureCanAddBooks(userId, List.of(book.getBookId()));
 
         // Calculate pickup and due dates
-        LocalDate pickupDate = request.getPickupDate() != null ? request.getPickupDate() : LocalDate.now();
-        LocalDateTime pickupDateTime = notifiedEntry != null
-                ? notifiedEntry.getExpiresAt()
-                : waitlistService.calculateDirectReservationDeadline(pickupDate, LocalDateTime.now());
+        LocalDate pickupDate =
+                request.getPickupDate() != null ? request.getPickupDate() : LocalDate.now();
+        LocalDateTime pickupDateTime =
+                notifiedEntry != null
+                        ? notifiedEntry.getExpiresAt()
+                        : waitlistService.calculateDirectReservationDeadline(
+                                pickupDate, LocalDateTime.now());
         LocalDateTime dueDateTime;
         LoanTicketType ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
         if (ticketType == LoanTicketType.ONSITE) {
@@ -190,9 +218,10 @@ public class LoanService {
         LoanDetailEntity detail = new LoanDetailEntity();
         detail.setTicketId(ticket.getTicketId());
         detail.setBarcode(copy.getBarcode());
-        detail.setCheckoutConditionNote(request.getNote() != null && !request.getNote().isBlank()
-                ? request.getNote()
-                : "Đặt giữ trước qua cổng trực tuyến OPAC");
+        detail.setCheckoutConditionNote(
+                request.getNote() != null && !request.getNote().isBlank()
+                        ? request.getNote()
+                        : "Đặt giữ trước qua cổng trực tuyến OPAC");
         detail.setReturnStatus(LoanDetailStatus.PENDING.name());
         detail.setDueDate(dueDateTime);
         loanDetailRepository.save(detail);
@@ -210,15 +239,26 @@ public class LoanService {
         circulationStateService.autoApproveReservation(ticket);
         staffNotificationService.notifyAll(
                 "LOAN_RESERVED",
-                "Hệ thống đã giữ chỗ ‘" + book.getTitle() + "’ cho bạn đọc " + displayReader(user)
-                        + " (phiếu #" + ticket.getTicketId() + "). Có thể giao sách tại quầy.",
-                "LOAN_TICKET", ticket.getTicketId().toString(),
-                "LOAN_RESERVED:" + ticket.getTicketId(), LocalDateTime.now());
+                "Hệ thống đã giữ chỗ ‘"
+                        + book.getTitle()
+                        + "’ cho bạn đọc "
+                        + displayReader(user)
+                        + " (phiếu #"
+                        + ticket.getTicketId()
+                        + "). Có thể giao sách tại quầy.",
+                "LOAN_TICKET",
+                ticket.getTicketId().toString(),
+                "LOAN_RESERVED:" + ticket.getTicketId(),
+                LocalDateTime.now());
 
         return BorrowResponseDTO.builder()
                 .success(true)
-                .message("Đặt giữ trước thành công! Mã phiếu mượn #" + ticket.getTicketId()
-                        + ". Vui lòng mang thẻ sinh viên/bạn đọc đến quầy nhận sách trước " + pickupDateTime + ".")
+                .message(
+                        "Đặt giữ trước thành công! Mã phiếu mượn #"
+                                + ticket.getTicketId()
+                                + ". Vui lòng mang thẻ sinh viên/bạn đọc đến quầy nhận sách trước "
+                                + pickupDateTime
+                                + ".")
                 .ticketId(ticket.getTicketId())
                 .ticketType(LoanTicketType.fromDatabaseValue(ticket.getTicketType()).name())
                 .status(ticket.getStatus())
@@ -239,13 +279,20 @@ public class LoanService {
                     "Mỗi phiếu phải có từ 1 đến " + maximumOpenItems + " tài liệu");
         }
         if (new LinkedHashSet<>(bookIds).size() != bookIds.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách đăng ký có đầu sách bị trùng");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Danh sách đăng ký có đầu sách bị trùng");
         }
 
-        UserEntity user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy thông tin người dùng trong hệ thống"));
-        if (Boolean.TRUE.equals(user.getDisciplineFlag()) || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
+        UserEntity user =
+                userRepository
+                        .findByIdForUpdate(userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy thông tin người dùng trong hệ thống"));
+        if (Boolean.TRUE.equals(user.getDisciplineFlag())
+                || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Tài khoản của bạn đang bị khóa hoặc hạn chế mượn sách. Vui lòng liên hệ thủ thư");
@@ -258,16 +305,24 @@ public class LoanService {
         List<String> unavailableTitles = new ArrayList<>();
         // Every reservation locks books in the same order to avoid opposite-order batch deadlocks.
         for (Long bookId : bookIds.stream().sorted().toList()) {
-            BookEntity book = bookRepository.findById(bookId)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND, "Không tìm thấy đầu sách #" + bookId));
+            BookEntity book =
+                    bookRepository
+                            .findById(bookId)
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.NOT_FOUND,
+                                                    "Không tìm thấy đầu sách #" + bookId));
             if (loanDetailRepository.countOpenItemsByUserIdAndBookId(userId, bookId) > 0) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
-                        "Bạn đã có đầu sách \"" + book.getTitle()
+                        "Bạn đã có đầu sách \""
+                                + book.getTitle()
                                 + "\" trong một phiếu đặt giữ hoặc mượn đang hoạt động");
             }
-            var notified = waitlistRepository.findFirstByBookIdAndUserIdAndStatus(bookId, userId, "NOTIFIED");
+            var notified =
+                    waitlistRepository.findFirstByBookIdAndUserIdAndStatus(
+                            bookId, userId, "NOTIFIED");
             var copy = findReservableCopy(bookId, userId, notified.orElse(null));
             if (copy.isEmpty()) {
                 unavailableTitles.add(book.getTitle());
@@ -285,22 +340,27 @@ public class LoanService {
                             + ". Vui lòng bỏ khỏi giỏ và đăng ký hàng đợi riêng");
         }
         borrowingValuePolicyService.ensureCanAddBooks(
-                userId,
-                books.stream().map(BookEntity::getBookId).toList());
+                userId, books.stream().map(BookEntity::getBookId).toList());
 
-        LocalDate pickupDate = request.getPickupDate() != null
-                ? request.getPickupDate()
-                : LocalDate.now();
-        LocalDateTime pickupDeadline = notifiedEntries.size() == copies.size()
-                ? notifiedEntries.stream().map(WaitlistEntity::getExpiresAt).min(LocalDateTime::compareTo).orElseThrow()
-                : waitlistService.calculateDirectReservationDeadline(pickupDate, LocalDateTime.now());
+        LocalDate pickupDate =
+                request.getPickupDate() != null ? request.getPickupDate() : LocalDate.now();
+        LocalDateTime pickupDeadline =
+                notifiedEntries.size() == copies.size()
+                        ? notifiedEntries.stream()
+                                .map(WaitlistEntity::getExpiresAt)
+                                .min(LocalDateTime::compareTo)
+                                .orElseThrow()
+                        : waitlistService.calculateDirectReservationDeadline(
+                                pickupDate, LocalDateTime.now());
         for (WaitlistEntity entry : notifiedEntries) {
-            if (entry.getExpiresAt().isBefore(pickupDeadline)) pickupDeadline = entry.getExpiresAt();
+            if (entry.getExpiresAt().isBefore(pickupDeadline))
+                pickupDeadline = entry.getExpiresAt();
         }
         LoanTicketType ticketType = LoanTicketType.fromDatabaseValue(request.getTicketType());
-        LocalDateTime dueDate = ticketType == LoanTicketType.ONSITE
-                ? pickupDeadline
-                : pickupDeadline.plusDays(policyService.homeLoanDays());
+        LocalDateTime dueDate =
+                ticketType == LoanTicketType.ONSITE
+                        ? pickupDeadline
+                        : pickupDeadline.plusDays(policyService.homeLoanDays());
 
         LoanTicketEntity ticket = new LoanTicketEntity();
         ticket.setUserId(userId);
@@ -308,9 +368,10 @@ public class LoanService {
         ticket.setStatus(LoanTicketStatus.PENDING.name());
         ticket = loanTicketRepository.save(ticket);
 
-        String note = request.getNote() != null && !request.getNote().isBlank()
-                ? request.getNote().trim()
-                : "Đăng ký nhiều tài liệu qua giỏ mượn OPAC";
+        String note =
+                request.getNote() != null && !request.getNote().isBlank()
+                        ? request.getNote().trim()
+                        : "Đăng ký nhiều tài liệu qua giỏ mượn OPAC";
         for (BookCopyEntity copy : copies) {
             LoanDetailEntity detail = new LoanDetailEntity();
             detail.setTicketId(ticket.getTicketId());
@@ -333,15 +394,28 @@ public class LoanService {
         circulationStateService.autoApproveReservation(ticket);
         staffNotificationService.notifyAll(
                 "LOAN_RESERVED",
-                "Hệ thống đã giữ chỗ phiếu #" + ticket.getTicketId() + " cho bạn đọc " + displayReader(user)
-                        + " gồm " + books.size() + " tài liệu. Có thể giao sách tại quầy.",
-                "LOAN_TICKET", ticket.getTicketId().toString(),
-                "LOAN_RESERVED:" + ticket.getTicketId(), LocalDateTime.now());
+                "Hệ thống đã giữ chỗ phiếu #"
+                        + ticket.getTicketId()
+                        + " cho bạn đọc "
+                        + displayReader(user)
+                        + " gồm "
+                        + books.size()
+                        + " tài liệu. Có thể giao sách tại quầy.",
+                "LOAN_TICKET",
+                ticket.getTicketId().toString(),
+                "LOAN_RESERVED:" + ticket.getTicketId(),
+                LocalDateTime.now());
 
         return BatchBorrowResponseDTO.builder()
                 .success(true)
-                .message("Đã tạo phiếu #" + ticket.getTicketId() + " gồm " + books.size()
-                        + " tài liệu. Vui lòng nhận trước " + pickupDeadline + ".")
+                .message(
+                        "Đã tạo phiếu #"
+                                + ticket.getTicketId()
+                                + " gồm "
+                                + books.size()
+                                + " tài liệu. Vui lòng nhận trước "
+                                + pickupDeadline
+                                + ".")
                 .ticketId(ticket.getTicketId())
                 .ticketType(ticketType.name())
                 .status(ticket.getStatus())
@@ -353,30 +427,39 @@ public class LoanService {
                 .build();
     }
 
-    private Optional<BookCopyEntity> findReservableCopy(Long bookId, UUID userId, WaitlistEntity notified) {
+    private Optional<BookCopyEntity> findReservableCopy(
+            Long bookId, UUID userId, WaitlistEntity notified) {
         if (notified == null) {
-            return bookCopyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(bookId, "AVAILABLE");
+            return bookCopyRepository.findFirstByBookIdAndStatusOrderByBarcodeAsc(
+                    bookId, "AVAILABLE");
         }
         if (notified.getReservedBarcode() == null || notified.getExpiresAt() == null) {
             return Optional.empty();
         }
         // Never substitute another reader's hold or revive an expired waitlist notification.
-        return bookCopyRepository.findAllByBarcodeInForUpdate(List.of(notified.getReservedBarcode())).stream()
+        return bookCopyRepository
+                .findAllByBarcodeInForUpdate(List.of(notified.getReservedBarcode()))
+                .stream()
                 .findFirst()
                 .filter(copy -> bookId.equals(copy.getBookId()))
                 .filter(copy -> "RESERVED".equalsIgnoreCase(copy.getStatus()))
                 .filter(copy -> userId.equals(copy.getLockedByUser()))
-                .filter(copy -> copy.getLockedUntil() != null && copy.getLockedUntil().isAfter(LocalDateTime.now()))
+                .filter(
+                        copy ->
+                                copy.getLockedUntil() != null
+                                        && copy.getLockedUntil().isAfter(LocalDateTime.now()))
                 .filter(copy -> notified.getExpiresAt().isAfter(LocalDateTime.now()));
     }
 
     @Transactional(readOnly = true)
     public List<LoanItemDTO> getMyLoans(UUID userId) {
-        List<LoanTicketEntity> tickets = loanTicketRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<LoanTicketEntity> tickets =
+                loanTicketRepository.findByUserIdOrderByCreatedAtDesc(userId);
         List<LoanItemDTO> results = new ArrayList<>();
 
         for (LoanTicketEntity ticket : tickets) {
-            List<LoanDetailEntity> details = loanDetailRepository.findByTicketId(ticket.getTicketId());
+            List<LoanDetailEntity> details =
+                    loanDetailRepository.findByTicketId(ticket.getTicketId());
             for (LoanDetailEntity detail : details) {
                 results.add(toLoanItem(ticket, detail));
             }
@@ -387,14 +470,22 @@ public class LoanService {
 
     @Transactional(readOnly = true)
     public LoanTicketDetailDTO getLoan(Long ticketId) {
-        LoanTicketEntity ticket = loanTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + ticketId));
-        UserEntity reader = ticket.getUserId() == null
-                ? null
-                : userRepository.findById(ticket.getUserId()).orElse(null);
-        List<LoanItemDTO> items = loanDetailRepository.findByTicketId(ticketId).stream()
-                .map(detail -> toLoanItem(ticket, detail))
-                .toList();
+        LoanTicketEntity ticket =
+                loanTicketRepository
+                        .findById(ticketId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiếu mượn #" + ticketId));
+        UserEntity reader =
+                ticket.getUserId() == null
+                        ? null
+                        : userRepository.findById(ticket.getUserId()).orElse(null);
+        List<LoanItemDTO> items =
+                loanDetailRepository.findByTicketId(ticketId).stream()
+                        .map(detail -> toLoanItem(ticket, detail))
+                        .toList();
 
         return LoanTicketDetailDTO.builder()
                 .ticketId(ticket.getTicketId())
@@ -413,15 +504,28 @@ public class LoanService {
     public LoanItemDTO getActiveLoanItem(String barcode) {
         String normalized = barcode == null ? "" : barcode.trim();
         if (normalized.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Barcode không được để trống");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Barcode không được để trống");
         }
-        LoanDetailEntity detail = loanDetailRepository.findActiveByBarcode(normalized)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Barcode " + normalized + " không có lượt mượn đang hoạt động"));
-        LoanTicketEntity ticket = loanTicketRepository.findById(detail.getTicketId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn của barcode " + normalized));
+        LoanDetailEntity detail =
+                loanDetailRepository
+                        .findActiveByBarcode(normalized)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Barcode "
+                                                        + normalized
+                                                        + " không có lượt mượn đang hoạt động"));
+        LoanTicketEntity ticket =
+                loanTicketRepository
+                        .findById(detail.getTicketId())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiếu mượn của barcode "
+                                                        + normalized));
         return toLoanItem(ticket, detail);
     }
 
@@ -447,105 +551,163 @@ public class LoanService {
     @Transactional
     public LoanItemDTO reportLoss(Long ticketId, Long detailId, String description, UUID userId) {
         if (description == null || description.isBlank() || description.length() > 1000) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nhập mô tả báo mất, tối đa 1000 ký tự");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Nhập mô tả báo mất, tối đa 1000 ký tự");
         }
         // Same ticket -> details lock order as counter returns; concurrent reports have one winner.
-        var ticket = loanTicketRepository.findByIdForUpdate(ticketId).orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn"));
+        var ticket =
+                loanTicketRepository
+                        .findByIdForUpdate(ticketId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn"));
         if (!userId.equals(ticket.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn chỉ được báo mất tài liệu của mình");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Bạn chỉ được báo mất tài liệu của mình");
         }
-        var detail = loanDetailRepository.findByTicketIdForUpdate(ticketId).stream()
-                .filter(item -> detailId.equals(item.getDetailId())).findFirst().orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu trong phiếu"));
-        // First report is immutable. A retry after staff processing returns it without another event/fee.
+        var detail =
+                loanDetailRepository.findByTicketIdForUpdate(ticketId).stream()
+                        .filter(item -> detailId.equals(item.getDetailId()))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy tài liệu trong phiếu"));
+        // First report is immutable. A retry after staff processing returns it without another
+        // event/fee.
         if (detail.getLossReportedAt() != null) return toLoanItem(ticket, detail);
         if (!List.of("BORROWING", "OVERDUE").contains(ticket.getStatus())
                 || !List.of("BORROWING", "OVERDUE").contains(detail.getReturnStatus())
-                || detail.getReturnDate() != null || detail.getPhysicalReturnAt() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ báo mất cuốn đang mượn và chưa có hồ sơ sự cố");
+                || detail.getReturnDate() != null
+                || detail.getPhysicalReturnAt() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Chỉ báo mất cuốn đang mượn và chưa có hồ sơ sự cố");
         }
         var reportedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         detail.setLossReportDescription(description.strip());
         detail.setLossReportedAt(reportedAt);
         loanDetailRepository.saveAndFlush(detail);
-        staffNotificationService.notifyAll("LOAN_LOSS_REPORTED",
-                "Bạn đọc báo mất tài liệu " + detail.getBarcode() + " trong phiếu #" + ticketId
+        staffNotificationService.notifyAll(
+                "LOAN_LOSS_REPORTED",
+                "Bạn đọc báo mất tài liệu "
+                        + detail.getBarcode()
+                        + " trong phiếu #"
+                        + ticketId
                         + ". Mở báo mất để xác minh bạn đọc và tài liệu trước khi lập hồ sơ.",
-                "LOAN_LOSS_REPORT", detailId.toString(), "LOAN_LOSS_REPORTED:" + detailId, reportedAt);
+                "LOAN_LOSS_REPORT",
+                detailId.toString(),
+                "LOAN_LOSS_REPORTED:" + detailId,
+                reportedAt);
         return toLoanItem(ticket, detail);
     }
 
     @Transactional(readOnly = true)
     public LoanTicketDetailDTO getLossReport(Long detailId) {
-        var detail = loanDetailRepository.findById(detailId).orElseThrow(() ->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy báo mất"));
+        var detail =
+                loanDetailRepository
+                        .findById(detailId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy báo mất"));
         if (detail.getLossReportedAt() == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tài liệu chưa có báo mất từ bạn đọc");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Tài liệu chưa có báo mất từ bạn đọc");
         }
         var ticket = getLoan(detail.getTicketId());
-        ticket.setItems(ticket.getItems().stream().filter(item -> detailId.equals(item.getDetailId())).toList());
+        ticket.setItems(
+                ticket.getItems().stream()
+                        .filter(item -> detailId.equals(item.getDetailId()))
+                        .toList());
         return ticket;
     }
 
     @Transactional
     public LoanItemDTO renewLoan(Long ticketId, Long detailId, UUID userId) {
-        LoanTicketEntity ticket = loanTicketRepository.findByIdForUpdate(ticketId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + ticketId));
+        LoanTicketEntity ticket =
+                loanTicketRepository
+                        .findByIdForUpdate(ticketId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiếu mượn #" + ticketId));
 
         if (!ticket.getUserId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác trên phiếu mượn này");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác trên phiếu mượn này");
         }
 
         LoanTicketStatus ticketStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
         if (ticketStatus != LoanTicketStatus.BORROWING) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ phiếu đang mượn mới có thể gia hạn");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Chỉ phiếu đang mượn mới có thể gia hạn");
         }
 
         List<LoanDetailEntity> details = loanDetailRepository.findByTicketId(ticketId);
         if (details.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy chi tiết mượn sách cho phiếu này");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Không tìm thấy chi tiết mượn sách cho phiếu này");
         }
 
-        if (details.stream().anyMatch(item -> (detailId == null || detailId.equals(item.getDetailId()))
-                && item.getLossReportedAt() != null)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã báo mất; liên hệ thủ thư để xử lý");
+        if (details.stream()
+                .anyMatch(
+                        item ->
+                                (detailId == null || detailId.equals(item.getDetailId()))
+                                        && item.getLossReportedAt() != null)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Tài liệu đã báo mất; liên hệ thủ thư để xử lý");
         }
 
-        List<LoanDetailEntity> activeDetails = details.stream()
-                .filter(item -> item.getReturnDate() == null)
-                .filter(item -> item.getPhysicalReturnAt() == null)
-                .filter(item -> item.getLossReportedAt() == null)
-                .filter(item -> "BORROWING".equalsIgnoreCase(item.getReturnStatus()))
-                .toList();
+        List<LoanDetailEntity> activeDetails =
+                details.stream()
+                        .filter(item -> item.getReturnDate() == null)
+                        .filter(item -> item.getPhysicalReturnAt() == null)
+                        .filter(item -> item.getLossReportedAt() == null)
+                        .filter(item -> "BORROWING".equalsIgnoreCase(item.getReturnStatus()))
+                        .toList();
         LoanDetailEntity detail;
         if (detailId == null) {
             if (activeDetails.size() != 1) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phiếu có nhiều tài liệu; phải chọn tài liệu cần gia hạn");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Phiếu có nhiều tài liệu; phải chọn tài liệu cần gia hạn");
             }
             detail = activeDetails.get(0);
         } else {
-            detail = activeDetails.stream()
-                    .filter(item -> detailId.equals(item.getDetailId()))
-                    .findFirst()
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu đang mượn trong phiếu"));
+            detail =
+                    activeDetails.stream()
+                            .filter(item -> detailId.equals(item.getDetailId()))
+                            .findFirst()
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.NOT_FOUND,
+                                                    "Không tìm thấy tài liệu đang mượn trong phiếu"));
         }
 
         if (Boolean.TRUE.equals(detail.getIsRecalled())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Thư viện đã yêu cầu trả tài liệu này; không thể gia hạn");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Thư viện đã yêu cầu trả tài liệu này; không thể gia hạn");
         }
 
         circulationStateService.ensureEligibleForRenewal(userId);
 
         if (detail.getDueDate() != null && detail.getDueDate().isBefore(LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã quá hạn nên không thể gia hạn");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Tài liệu đã quá hạn nên không thể gia hạn");
         }
 
         int currentRenewals = detail.getRenewalCount() != null ? detail.getRenewalCount() : 0;
         int maximumRenewalCount = policyService.maximumRenewalCount();
         if (currentRenewals >= maximumRenewalCount) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu chỉ được gia hạn tối đa "
-                    + maximumRenewalCount + " lần. Vui lòng hoàn trả đúng hạn!");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Tài liệu chỉ được gia hạn tối đa "
+                            + maximumRenewalCount
+                            + " lần. Vui lòng hoàn trả đúng hạn!");
         }
 
         // Kiểm tra xem cuốn sách này có bạn đọc nào đang chờ trong hàng đợi Waitlist không
@@ -553,16 +715,20 @@ public class LoanService {
             var copyOpt = bookCopyRepository.findById(detail.getBarcode());
             if (copyOpt.isPresent() && copyOpt.get().getBookId() != null) {
                 Long bookId = copyOpt.get().getBookId();
-                List<WaitlistEntity> waitingList = waitlistRepository.findByBookIdAndStatus(bookId, "WAITING");
+                List<WaitlistEntity> waitingList =
+                        waitlistRepository.findByBookIdAndStatus(bookId, "WAITING");
                 if (!waitingList.isEmpty()) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu này hiện đang có bạn đọc khác xếp hàng chờ mượn (Waitlist). Theo quy định thư viện, bạn không thể gia hạn thêm!");
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT,
+                            "Tài liệu này hiện đang có bạn đọc khác xếp hàng chờ mượn (Waitlist). Theo quy định thư viện, bạn không thể gia hạn thêm!");
                 }
             }
         }
 
         // Mỗi lần gia hạn dùng số ngày do quản trị viên cấu hình.
         detail.setRenewalCount(currentRenewals + 1);
-        LocalDateTime baseDate = detail.getDueDate() != null ? detail.getDueDate() : LocalDateTime.now();
+        LocalDateTime baseDate =
+                detail.getDueDate() != null ? detail.getDueDate() : LocalDateTime.now();
         detail.setDueDate(baseDate.plusDays(policyService.renewalDays()));
         loanDetailRepository.save(detail);
 
@@ -571,11 +737,18 @@ public class LoanService {
 
     @Transactional
     public void cancelReservation(Long ticketId, UUID userId) {
-        LoanTicketEntity ticket = loanTicketRepository.findByIdForUpdate(ticketId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + ticketId));
+        LoanTicketEntity ticket =
+                loanTicketRepository
+                        .findByIdForUpdate(ticketId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiếu mượn #" + ticketId));
 
         if (!ticket.getUserId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền hủy phiếu mượn này");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Bạn không có quyền hủy phiếu mượn này");
         }
 
         circulationStateService.cancelReservation(ticket, userId);
@@ -595,10 +768,13 @@ public class LoanService {
         LocalDateTime now = LocalDateTime.now();
         Long daysRemaining = null;
         if (detail.getDueDate() != null) {
-            long calendarDays = ChronoUnit.DAYS.between(now.toLocalDate(), detail.getDueDate().toLocalDate());
-            daysRemaining = (detail.getDueDate().isBefore(now) && calendarDays >= 0) ? -1L : calendarDays;
+            long calendarDays =
+                    ChronoUnit.DAYS.between(now.toLocalDate(), detail.getDueDate().toLocalDate());
+            daysRemaining =
+                    (detail.getDueDate().isBefore(now) && calendarDays >= 0) ? -1L : calendarDays;
         }
-        LoanTicketStatus effectiveTicketStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
+        LoanTicketStatus effectiveTicketStatus =
+                LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
         if (effectiveTicketStatus == LoanTicketStatus.BORROWING
                 && detail.getReturnDate() == null
                 && detail.getDueDate() != null
@@ -613,16 +789,23 @@ public class LoanService {
                 .bookValueSource(value == null ? "UNKNOWN" : value.source())
                 .bookValueCurrency(value == null ? "VND" : value.currency())
                 .priceKnown(value != null && value.known())
-                .returnable(detail.getReturnDate() == null && detail.getPhysicalReturnAt() == null
-                        && (effectiveTicketStatus == LoanTicketStatus.BORROWING || effectiveTicketStatus == LoanTicketStatus.OVERDUE)
-                        && (itemStatus == LoanDetailStatus.BORROWING || itemStatus == LoanDetailStatus.OVERDUE))
+                .returnable(
+                        detail.getReturnDate() == null
+                                && detail.getPhysicalReturnAt() == null
+                                && (effectiveTicketStatus == LoanTicketStatus.BORROWING
+                                        || effectiveTicketStatus == LoanTicketStatus.OVERDUE)
+                                && (itemStatus == LoanDetailStatus.BORROWING
+                                        || itemStatus == LoanDetailStatus.OVERDUE))
                 .ticketId(ticket.getTicketId())
                 .detailId(detail.getDetailId())
                 .bookId(book != null ? book.getBookId() : null)
                 .bookTitle(book != null ? book.getTitle() : "Tài liệu #" + detail.getBarcode())
-                .bookCover(book != null
-                        ? (book.getImageUrlL() != null ? book.getImageUrlL() : book.getImageUrlM())
-                        : null)
+                .bookCover(
+                        book != null
+                                ? (book.getImageUrlL() != null
+                                        ? book.getImageUrlL()
+                                        : book.getImageUrlM())
+                                : null)
                 .author(book != null ? book.getAuthor() : null)
                 .barcode(detail.getBarcode())
                 .ticketType(LoanTicketType.fromDatabaseValue(ticket.getTicketType()).name())
@@ -638,48 +821,89 @@ public class LoanService {
                 .lossReportedAt(detail.getLossReportedAt())
                 .lossReportDescription(detail.getLossReportDescription())
                 .isRecalled(Boolean.TRUE.equals(detail.getIsRecalled()))
-                .recallRequestedAt(detail.getRecallRequestedAt() != null ? detail.getRecallRequestedAt() : detail.getRecalledAt())
+                .recallRequestedAt(
+                        detail.getRecallRequestedAt() != null
+                                ? detail.getRecallRequestedAt()
+                                : detail.getRecalledAt())
                 .recallRequestedBy(detail.getRecallRequestedBy())
                 .recallReason(detail.getRecallReason())
-                .recallPreviousDueDate(detail.getRecallPreviousDueDate() != null ? detail.getRecallPreviousDueDate() : detail.getOriginalDueDateBeforeRecall())
-                .recallDueDate(detail.getRecallDueDate() != null ? detail.getRecallDueDate() : detail.getRecallDueAt())
+                .recallPreviousDueDate(
+                        detail.getRecallPreviousDueDate() != null
+                                ? detail.getRecallPreviousDueDate()
+                                : detail.getOriginalDueDateBeforeRecall())
+                .recallDueDate(
+                        detail.getRecallDueDate() != null
+                                ? detail.getRecallDueDate()
+                                : detail.getRecallDueAt())
                 .daysRemaining(daysRemaining)
                 .renewalCount(detail.getRenewalCount() != null ? detail.getRenewalCount() : 0)
                 .recalled(Boolean.TRUE.equals(detail.getIsRecalled()))
-                .recalledAt(detail.getRecalledAt() != null ? detail.getRecalledAt() : detail.getRecallRequestedAt())
-                .recallDueAt(detail.getRecallDueAt() != null ? detail.getRecallDueAt() : detail.getRecallDueDate())
-                .originalDueDateBeforeRecall(detail.getOriginalDueDateBeforeRecall() != null ? detail.getOriginalDueDateBeforeRecall() : detail.getRecallPreviousDueDate())
-                .lateFineAccrued(detail.getLateFineAccrued() != null
-                        ? detail.getLateFineAccrued()
-                        : BigDecimal.ZERO)
+                .recalledAt(
+                        detail.getRecalledAt() != null
+                                ? detail.getRecalledAt()
+                                : detail.getRecallRequestedAt())
+                .recallDueAt(
+                        detail.getRecallDueAt() != null
+                                ? detail.getRecallDueAt()
+                                : detail.getRecallDueDate())
+                .originalDueDateBeforeRecall(
+                        detail.getOriginalDueDateBeforeRecall() != null
+                                ? detail.getOriginalDueDateBeforeRecall()
+                                : detail.getRecallPreviousDueDate())
+                .lateFineAccrued(
+                        detail.getLateFineAccrued() != null
+                                ? detail.getLateFineAccrued()
+                                : BigDecimal.ZERO)
                 .build();
     }
 
     private LoanTicketSummaryDTO toLoanTicketSummary(LoanTicketEntity ticket) {
-        UserEntity reader = ticket.getUserId() == null
-                ? null
-                : userRepository.findById(ticket.getUserId()).orElse(null);
+        UserEntity reader =
+                ticket.getUserId() == null
+                        ? null
+                        : userRepository.findById(ticket.getUserId()).orElse(null);
         List<LoanDetailEntity> details = loanDetailRepository.findByTicketId(ticket.getTicketId());
         LocalDateTime now = LocalDateTime.now();
 
         LoanTicketStatus ticketStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
-        boolean activeBorrow = ticketStatus == LoanTicketStatus.BORROWING
-                || ticketStatus == LoanTicketStatus.OVERDUE;
-        LocalDateTime nearestDueDate = activeBorrow ? details.stream()
-                .map(LoanDetailEntity::getDueDate)
-                .filter(java.util.Objects::nonNull)
-                .min(LocalDateTime::compareTo)
-                .orElse(null) : null;
-        int overdueItemCount = activeBorrow ? (int) details.stream()
-                .filter(detail -> detail.getReturnDate() == null)
-                .filter(detail -> "BORROWING".equalsIgnoreCase(detail.getReturnStatus())
-                        || "OVERDUE".equalsIgnoreCase(detail.getReturnStatus()))
-                .filter(detail -> detail.getDueDate() != null && detail.getDueDate().isBefore(now))
-                .count() : 0;
-        BigDecimal totalLateFine = details.stream()
-                .map(LoanDetailEntity::getLateFineAccrued)
-                .filter(java.util.Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        boolean activeBorrow =
+                ticketStatus == LoanTicketStatus.BORROWING
+                        || ticketStatus == LoanTicketStatus.OVERDUE;
+        LocalDateTime nearestDueDate =
+                activeBorrow
+                        ? details.stream()
+                                .map(LoanDetailEntity::getDueDate)
+                                .filter(java.util.Objects::nonNull)
+                                .min(LocalDateTime::compareTo)
+                                .orElse(null)
+                        : null;
+        int overdueItemCount =
+                activeBorrow
+                        ? (int)
+                                details.stream()
+                                        .filter(detail -> detail.getReturnDate() == null)
+                                        .filter(
+                                                detail ->
+                                                        "BORROWING"
+                                                                        .equalsIgnoreCase(
+                                                                                detail
+                                                                                        .getReturnStatus())
+                                                                || "OVERDUE"
+                                                                        .equalsIgnoreCase(
+                                                                                detail
+                                                                                        .getReturnStatus()))
+                                        .filter(
+                                                detail ->
+                                                        detail.getDueDate() != null
+                                                                && detail.getDueDate()
+                                                                        .isBefore(now))
+                                        .count()
+                        : 0;
+        BigDecimal totalLateFine =
+                details.stream()
+                        .map(LoanDetailEntity::getLateFineAccrued)
+                        .filter(java.util.Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return LoanTicketSummaryDTO.builder()
                 .ticketId(ticket.getTicketId())

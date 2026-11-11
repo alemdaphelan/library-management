@@ -30,9 +30,10 @@ public class RagChatController {
             @Valid @RequestBody RagChatRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails principal,
             HttpServletRequest httpRequest) {
-        String actorKey = principal == null
-                ? "anonymous:" + httpRequest.getRemoteAddr()
-                : "user:" + principal.getUser().getUserId();
+        String actorKey =
+                principal == null
+                        ? "anonymous:" + httpRequest.getRemoteAddr()
+                        : "user:" + principal.getUser().getUserId();
         return chatService.ask(request.message(), actorKey);
     }
 }

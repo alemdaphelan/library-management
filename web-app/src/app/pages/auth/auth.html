@@ -1,21 +1,23 @@
 <div class="auth-page">
   <div class="auth-container">
-    
     <!-- Left Column: Illustration -->
     <div class="auth-illus">
-      <img src="/assets/images/login_bg.jpg" alt="Library Portal" class="bg-image">
+      <img src="/assets/images/login_bg.jpg" alt="Library Portal" class="bg-image" />
       <div class="illus-content">
         <div class="logo">
-          <svg viewBox="0 0 24 24" fill="white" width="40" height="40"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>
+          <svg viewBox="0 0 24 24" fill="white" width="40" height="40">
+            <path
+              d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"
+            />
+          </svg>
         </div>
         <h2>HUIT LIBRARY</h2>
-        <p>Trung tâm Thông tin - Thư viện<br>Đại học Công Thương TP.HCM</p>
+        <p>Trung tâm Thông tin - Thư viện<br />Đại học Công Thương TP.HCM</p>
       </div>
     </div>
 
     <!-- Right Column: Forms -->
     <div class="auth-form-area">
-      
       <!-- Login Form -->
       <div class="form-wrapper" *ngIf="mode === 'login'">
         <div class="form-header">
@@ -26,14 +28,34 @@
         <form (ngSubmit)="onLogin()">
           <div class="form-group">
             <label>Mã sinh viên / Email</label>
-            <input type="text" [(ngModel)]="loginData.username" name="username" placeholder="Nhập mã sinh viên hoặc email" required class="glass-input">
+            <input
+              type="text"
+              [(ngModel)]="loginData.username"
+              name="username"
+              placeholder="Nhập mã sinh viên hoặc email"
+              required
+              class="glass-input"
+            />
           </div>
-          
+
           <div class="form-group">
             <label>Mật khẩu</label>
             <div class="password-input-wrapper">
-              <input [type]="showPassword ? 'text' : 'password'" [(ngModel)]="loginData.password" (input)="errorMessage = ''" name="password" placeholder="••••••••" required class="glass-input">
-              <button type="button" class="btn-toggle-eye" (click)="togglePasswordVisibility()" [attr.title]="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'">
+              <input
+                [type]="showPassword ? 'text' : 'password'"
+                [(ngModel)]="loginData.password"
+                (input)="errorMessage = ''"
+                name="password"
+                placeholder="••••••••"
+                required
+                class="glass-input"
+              />
+              <button
+                type="button"
+                class="btn-toggle-eye"
+                (click)="togglePasswordVisibility()"
+                [attr.title]="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+              >
                 @if (showPassword) {
                   <!-- Eye Open Icon -->
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -43,7 +65,9 @@
                 } @else {
                   <!-- Eye Off Icon -->
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <path
+                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                    ></path>
                     <line x1="1" y1="1" x2="23" y2="23"></line>
                   </svg>
                 }
@@ -58,11 +82,13 @@
 
           <div class="form-options">
             <label class="checkbox-container">
-              <input type="checkbox">
+              <input type="checkbox" />
               <span class="checkmark"></span>
               Ghi nhớ đăng nhập
             </label>
-            <a href="#" class="link-forgot" (click)="toggleMode('forgot', $event)">Quên mật khẩu?</a>
+            <a href="#" class="link-forgot" (click)="toggleMode('forgot', $event)"
+              >Quên mật khẩu?</a
+            >
           </div>
 
           <button type="submit" class="btn-submit" [disabled]="isSubmitting">
@@ -83,15 +109,26 @@
         <div class="alert success" *ngIf="successMessage">
           {{ successMessage }}
         </div>
-        
-        <div class="alert error" *ngIf="errorMessage" style="color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;">
+
+        <div
+          class="alert error"
+          *ngIf="errorMessage"
+          style="color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px;"
+        >
           {{ errorMessage }}
         </div>
 
         <form *ngIf="forgotStep === 'email'" (ngSubmit)="onForgotPassword()">
           <div class="form-group">
             <label>Địa chỉ Email</label>
-            <input type="email" [(ngModel)]="forgotData.email" name="email" placeholder="Ví dụ: sinhvien@huit.edu.vn" required class="glass-input">
+            <input
+              type="email"
+              [(ngModel)]="forgotData.email"
+              name="email"
+              placeholder="Ví dụ: sinhvien@huit.edu.vn"
+              required
+              class="glass-input"
+            />
           </div>
           <button type="submit" class="btn-submit" [disabled]="isSubmitting">
             {{ isSubmitting ? 'Đang gửi...' : 'Gửi Yêu Cầu' }}
@@ -101,13 +138,24 @@
         <form *ngIf="forgotStep === 'otp'" (ngSubmit)="onVerifyOtp()">
           <div class="form-group">
             <label>Mã xác nhận (OTP)</label>
-            <input type="text" [(ngModel)]="forgotData.otp" name="otp" placeholder="Nhập mã 6 số" required class="glass-input">
+            <input
+              type="text"
+              [(ngModel)]="forgotData.otp"
+              name="otp"
+              placeholder="Nhập mã 6 số"
+              required
+              class="glass-input"
+            />
           </div>
           <button type="submit" class="btn-submit" [disabled]="isSubmitting">
             {{ isSubmitting ? 'Đang xác thực...' : 'Xác thực OTP' }}
           </button>
-          <button type="button" class="btn-resend" (click)="onResendOtp()"
-                  [disabled]="isSubmitting || resendCountdown > 0">
+          <button
+            type="button"
+            class="btn-resend"
+            (click)="onResendOtp()"
+            [disabled]="isSubmitting || resendCountdown > 0"
+          >
             {{ resendCountdown > 0 ? 'Gửi lại mã sau ' + resendCountdown + ' giây' : 'Gửi lại mã OTP' }}
           </button>
         </form>
@@ -115,11 +163,25 @@
         <form *ngIf="forgotStep === 'reset'" (ngSubmit)="onResetPassword()">
           <div class="form-group">
             <label>Mật khẩu mới</label>
-            <input type="password" [(ngModel)]="forgotData.newPassword" name="newPassword" placeholder="Nhập mật khẩu mới" required class="glass-input">
+            <input
+              type="password"
+              [(ngModel)]="forgotData.newPassword"
+              name="newPassword"
+              placeholder="Nhập mật khẩu mới"
+              required
+              class="glass-input"
+            />
           </div>
           <div class="form-group">
             <label>Nhập lại mật khẩu mới</label>
-            <input type="password" [(ngModel)]="forgotData.confirmPassword" name="confirmPassword" placeholder="Nhập lại mật khẩu mới" required class="glass-input">
+            <input
+              type="password"
+              [(ngModel)]="forgotData.confirmPassword"
+              name="confirmPassword"
+              placeholder="Nhập lại mật khẩu mới"
+              required
+              class="glass-input"
+            />
           </div>
           <button type="submit" class="btn-submit" [disabled]="isSubmitting">
             {{ isSubmitting ? 'Đang xử lý...' : 'Lưu mật khẩu mới' }}
@@ -132,7 +194,6 @@
           </a>
         </div>
       </div>
-
     </div>
   </div>
 </div>

@@ -71,7 +71,8 @@ public class OverdueDebtService {
             notificationService.createOnce(
                     userId,
                     "DEBT_OVERDUE",
-                    "Công nợ thư viện đã quá " + processingDays
+                    "Công nợ thư viện đã quá "
+                            + processingDays
                             + " ngày. Quyền mượn, đặt giữ và gia hạn bị khóa cho đến khi "
                             + "thanh toán hết công nợ và hoàn trả đủ tài liệu.",
                     "USER",

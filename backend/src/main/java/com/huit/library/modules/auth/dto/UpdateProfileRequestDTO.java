@@ -8,8 +8,10 @@ import jakarta.validation.constraints.Size;
 public class UpdateProfileRequestDTO {
     @Size(max = 150)
     private String fullName;
+
     @Size(max = 24)
     @Pattern(regexp = "^$|^[0-9+().\\s-]{8,24}$", message = "Số điện thoại không đúng định dạng")
     private String phone;
+
     private String avatarUrl;
 }

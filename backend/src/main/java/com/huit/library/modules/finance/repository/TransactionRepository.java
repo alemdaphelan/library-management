@@ -16,17 +16,21 @@ import org.springframework.data.jpa.repository.Lock;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<TransactionEntity, Long> {
-    @Query("select sum(entry.amount) from TransactionEntity entry where upper(entry.type) = upper(:type)")
+    @Query(
+            "select sum(entry.amount) from TransactionEntity entry where upper(entry.type) = upper(:type)")
     BigDecimal sumAmountByType(@Param("type") String type);
 
     boolean existsByDedupKey(String dedupKey);
+
     Optional<TransactionEntity> findByDedupKey(String dedupKey);
 
     List<TransactionEntity> findByUserIdOrderByCreatedAtAsc(UUID userId);
+
     List<TransactionEntity> findByPenaltyCaseIdOrderByCreatedAtAsc(Long penaltyCaseId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select entry from TransactionEntity entry
             where entry.userId = :userId
               and entry.amount > coalesce(entry.paidAmount, 0)
@@ -40,7 +44,8 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
     Optional<TransactionEntity> findByIdForUpdate(@Param("transactionId") Long transactionId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select entry from TransactionEntity entry
             where entry.amount > coalesce(entry.paidAmount, 0)
               and entry.status in ('OUTSTANDING', 'PARTIALLY_PAID', 'PARTIALLY_ADJUSTED', 'PARTIALLY_WAIVED')
@@ -48,5 +53,6 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
               and entry.overdueProcessedAt is null
             order by entry.userId, entry.createdAt, entry.transactionId
             """)
-    List<TransactionEntity> findUnprocessedOverdueDebtForUpdate(@Param("cutoff") LocalDateTime cutoff);
+    List<TransactionEntity> findUnprocessedOverdueDebtForUpdate(
+            @Param("cutoff") LocalDateTime cutoff);
 }

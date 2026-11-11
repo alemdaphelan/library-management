@@ -6,5 +6,4 @@ public record RagRetrievedContext(
         String sourceUri,
         String type,
         String content,
-        double score) {
-}
+        double score) {}

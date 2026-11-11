@@ -31,12 +31,13 @@ class RecommendationEvaluationServiceTest {
     private final DepartmentSubjectAffinityRepository affinityRepository =
             mock(DepartmentSubjectAffinityRepository.class);
     private final LoanDetailRepository loanDetailRepository = mock(LoanDetailRepository.class);
-    private final RecommendationEvaluationService service = new RecommendationEvaluationService(
-            assignmentRepository,
-            affinityRepository,
-            loanDetailRepository,
-            new TfIdfSimilarityEngine(),
-            new RecommendationProperties());
+    private final RecommendationEvaluationService service =
+            new RecommendationEvaluationService(
+                    assignmentRepository,
+                    affinityRepository,
+                    loanDetailRepository,
+                    new TfIdfSimilarityEngine(),
+                    new RecommendationProperties());
 
     @Test
     void evaluatesThreeMethodsAndLabelsSparseRealHistorySeparately() {
@@ -49,14 +50,15 @@ class RecommendationEvaluationServiceTest {
         }
 
         when(assignmentRepository.findAllForEvaluation()).thenReturn(assignments);
-        when(affinityRepository.findAllActiveForEvaluation()).thenReturn(List.of(
-                affinity("cong nghe thong tin", subjectA),
-                affinity("cong nghe thuc pham", subjectB)));
+        when(affinityRepository.findAllActiveForEvaluation())
+                .thenReturn(
+                        List.of(
+                                affinity("cong nghe thong tin", subjectA),
+                                affinity("cong nghe thuc pham", subjectB)));
         EvaluationInteractionProjection firstInteraction = interaction(UUID.randomUUID(), 1L);
         EvaluationInteractionProjection secondInteraction = interaction(UUID.randomUUID(), 2L);
-        when(loanDetailRepository.findEvaluationInteractions()).thenReturn(List.of(
-                firstInteraction,
-                secondInteraction));
+        when(loanDetailRepository.findEvaluationInteractions())
+                .thenReturn(List.of(firstInteraction, secondInteraction));
         when(loanDetailRepository.findPopularityScores(any(), any(), anyDouble(), any()))
                 .thenReturn(List.of());
 
@@ -65,14 +67,17 @@ class RecommendationEvaluationServiceTest {
         assertThat(result.evaluationDataset())
                 .isEqualTo(RecommendationEvaluationService.PROXY_DATASET);
         assertThat(result.evaluatedScenarios()).isEqualTo(2);
-        assertThat(result.methods()).extracting(EvaluationMethodMetricsDTO::method)
+        assertThat(result.methods())
+                .extracting(EvaluationMethodMetricsDTO::method)
                 .containsExactly("POPULARITY_BASELINE", "CONTENT_TFIDF", "PROPOSED_HYBRID");
-        assertThat(result.methods()).allSatisfy(metric -> {
-            assertThat(metric.precisionAtK()).isBetween(0.0, 1.0);
-            assertThat(metric.recallAtK()).isBetween(0.0, 1.0);
-            assertThat(metric.catalogCoverage()).isBetween(0.0, 1.0);
-            assertThat(metric.totalRecommendations()).isEqualTo(10);
-        });
+        assertThat(result.methods())
+                .allSatisfy(
+                        metric -> {
+                            assertThat(metric.precisionAtK()).isBetween(0.0, 1.0);
+                            assertThat(metric.recallAtK()).isBetween(0.0, 1.0);
+                            assertThat(metric.catalogCoverage()).isBetween(0.0, 1.0);
+                            assertThat(metric.totalRecommendations()).isEqualTo(10);
+                        });
         assertThat(metric(result, "PROPOSED_HYBRID").precisionAtK())
                 .isGreaterThanOrEqualTo(metric(result, "POPULARITY_BASELINE").precisionAtK());
         assertThat(result.realHistory().interactions()).isEqualTo(2);
@@ -82,8 +87,7 @@ class RecommendationEvaluationServiceTest {
     }
 
     private EvaluationMethodMetricsDTO metric(
-            RecommendationEvaluationResponseDTO result,
-            String method) {
+            RecommendationEvaluationResponseDTO result, String method) {
         return result.methods().stream()
                 .filter(metric -> metric.method().equals(method))
                 .findFirst()
@@ -109,8 +113,7 @@ class RecommendationEvaluationServiceTest {
     }
 
     private BookSubjectAssignmentEntity assignment(
-            BookEntity book,
-            RecommendationSubjectEntity subject) {
+            BookEntity book, RecommendationSubjectEntity subject) {
         BookSubjectAssignmentEntity assignment = new BookSubjectAssignmentEntity();
         assignment.setBook(book);
         assignment.setSubject(subject);
@@ -121,8 +124,7 @@ class RecommendationEvaluationServiceTest {
     }
 
     private DepartmentSubjectAffinityEntity affinity(
-            String department,
-            RecommendationSubjectEntity subject) {
+            String department, RecommendationSubjectEntity subject) {
         DepartmentSubjectAffinityEntity affinity = new DepartmentSubjectAffinityEntity();
         affinity.setDepartmentKey(department);
         affinity.setDisplayName(department);

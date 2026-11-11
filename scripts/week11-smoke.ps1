@@ -21,8 +21,8 @@ if ($null -eq $catalog.content -or $null -eq $catalog.totalElements) {
 }
 
 [pscustomobject]@{
-    BaseUrl = $root
-    Health = $health.status
+    BaseUrl      = $root
+    Health       = $health.status
     CatalogTotal = $catalog.totalElements
-    CheckedAt = (Get-Date).ToString("o")
+    CheckedAt    = (Get-Date).ToString("o")
 } | ConvertTo-Json

@@ -9,8 +9,7 @@ import lombok.EqualsAndHashCode;
 @Entity
 @Table(name = "system_configs")
 public class SystemConfigEntity extends BaseEntity {
-    @Id
-    private String configKey;
+    @Id private String configKey;
 
     private String configValue;
     private String description;

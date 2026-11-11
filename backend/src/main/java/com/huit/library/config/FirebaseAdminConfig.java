@@ -25,25 +25,27 @@ public class FirebaseAdminConfig {
             @Value("${library.firebase.service-account-path:}") String serviceAccountPath,
             @Value("${library.firebase.service-account-base64:}") String serviceAccountBase64)
             throws IOException {
-        GoogleCredentials credentials = resolveCredentials(serviceAccountPath, serviceAccountBase64);
+        GoogleCredentials credentials =
+                resolveCredentials(serviceAccountPath, serviceAccountBase64);
 
-        FirebaseOptions.Builder options = FirebaseOptions.builder()
-                .setCredentials(credentials);
+        FirebaseOptions.Builder options = FirebaseOptions.builder().setCredentials(credentials);
         if (projectId != null && !projectId.isBlank()) {
             options.setProjectId(projectId.trim());
         }
 
-        FirebaseApp app = FirebaseApp.getApps().stream()
-                .findFirst()
-                .orElseGet(() -> FirebaseApp.initializeApp(options.build()));
+        FirebaseApp app =
+                FirebaseApp.getApps().stream()
+                        .findFirst()
+                        .orElseGet(() -> FirebaseApp.initializeApp(options.build()));
         return FirebaseMessaging.getInstance(app);
     }
 
-    private GoogleCredentials resolveCredentials(String serviceAccountPath, String serviceAccountBase64)
-            throws IOException {
+    private GoogleCredentials resolveCredentials(
+            String serviceAccountPath, String serviceAccountBase64) throws IOException {
         if (serviceAccountBase64 != null && !serviceAccountBase64.isBlank()) {
-            return GoogleCredentials.fromStream(new ByteArrayInputStream(
-                    Base64.getDecoder().decode(serviceAccountBase64.trim())));
+            return GoogleCredentials.fromStream(
+                    new ByteArrayInputStream(
+                            Base64.getDecoder().decode(serviceAccountBase64.trim())));
         }
         if (serviceAccountPath != null && !serviceAccountPath.isBlank()) {
             Path path = Path.of(serviceAccountPath.trim());

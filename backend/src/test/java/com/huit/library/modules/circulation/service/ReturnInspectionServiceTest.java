@@ -46,7 +46,9 @@ class ReturnInspectionServiceTest {
     private final AtomicReference<CirculationOperationEntity> receipt = new AtomicReference<>();
 
     @AfterAll
-    static void closeValidators() { VALIDATORS.close(); }
+    static void closeValidators() {
+        VALIDATORS.close();
+    }
 
     @BeforeEach
     void setUp() {
@@ -58,8 +60,19 @@ class ReturnInspectionServiceTest {
         circulation = mock(CirculationStateService.class);
         penalties = mock(PenaltyCaseService.class);
         hours = mock(LibraryHoursService.class);
-        service = new ReturnInspectionService(tickets, details, copies, users, mock(WalletRepository.class),
-                operations, circulation, penalties, hours, new ObjectMapper().findAndRegisterModules(), VALIDATORS.getValidator());
+        service =
+                new ReturnInspectionService(
+                        tickets,
+                        details,
+                        copies,
+                        users,
+                        mock(WalletRepository.class),
+                        operations,
+                        circulation,
+                        penalties,
+                        hours,
+                        new ObjectMapper().findAndRegisterModules(),
+                        VALIDATORS.getValidator());
 
         var ticket = new LoanTicketEntity();
         ticket.setTicketId(10L);
@@ -79,19 +92,24 @@ class ReturnInspectionServiceTest {
         when(users.findByIdForUpdate(readerId)).thenReturn(Optional.of(new UserEntity()));
         when(details.findByTicketIdForUpdate(10L)).thenReturn(List.of(detail));
         when(copies.findAllByBarcodeInForUpdate(List.of("COPY-20"))).thenReturn(List.of(copy));
-        when(operations.findByIdempotencyKey(anyString())).thenAnswer(call -> Optional.ofNullable(receipt.get()));
-        when(operations.saveAndFlush(any())).thenAnswer(call -> {
-            CirculationOperationEntity value = call.getArgument(0);
-            value.setProcessedAt(LocalDateTime.of(2026, 10, 29, 9, 0));
-            receipt.set(value);
-            return value;
-        });
-        when(circulation.receiveNormalReturn(eq(ticket), eq(detail), eq(copy), any(), any())).thenAnswer(call -> {
-            detail.setReturnStatus("RETURNED");
-            detail.setReturnDate(call.getArgument(4));
-            copy.setStatus("AVAILABLE");
-            return BigDecimal.ZERO;
-        });
+        when(operations.findByIdempotencyKey(anyString()))
+                .thenAnswer(call -> Optional.ofNullable(receipt.get()));
+        when(operations.saveAndFlush(any()))
+                .thenAnswer(
+                        call -> {
+                            CirculationOperationEntity value = call.getArgument(0);
+                            value.setProcessedAt(LocalDateTime.of(2026, 10, 29, 9, 0));
+                            receipt.set(value);
+                            return value;
+                        });
+        when(circulation.receiveNormalReturn(eq(ticket), eq(detail), eq(copy), any(), any()))
+                .thenAnswer(
+                        call -> {
+                            detail.setReturnStatus("RETURNED");
+                            detail.setReturnDate(call.getArgument(4));
+                            copy.setStatus("AVAILABLE");
+                            return BigDecimal.ZERO;
+                        });
     }
 
     @Test
@@ -114,7 +132,8 @@ class ReturnInspectionServiceTest {
         var changed = normalRequest();
         changed.getItems().get(0).setReturnConditionNote("Different note");
         assertThatThrownBy(() -> service.inspect(changed, UUID.randomUUID()))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("yêu cầu khác");
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("yêu cầu khác");
         receipt.get().setOperationType("RETURN");
         assertThatThrownBy(() -> service.inspect(normalRequest(), UUID.randomUUID()))
                 .hasMessageContaining("yêu cầu khác");
@@ -125,13 +144,16 @@ class ReturnInspectionServiceTest {
     void duplicateIdsAndInvalidIncidentCannotReachFinancialOrInventoryServices() {
         var duplicate = normalRequest();
         duplicate.setItems(List.of(duplicate.getItems().get(0), duplicate.getItems().get(0)));
-        assertThatThrownBy(() -> service.inspect(duplicate, UUID.randomUUID())).hasMessageContaining("bị trùng");
+        assertThatThrownBy(() -> service.inspect(duplicate, UUID.randomUUID()))
+                .hasMessageContaining("bị trùng");
         var missing = normalRequest();
         missing.getItems().get(0).setCondition(ReturnInspectionRequestDTO.Condition.LOST);
-        assertThatThrownBy(() -> service.inspect(missing, UUID.randomUUID())).hasMessageContaining("Phiếu phạt");
+        assertThatThrownBy(() -> service.inspect(missing, UUID.randomUUID()))
+                .hasMessageContaining("Phiếu phạt");
         var unexpected = normalRequest();
         unexpected.getItems().get(0).setPenalty(new PenaltyCaseRequestDTO());
-        assertThatThrownBy(() -> service.inspect(unexpected, UUID.randomUUID())).hasMessageContaining("không hợp lệ");
+        assertThatThrownBy(() -> service.inspect(unexpected, UUID.randomUUID()))
+                .hasMessageContaining("không hợp lệ");
         verifyNoInteractions(operations, circulation, penalties);
     }
 
@@ -140,7 +162,8 @@ class ReturnInspectionServiceTest {
         service.inspect(normalRequest(), UUID.randomUUID());
         receipt.get().setResultPayload("broken-json");
         assertThatThrownBy(() -> service.inspect(normalRequest(), UUID.randomUUID()))
-                .isInstanceOf(IllegalStateException.class).hasMessageContaining("Biên nhận");
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Biên nhận");
         verify(circulation, times(1)).receiveNormalReturn(any(), any(), any(), any(), any());
     }
 

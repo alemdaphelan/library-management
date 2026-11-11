@@ -20,18 +20,23 @@ class LocationServiceTest {
     void createBookshelfRequiresAndReturnsItsFloor() {
         FloorRepository floorRepository = mock(FloorRepository.class);
         BookshelfRepository bookshelfRepository = mock(BookshelfRepository.class);
-        LocationService service = new LocationService(floorRepository, bookshelfRepository,
-                mock(ShelfRepository.class),
-                mock(com.huit.library.modules.catalog.repository.BookCopyRepository.class));
+        LocationService service =
+                new LocationService(
+                        floorRepository,
+                        bookshelfRepository,
+                        mock(ShelfRepository.class),
+                        mock(com.huit.library.modules.catalog.repository.BookCopyRepository.class));
         FloorEntity floor = new FloorEntity();
         floor.setFloorId(2L);
         floor.setName("Tầng 2");
         when(floorRepository.findById(2L)).thenReturn(Optional.of(floor));
-        when(bookshelfRepository.save(any())).thenAnswer(invocation -> {
-            BookshelfEntity entity = invocation.getArgument(0);
-            entity.setBookshelfId(5L);
-            return entity;
-        });
+        when(bookshelfRepository.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            BookshelfEntity entity = invocation.getArgument(0);
+                            entity.setBookshelfId(5L);
+                            return entity;
+                        });
         LocationRequestDTO request = new LocationRequestDTO();
         request.setName("Kệ CNTT");
         request.setParentId(2L);

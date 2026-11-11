@@ -14,19 +14,23 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI libraryOpenAPI() {
         String securitySchemeName = "bearerAuth";
-        
+
         return new OpenAPI()
-                .info(new Info()
-                        .title("HUIT Library Management System API")
-                        .version("v1.0")
-                        .description("API Documentation for HUIT Library System. Includes Core LMS and DL Service integrations."))
+                .info(
+                        new Info()
+                                .title("HUIT Library Management System API")
+                                .version("v1.0")
+                                .description(
+                                        "API Documentation for HUIT Library System. Includes Core LMS and DL Service integrations."))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
-                .components(new Components()
-                        .addSecuritySchemes(securitySchemeName,
-                                new SecurityScheme()
-                                        .name(securitySchemeName)
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")));
+                .components(
+                        new Components()
+                                .addSecuritySchemes(
+                                        securitySchemeName,
+                                        new SecurityScheme()
+                                                .name(securitySchemeName)
+                                                .type(SecurityScheme.Type.HTTP)
+                                                .scheme("bearer")
+                                                .bearerFormat("JWT")));
     }
 }

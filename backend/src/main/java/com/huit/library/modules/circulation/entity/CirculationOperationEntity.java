@@ -14,8 +14,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "circulation_operations")
 public class CirculationOperationEntity {
-    @Id
-    private UUID operationId;
+    @Id private UUID operationId;
 
     @Column(nullable = false, unique = true, length = 100)
     private String idempotencyKey;

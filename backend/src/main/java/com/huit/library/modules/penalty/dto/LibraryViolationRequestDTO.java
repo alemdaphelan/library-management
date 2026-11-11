@@ -10,17 +10,20 @@ import java.util.UUID;
 
 @Data
 public class LibraryViolationRequestDTO {
-    @NotNull
-    private UUID userId;
+    @NotNull private UUID userId;
     private Long ticketId;
+
     @Size(max = 255)
     private String barcode;
-    @NotBlank
-    private String violationType;
+
+    @NotBlank private String violationType;
+
     @NotBlank
     @Size(max = 1000)
     private String description;
+
     @Size(max = 1000)
     private String actionTaken;
+
     private LocalDateTime occurredAt;
 }

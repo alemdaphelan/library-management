@@ -11,7 +11,7 @@ import { DialogService } from '../../../services/dialog.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './digital-assets.html',
-  styleUrls: ['./digital-assets.css']
+  styleUrls: ['./digital-assets.css'],
 })
 export class DigitalAssets implements OnInit {
   isDragging = false;
@@ -31,7 +31,7 @@ export class DigitalAssets implements OnInit {
     bookId: null as number | null,
     bookIsbn: '',
     bookLabel: '',
-    accessLevel: 'AUTHENTICATED' as 'AUTHENTICATED' | 'STAFF_ONLY'
+    accessLevel: 'AUTHENTICATED' as 'AUTHENTICATED' | 'STAFF_ONLY',
   };
   isResolvingEditBook = false;
   errorMessage = '';
@@ -50,12 +50,15 @@ export class DigitalAssets implements OnInit {
 
   fetchAssets() {
     this.digitalAssetsService.getAssets().subscribe({
-      next: (data) => { this.assets = data; this.cdr.detectChanges(); },
+      next: (data) => {
+        this.assets = data;
+        this.cdr.detectChanges();
+      },
       error: (err) => {
         this.errorMessage = this.errorText(err, 'Không thể tải danh sách tài liệu số.');
         this.assets = [];
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -75,7 +78,7 @@ export class DigitalAssets implements OnInit {
     evt.preventDefault();
     evt.stopPropagation();
     this.isDragging = false;
-    
+
     const files = evt.dataTransfer?.files;
     if (files && files.length > 0) {
       this.uploadFile(files[0]);
@@ -95,17 +98,19 @@ export class DigitalAssets implements OnInit {
     if (isbn && !this.uploadBookId) {
       this.isResolvingBook = true;
       this.bookService.getBookByIsbn(isbn).subscribe({
-        next: book => {
+        next: (book) => {
           this.isResolvingBook = false;
           this.uploadBookId = Number(book.bookId);
           this.linkedBookLabel = `${book.title || 'Sách'} · ISBN ${book.isbn || isbn}`;
           this.performUpload(file);
         },
-        error: err => {
+        error: (err) => {
           this.isResolvingBook = false;
           this.errorMessage = this.errorText(
-            err, 'Không tìm thấy sách theo ISBN. Hãy kiểm tra ISBN hoặc thêm sách vào danh mục trước.');
-        }
+            err,
+            'Không tìm thấy sách theo ISBN. Hãy kiểm tra ISBN hoặc thêm sách vào danh mục trước.',
+          );
+        },
       });
       return;
     }
@@ -119,16 +124,18 @@ export class DigitalAssets implements OnInit {
     if (!isbn) return;
     this.isResolvingBook = true;
     this.bookService.getBookByIsbn(isbn).subscribe({
-      next: book => {
+      next: (book) => {
         this.isResolvingBook = false;
         this.uploadBookId = Number(book.bookId);
         this.linkedBookLabel = `${book.title || 'Sách'} · ISBN ${book.isbn || isbn}`;
       },
-      error: err => {
+      error: (err) => {
         this.isResolvingBook = false;
         this.errorMessage = this.errorText(
-          err, 'Không tìm thấy sách theo ISBN. Hãy kiểm tra ISBN hoặc thêm sách vào danh mục trước.');
-      }
+          err,
+          'Không tìm thấy sách theo ISBN. Hãy kiểm tra ISBN hoặc thêm sách vào danh mục trước.',
+        );
+      },
     });
   }
 
@@ -140,25 +147,27 @@ export class DigitalAssets implements OnInit {
   private performUpload(file: File) {
     this.isUploading = true;
     this.uploadProgress = 0;
-    
-    this.digitalAssetsService.uploadAsset(file, this.uploadBookId, this.uploadAccessLevel).subscribe({
-      next: (event: any) => {
-        if (event.type === HttpEventType.UploadProgress) {
-          this.uploadProgress = Math.round(100 * event.loaded / event.total);
-        } else if (event.type === HttpEventType.Response) {
+
+    this.digitalAssetsService
+      .uploadAsset(file, this.uploadBookId, this.uploadAccessLevel)
+      .subscribe({
+        next: (event: any) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            this.uploadProgress = Math.round((100 * event.loaded) / event.total);
+          } else if (event.type === HttpEventType.Response) {
+            this.isUploading = false;
+            this.successMessage = `Đã tải lên ${event.body?.name || file.name}.`;
+            this.uploadBookIsbn = '';
+            this.uploadBookId = null;
+            this.linkedBookLabel = '';
+            this.fetchAssets();
+          }
+        },
+        error: (err) => {
+          this.errorMessage = this.errorText(err, 'Tải tệp thất bại.');
           this.isUploading = false;
-          this.successMessage = `Đã tải lên ${event.body?.name || file.name}.`;
-          this.uploadBookIsbn = '';
-          this.uploadBookId = null;
-          this.linkedBookLabel = '';
-          this.fetchAssets();
-        }
-      },
-      error: (err) => {
-        this.errorMessage = this.errorText(err, 'Tải tệp thất bại.');
-        this.isUploading = false;
-      }
-    });
+        },
+      });
   }
 
   async deleteAsset(id: number) {
@@ -175,15 +184,16 @@ export class DigitalAssets implements OnInit {
         this.successMessage = 'Đã xóa tài liệu số.';
         this.fetchAssets();
       },
-      error: (err) => this.errorMessage = this.errorText(err, 'Không thể xóa tài liệu số.')
+      error: (err) => (this.errorMessage = this.errorText(err, 'Không thể xóa tài liệu số.')),
     });
   }
 
   get filteredAssets(): DigitalAsset[] {
     const keyword = this.searchTerm.trim().toLocaleLowerCase('vi');
-    return this.assets.filter(asset => {
+    return this.assets.filter((asset) => {
       const matchesType = !this.typeFilter || asset.type === this.typeFilter;
-      const haystack = `${asset.name} ${asset.bookTitle || ''} ${asset.bookId || ''}`.toLocaleLowerCase('vi');
+      const haystack =
+        `${asset.name} ${asset.bookTitle || ''} ${asset.bookId || ''}`.toLocaleLowerCase('vi');
       return matchesType && (!keyword || haystack.includes(keyword));
     });
   }
@@ -194,8 +204,8 @@ export class DigitalAssets implements OnInit {
       displayName: asset.name,
       bookId: asset.bookId || null,
       bookIsbn: '',
-      bookLabel: asset.bookId ? (asset.bookTitle || 'Sách đang liên kết') : '',
-      accessLevel: asset.accessLevel
+      bookLabel: asset.bookId ? asset.bookTitle || 'Sách đang liên kết' : '',
+      accessLevel: asset.accessLevel,
     };
   }
 
@@ -209,16 +219,18 @@ export class DigitalAssets implements OnInit {
     if (!isbn) return;
     this.isResolvingEditBook = true;
     this.bookService.getBookByIsbn(isbn).subscribe({
-      next: book => {
+      next: (book) => {
         this.isResolvingEditBook = false;
         this.editForm.bookId = Number(book.bookId);
         this.editForm.bookLabel = `${book.title || 'Sách'} · ISBN ${book.isbn || isbn}`;
       },
-      error: err => {
+      error: (err) => {
         this.isResolvingEditBook = false;
         this.errorMessage = this.errorText(
-          err, 'Không tìm thấy sách theo ISBN. Liên kết hiện tại chưa được thay đổi.');
-      }
+          err,
+          'Không tìm thấy sách theo ISBN. Liên kết hiện tại chưa được thay đổi.',
+        );
+      },
     });
   }
 
@@ -229,24 +241,26 @@ export class DigitalAssets implements OnInit {
       return;
     }
     this.clearMessages();
-    this.digitalAssetsService.updateAsset(this.editingAsset.id, {
-      displayName: this.editForm.displayName.trim(),
-      bookId: this.editForm.bookId || null,
-      accessLevel: this.editForm.accessLevel
-    }).subscribe({
-      next: () => {
-        this.successMessage = 'Đã cập nhật thông tin tài liệu.';
-        this.editingAsset = null;
-        this.fetchAssets();
-      },
-      error: err => this.errorMessage = this.errorText(err, 'Không thể cập nhật tài liệu.')
-    });
+    this.digitalAssetsService
+      .updateAsset(this.editingAsset.id, {
+        displayName: this.editForm.displayName.trim(),
+        bookId: this.editForm.bookId || null,
+        accessLevel: this.editForm.accessLevel,
+      })
+      .subscribe({
+        next: () => {
+          this.successMessage = 'Đã cập nhật thông tin tài liệu.';
+          this.editingAsset = null;
+          this.fetchAssets();
+        },
+        error: (err) => (this.errorMessage = this.errorText(err, 'Không thể cập nhật tài liệu.')),
+      });
   }
 
   download(asset: DigitalAsset) {
     this.clearMessages();
     this.digitalAssetsService.downloadAsset(asset.id).subscribe({
-      next: response => {
+      next: (response) => {
         if (!response.body) return;
         const url = URL.createObjectURL(response.body);
         const anchor = document.createElement('a');
@@ -255,7 +269,7 @@ export class DigitalAssets implements OnInit {
         anchor.click();
         URL.revokeObjectURL(url);
       },
-      error: err => this.errorMessage = this.errorText(err, 'Không thể tải tài liệu.')
+      error: (err) => (this.errorMessage = this.errorText(err, 'Không thể tải tài liệu.')),
     });
   }
 
@@ -272,6 +286,10 @@ export class DigitalAssets implements OnInit {
   }
 
   private errorText(error: any, fallback: string): string {
-    return error?.error?.detail || error?.error?.message || (typeof error?.error === 'string' ? error.error : fallback);
+    return (
+      error?.error?.detail ||
+      error?.error?.message ||
+      (typeof error?.error === 'string' ? error.error : fallback)
+    );
   }
 }

@@ -21,18 +21,20 @@ public class ReturnInspectionRequestDTO {
     @Size(max = 3)
     private List<@NotNull @Valid Item> items;
 
-    public enum Condition { NORMAL, DAMAGED, LOST }
+    public enum Condition {
+        NORMAL,
+        DAMAGED,
+        LOST
+    }
 
     @Data
     public static class Item {
-        @NotNull
-        @Positive
-        private Long loanDetailId;
-        @NotNull
-        private Condition condition;
+        @NotNull @Positive private Long loanDetailId;
+        @NotNull private Condition condition;
+
         @Size(max = 500)
         private String returnConditionNote;
-        @Valid
-        private PenaltyCaseRequestDTO penalty;
+
+        @Valid private PenaltyCaseRequestDTO penalty;
     }
 }

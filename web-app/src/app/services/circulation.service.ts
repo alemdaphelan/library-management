@@ -54,7 +54,13 @@ export interface BorrowEligibility {
 }
 
 export type LoanTicketStatus =
-  'PENDING' | 'RESERVED' | 'BORROWING' | 'OVERDUE' | 'RETURNED' | 'CANCELLED' | 'REJECTED';
+  | 'PENDING'
+  | 'RESERVED'
+  | 'BORROWING'
+  | 'OVERDUE'
+  | 'RETURNED'
+  | 'CANCELLED'
+  | 'REJECTED';
 
 export interface LoanStateResponse {
   ticketId: number;
@@ -110,12 +116,29 @@ export interface LoanTicketSummary {
 }
 
 export interface RecallItem {
-  ticketId: number; detailId: number; userId?: string; mssv?: string; readerName?: string;
-  bookId?: number; bookTitle: string; barcode?: string; dueDate?: string; itemStatus: string;
-  isRecalled: boolean; recallRequestedAt?: string; recallReason?: string; recallDueDate?: string; lossReportedAt?: string;
+  ticketId: number;
+  detailId: number;
+  userId?: string;
+  mssv?: string;
+  readerName?: string;
+  bookId?: number;
+  bookTitle: string;
+  barcode?: string;
+  dueDate?: string;
+  itemStatus: string;
+  isRecalled: boolean;
+  recallRequestedAt?: string;
+  recallReason?: string;
+  recallDueDate?: string;
+  lossReportedAt?: string;
 }
 export type RecallFilter = 'ALL' | 'NOT_RECALLED' | 'RECALLED' | 'OVERDUE';
-export interface RecallPage { items: RecallItem[]; total: number; page: number; size: number; }
+export interface RecallPage {
+  items: RecallItem[];
+  total: number;
+  page: number;
+  size: number;
+}
 
 export interface LoanTicketDetail {
   ticketId: number;
@@ -176,14 +199,14 @@ export interface QrResolveResponse {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CirculationService {
   private apiUrl = `${environment.apiUrl}/loans`;
   private bookCopyApiUrl = `${environment.apiUrl}/book-copies`;
   private qrApiUrl = `${environment.apiUrl}/api/v1/qr`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   /**
    * Độc giả gửi yêu cầu mượn hoặc đặt giữ trước sách trực tuyến qua OPAC
@@ -204,7 +227,9 @@ export class CirculationService {
   }
 
   reportLoss(ticketId: number, detailId: number, description: string): Observable<LoanItem> {
-    return this.http.post<LoanItem>(`${this.apiUrl}/${ticketId}/items/${detailId}/loss-report`, { description });
+    return this.http.post<LoanItem>(`${this.apiUrl}/${ticketId}/items/${detailId}/loss-report`, {
+      description,
+    });
   }
 
   getLossReport(detailId: number): Observable<LoanTicketDetail> {
@@ -221,11 +246,15 @@ export class CirculationService {
   }
 
   getRecallItems(q: string, state: RecallFilter, page: number, size = 10): Observable<RecallPage> {
-    return this.http.get<RecallPage>(`${this.apiUrl}/recall-items`, { params: { q, state, page, size } });
+    return this.http.get<RecallPage>(`${this.apiUrl}/recall-items`, {
+      params: { q, state, page, size },
+    });
   }
 
   requestRecall(ticketId: number, detailId: number, reason: string): Observable<LoanItem> {
-    return this.http.post<LoanItem>(`${this.apiUrl}/${ticketId}/items/${detailId}/recall`, { reason });
+    return this.http.post<LoanItem>(`${this.apiUrl}/${ticketId}/items/${detailId}/recall`, {
+      reason,
+    });
   }
 
   /**
@@ -271,9 +300,13 @@ export class CirculationService {
   checkout(
     ticketId: number,
     barcodes: string[],
-    idempotencyKey: string = crypto.randomUUID()
+    idempotencyKey: string = crypto.randomUUID(),
   ): Observable<CirculationOperationResponse> {
-    return this.http.post<CirculationOperationResponse>(`${this.apiUrl}/checkout`, { idempotencyKey, ticketId, barcodes });
+    return this.http.post<CirculationOperationResponse>(`${this.apiUrl}/checkout`, {
+      idempotencyKey,
+      ticketId,
+      barcodes,
+    });
   }
 
   manualCheckout(
@@ -298,7 +331,7 @@ export class CirculationService {
   returnBooks(
     barcodes: string[],
     idempotencyKey: string = crypto.randomUUID(),
-    returnConditionNote?: string
+    returnConditionNote?: string,
   ): Observable<CirculationOperationResponse> {
     return this.http.post<CirculationOperationResponse>(`${this.apiUrl}/return`, {
       idempotencyKey,
@@ -310,7 +343,7 @@ export class CirculationService {
   inspectReturn(request: ReturnInspectionRequest): Observable<ReturnInspectionReceipt> {
     return this.http.post<ReturnInspectionReceipt>(`${this.apiUrl}/return-inspection`, request);
   }
-  
+
   /**
    * Lấy thông tin bản sao vật lý theo mã vạch
    */

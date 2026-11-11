@@ -21,6 +21,7 @@ public class TransactionAdjustmentEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long adjustmentId;
+
     private Long transactionId;
     private BigDecimal requestedAmount;
     private String reason;

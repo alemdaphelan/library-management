@@ -32,9 +32,10 @@ public class NotificationController {
     private final PushDeviceService pushDeviceService;
     private final NotificationPreferenceService preferenceService;
 
-    public NotificationController(NotificationService notificationService,
-                                  PushDeviceService pushDeviceService,
-                                  NotificationPreferenceService preferenceService) {
+    public NotificationController(
+            NotificationService notificationService,
+            PushDeviceService pushDeviceService,
+            NotificationPreferenceService preferenceService) {
         this.notificationService = notificationService;
         this.pushDeviceService = pushDeviceService;
         this.preferenceService = preferenceService;
@@ -50,23 +51,23 @@ public class NotificationController {
     public ResponseEntity<NotificationPreferenceResponseDTO> updatePreferences(
             @Valid @RequestBody NotificationPreferenceRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(preferenceService.update(
-                userDetails.getUser().getUserId(), request));
+        return ResponseEntity.ok(
+                preferenceService.update(userDetails.getUser().getUserId(), request));
     }
 
     @GetMapping
     public ResponseEntity<List<NotificationEntity>> getMyNotifications(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(notificationService.getMyNotifications(
-                userDetails.getUser().getUserId()));
+        return ResponseEntity.ok(
+                notificationService.getMyNotifications(userDetails.getUser().getUserId()));
     }
 
     @PatchMapping("/{notificationId}/read")
     public ResponseEntity<NotificationEntity> markAsRead(
             @PathVariable UUID notificationId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(notificationService.markAsRead(
-                notificationId, userDetails.getUser().getUserId()));
+        return ResponseEntity.ok(
+                notificationService.markAsRead(notificationId, userDetails.getUser().getUserId()));
     }
 
     @PatchMapping("/read-all")
@@ -80,8 +81,8 @@ public class NotificationController {
     public ResponseEntity<?> registerDevice(
             @Valid @RequestBody RegisterPushDeviceRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(pushDeviceService.register(
-                userDetails.getUser().getUserId(), request));
+        return ResponseEntity.ok(
+                pushDeviceService.register(userDetails.getUser().getUserId(), request));
     }
 
     @DeleteMapping("/devices")

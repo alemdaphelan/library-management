@@ -11,7 +11,7 @@ describe('DigitalAssetsService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [DigitalAssetsService, provideHttpClient(), provideHttpClientTesting()]
+      providers: [DigitalAssetsService, provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(DigitalAssetsService);
     http = TestBed.inject(HttpTestingController);
@@ -30,7 +30,9 @@ describe('DigitalAssetsService', () => {
   });
 
   it('uses real endpoints for metadata update and binary download', () => {
-    service.updateAsset(4, { displayName: 'Giáo trình', bookId: 2, accessLevel: 'AUTHENTICATED' }).subscribe();
+    service
+      .updateAsset(4, { displayName: 'Giáo trình', bookId: 2, accessLevel: 'AUTHENTICATED' })
+      .subscribe();
     service.downloadAsset(4).subscribe();
 
     const update = http.expectOne(`${url}/4`);

@@ -1,27 +1,53 @@
 <div class="home-new">
   <section class="hero-section">
     <div class="container hero-inner">
-      <div class="hero-carousel-wrapper" (mouseenter)="stopCarouselAutoPlay()" (mouseleave)="startCarouselAutoPlay()">
+      <div
+        class="hero-carousel-wrapper"
+        (mouseenter)="stopCarouselAutoPlay()"
+        (mouseleave)="startCarouselAutoPlay()"
+      >
         <div class="hero-carousel-track">
           @for (slide of slides; track $index) {
-            <div class="carousel-slide" [class.active]="$index === currentSlide" [style.background-image]="'linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.75)), url(' + slide.image + ')'">
+            <div
+              class="carousel-slide"
+              [class.active]="$index === currentSlide"
+              [style.background-image]="'linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.75)), url(' + slide.image + ')'"
+            >
               <div class="slide-content">
                 <span class="slide-badge"><span class="pulse-dot"></span> {{ slide.badge }}</span>
                 <h2 class="slide-title">{{ slide.title }}</h2>
                 <p class="slide-desc">{{ slide.description }}</p>
                 <div class="slide-actions">
-                  <a [routerLink]="slide.ctaLink" class="btn-carousel-cta">{{ slide.ctaText }} &rarr;</a>
+                  <a [routerLink]="slide.ctaLink" class="btn-carousel-cta"
+                    >{{ slide.ctaText }} &rarr;</a
+                  >
                   <a routerLink="/search" class="btn-carousel-secondary">Khám phá kho sách</a>
                 </div>
               </div>
             </div>
           }
         </div>
-        <button class="carousel-arrow prev" type="button" (click)="prevSlide()" aria-label="Slide trước">&#10094;</button>
-        <button class="carousel-arrow next" type="button" (click)="nextSlide()" aria-label="Slide tiếp theo">&#10095;</button>
+        <button
+          class="carousel-arrow prev"
+          type="button"
+          (click)="prevSlide()"
+          aria-label="Slide trước"
+        >&#10094;</button>
+        <button
+          class="carousel-arrow next"
+          type="button"
+          (click)="nextSlide()"
+          aria-label="Slide tiếp theo"
+        >&#10095;</button>
         <div class="carousel-indicators">
           @for (slide of slides; track $index) {
-            <button class="dot-indicator" type="button" [class.active]="$index === currentSlide" (click)="goToSlide($index)" [attr.aria-label]="'Chuyển tới slide ' + ($index + 1)"></button>
+            <button
+              class="dot-indicator"
+              type="button"
+              [class.active]="$index === currentSlide"
+              (click)="goToSlide($index)"
+              [attr.aria-label]="'Chuyển tới slide ' + ($index + 1)"
+            ></button>
           }
         </div>
       </div>
@@ -29,19 +55,29 @@
       <div class="hero-top-row simplified-intro">
         <div class="hero-left">
           <div class="hero-tag"><span class="dot"></span> Cổng Tri thức Số HUIT 4.0</div>
-          <h1 class="hero-title">Tra cứu tài liệu<br><span class="text-gradient">nhanh và đúng nhu cầu học tập</span></h1>
-          <p class="hero-desc">Tìm theo tên sách, tác giả, ISBN, chuyên ngành hoặc nội dung như K-NN và trí tuệ nhân tạo.</p>
+          <h1 class="hero-title">Tra cứu tài liệu<br /><span class="text-gradient">nhanh và đúng nhu cầu học tập</span>
+          </h1>
+          <p class="hero-desc">Tìm theo tên sách, tác giả, ISBN, chuyên ngành hoặc nội dung như K-NN và trí tuệ nhân
+            tạo.</p>
         </div>
       </div>
 
       <form class="adv-search-box" (ngSubmit)="search()">
-        <div class="search-tabs"><span class="s-tab active"><span class="icon">&#128218;</span> Danh mục thư viện</span></div>
+        <div class="search-tabs">
+          <span class="s-tab active"><span class="icon">&#128218;</span> Danh mục thư viện</span>
+        </div>
         <div class="search-input-area">
           <div class="input-wrapper">
             <span class="icon-search classic-search-icon">&#128269;</span>
-            <input type="text" name="homeSearch" [(ngModel)]="searchQuery" placeholder="Nhập tên sách, tác giả, ISBN, chuyên ngành hoặc nội dung...">
+            <input
+              type="text"
+              name="homeSearch"
+              [(ngModel)]="searchQuery"
+              placeholder="Nhập tên sách, tác giả, ISBN, chuyên ngành hoặc nội dung..."
+            />
           </div>
-          <button type="submit" class="btn-search-main"><span class="icon classic-search-icon">&#128269;</span> Tra cứu ngay</button>
+          <button type="submit" class="btn-search-main">
+            <span class="icon classic-search-icon">&#128269;</span> Tra cứu ngay</button>
           <a routerLink="/search" class="btn-search-adv">Bộ lọc nâng cao</a>
         </div>
         <div class="search-trends">
@@ -57,37 +93,94 @@
 
   <section class="quick-actions-section">
     <div class="container quick-actions-grid real-actions">
-      <a class="action-card" routerLink="/history"><div class="ac-icon">&#128343;</div><h4>Gia hạn sách</h4><p>Xem từng tài liệu và điều kiện gia hạn</p></a>
-      <a class="action-card" routerLink="/borrow-cart"><div class="ac-icon">&#128722;</div><h4>Giỏ mượn</h4><p>Tạo một phiếu cho tối đa ba tài liệu</p></a>
-      <a class="action-card" routerLink="/digital"><div class="ac-icon">&#128190;</div><h4>Tài liệu số</h4><p>Tra cứu học liệu và cơ sở dữ liệu điện tử</p></a>
-      <a class="action-card" routerLink="/suggest"><div class="ac-icon">&#128221;</div><h4>Đề xuất mua sách</h4><p>Gửi và theo dõi kết quả đề xuất</p></a>
-      <a class="action-card" routerLink="/guide"><div class="ac-icon">&#10067;</div><h4>Hướng dẫn bạn đọc</h4><p>Xem quy định mượn, trả và sử dụng thư viện</p></a>
+      <a class="action-card" routerLink="/history"
+        ><div class="ac-icon">&#128343;</div>
+        <h4>Gia hạn sách</h4>
+        <p>Xem từng tài liệu và điều kiện gia hạn</p></a
+      >
+      <a class="action-card" routerLink="/borrow-cart"
+        ><div class="ac-icon">&#128722;</div>
+        <h4>Giỏ mượn</h4>
+        <p>Tạo một phiếu cho tối đa ba tài liệu</p></a
+      >
+      <a class="action-card" routerLink="/digital"
+        ><div class="ac-icon">&#128190;</div>
+        <h4>Tài liệu số</h4>
+        <p>Tra cứu học liệu và cơ sở dữ liệu điện tử</p></a
+      >
+      <a class="action-card" routerLink="/suggest"
+        ><div class="ac-icon">&#128221;</div>
+        <h4>Đề xuất mua sách</h4>
+        <p>Gửi và theo dõi kết quả đề xuất</p></a
+      >
+      <a class="action-card" routerLink="/guide"
+        ><div class="ac-icon">&#10067;</div>
+        <h4>Hướng dẫn bạn đọc</h4>
+        <p>Xem quy định mượn, trả và sử dụng thư viện</p></a
+      >
     </div>
   </section>
 
   <section class="recommendations-section">
     <div class="container">
       <div class="section-header">
-        <div class="sh-text"><h2>{{ recommendationTitle }}</h2><p>{{ recommendationDescription }}</p></div>
+        <div class="sh-text">
+          <h2>{{ recommendationTitle }}</h2>
+          <p>{{ recommendationDescription }}</p>
+        </div>
         <a class="btn-view-all" routerLink="/search">Xem toàn bộ danh mục &rsaquo;</a>
       </div>
-      <div class="recommendation-state" *ngIf="recommendationLoading"><span class="recommendation-spinner" aria-hidden="true"></span><span>Đang tạo danh sách phù hợp với bạn...</span></div>
+      <div class="recommendation-state" *ngIf="recommendationLoading">
+        <span class="recommendation-spinner" aria-hidden="true"></span>
+        <span>Đang tạo danh sách phù hợp với bạn...</span>
+      </div>
       <div class="recommendation-state error" *ngIf="recommendationError && !recommendationLoading">Chưa thể tải gợi ý lúc này. Bạn vẫn có thể tra cứu toàn bộ danh mục sách.</div>
-      <div class="recommendation-state" *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length === 0">Chưa có đủ tài liệu phù hợp để gợi ý.</div>
-      <div class="recommendation-carousel-shell" *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length > 0">
-        <button type="button" class="recommendation-arrow previous" aria-label="Xem gợi ý trước" (click)="recommendationTrack.scrollBy({ left: -720, behavior: 'smooth' })">&#10094;</button>
+      <div
+        class="recommendation-state"
+        *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length === 0"
+      >Chưa có đủ tài liệu phù hợp để gợi ý.</div>
+      <div
+        class="recommendation-carousel-shell"
+        *ngIf="!recommendationLoading && !recommendationError && recommendedBooks.length > 0"
+      >
+        <button
+          type="button"
+          class="recommendation-arrow previous"
+          aria-label="Xem gợi ý trước"
+          (click)="recommendationTrack.scrollBy({ left: -720, behavior: 'smooth' })"
+        >&#10094;</button>
         <div class="carousel-container" #recommendationTrack>
-        <div class="carousel-track">
-          <div class="book-card" *ngFor="let book of recommendedBooks" [routerLink]="['/book', book.bookId]">
-            <div class="book-cover-wrapper">
-              <img [src]="book.imageUrl || '/assets/images/cover_1.jpg'" [alt]="book.title" (error)="onCoverError($event)" class="book-cover-img">
-              <div class="book-overlay"><button class="btn-primary btn-sm">Xem chi tiết</button></div>
+          <div class="carousel-track">
+            <div
+              class="book-card"
+              *ngFor="let book of recommendedBooks"
+              [routerLink]="['/book', book.bookId]"
+            >
+              <div class="book-cover-wrapper">
+                <img
+                  [src]="book.imageUrl || '/assets/images/cover_1.jpg'"
+                  [alt]="book.title"
+                  (error)="onCoverError($event)"
+                  class="book-cover-img"
+                />
+                <div class="book-overlay">
+                  <button class="btn-primary btn-sm">Xem chi tiết</button>
+                </div>
+              </div>
+              <div class="book-info">
+                <h3 class="book-name">{{ book.title }}</h3>
+                <p class="book-author">{{ book.author }}</p>
+                <p class="recommendation-reason">{{ book.reason }}</p>
+              </div>
             </div>
-            <div class="book-info"><h3 class="book-name">{{ book.title }}</h3><p class="book-author">{{ book.author }}</p><p class="recommendation-reason">{{ book.reason }}</p></div>
           </div>
         </div>
-        </div>
-        <button type="button" class="recommendation-arrow next" aria-label="Xem gợi ý tiếp theo" (click)="recommendationTrack.scrollBy({ left: 720, behavior: 'smooth' })">&#10095;</button>
+        <button
+          type="button"
+          class="recommendation-arrow next"
+          aria-label="Xem gợi ý tiếp theo"
+          (click)="recommendationTrack.scrollBy({ left: 720, behavior: 'smooth' })"
+        >&#10095;</button>
       </div>
     </div>
   </section>

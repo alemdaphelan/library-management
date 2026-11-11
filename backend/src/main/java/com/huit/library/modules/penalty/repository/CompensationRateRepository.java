@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CompensationRateRepository extends JpaRepository<CompensationRateEntity, Long> {
-    @Query("""
+    @Query(
+            """
             select rate from CompensationRateEntity rate
             where upper(rate.materialType) = upper(:materialType)
               and upper(rate.languageCategory) = upper(:languageCategory)

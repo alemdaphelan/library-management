@@ -2,12 +2,16 @@
   <!-- Search Header -->
   <div class="search-header">
     <div class="search-box-large" style="position: relative;">
-      <input type="text" placeholder="Tìm tên sách, tác giả, ISBN hoặc nội dung như K-NN, trí tuệ nhân tạo..." class="search-input-large"
-             [(ngModel)]="searchQuery" 
-             (ngModelChange)="onSearchInput($event)"
-             (keyup.enter)="onSearch()"
-             (blur)="onBlur()"
-             (focus)="onFocus()">
+      <input
+        type="text"
+        placeholder="Tìm tên sách, tác giả, ISBN hoặc nội dung như K-NN, trí tuệ nhân tạo..."
+        class="search-input-large"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchInput($event)"
+        (keyup.enter)="onSearch()"
+        (blur)="onBlur()"
+        (focus)="onFocus()"
+      />
       <button class="btn-primary" (click)="onSearch()">Tìm kiếm</button>
 
       <!-- Quick Search Dropdown -->
@@ -15,7 +19,12 @@
         <ul class="quick-search-list">
           <li *ngFor="let book of quickSearchResults" (mousedown)="goToBook(book.id)">
             <div class="quick-search-item">
-              <img *ngIf="!book.imgError" [src]="book.cover" alt="{{book.title}}" (error)="book.imgError = true">
+              <img
+                *ngIf="!book.imgError"
+                [src]="book.cover"
+                alt="{{book.title}}"
+                (error)="book.imgError = true"
+              />
               <div class="quick-search-fallback" *ngIf="book.imgError || !book.cover">
                 <span>{{ book.title | slice:0:1 }}</span>
               </div>
@@ -34,16 +43,51 @@
     <!-- Filters Sidebar -->
     <aside class="filters-sidebar card">
       <div class="source-tabs" aria-label="Nguồn danh sách sách">
-        <button type="button" [class.active]="sourceMode === 'catalog'" (click)="setSourceMode('catalog')">Danh mục</button>
-        <button type="button" [class.active]="sourceMode === 'for-you'" (click)="setSourceMode('for-you')">Dành cho bạn</button>
+        <button
+          type="button"
+          [class.active]="sourceMode === 'catalog'"
+          (click)="setSourceMode('catalog')"
+        >Danh mục</button>
+        <button
+          type="button"
+          [class.active]="sourceMode === 'for-you'"
+          (click)="setSourceMode('for-you')"
+        >Dành cho bạn</button>
       </div>
       <h3 class="filter-title">Bộ lọc tìm kiếm</h3>
-      
+
       <div class="filter-group">
         <h4>Trạng thái</h4>
-        <label class="checkbox-label"><input type="radio" name="status" value="all" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Tất cả</label>
-        <label class="checkbox-label"><input type="radio" name="status" value="available" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Có sẵn</label>
-        <label class="checkbox-label"><input type="radio" name="status" value="borrowed" [(ngModel)]="filterStatus" (change)="onStatusChange()"> Hết bản sẵn sàng</label>
+        <label class="checkbox-label"
+          ><input
+            type="radio"
+            name="status"
+            value="all"
+            [(ngModel)]="filterStatus"
+            (change)="onStatusChange()"
+          />
+          Tất cả</label
+        >
+        <label class="checkbox-label"
+          ><input
+            type="radio"
+            name="status"
+            value="available"
+            [(ngModel)]="filterStatus"
+            (change)="onStatusChange()"
+          />
+          Có sẵn</label
+        >
+        <label class="checkbox-label"
+          ><input
+            type="radio"
+            name="status"
+            value="borrowed"
+            [(ngModel)]="filterStatus"
+            (change)="onStatusChange()"
+          />
+          Hết bản sẵn sàng</label
+        >
       </div>
 
       <div class="filter-group" *ngIf="sourceMode === 'catalog'">
@@ -53,7 +97,8 @@
           [(ngModel)]="selectedDepartment"
           (change)="onDepartmentChange()"
           [disabled]="departmentsLoading"
-          aria-label="Lọc sách theo ngành hoặc khoa">
+          aria-label="Lọc sách theo ngành hoặc khoa"
+        >
           <option value="">{{ departmentsLoading ? 'Đang tải danh sách...' : 'Tất cả ngành / khoa' }}</option>
           <option *ngFor="let department of departments" [value]="department.key">
             {{ department.displayName }}
@@ -65,7 +110,13 @@
       <div class="filter-group">
         <h4>Thể loại</h4>
         <label class="checkbox-label" *ngFor="let cat of availableCategories; let i = index">
-          <input type="checkbox" name="category_{{i}}" [(ngModel)]="selectedCategories[cat]" (change)="applyFilters()"> {{ cat }}
+          <input
+            type="checkbox"
+            name="category_{{i}}"
+            [(ngModel)]="selectedCategories[cat]"
+            (change)="applyFilters()"
+          />
+          {{ cat }}
         </label>
       </div>
 
@@ -75,19 +126,56 @@
     <!-- Search Results -->
     <main class="search-results">
       <div class="results-meta">
-        <span>Tìm thấy <strong>{{ totalElements }}</strong> kết quả phù hợp</span>
-        
+        <span>Tìm thấy <strong>{{ totalElements }}</strong> kết quả phù hợp</span
+        >
+
         <div class="meta-actions">
           <!-- View Toggle -->
           <div class="view-toggle">
-            <button class="toggle-btn" [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')" title="Lưới">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <button
+              class="toggle-btn"
+              [class.active]="viewMode === 'grid'"
+              (click)="setViewMode('grid')"
+              title="Lưới"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
             </button>
-            <button class="toggle-btn" [class.active]="viewMode === 'list'" (click)="setViewMode('list')" title="Danh sách">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            <button
+              class="toggle-btn"
+              [class.active]="viewMode === 'list'"
+              (click)="setViewMode('list')"
+              title="Danh sách"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
             </button>
           </div>
-          
+
           <select class="sort-select" [(ngModel)]="sortOption" (change)="applyFilters()">
             <option value="newest">Mới nhất</option>
             <option value="az">Tên A-Z</option>
@@ -97,11 +185,24 @@
       </div>
 
       <!-- Book Grid/List -->
-      <div class="book-container" [class.book-grid]="viewMode === 'grid'" [class.book-list]="viewMode === 'list'">
-        
+      <div
+        class="book-container"
+        [class.book-grid]="viewMode === 'grid'"
+        [class.book-list]="viewMode === 'list'"
+      >
         <div class="card book-card" *ngFor="let book of books">
-          <div class="book-cover-wrapper" [routerLink]="['/book', book.id]" style="cursor: pointer;">
-            <img *ngIf="!book.imgError" [src]="book.cover" alt="{{ book.title }}" class="book-cover-img" (error)="book.imgError = true">
+          <div
+            class="book-cover-wrapper"
+            [routerLink]="['/book', book.id]"
+            style="cursor: pointer;"
+          >
+            <img
+              *ngIf="!book.imgError"
+              [src]="book.cover"
+              alt="{{ book.title }}"
+              class="book-cover-img"
+              (error)="book.imgError = true"
+            />
             <div class="book-cover-fallback" *ngIf="book.imgError || !book.cover">
               <span class="fallback-icon">📖</span>
               <span class="fallback-title">{{ book.title }}</span>
@@ -112,31 +213,37 @@
             </div>
           </div>
           <div class="book-info">
-            <span class="badge-available" *ngIf="book.status === 'available'">Có sẵn {{ book.availableCopies }}/{{ book.copies }}</span>
-            <span class="badge-pending" *ngIf="book.status === 'out_of_stock'">Hết bản sẵn sàng</span>
+            <span class="badge-available" *ngIf="book.status === 'available'"
+              >Có sẵn {{ book.availableCopies }}/{{ book.copies }}</span
+            >
+            <span class="badge-pending" *ngIf="book.status === 'out_of_stock'"
+              >Hết bản sẵn sàng</span
+            >
             <div class="book-cat">{{ book.category }}</div>
             <h3 class="book-name" [routerLink]="['/book', book.id]" style="cursor: pointer;">{{ book.title }}</h3>
             <p class="book-author">{{ book.author }}</p>
             <p class="recommendation-reason" *ngIf="sourceMode === 'for-you'">{{ book.reason }}</p>
           </div>
         </div>
-
       </div>
 
       <div class="empty-search" *ngIf="books.length === 0">
         <h3>{{ recommendationLoading ? 'Đang tạo danh sách dành cho bạn...' : 'Không có tài liệu phù hợp' }}</h3>
-        <p *ngIf="filterStatus === 'available'">Hiện không có bản sao sẵn sàng theo điều kiện đã chọn. Hãy bỏ bộ lọc hoặc kiểm tra lại sau.</p>
+        <p *ngIf="filterStatus === 'available'">Hiện không có bản sao sẵn sàng theo điều kiện đã chọn. Hãy bỏ bộ lọc hoặc kiểm tra lại
+          sau.</p>
         <p *ngIf="filterStatus !== 'available'">Hãy thử từ khóa khác hoặc xóa bớt bộ lọc.</p>
       </div>
-      
+
       <!-- Pagination -->
       <div class="pagination" *ngIf="totalPages > 0">
         <button class="page-btn" (click)="prevPage()" [disabled]="currentPage === 0">&lsaquo; Trước</button>
         <ng-container *ngFor="let p of visiblePages">
-          <button class="page-btn" 
-                  *ngIf="p !== '...'" 
-                  [class.active]="p === (currentPage + 1)" 
-                  (click)="onPageClick(p)">
+          <button
+            class="page-btn"
+            *ngIf="p !== '...'"
+            [class.active]="p === (currentPage + 1)"
+            (click)="onPageClick(p)"
+          >
             {{ p }}
           </button>
           <button class="page-btn" *ngIf="p === '...'" disabled>...</button>

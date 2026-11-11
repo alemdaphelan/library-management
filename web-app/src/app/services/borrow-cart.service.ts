@@ -34,7 +34,7 @@ export class BorrowCartService {
   }
 
   add(item: BorrowCartItem): AddToBorrowCartResult {
-    if (this.items.some(existing => existing.bookId === item.bookId)) {
+    if (this.items.some((existing) => existing.bookId === item.bookId)) {
       return 'DUPLICATE';
     }
     if (this.items.length >= this.maximumItems) {
@@ -46,7 +46,7 @@ export class BorrowCartService {
   }
 
   remove(bookId: number): void {
-    this.items = this.items.filter(item => item.bookId !== bookId);
+    this.items = this.items.filter((item) => item.bookId !== bookId);
     this.persist();
   }
 

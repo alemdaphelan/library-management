@@ -32,25 +32,39 @@ describe('CirculationService', () => {
 
     const request = httpTesting.expectOne(`${apiUrl}/staff`);
     expect(request.request.method).toBe('GET');
-    request.flush([{ ticketId: 19, status: 'OVERDUE', itemCount: 1, overdueItemCount: 1, totalLateFine: 3000 }]);
+    request.flush([
+      { ticketId: 19, status: 'OVERDUE', itemCount: 1, overdueItemCount: 1, totalLateFine: 3000 },
+    ]);
   });
 
-  it('requests a filtered recall page and sends only the chosen item reason',()=>{
-    service.getRecallItems('2001240001','NOT_RECALLED',2,10).subscribe();
-    const list=httpTesting.expectOne(request=>request.url===`${apiUrl}/recall-items`);
-    expect(list.request.params.get('q')).toBe('2001240001');expect(list.request.params.get('state')).toBe('NOT_RECALLED');expect(list.request.params.get('page')).toBe('2');list.flush({items:[],total:0,page:2,size:10});
-    service.requestRecall(33,45,'Cần học phần').subscribe();const post=httpTesting.expectOne(`${apiUrl}/33/items/45/recall`);
-    expect(post.request.method).toBe('POST');expect(post.request.body).toEqual({reason:'Cần học phần'});post.flush({});
+  it('requests a filtered recall page and sends only the chosen item reason', () => {
+    service.getRecallItems('2001240001', 'NOT_RECALLED', 2, 10).subscribe();
+    const list = httpTesting.expectOne((request) => request.url === `${apiUrl}/recall-items`);
+    expect(list.request.params.get('q')).toBe('2001240001');
+    expect(list.request.params.get('state')).toBe('NOT_RECALLED');
+    expect(list.request.params.get('page')).toBe('2');
+    list.flush({ items: [], total: 0, page: 2, size: 10 });
+    service.requestRecall(33, 45, 'Cần học phần').subscribe();
+    const post = httpTesting.expectOne(`${apiUrl}/33/items/45/recall`);
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ reason: 'Cần học phần' });
+    post.flush({});
   });
 
   it('loads the current reader borrowing limit from the backend', () => {
-    service.getMyBorrowEligibility().subscribe(response => {
+    service.getMyBorrowEligibility().subscribe((response) => {
       expect(response.remainingSlots).toBe(1);
     });
 
     const request = httpTesting.expectOne(`${apiUrl}/my-eligibility`);
     expect(request.request.method).toBe('GET');
-    request.flush({ maximumItems: 3, openItems: 2, remainingSlots: 1, eligible: true, message: 'Còn 1' });
+    request.flush({
+      maximumItems: 3,
+      openItems: 2,
+      remainingSlots: 1,
+      eligible: true,
+      message: 'Còn 1',
+    });
   });
 
   it('reports the selected item using only a description and reads the staff handoff separately', () => {
@@ -61,11 +75,12 @@ describe('CirculationService', () => {
     post.flush({ ticketId: 33, detailId: 48, lossReportedAt: '2026-11-04T10:00:00' });
     service.getLossReport(48).subscribe();
     const get = httpTesting.expectOne(`${apiUrl}/loss-reports/48`);
-    expect(get.request.method).toBe('GET'); get.flush({ ticketId: 33, items: [] });
+    expect(get.request.method).toBe('GET');
+    get.flush({ ticketId: 33, items: [] });
   });
 
   it('treats the plain-text cancellation response as a successful request', () => {
-    service.cancelReservation(19).subscribe(response => {
+    service.cancelReservation(19).subscribe((response) => {
       expect(response).toContain('thành công');
     });
 
@@ -76,12 +91,14 @@ describe('CirculationService', () => {
   });
 
   it('creates one reservation ticket for all books in the borrow cart', () => {
-    service.reserveBooks({
-      bookIds: [1, 2, 3],
-      ticketType: 'BORROW',
-      pickupDate: '2026-10-24',
-      note: 'Nhận tại quầy',
-    }).subscribe();
+    service
+      .reserveBooks({
+        bookIds: [1, 2, 3],
+        ticketType: 'BORROW',
+        pickupDate: '2026-10-24',
+        note: 'Nhận tại quầy',
+      })
+      .subscribe();
 
     const request = httpTesting.expectOne(`${apiUrl}/reserve-batch`);
     expect(request.request.method).toBe('POST');
@@ -143,7 +160,9 @@ describe('CirculationService', () => {
   it('submits the complete inspection once with the caller-owned retry key', () => {
     const payload = {
       idempotencyKey: 'inspection-key',
-      items: [{ loanDetailId: 29, condition: 'NORMAL' as const, returnConditionNote: 'Nguyên vẹn' }],
+      items: [
+        { loanDetailId: 29, condition: 'NORMAL' as const, returnConditionNote: 'Nguyên vẹn' },
+      ],
     };
     service.inspectReturn(payload).subscribe();
     const request = httpTesting.expectOne(`${apiUrl}/return-inspection`);
@@ -162,7 +181,7 @@ describe('CirculationService', () => {
   });
 
   it('requests a signed, expiring QR payload from the backend', () => {
-    service.getTicketQrPayload(19).subscribe(response => {
+    service.getTicketQrPayload(19).subscribe((response) => {
       expect(response.payload).toContain('HUITQR1.');
     });
 
@@ -172,7 +191,9 @@ describe('CirculationService', () => {
   });
 
   it('creates a manual checkout for a walk-in reader', () => {
-    service.manualCheckout(' 2001234567 ', 'ONSITE', ['BC-001'], 'Nguyên vẹn', 'manual-1').subscribe();
+    service
+      .manualCheckout(' 2001234567 ', 'ONSITE', ['BC-001'], 'Nguyên vẹn', 'manual-1')
+      .subscribe();
 
     const request = httpTesting.expectOne(`${apiUrl}/manual-checkout`);
     expect(request.request.method).toBe('POST');

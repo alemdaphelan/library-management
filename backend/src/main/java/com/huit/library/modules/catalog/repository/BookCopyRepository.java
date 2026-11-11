@@ -15,21 +15,32 @@ import com.huit.library.modules.catalog.dto.ShelfBookDTO;
 
 @Repository
 public interface BookCopyRepository extends JpaRepository<BookCopyEntity, String> {
-    String UNPLACED_ELIGIBILITY = """
+    String UNPLACED_ELIGIBILITY =
+            """
             and (:targetShelf is null or exists (
                 select rule.ruleId from ShelfSubjectRuleEntity rule join rule.subject subject
                 where rule.active=true and subject.active=true and rule.shelf.shelfId=:targetShelf
                   and
-            """ + ShelfSubjectRuleRepository.BOOK_MATCHES_SUBJECT + "))";
+            """
+                    + ShelfSubjectRuleRepository.BOOK_MATCHES_SUBJECT
+                    + "))";
+
     List<BookCopyEntity> findByReceiptDetailIdIn(java.util.Collection<Long> receiptDetailIds);
+
     List<BookCopyEntity> findByBookId(Long bookId);
+
     List<BookCopyEntity> findByBookIdAndStatus(Long bookId, String status);
+
     Optional<BookCopyEntity> findFirstByBookIdAndStatus(Long bookId, String status);
+
     long countByBookIdAndStatus(Long bookId, String status);
+
     long countByStatus(String status);
+
     long countByShelf_ShelfId(Long shelfId);
 
-    @Query("""
+    @Query(
+            """
             select new com.huit.library.modules.catalog.dto.ShelfBookDTO(
                 copy.barcode, copy.bookId, coalesce(book.title,'Bản sao chưa đối chiếu được đầu sách'), book.isbn, copy.status, case when book.bookId is null then false else true end)
             from BookCopyEntity copy left join BookEntity book on copy.bookId=book.bookId
@@ -38,30 +49,41 @@ public interface BookCopyRepository extends JpaRepository<BookCopyEntity, String
             """)
     List<ShelfBookDTO> findShelfBooks(@Param("shelfId") Long shelfId);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             select new com.huit.library.modules.catalog.dto.ShelfBookDTO(
                 copy.barcode, copy.bookId, coalesce(book.title,'Bản sao chưa đối chiếu được đầu sách'), book.isbn, copy.status, case when book.bookId is null then false else true end)
             from BookCopyEntity copy left join copy.shelf shelf left join BookEntity book on copy.bookId=book.bookId
             where ((:shelfId is null and shelf is null) or shelf.shelfId=:shelfId)
-            """ + UNPLACED_ELIGIBILITY + """
+            """
+                            + UNPLACED_ELIGIBILITY
+                            + """
             order by lower(coalesce(book.title,'Bản sao chưa đối chiếu được đầu sách')), copy.barcode
-            """, countQuery = """
+            """,
+            countQuery =
+                    """
             select count(copy) from BookCopyEntity copy left join copy.shelf shelf
             left join BookEntity book on copy.bookId=book.bookId
             where ((:shelfId is null and shelf is null) or shelf.shelfId=:shelfId)
-            """ + UNPLACED_ELIGIBILITY)
-    org.springframework.data.domain.Page<ShelfBookDTO> findLocationBooks(@Param("shelfId") Long shelfId,
+            """
+                            + UNPLACED_ELIGIBILITY)
+    org.springframework.data.domain.Page<ShelfBookDTO> findLocationBooks(
+            @Param("shelfId") Long shelfId,
             @Param("targetShelf") Long targetShelf,
             org.springframework.data.domain.Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select copy from BookCopyEntity copy
             where copy.barcode in :barcodes
             order by copy.barcode
             """)
-    List<BookCopyEntity> findAllByBarcodeInForUpdate(@Param("barcodes") Collection<String> barcodes);
+    List<BookCopyEntity> findAllByBarcodeInForUpdate(
+            @Param("barcodes") Collection<String> barcodes);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<BookCopyEntity> findFirstByBookIdAndStatusOrderByBarcodeAsc(Long bookId, String status);
+    Optional<BookCopyEntity> findFirstByBookIdAndStatusOrderByBarcodeAsc(
+            Long bookId, String status);
 }

@@ -10,6 +10,7 @@ public class AcademicFacultyEntity {
     @Id
     @Column(length = 64)
     private String facultyId;
+
     @Column(nullable = false)
     private String facultyName;
 }

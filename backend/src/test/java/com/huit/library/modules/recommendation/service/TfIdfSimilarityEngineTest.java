@@ -14,17 +14,21 @@ class TfIdfSimilarityEngineTest {
 
     @Test
     void ranksTechnicalBookAboveUnrelatedBook() {
-        BookEntity source = book(1L, "Lập trình Java căn bản", "Nguyễn Văn A", "Công nghệ thông tin");
-        BookEntity relevant = book(2L, "Java Spring Boot thực hành", "Nguyễn Văn B", "Công nghệ thông tin");
-        BookEntity unrelated = book(3L, "Công nghệ chế biến thủy sản", "Trần Văn C", "Công nghệ thực phẩm");
+        BookEntity source =
+                book(1L, "Lập trình Java căn bản", "Nguyễn Văn A", "Công nghệ thông tin");
+        BookEntity relevant =
+                book(2L, "Java Spring Boot thực hành", "Nguyễn Văn B", "Công nghệ thông tin");
+        BookEntity unrelated =
+                book(3L, "Công nghệ chế biến thủy sản", "Trần Văn C", "Công nghệ thực phẩm");
 
-        Map<Long, Double> scores = engine.score(
-                source,
-                List.of(relevant, unrelated),
-                Map.of(
-                        1L, List.of("SOFTWARE Lập trình và công nghệ phần mềm"),
-                        2L, List.of("SOFTWARE Lập trình và công nghệ phần mềm"),
-                        3L, List.of("FOOD Công nghệ thực phẩm")));
+        Map<Long, Double> scores =
+                engine.score(
+                        source,
+                        List.of(relevant, unrelated),
+                        Map.of(
+                                1L, List.of("SOFTWARE Lập trình và công nghệ phần mềm"),
+                                2L, List.of("SOFTWARE Lập trình và công nghệ phần mềm"),
+                                3L, List.of("FOOD Công nghệ thực phẩm")));
 
         assertThat(scores.get(2L)).isGreaterThan(scores.getOrDefault(3L, 0.0));
         assertThat(scores.get(2L)).isBetween(0.0, 1.0);
@@ -46,12 +50,13 @@ class TfIdfSimilarityEngineTest {
         BookEntity relevant = book(3L, "Java và cơ sở dữ liệu", null, "Công nghệ thông tin");
         BookEntity unrelated = book(4L, "Văn học cổ điển", null, "Văn học");
 
-        Map<Long, Double> scores = engine.scoreProfile(
-                List.of(
-                        new TfIdfSimilarityEngine.WeightedBook(javaHistory, 2.0),
-                        new TfIdfSimilarityEngine.WeightedBook(databaseHistory, 1.0)),
-                List.of(relevant, unrelated),
-                Map.of());
+        Map<Long, Double> scores =
+                engine.scoreProfile(
+                        List.of(
+                                new TfIdfSimilarityEngine.WeightedBook(javaHistory, 2.0),
+                                new TfIdfSimilarityEngine.WeightedBook(databaseHistory, 1.0)),
+                        List.of(relevant, unrelated),
+                        Map.of());
 
         assertThat(scores.get(3L)).isGreaterThan(scores.getOrDefault(4L, 0.0));
     }

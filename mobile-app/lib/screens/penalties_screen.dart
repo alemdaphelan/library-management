@@ -127,7 +127,8 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
   }
 
   void _showPaymentSheet({required bool isDebtPayment}) {
-    final totalDebt = num.tryParse(_wallet['totalDebt']?.toString() ?? '0') ?? 0;
+    final totalDebt =
+        num.tryParse(_wallet['totalDebt']?.toString() ?? '0') ?? 0;
     final depositBalance =
         num.tryParse(_wallet['depositBalance']?.toString() ?? '0') ?? 0;
 
@@ -148,7 +149,10 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final enteredAmount =
-                num.tryParse(amountController.text.trim().replaceAll('.', '')) ?? 0;
+                num.tryParse(
+                  amountController.text.trim().replaceAll('.', ''),
+                ) ??
+                0;
 
             return Container(
               padding: EdgeInsets.only(
@@ -222,7 +226,9 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                           ? 'Số tiền muốn thanh toán (VNĐ)'
                           : 'Số tiền muốn nạp (VNĐ)',
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     TextField(
@@ -231,10 +237,13 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         prefixIcon: const Icon(Icons.attach_money),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                       ),
                       onChanged: (_) => setSheetState(() {}),
                     ),
@@ -243,26 +252,32 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                     // Quick chips
                     Wrap(
                       spacing: 8,
-                      children: (isDebtPayment
-                              ? [
-                                  if (totalDebt > 0) totalDebt,
-                                  if (totalDebt > 50000) 50000,
-                                  if (totalDebt > 100000) 100000,
-                                ]
-                              : [50000, 100000, 200000, 500000])
-                          .map((val) {
-                        final isFull = isDebtPayment && val == totalDebt;
-                        return ActionChip(
-                          label: Text(isFull
-                              ? 'Toàn bộ nợ (${_formatMoney(val)})'
-                              : _formatMoney(val)),
-                          onPressed: () {
-                            setSheetState(() {
-                              amountController.text = val.toStringAsFixed(0);
-                            });
-                          },
-                        );
-                      }).toList(),
+                      children:
+                          (isDebtPayment
+                                  ? [
+                                      if (totalDebt > 0) totalDebt,
+                                      if (totalDebt > 50000) 50000,
+                                      if (totalDebt > 100000) 100000,
+                                    ]
+                                  : [50000, 100000, 200000, 500000])
+                              .map((val) {
+                                final isFull =
+                                    isDebtPayment && val == totalDebt;
+                                return ActionChip(
+                                  label: Text(
+                                    isFull
+                                        ? 'Toàn bộ nợ (${_formatMoney(val)})'
+                                        : _formatMoney(val),
+                                  ),
+                                  onPressed: () {
+                                    setSheetState(() {
+                                      amountController.text = val
+                                          .toStringAsFixed(0);
+                                    });
+                                  },
+                                );
+                              })
+                              .toList(),
                     ),
                     const SizedBox(height: 16),
 
@@ -278,7 +293,9 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                         child: Text(
                           sheetError!,
                           style: TextStyle(
-                              color: Colors.red.shade900, fontSize: 12),
+                            color: Colors.red.shade900,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
 
@@ -313,7 +330,9 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                                 ? 'Hệ thống sẽ thanh toán trực tuyến ${_formatMoney(enteredAmount)} và tự động cấn trừ công nợ ngay lập tức.'
                                 : 'Hệ thống sẽ nạp trực tiếp ${_formatMoney(enteredAmount)} vào Quỹ tiền thế chân của thẻ bạn.',
                             style: TextStyle(
-                                color: Colors.green.shade900, fontSize: 13),
+                              color: Colors.green.shade900,
+                              fontSize: 13,
+                            ),
                           ),
                         ],
                       ),
@@ -325,23 +344,29 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                         backgroundColor: isDebtPayment
                             ? Colors.amber.shade700
                             : Colors.green.shade700,
-                        foregroundColor:
-                            isDebtPayment ? Colors.black87 : Colors.white,
+                        foregroundColor: isDebtPayment
+                            ? Colors.black87
+                            : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: isSubmitting
                           ? null
                           : () async {
                               if (enteredAmount <= 0) {
-                                setSheetState(() => sheetError =
-                                    'Vui lòng nhập số tiền hợp lệ.');
+                                setSheetState(
+                                  () => sheetError =
+                                      'Vui lòng nhập số tiền hợp lệ.',
+                                );
                                 return;
                               }
                               if (isDebtPayment && enteredAmount > totalDebt) {
-                                setSheetState(() => sheetError =
-                                    'Số tiền trả không được vượt quá số nợ hiện tại.');
+                                setSheetState(
+                                  () => sheetError =
+                                      'Số tiền trả không được vượt quá số nợ hiện tại.',
+                                );
                                 return;
                               }
 
@@ -352,8 +377,10 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
 
                               try {
                                 final capsRes = await ApiService.get(
-                                    '/api/v1/online-payments/capabilities');
-                                final mockEnabled = (capsRes is Map) &&
+                                  '/api/v1/online-payments/capabilities',
+                                );
+                                final mockEnabled =
+                                    (capsRes is Map) &&
                                     capsRes['mockEnabled'] == true;
 
                                 if (mockEnabled) {
@@ -406,9 +433,10 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                               } catch (e) {
                                 setSheetState(() {
                                   isSubmitting = false;
-                                  sheetError = e
-                                      .toString()
-                                      .replaceFirst('Exception: ', '');
+                                  sheetError = e.toString().replaceFirst(
+                                    'Exception: ',
+                                    '',
+                                  );
                                 });
                               }
                             },
@@ -417,17 +445,21 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Icon(Icons.check_circle_outline),
                       label: Text(
                         isSubmitting
                             ? 'Đang thanh toán...'
                             : (isDebtPayment
-                                ? 'Xác nhận trả nợ ngay'
-                                : 'Xác nhận nạp tiền ngay'),
+                                  ? 'Xác nhận trả nợ ngay'
+                                  : 'Xác nhận nạp tiền ngay'),
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                   ],
@@ -523,7 +555,8 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                                 SizedBox(
                                   width: width,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         'Tổng công nợ hiện tại',
@@ -580,24 +613,45 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: (num.tryParse(totalDebt?.toString() ?? '0') ?? 0) > 0
+                                  backgroundColor:
+                                      (num.tryParse(
+                                                totalDebt?.toString() ?? '0',
+                                              ) ??
+                                              0) >
+                                          0
                                       ? Colors.amber.shade600
                                       : Colors.white12,
-                                  foregroundColor: (num.tryParse(totalDebt?.toString() ?? '0') ?? 0) > 0
+                                  foregroundColor:
+                                      (num.tryParse(
+                                                totalDebt?.toString() ?? '0',
+                                              ) ??
+                                              0) >
+                                          0
                                       ? Colors.black87
                                       : Colors.white38,
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                onPressed: (num.tryParse(totalDebt?.toString() ?? '0') ?? 0) > 0
-                                    ? () => _showPaymentSheet(isDebtPayment: true)
+                                onPressed:
+                                    (num.tryParse(
+                                              totalDebt?.toString() ?? '0',
+                                            ) ??
+                                            0) >
+                                        0
+                                    ? () =>
+                                          _showPaymentSheet(isDebtPayment: true)
                                     : null,
                                 icon: const Icon(Icons.payment, size: 18),
                                 label: const Text(
                                   'Thanh toán nợ',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
@@ -607,16 +661,25 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green.shade700,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                onPressed: () => _showPaymentSheet(isDebtPayment: false),
-                                icon: const Icon(Icons.add_circle_outline, size: 18),
+                                onPressed: () =>
+                                    _showPaymentSheet(isDebtPayment: false),
+                                icon: const Icon(
+                                  Icons.add_circle_outline,
+                                  size: 18,
+                                ),
                                 label: const Text(
                                   'Nạp tiền cọc',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
@@ -740,7 +803,10 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
     final rawAmount = entry['amount'];
     final rawType = entry['type'];
     final isPositive = LedgerDisplay.isPositiveImpact(rawAmount, rawType);
-    final formattedAmount = LedgerDisplay.formatSignedAmount(rawAmount, rawType);
+    final formattedAmount = LedgerDisplay.formatSignedAmount(
+      rawAmount,
+      rawType,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -758,13 +824,9 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
                 ? Colors.green.shade50
                 : Colors.red.shade50,
             child: Icon(
-              isPositive
-                  ? Icons.arrow_downward
-                  : Icons.arrow_upward,
+              isPositive ? Icons.arrow_downward : Icons.arrow_upward,
               size: 16,
-              color: isPositive
-                  ? Colors.green.shade700
-                  : Colors.red.shade700,
+              color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
             ),
           ),
           const SizedBox(width: 12),
@@ -792,9 +854,7 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
             formattedAmount,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isPositive
-                  ? Colors.green.shade700
-                  : Colors.red.shade700,
+              color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
             ),
           ),
         ],

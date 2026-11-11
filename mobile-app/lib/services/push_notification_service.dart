@@ -54,7 +54,9 @@ class PushNotificationService {
 
   static Future<bool> initialize() {
     if (_initialized) return Future.value(true);
-    return _initialization ??= _initialize().whenComplete(() { _initialization = null; });
+    return _initialization ??= _initialize().whenComplete(() {
+      _initialization = null;
+    });
   }
 
   static Future<bool> _initialize() async {
@@ -77,7 +79,9 @@ class PushNotificationService {
       );
       if (!_listenersAttached) {
         FirebaseMessaging.onMessage.listen(_showForegroundMessage);
-        FirebaseMessaging.onMessageOpenedApp.listen(_handleRemoteMessageOpenedApp);
+        FirebaseMessaging.onMessageOpenedApp.listen(
+          _handleRemoteMessageOpenedApp,
+        );
         FirebaseMessaging.instance.onRegistered.listen(_onTokenReceived);
         _listenersAttached = true;
       }
@@ -88,7 +92,9 @@ class PushNotificationService {
         _pendingNavigationPayload = _extractNavigationPayload(initialMessage);
       }
 
-      await FirebaseMessaging.instance.register().timeout(const Duration(seconds: 10));
+      await FirebaseMessaging.instance.register().timeout(
+        const Duration(seconds: 10),
+      );
       _initialized = true;
       return true;
     } catch (error) {
@@ -104,7 +110,8 @@ class PushNotificationService {
       final prefs = await SharedPreferences.getInstance();
       final cachedToken = _lastKnownToken ?? prefs.getString(pushTokenKey);
       if (prefs.getString(pushIdentifierTypeKey) == 'FID' &&
-          cachedToken != null && cachedToken.trim().isNotEmpty) {
+          cachedToken != null &&
+          cachedToken.trim().isNotEmpty) {
         await _registerTokenWithBackend(cachedToken.trim());
       }
       final messaging = FirebaseMessaging.instance;
@@ -235,9 +242,7 @@ class PushNotificationService {
     );
   }
 
-  static void _onDidReceiveNotificationResponse(
-    NotificationResponse response,
-  ) {
+  static void _onDidReceiveNotificationResponse(NotificationResponse response) {
     notificationRevision.value++;
     final payloadMap = _decodePayload(response.payload);
     if (payloadMap != null) {
@@ -269,10 +274,7 @@ class PushNotificationService {
     }
 
     if (!navContext.mounted) return;
-    await NotificationService.navigateToNotificationTarget(
-      navContext,
-      payload,
-    );
+    await NotificationService.navigateToNotificationTarget(navContext, payload);
   }
 
   static Future<void> consumePendingNavigation(BuildContext context) async {

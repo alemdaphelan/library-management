@@ -4,7 +4,10 @@ import java.time.LocalDateTime;
 
 public interface UserBookInteractionProjection {
     Long getBookId();
+
     long getBorrowCount();
+
     long getRenewalCount();
+
     LocalDateTime getLastInteractedAt();
 }

@@ -27,8 +27,7 @@ public class WaitlistController {
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Join Waitlist", description = "Join queue for a borrowed book.")
     public ResponseEntity<?> joinWaitlist(
-            @RequestParam Long bookId,
-            @AuthenticationPrincipal CustomUserDetails user) {
+            @RequestParam Long bookId, @AuthenticationPrincipal CustomUserDetails user) {
         return ResponseEntity.ok(waitlistService.join(bookId, user.getUser().getUserId()));
     }
 

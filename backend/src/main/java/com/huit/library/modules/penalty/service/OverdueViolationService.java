@@ -38,8 +38,9 @@ public class OverdueViolationService {
     public boolean recordFirstOverdue(LoanTicketEntity ticket, LocalDateTime occurredAt) {
         String academicYear = academicYear(occurredAt.toLocalDate());
         UserEntity user = userRepository.findByIdForUpdate(ticket.getUserId()).orElse(null);
-        if (user == null || violationRepository.existsByTicketIdAndAcademicYear(
-                ticket.getTicketId(), academicYear)) {
+        if (user == null
+                || violationRepository.existsByTicketIdAndAcademicYear(
+                        ticket.getTicketId(), academicYear)) {
             return false;
         }
 
@@ -50,26 +51,35 @@ public class OverdueViolationService {
         violation.setOccurredAt(occurredAt);
         violationRepository.save(violation);
 
-        int count = (int) violationRepository.countByUserIdAndAcademicYear(ticket.getUserId(), academicYear);
+        int count =
+                (int)
+                        violationRepository.countByUserIdAndAcademicYear(
+                                ticket.getUserId(), academicYear);
         user.setViolationAcademicYear(academicYear);
         user.setOverdueViolationCount(count);
         if (count >= 3) {
             user.setCirculationLockedUntil(occurredAt.plusMonths(3));
             user.setCirculationLockReason("Quá hạn 3 lần trong năm học " + academicYear);
             notificationService.createOnce(
-                    user.getUserId(), "CIRCULATION_LOCKED",
+                    user.getUserId(),
+                    "CIRCULATION_LOCKED",
                     "Quyền mượn, đặt giữ và gia hạn bị khóa đến "
                             + user.getCirculationLockedUntil().toLocalDate()
-                            + " do quá hạn 3 lần trong năm học " + academicYear + ".",
-                    "USER", user.getUserId().toString(),
-                    "CIRCULATION_LOCKED:" + academicYear, occurredAt);
+                            + " do quá hạn 3 lần trong năm học "
+                            + academicYear
+                            + ".",
+                    "USER",
+                    user.getUserId().toString(),
+                    "CIRCULATION_LOCKED:" + academicYear,
+                    occurredAt);
         }
         userRepository.save(user);
         return true;
     }
 
     String academicYear(LocalDate date) {
-        LocalDate startThisYear = LocalDate.of(date.getYear(), academicYearStartMonth, academicYearStartDay);
+        LocalDate startThisYear =
+                LocalDate.of(date.getYear(), academicYearStartMonth, academicYearStartDay);
         int startYear = date.isBefore(startThisYear) ? date.getYear() - 1 : date.getYear();
         return startYear + "-" + (startYear + 1);
     }

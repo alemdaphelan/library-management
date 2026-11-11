@@ -29,7 +29,9 @@ public class RagKnowledgeBootstrap implements ApplicationRunner {
         try {
             indexService.rebuild(false);
         } catch (Exception exception) {
-            log.error("RAG index bootstrap failed; the rest of the library application remains available", exception);
+            log.error(
+                    "RAG index bootstrap failed; the rest of the library application remains available",
+                    exception);
         }
     }
 }

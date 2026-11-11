@@ -22,24 +22,27 @@ class RagEvaluationServiceTest {
         RagProperties properties = new RagProperties();
         RagChatService chatService = mock(RagChatService.class);
         RagKnowledgeIndexService indexService = mock(RagKnowledgeIndexService.class);
-        when(indexService.status()).thenReturn(new RagIndexStatusDTO(
-                4, 7, "local-hash-v1:768", false));
-        when(chatService.ask(anyString(), anyString())).thenAnswer(invocation -> {
-            String question = invocation.getArgument(0, String.class);
-            if (question.toLowerCase().contains("bỏ qua mọi chỉ dẫn")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Prompt injection blocked");
-            }
-            return new RagChatResponseDTO(
-                    UUID.randomUUID(),
-                    "Mình chưa tìm thấy nguồn đủ tin cậy để trả lời câu hỏi này.",
-                    List.of(),
-                    List.of(),
-                    false,
-                    true,
-                    "no-evidence");
-        });
-        RagEvaluationService service = new RagEvaluationService(
-                properties, chatService, indexService, new ObjectMapper());
+        when(indexService.status())
+                .thenReturn(new RagIndexStatusDTO(4, 7, "local-hash-v1:768", false));
+        when(chatService.ask(anyString(), anyString()))
+                .thenAnswer(
+                        invocation -> {
+                            String question = invocation.getArgument(0, String.class);
+                            if (question.toLowerCase().contains("bỏ qua mọi chỉ dẫn")) {
+                                throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST, "Prompt injection blocked");
+                            }
+                            return new RagChatResponseDTO(
+                                    UUID.randomUUID(),
+                                    "Mình chưa tìm thấy nguồn đủ tin cậy để trả lời câu hỏi này.",
+                                    List.of(),
+                                    List.of(),
+                                    false,
+                                    true,
+                                    "no-evidence");
+                        });
+        RagEvaluationService service =
+                new RagEvaluationService(properties, chatService, indexService, new ObjectMapper());
 
         var report = service.evaluate(0);
 

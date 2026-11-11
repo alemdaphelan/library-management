@@ -29,19 +29,25 @@ public class ReturnInspectionController {
 
     @PostMapping("/return-inspection")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Inspect returned or lost items and create penalty cases atomically",
-            description = "Up to three loanDetailIds, including lost items without a physical barcode scan. "
-                    + "NORMAL returns to stock; DAMAGED/LOST creates a case using existing policy. "
-                    + "Retry the same idempotency key and payload to replay the original receipt.")
+    @Operation(
+            summary = "Inspect returned or lost items and create penalty cases atomically",
+            description =
+                    "Up to three loanDetailIds, including lost items without a physical barcode scan. "
+                            + "NORMAL returns to stock; DAMAGED/LOST creates a case using existing policy. "
+                            + "Retry the same idempotency key and payload to replay the original receipt.")
     public ReturnInspectionResponseDTO inspect(
             @Valid @RequestBody ReturnInspectionRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
         return service.inspect(request, operator.getUser().getUserId());
     }
 
-    @ExceptionHandler({DataIntegrityViolationException.class, PessimisticLockingFailureException.class})
+    @ExceptionHandler({
+        DataIntegrityViolationException.class,
+        PessimisticLockingFailureException.class
+    })
     public ProblemDetail concurrentConflict(RuntimeException exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
                 "Giao dịch xung đột với thao tác khác. Hãy thử lại cùng idempotency key và nội dung ban đầu.");
     }
 }

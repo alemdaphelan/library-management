@@ -9,14 +9,18 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterLink],
   templateUrl: './digital.html',
-  styleUrls: ['./digital.css']
+  styleUrls: ['./digital.css'],
 })
 export class Digital implements OnInit {
   assets: DigitalAsset[] = [];
   loading = false;
   errorMessage = '';
 
-  constructor(private assetService: DigitalAssetsService, public authService: AuthService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private assetService: DigitalAssetsService,
+    public authService: AuthService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit() {
     if (this.authService.isLoggedIn()) this.loadAssets();
@@ -26,7 +30,7 @@ export class Digital implements OnInit {
     this.loading = true;
     this.errorMessage = '';
     this.assetService.getAssets().subscribe({
-      next: assets => {
+      next: (assets) => {
         this.assets = assets;
         this.loading = false;
         this.cdr.detectChanges();
@@ -35,13 +39,13 @@ export class Digital implements OnInit {
         this.errorMessage = 'Không thể tải kho tài liệu số lúc này.';
         this.loading = false;
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
   download(asset: DigitalAsset) {
     this.assetService.downloadAsset(asset.id).subscribe({
-      next: response => {
+      next: (response) => {
         if (!response.body) return;
         const url = URL.createObjectURL(response.body);
         const anchor = document.createElement('a');
@@ -50,19 +54,20 @@ export class Digital implements OnInit {
         anchor.click();
         URL.revokeObjectURL(url);
       },
-      error: () => this.errorMessage = 'Không thể tải tài liệu. Vui lòng thử lại.'
+      error: () => (this.errorMessage = 'Không thể tải tài liệu. Vui lòng thử lại.'),
     });
   }
 
   preview(asset: DigitalAsset) {
     const previewWindow = window.open('', '_blank');
     if (!previewWindow) {
-      this.errorMessage = 'Trình duyệt đang chặn cửa sổ xem tài liệu. Vui lòng cho phép mở tab mới.';
+      this.errorMessage =
+        'Trình duyệt đang chặn cửa sổ xem tài liệu. Vui lòng cho phép mở tab mới.';
       return;
     }
     previewWindow.document.title = `Đang mở ${asset.name}`;
     this.assetService.previewAsset(asset.id).subscribe({
-      next: response => {
+      next: (response) => {
         if (!response.body) {
           previewWindow.close();
           this.errorMessage = 'Tệp không có dữ liệu để hiển thị.';
@@ -75,7 +80,7 @@ export class Digital implements OnInit {
       error: () => {
         previewWindow.close();
         this.errorMessage = 'Không thể xem tài liệu. Vui lòng kiểm tra quyền truy cập.';
-      }
+      },
     });
   }
 

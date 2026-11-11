@@ -48,7 +48,12 @@ export class InventoryAuditService {
     return this.http.post<InventoryAudit>(this.apiUrl, {});
   }
 
-  scan(auditId: number, barcode: string, scannedLocation?: string, scannedShelfId?: number): Observable<InventoryScan> {
+  scan(
+    auditId: number,
+    barcode: string,
+    scannedLocation?: string,
+    scannedShelfId?: number,
+  ): Observable<InventoryScan> {
     return this.http.post<InventoryScan>(`${this.apiUrl}/${auditId}/scans`, {
       barcode,
       scannedLocation: scannedLocation || null,

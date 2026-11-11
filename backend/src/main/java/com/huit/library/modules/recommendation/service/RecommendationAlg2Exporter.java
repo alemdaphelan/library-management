@@ -24,12 +24,20 @@ public class RecommendationAlg2Exporter {
         Path output = outputDirectory.toAbsolutePath().normalize();
         Files.createDirectories(output);
 
-        objectMapper.writerWithDefaultPrettyPrinter()
+        objectMapper
+                .writerWithDefaultPrettyPrinter()
                 .writeValue(output.resolve("alg2_report.json").toFile(), report);
-        objectMapper.writerWithDefaultPrettyPrinter()
-                .writeValue(output.resolve("alg2_config.json").toFile(), new Alg2Configuration(
-                        report.datasetName(), report.topK(), report.candidateRule(),
-                        "TRAIN only", "TEST only", true));
+        objectMapper
+                .writerWithDefaultPrettyPrinter()
+                .writeValue(
+                        output.resolve("alg2_config.json").toFile(),
+                        new Alg2Configuration(
+                                report.datasetName(),
+                                report.topK(),
+                                report.candidateRule(),
+                                "TRAIN only",
+                                "TEST only",
+                                true));
         writeMetrics(output.resolve("alg2_metrics.csv"), report);
         writeSamples(output.resolve("alg2_sample_top_k.csv"), report);
         writeReadme(output.resolve("README.md"), report);
@@ -38,14 +46,21 @@ public class RecommendationAlg2Exporter {
 
     private void writeMetrics(Path path, RecommendationAlg2Report report) throws IOException {
         try (BufferedWriter writer = writer(path)) {
-            writer.write("method,precision_at_k,recall_at_k,hit_rate_at_k,catalog_coverage,average_latency_ms,p95_latency_ms,evaluated_users");
+            writer.write(
+                    "method,precision_at_k,recall_at_k,hit_rate_at_k,catalog_coverage,average_latency_ms,p95_latency_ms,evaluated_users");
             writer.newLine();
             for (RecommendationAlg2Report.MethodMetrics metric : report.metrics()) {
-                writer.write(String.join(",",
-                        csv(metric.method()), decimal(metric.precisionAtK()), decimal(metric.recallAtK()),
-                        decimal(metric.hitRateAtK()), decimal(metric.catalogCoverage()),
-                        decimal(metric.averageLatencyMs()), decimal(metric.p95LatencyMs()),
-                        Integer.toString(metric.evaluatedUsers())));
+                writer.write(
+                        String.join(
+                                ",",
+                                csv(metric.method()),
+                                decimal(metric.precisionAtK()),
+                                decimal(metric.recallAtK()),
+                                decimal(metric.hitRateAtK()),
+                                decimal(metric.catalogCoverage()),
+                                decimal(metric.averageLatencyMs()),
+                                decimal(metric.p95LatencyMs()),
+                                Integer.toString(metric.evaluatedUsers())));
                 writer.newLine();
             }
         }
@@ -53,15 +68,23 @@ public class RecommendationAlg2Exporter {
 
     private void writeSamples(Path path, RecommendationAlg2Report report) throws IOException {
         try (BufferedWriter writer = writer(path)) {
-            writer.write("sample_label,cohort,method,fallback,fallback_reason,rank,book_id,title,score");
+            writer.write(
+                    "sample_label,cohort,method,fallback,fallback_reason,rank,book_id,title,score");
             writer.newLine();
             for (RecommendationAlg2Report.SampleRecommendation sample : report.samples()) {
                 for (RecommendationAlg2Report.Item item : sample.items()) {
-                    writer.write(String.join(",",
-                            csv(sample.sampleLabel()), csv(sample.cohort()), csv(sample.method()),
-                            Boolean.toString(sample.fallback()), csv(sample.fallbackReason()),
-                            Integer.toString(item.rank()), Long.toString(item.bookId()),
-                            csv(item.title()), decimal(item.score())));
+                    writer.write(
+                            String.join(
+                                    ",",
+                                    csv(sample.sampleLabel()),
+                                    csv(sample.cohort()),
+                                    csv(sample.method()),
+                                    Boolean.toString(sample.fallback()),
+                                    csv(sample.fallbackReason()),
+                                    Integer.toString(item.rank()),
+                                    Long.toString(item.bookId()),
+                                    csv(item.title()),
+                                    decimal(item.score())));
                     writer.newLine();
                 }
             }
@@ -69,7 +92,8 @@ public class RecommendationAlg2Exporter {
     }
 
     private void writeReadme(Path path, RecommendationAlg2Report report) throws IOException {
-        String content = """
+        String content =
+                """
                 # ALG-2 - Hai mô hình đối chứng
 
                 Bộ kết quả này so sánh **POPULARITY** và **CONTENT_TFIDF** trên cùng dữ liệu ALG-1.
@@ -91,16 +115,26 @@ public class RecommendationAlg2Exporter {
 
                 Kết quả ALG-2 là baseline thực nghiệm; chưa bao gồm Hybrid/ALG-3 và không chứa họ tên,
                 MSSV hay địa chỉ e-mail của sinh viên.
-                """.formatted(
-                report.candidateRule(), report.topK(), report.warning().evaluationUsers(),
-                report.warning().message());
-        Files.writeString(path, content, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                """
+                        .formatted(
+                                report.candidateRule(),
+                                report.topK(),
+                                report.warning().evaluationUsers(),
+                                report.warning().message());
+        Files.writeString(
+                path,
+                content,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     private BufferedWriter writer(Path path) throws IOException {
-        return Files.newBufferedWriter(path, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        return Files.newBufferedWriter(
+                path,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     private String decimal(double value) {
@@ -121,6 +155,5 @@ public class RecommendationAlg2Exporter {
             String candidateRule,
             String trainingData,
             String relevanceData,
-            boolean anonymizedSamples) {
-    }
+            boolean anonymizedSamples) {}
 }

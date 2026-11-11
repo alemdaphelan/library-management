@@ -13,18 +13,18 @@ import java.util.UUID;
 @Entity
 @Table(name = "book_copies")
 public class BookCopyEntity extends BaseEntity {
-    @Id
-    private String barcode;
+    @Id private String barcode;
 
     private Long bookId;
     private Long receiptDetailId;
     private String conditionNote;
-    
+
     private UUID lockedByUser;
     private LocalDateTime lockedUntil;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "shelf_id")
     private ShelfEntity shelf;
-    
+
     private String status;
 }

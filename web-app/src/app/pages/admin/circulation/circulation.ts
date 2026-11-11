@@ -1,5 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, Optional, ViewChild } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  Optional,
+  ViewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of, switchMap } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
@@ -75,7 +83,7 @@ export class Circulation implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.policyService.getPublicPolicy().subscribe({
-      next: policy => {
+      next: (policy) => {
         this.maximumOpenItems = policy.maximumOpenItems;
         this.homeLoanDays = policy.homeLoanDays;
         this.cdr.detectChanges();
@@ -94,7 +102,10 @@ export class Circulation implements OnInit, OnDestroy {
     if (referenceType === 'LOAN_TICKET' && referenceId) {
       if (this.route?.snapshot.queryParamMap.get('mode') === 'return') {
         const ticketId = this.parseTicketId(referenceId);
-        if (ticketId !== null) { this.activeTab = 'return'; this.returnInitialTicketId = ticketId; }
+        if (ticketId !== null) {
+          this.activeTab = 'return';
+          this.returnInitialTicketId = ticketId;
+        }
       } else {
         this.borrowMode = 'approved';
         this.ticketInput = referenceId;
@@ -108,9 +119,11 @@ export class Circulation implements OnInit, OnDestroy {
     if (this.activeTab === 'return') return false;
     if (this.borrowMode === 'manual') return this.manualMssv.trim().length > 0;
     if (!this.selectedTicket || this.selectedTicket.status !== 'RESERVED') return false;
-    const expected = new Set(this.selectedTicket.items.map(item => item.barcode));
-    return expected.size === this.scannedBooks.length
-      && this.scannedBooks.every(book => expected.has(book.barcode));
+    const expected = new Set(this.selectedTicket.items.map((item) => item.barcode));
+    return (
+      expected.size === this.scannedBooks.length &&
+      this.scannedBooks.every((book) => expected.has(book.barcode))
+    );
   }
 
   switchTab(tab: 'borrow' | 'return'): void {
@@ -146,41 +159,49 @@ export class Circulation implements OnInit, OnDestroy {
     this.selectedTicket = null;
     this.scannedBooks = [];
 
-    this.circulationService.getLoan(ticketId).pipe(
-      switchMap(ticket => ticket.status === 'PENDING'
-        ? this.circulationService.approveReservation(ticketId).pipe(
-            switchMap(() => this.circulationService.getLoan(ticketId)),
-          )
-        : of(ticket)),
-    ).subscribe({
-      next: ticket => {
-        this.isResolvingTicket = false;
-        if (ticket.status !== 'RESERVED') {
-          this.errorMessage = `Phiếu #${ticket.ticketId} đang ở trạng thái ${this.statusLabel(ticket.status)}; chỉ phiếu đang giữ chỗ hợp lệ mới được giao sách.`;
+    this.circulationService
+      .getLoan(ticketId)
+      .pipe(
+        switchMap((ticket) =>
+          ticket.status === 'PENDING'
+            ? this.circulationService
+                .approveReservation(ticketId)
+                .pipe(switchMap(() => this.circulationService.getLoan(ticketId)))
+            : of(ticket),
+        ),
+      )
+      .subscribe({
+        next: (ticket) => {
+          this.isResolvingTicket = false;
+          if (ticket.status !== 'RESERVED') {
+            this.errorMessage = `Phiếu #${ticket.ticketId} đang ở trạng thái ${this.statusLabel(ticket.status)}; chỉ phiếu đang giữ chỗ hợp lệ mới được giao sách.`;
+            this.cdr.detectChanges();
+            return;
+          }
+          this.selectedTicket = ticket;
+          this.ticketInput = String(ticket.ticketId);
           this.cdr.detectChanges();
-          return;
-        }
-        this.selectedTicket = ticket;
-        this.ticketInput = String(ticket.ticketId);
-        this.cdr.detectChanges();
-      },
-      error: error => {
-        this.isResolvingTicket = false;
-        this.errorMessage = this.extractError(error, `Không thể tải phiếu #${ticketId}.`);
-        this.cdr.detectChanges();
-      },
-    });
+        },
+        error: (error) => {
+          this.isResolvingTicket = false;
+          this.errorMessage = this.extractError(error, `Không thể tải phiếu #${ticketId}.`);
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   scanBookBarcode(): void {
-    if (this.activeTab === 'return') { this.returnDesk?.addBarcode(this.barcodeInput); return; }
+    if (this.activeTab === 'return') {
+      this.returnDesk?.addBarcode(this.barcodeInput);
+      return;
+    }
     const barcode = this.barcodeInput.trim();
     if (!barcode) return;
     if (this.isSubmitting) {
       this.errorMessage = 'Hệ thống đang ghi nhận lần quét trước. Vui lòng chờ trong giây lát.';
       return;
     }
-    if (this.scannedBooks.some(book => book.barcode === barcode)) {
+    if (this.scannedBooks.some((book) => book.barcode === barcode)) {
       this.errorMessage = `Barcode ${barcode} đã được quét trong giao dịch này.`;
       return;
     }
@@ -197,9 +218,10 @@ export class Circulation implements OnInit, OnDestroy {
       return;
     }
 
-    const expectedItem = this.activeTab === 'borrow' && this.borrowMode === 'approved'
-      ? this.selectedTicket?.items.find(item => item.barcode === barcode)
-      : undefined;
+    const expectedItem =
+      this.activeTab === 'borrow' && this.borrowMode === 'approved'
+        ? this.selectedTicket?.items.find((item) => item.barcode === barcode)
+        : undefined;
     if (this.activeTab === 'borrow' && this.borrowMode === 'approved' && !expectedItem) {
       this.errorMessage = `Barcode ${barcode} không thuộc phiếu #${this.selectedTicket?.ticketId}.`;
       return;
@@ -226,35 +248,39 @@ export class Circulation implements OnInit, OnDestroy {
         this.scannedBooks = [...this.scannedBooks, counterBook];
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.isScanningBook = false;
-        this.errorMessage = this.extractError(error, `Không tìm thấy bản sao có barcode ${barcode}.`);
+        this.errorMessage = this.extractError(
+          error,
+          `Không tìm thấy bản sao có barcode ${barcode}.`,
+        );
         this.cdr.detectChanges();
       },
     });
   }
 
   removeBook(barcode: string): void {
-    this.scannedBooks = this.scannedBooks.filter(book => book.barcode !== barcode);
+    this.scannedBooks = this.scannedBooks.filter((book) => book.barcode !== barcode);
   }
 
   completeTransaction(): void {
     if (!this.canSubmit || this.activeTab === 'return') return;
-    const barcodes = this.scannedBooks.map(book => book.barcode);
+    const barcodes = this.scannedBooks.map((book) => book.barcode);
     this.isSubmitting = true;
     this.errorMessage = '';
     this.successMessage = '';
-    const request = this.activeTab === 'borrow' && this.borrowMode === 'manual'
-      ? this.circulationService.manualCheckout(
-          this.manualMssv,
-          this.manualTicketType,
-          barcodes,
-          this.manualNote,
-        )
-      : this.circulationService.checkout(this.selectedTicket!.ticketId, barcodes);
+    const request =
+      this.activeTab === 'borrow' && this.borrowMode === 'manual'
+        ? this.circulationService.manualCheckout(
+            this.manualMssv,
+            this.manualTicketType,
+            barcodes,
+            this.manualNote,
+          )
+        : this.circulationService.checkout(this.selectedTicket!.ticketId, barcodes);
 
     request.subscribe({
-      next: operation => {
+      next: (operation) => {
         this.isSubmitting = false;
         this.lastOperation = operation;
         this.successMessage = '';
@@ -266,7 +292,7 @@ export class Circulation implements OnInit, OnDestroy {
         this.manualNote = '';
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.isSubmitting = false;
         this.errorMessage = this.extractError(error, 'Không thể hoàn tất giao dịch.');
         this.cdr.detectChanges();
@@ -296,7 +322,8 @@ export class Circulation implements OnInit, OnDestroy {
     if (this.isSubmitting || this.returnDesk?.locked) return;
     this.cameraTarget = target;
     if (!navigator.mediaDevices?.getUserMedia) {
-      this.cameraError = 'Thiết bị hoặc trình duyệt không cho phép truy cập camera. Bạn vẫn có thể dùng máy quét USB hoặc nhập mã thủ công.';
+      this.cameraError =
+        'Thiết bị hoặc trình duyệt không cho phép truy cập camera. Bạn vẫn có thể dùng máy quét USB hoặc nhập mã thủ công.';
       this.showCamera = true;
       return;
     }
@@ -307,7 +334,7 @@ export class Circulation implements OnInit, OnDestroy {
     this.showCamera = true;
     this.cdr.detectChanges();
     try {
-      await new Promise(resolve => window.setTimeout(resolve));
+      await new Promise((resolve) => window.setTimeout(resolve));
       const video = this.cameraVideo?.nativeElement;
       if (!video) {
         throw new Error('Không tìm thấy vùng hiển thị camera.');
@@ -319,12 +346,14 @@ export class Circulation implements OnInit, OnDestroy {
         return;
       }
 
-      this.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      this.cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
       video.srcObject = this.cameraStream;
       await video.play();
-      const formats = target === 'ticket'
-        ? ['qr_code']
-        : ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'];
+      const formats =
+        target === 'ticket' ? ['qr_code'] : ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'];
       const detector = new Detector({ formats });
       this.cameraTimer = window.setInterval(() => void this.detectCameraFrame(detector), 450);
     } catch {
@@ -355,7 +384,19 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   statusLabel(status: string): string {
-    return ({ PENDING: 'phiếu cũ cần kiểm tra', RESERVED: 'đang giữ chỗ', BORROWING: 'đang mượn', OVERDUE: 'quá hạn', RETURNED: 'đã trả', CANCELLED: 'đã hủy', REJECTED: 'từ chối' } as Record<string, string>)[status] || status;
+    return (
+      (
+        {
+          PENDING: 'phiếu cũ cần kiểm tra',
+          RESERVED: 'đang giữ chỗ',
+          BORROWING: 'đang mượn',
+          OVERDUE: 'quá hạn',
+          RETURNED: 'đã trả',
+          CANCELLED: 'đã hủy',
+          REJECTED: 'từ chối',
+        } as Record<string, string>
+      )[status] || status
+    );
   }
 
   private parseTicketId(raw: string): number | null {
@@ -418,7 +459,7 @@ export class Circulation implements OnInit, OnDestroy {
     this.scannerControls = await reader.decodeFromConstraints(
       { video: { facingMode: { ideal: 'environment' } }, audio: false },
       video,
-      result => {
+      (result) => {
         const value = result?.getText().trim();
         if (!value || !this.showCamera) return;
         const target = this.cameraTarget;
@@ -429,7 +470,10 @@ export class Circulation implements OnInit, OnDestroy {
   }
 
   private handleScannedValue(target: 'ticket' | 'barcode', value: string): void {
-    if (target === 'barcode' && this.activeTab === 'return') { this.returnDesk?.addBarcode(value); return; }
+    if (target === 'barcode' && this.activeTab === 'return') {
+      this.returnDesk?.addBarcode(value);
+      return;
+    }
     if (target === 'barcode') {
       this.barcodeInput = value;
       this.scanBookBarcode();
@@ -438,7 +482,7 @@ export class Circulation implements OnInit, OnDestroy {
     this.isResolvingTicket = true;
     this.errorMessage = '';
     this.circulationService.resolveQrPayload(value).subscribe({
-      next: resolved => {
+      next: (resolved) => {
         this.isResolvingTicket = false;
         if (resolved.type === 'LOAN_TICKET' && resolved.ticketId) {
           this.borrowMode = 'approved';
@@ -456,9 +500,12 @@ export class Circulation implements OnInit, OnDestroy {
         this.errorMessage = 'QR hợp lệ nhưng không chứa phiếu mượn hoặc MSSV có thể sử dụng.';
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.isResolvingTicket = false;
-        this.errorMessage = this.extractError(error, 'QR không hợp lệ, đã hết hạn hoặc không thuộc hệ thống HUIT.');
+        this.errorMessage = this.extractError(
+          error,
+          'QR không hợp lệ, đã hết hạn hoặc không thuộc hệ thống HUIT.',
+        );
         this.cdr.detectChanges();
       },
     });
@@ -467,7 +514,7 @@ export class Circulation implements OnInit, OnDestroy {
   private releaseCameraResources(): void {
     this.scannerControls?.stop();
     this.scannerControls = undefined;
-    this.cameraStream?.getTracks().forEach(track => track.stop());
+    this.cameraStream?.getTracks().forEach((track) => track.stop());
     this.cameraStream = undefined;
   }
 }

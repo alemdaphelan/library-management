@@ -47,17 +47,47 @@ export const routes: Routes = [
     children: [
       { path: '', component: Home, title: 'Trang chủ' },
       { path: 'search', component: Search, title: 'Tra cứu sách' },
-      { path: 'history', component: History, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Lịch sử mượn' },
-      { path: 'suggest', component: Suggest, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Đề xuất sách' },
+      {
+        path: 'history',
+        component: History,
+        canActivate: [AuthGuard],
+        data: { roles: ['STUDENT'], staffRedirect: '/admin' },
+        title: 'Lịch sử mượn',
+      },
+      {
+        path: 'suggest',
+        component: Suggest,
+        canActivate: [AuthGuard],
+        data: { roles: ['STUDENT'], staffRedirect: '/admin' },
+        title: 'Đề xuất sách',
+      },
       { path: 'book/:id', component: Detail, title: 'Chi tiết sách' },
       { path: 'about', component: About, title: 'Giới thiệu Thư viện' },
       { path: 'digital', component: Digital, title: 'Tài nguyên số & CSDL' },
       { path: 'guide', component: Guide, title: 'Hướng dẫn độc giả' },
       { path: 'profile', component: Profile, canActivate: [AuthGuard], title: 'Quản lý tài khoản' },
-      { path: 'borrow-cart', component: BorrowCart, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Giỏ mượn sách' },
-      { path: 'saved-books', component: SavedBooks, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Tủ sách cá nhân' },
-      { path: 'my-penalties', component: MyPenalties, canActivate: [AuthGuard], data: { roles: ['STUDENT'], staffRedirect: '/admin' }, title: 'Công nợ và khoản phạt' },
-    ]
+      {
+        path: 'borrow-cart',
+        component: BorrowCart,
+        canActivate: [AuthGuard],
+        data: { roles: ['STUDENT'], staffRedirect: '/admin' },
+        title: 'Giỏ mượn sách',
+      },
+      {
+        path: 'saved-books',
+        component: SavedBooks,
+        canActivate: [AuthGuard],
+        data: { roles: ['STUDENT'], staffRedirect: '/admin' },
+        title: 'Tủ sách cá nhân',
+      },
+      {
+        path: 'my-penalties',
+        component: MyPenalties,
+        canActivate: [AuthGuard],
+        data: { roles: ['STUDENT'], staffRedirect: '/admin' },
+        title: 'Công nợ và khoản phạt',
+      },
+    ],
   },
   {
     path: 'admin',
@@ -68,10 +98,25 @@ export const routes: Routes = [
     children: [
       { path: '', component: Dashboard, title: 'Dashboard' },
       { path: 'profile', component: Profile, title: 'Cài đặt tài khoản' },
-      { path: 'accounts', component: Accounts, title: 'Quản lý tài khoản', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
+      {
+        path: 'accounts',
+        component: Accounts,
+        title: 'Quản lý tài khoản',
+        data: { roles: ['ADMIN', 'LIBRARIAN'] },
+      },
       { path: 'books', component: Books, title: 'Quản lý sách' },
-      { path: 'imports', component: Imports, title: 'Quản lý nhập kho', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
-      { path: 'inventory-audit', component: InventoryAudit, title: 'Kiểm kê kho', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
+      {
+        path: 'imports',
+        component: Imports,
+        title: 'Quản lý nhập kho',
+        data: { roles: ['ADMIN', 'LIBRARIAN'] },
+      },
+      {
+        path: 'inventory-audit',
+        component: InventoryAudit,
+        title: 'Kiểm kê kho',
+        data: { roles: ['ADMIN', 'LIBRARIAN'] },
+      },
       { path: 'circulation', component: Circulation, title: 'Quầy mượn trả' },
       { path: 'borrows', component: Borrows, title: 'Quản lý nợ phạt' },
       { path: 'penalties', component: Penalties, title: 'Mất hỏng và thu phạt' },
@@ -79,9 +124,19 @@ export const routes: Routes = [
       { path: 'suggestions', component: AdminSuggestions, title: 'Duyệt Đề xuất sách' },
       { path: 'notifications', component: Notifications, title: 'Thông báo của tôi' },
       { path: 'shelf-map', component: ShelfMap, title: 'Sơ đồ Kệ Sách' },
-      { path: 'orientation', component: Orientation, title: 'Lớp hướng dẫn thư viện', data: { roles: ['ADMIN', 'LIBRARIAN'] } },
-      { path: 'library-policy', component: LibraryPolicy, title: 'Quy định thư viện', data: { roles: ['ADMIN'] } }
-    ]
+      {
+        path: 'orientation',
+        component: Orientation,
+        title: 'Lớp hướng dẫn thư viện',
+        data: { roles: ['ADMIN', 'LIBRARIAN'] },
+      },
+      {
+        path: 'library-policy',
+        component: LibraryPolicy,
+        title: 'Quy định thư viện',
+        data: { roles: ['ADMIN'] },
+      },
+    ],
   },
-  { path: '**', redirectTo: '' }
+  { path: '**', redirectTo: '' },
 ];

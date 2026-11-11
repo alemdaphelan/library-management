@@ -10,7 +10,7 @@ import { NotificationService } from '../../../services/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './profile.html',
-  styleUrls: ['./profile.css']
+  styleUrls: ['./profile.css'],
 })
 export class Profile implements OnInit {
   activeTab: 'info' | 'password' | 'settings' = 'info';
@@ -25,18 +25,18 @@ export class Profile implements OnInit {
     cardStatus: 'UNKNOWN',
     cardExpiryDate: '',
     circulationLockedUntil: '',
-    circulationLockReason: ''
+    circulationLockReason: '',
   };
 
   passwordData = {
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   };
 
   settings = {
     emailAlerts: true,
-    pushAlerts: true
+    pushAlerts: true,
   };
 
   isSaving = false;
@@ -54,9 +54,9 @@ export class Profile implements OnInit {
     private route: ActivatedRoute,
     private authService: AuthService,
     private notificationService: NotificationService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.subscribe((params) => {
       const tab = params['tab'];
       if (tab === 'info' || tab === 'password' || tab === 'settings') {
         this.setActiveTab(tab);
@@ -105,7 +105,7 @@ export class Profile implements OnInit {
           cardStatus: user.cardStatus || 'UNKNOWN',
           cardExpiryDate: user.cardExpiryDate || '',
           circulationLockedUntil: user.circulationLockedUntil || '',
-          circulationLockReason: user.circulationLockReason || ''
+          circulationLockReason: user.circulationLockReason || '',
         };
         this.isProfileLoading = false;
         this.cdr.detectChanges();
@@ -125,9 +125,10 @@ export class Profile implements OnInit {
           this.userInfo.avatarUrl = cached.avatarUrl || '';
           this.userInfo.cardStatus = cached.cardStatus || 'UNKNOWN';
         }
-        this.profileError = 'Không thể đồng bộ thông tin mới nhất. Dữ liệu đang hiển thị có thể là dữ liệu đăng nhập gần nhất.';
+        this.profileError =
+          'Không thể đồng bộ thông tin mới nhất. Dữ liệu đang hiển thị có thể là dữ liệu đăng nhập gần nhất.';
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -136,7 +137,7 @@ export class Profile implements OnInit {
     this.isPreferencesLoading = true;
     this.preferencesError = '';
     this.notificationService.getPreferences().subscribe({
-      next: preferences => {
+      next: (preferences) => {
         this.settings = {
           emailAlerts: preferences.emailEnabled,
           pushAlerts: preferences.pushEnabled,
@@ -151,15 +152,18 @@ export class Profile implements OnInit {
           this.authService.logout();
           return;
         }
-        this.preferencesError = 'Không thể tải cài đặt thông báo. Hãy thử lại sau khi hệ thống kết nối ổn định.';
+        this.preferencesError =
+          'Không thể tải cài đặt thông báo. Hãy thử lại sau khi hệ thống kết nối ổn định.';
         this.cdr.detectChanges();
       },
     });
   }
 
   accountStatusLabel(): string {
-    if (this.userInfo.circulationLockedUntil
-        && new Date(this.userInfo.circulationLockedUntil).getTime() > Date.now()) {
+    if (
+      this.userInfo.circulationLockedUntil &&
+      new Date(this.userInfo.circulationLockedUntil).getTime() > Date.now()
+    ) {
       return 'Tạm khóa quyền mượn';
     }
     const status = this.userInfo.cardStatus?.toUpperCase();
@@ -175,13 +179,13 @@ export class Profile implements OnInit {
 
     if (!file.type.startsWith('image/')) {
       this.errMsg = 'Vui lòng chọn tệp hình ảnh hợp lệ (PNG, JPG, WEBP).';
-      setTimeout(() => this.errMsg = '', 4000);
+      setTimeout(() => (this.errMsg = ''), 4000);
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       this.errMsg = 'Kích thước ảnh tối đa là 5MB!';
-      setTimeout(() => this.errMsg = '', 4000);
+      setTimeout(() => (this.errMsg = ''), 4000);
       return;
     }
 
@@ -201,7 +205,7 @@ export class Profile implements OnInit {
             this.userInfo.avatarUrl = res.avatarUrl;
           }
           this.successMsg = 'Cập nhật ảnh đại diện thành công!';
-          setTimeout(() => this.successMsg = '', 4000);
+          setTimeout(() => (this.successMsg = ''), 4000);
         },
         error: (err: any) => {
           // Fallback to updateProfile with dataUrl
@@ -209,15 +213,15 @@ export class Profile implements OnInit {
             next: () => {
               this.isUploadingAvatar = false;
               this.successMsg = 'Cập nhật ảnh đại diện thành công!';
-              setTimeout(() => this.successMsg = '', 4000);
+              setTimeout(() => (this.successMsg = ''), 4000);
             },
             error: (fallbackErr: any) => {
               this.isUploadingAvatar = false;
               this.errMsg = 'Tải ảnh đại diện thất bại!';
-              setTimeout(() => this.errMsg = '', 4000);
-            }
+              setTimeout(() => (this.errMsg = ''), 4000);
+            },
           });
-        }
+        },
       });
     };
     reader.readAsDataURL(file);
@@ -227,34 +231,36 @@ export class Profile implements OnInit {
     if (this.activeTab === 'password') {
       const np = this.passwordData.newPassword || '';
       const cp = this.passwordData.confirmPassword || '';
-      
+
       if (np !== cp) {
         this.errMsg = `Mật khẩu mới và xác nhận mật khẩu không khớp!`;
-        setTimeout(() => this.errMsg = '', 6000);
+        setTimeout(() => (this.errMsg = ''), 6000);
         return;
       }
       this.isSaving = true;
       this.successMsg = '';
       this.errMsg = '';
-      this.authService.changePassword(this.passwordData.currentPassword, this.passwordData.newPassword).subscribe({
-        next: (res: any) => {
-          this.isSaving = false;
-          this.successMsg = 'Đổi mật khẩu thành công! Bạn sẽ được đăng xuất.';
-          this.passwordData = { currentPassword: '', newPassword: '', confirmPassword: '' };
-          setTimeout(() => {
-            this.authService.logout();
-          }, 2000);
-        },
-        error: (err: any) => {
-          this.isSaving = false;
-          this.errMsg = err.error || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ!';
-          setTimeout(() => this.errMsg = '', 4000);
-        }
-      });
+      this.authService
+        .changePassword(this.passwordData.currentPassword, this.passwordData.newPassword)
+        .subscribe({
+          next: (res: any) => {
+            this.isSaving = false;
+            this.successMsg = 'Đổi mật khẩu thành công! Bạn sẽ được đăng xuất.';
+            this.passwordData = { currentPassword: '', newPassword: '', confirmPassword: '' };
+            setTimeout(() => {
+              this.authService.logout();
+            }, 2000);
+          },
+          error: (err: any) => {
+            this.isSaving = false;
+            this.errMsg = err.error || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ!';
+            setTimeout(() => (this.errMsg = ''), 4000);
+          },
+        });
     } else if (this.activeTab === 'info') {
       if (!this.userInfo.fullName.trim()) {
         this.errMsg = 'Họ và tên không được để trống!';
-        setTimeout(() => this.errMsg = '', 4000);
+        setTimeout(() => (this.errMsg = ''), 4000);
         return;
       }
 
@@ -262,26 +268,28 @@ export class Profile implements OnInit {
       this.successMsg = '';
       this.errMsg = '';
 
-      this.authService.updateProfile({
-        fullName: this.userInfo.fullName,
-        phone: this.userInfo.phone,
-        avatarUrl: this.userInfo.avatarUrl
-      }).subscribe({
-        next: (updatedUser: any) => {
-          this.isSaving = false;
-          this.successMsg = 'Cập nhật thông tin cá nhân thành công!';
-          if (updatedUser) {
-            this.userInfo.fullName = updatedUser.fullName || this.userInfo.fullName;
-            this.userInfo.phone = updatedUser.phone || this.userInfo.phone;
-          }
-          setTimeout(() => this.successMsg = '', 4000);
-        },
-        error: (err: any) => {
-          this.isSaving = false;
-          this.errMsg = err.error || 'Cập nhật thông tin thất bại. Vui lòng thử lại!';
-          setTimeout(() => this.errMsg = '', 4000);
-        }
-      });
+      this.authService
+        .updateProfile({
+          fullName: this.userInfo.fullName,
+          phone: this.userInfo.phone,
+          avatarUrl: this.userInfo.avatarUrl,
+        })
+        .subscribe({
+          next: (updatedUser: any) => {
+            this.isSaving = false;
+            this.successMsg = 'Cập nhật thông tin cá nhân thành công!';
+            if (updatedUser) {
+              this.userInfo.fullName = updatedUser.fullName || this.userInfo.fullName;
+              this.userInfo.phone = updatedUser.phone || this.userInfo.phone;
+            }
+            setTimeout(() => (this.successMsg = ''), 4000);
+          },
+          error: (err: any) => {
+            this.isSaving = false;
+            this.errMsg = err.error || 'Cập nhật thông tin thất bại. Vui lòng thử lại!';
+            setTimeout(() => (this.errMsg = ''), 4000);
+          },
+        });
     } else {
       if (!this.preferencesLoaded) {
         this.preferencesError = 'Cần tải thành công cài đặt hiện tại trước khi lưu.';
@@ -291,23 +299,25 @@ export class Profile implements OnInit {
       this.successMsg = '';
       this.errMsg = '';
       this.preferencesError = '';
-      this.notificationService.updatePreferences({
-        emailEnabled: this.settings.emailAlerts,
-        pushEnabled: this.settings.pushAlerts,
-      }).subscribe({
-        next: preferences => {
-          this.settings.emailAlerts = preferences.emailEnabled;
-          this.settings.pushAlerts = preferences.pushEnabled;
-          this.isSaving = false;
-          this.successMsg = 'Đã lưu cài đặt thông báo.';
-          setTimeout(() => this.successMsg = '', 3000);
-        },
-        error: (error: any) => {
-          this.isSaving = false;
-          this.preferencesError = typeof error?.error === 'string'
-            ? error.error : 'Không thể lưu cài đặt thông báo.';
-        },
-      });
+      this.notificationService
+        .updatePreferences({
+          emailEnabled: this.settings.emailAlerts,
+          pushEnabled: this.settings.pushAlerts,
+        })
+        .subscribe({
+          next: (preferences) => {
+            this.settings.emailAlerts = preferences.emailEnabled;
+            this.settings.pushAlerts = preferences.pushEnabled;
+            this.isSaving = false;
+            this.successMsg = 'Đã lưu cài đặt thông báo.';
+            setTimeout(() => (this.successMsg = ''), 3000);
+          },
+          error: (error: any) => {
+            this.isSaving = false;
+            this.preferencesError =
+              typeof error?.error === 'string' ? error.error : 'Không thể lưu cài đặt thông báo.';
+          },
+        });
     }
   }
 }

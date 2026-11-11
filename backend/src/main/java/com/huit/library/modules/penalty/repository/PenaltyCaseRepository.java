@@ -13,11 +13,15 @@ import java.util.UUID;
 
 public interface PenaltyCaseRepository extends JpaRepository<PenaltyCaseEntity, Long> {
     List<PenaltyCaseEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     List<PenaltyCaseEntity> findAllByOrderByCreatedAtDesc();
+
     List<PenaltyCaseEntity> findByStatusIn(List<String> statuses);
+
     boolean existsByLoanDetailIdAndStatusNotIn(Long loanDetailId, List<String> statuses);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select penaltyCase from PenaltyCaseEntity penaltyCase where penaltyCase.caseId = :caseId")
+    @Query(
+            "select penaltyCase from PenaltyCaseEntity penaltyCase where penaltyCase.caseId = :caseId")
     Optional<PenaltyCaseEntity> findByIdForUpdate(@Param("caseId") Long caseId);
 }

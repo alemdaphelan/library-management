@@ -16,4 +16,3 @@ public class BookReviewDTO {
     private LocalDateTime updatedAt;
     private boolean mine;
 }
-

@@ -14,10 +14,12 @@ describe('Chatbot RAG component', () => {
     response$ = new Subject<RagChatResponse>();
     await TestBed.configureTestingModule({
       imports: [Chatbot],
-      providers: [{
-        provide: ChatbotService,
-        useValue: { ask: () => response$.asObservable() }
-      }]
+      providers: [
+        {
+          provide: ChatbotService,
+          useValue: { ask: () => response$.asObservable() },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(Chatbot);
@@ -33,18 +35,20 @@ describe('Chatbot RAG component', () => {
     response$.next({
       requestId: 'request-12b',
       answer: 'Mỗi tài liệu được gia hạn tối đa một lần [1].',
-      sources: [{
-        sourceKey: 'circulation-policy',
-        title: 'Quy định mượn, trả, gia hạn và đặt giữ',
-        sourceUri: 'classpath:rag/circulation-policy.md',
-        type: 'POLICY',
-        snippet: 'Mỗi tài liệu được gia hạn tối đa một lần.',
-        score: 0.91
-      }],
+      sources: [
+        {
+          sourceKey: 'circulation-policy',
+          title: 'Quy định mượn, trả, gia hạn và đặt giữ',
+          sourceUri: 'classpath:rag/circulation-policy.md',
+          type: 'POLICY',
+          snippet: 'Mỗi tài liệu được gia hạn tối đa một lần.',
+          score: 0.91,
+        },
+      ],
       suggestions: [],
       grounded: true,
       fallbackUsed: false,
-      model: 'gemini-3.6-flash'
+      model: 'gemini-3.6-flash',
     });
     fixture.detectChanges();
 

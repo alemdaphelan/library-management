@@ -30,11 +30,13 @@ public class BookService {
     private final ReviewRepository reviewRepository;
     private final LoanDetailRepository loanDetailRepository;
 
-    public BookService(BookRepository bookRepository, BookCopyRepository bookCopyRepository,
-                       CategoryRepository categoryRepository,
-                       DepartmentSubjectAffinityRepository departmentRepository,
-                       ReviewRepository reviewRepository,
-                       LoanDetailRepository loanDetailRepository) {
+    public BookService(
+            BookRepository bookRepository,
+            BookCopyRepository bookCopyRepository,
+            CategoryRepository categoryRepository,
+            DepartmentSubjectAffinityRepository departmentRepository,
+            ReviewRepository reviewRepository,
+            LoanDetailRepository loanDetailRepository) {
         this.bookRepository = bookRepository;
         this.bookCopyRepository = bookCopyRepository;
         this.categoryRepository = categoryRepository;
@@ -45,41 +47,54 @@ public class BookService {
 
     @Transactional(readOnly = true)
     public Page<BookResponseDTO> searchBooks(
-            String query, Long categoryId, String department, String availability, Pageable pageable) {
+            String query,
+            Long categoryId,
+            String department,
+            String availability,
+            Pageable pageable) {
         return searchBooks(query, categoryId, department, availability, null, pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<BookResponseDTO> searchBooks(
-            String query, Long categoryId, String department, String availability, String facultyId, Pageable pageable) {
+            String query,
+            Long categoryId,
+            String department,
+            String availability,
+            String facultyId,
+            Pageable pageable) {
         boolean hasQuery = query != null && !query.isBlank();
         Page<BookEntity> books;
         String departmentKey = DepartmentKeyNormalizer.normalize(department);
         String availabilityFilter = normalizeAvailability(availability);
         if (!departmentKey.isBlank()) {
-            books = bookRepository.searchByDepartment(
-                    departmentKey,
-                    hasQuery ? query.trim() : "",
-                    resolveSubjectCode(hasQuery ? query.trim() : ""),
-                    categoryId,
-                    availabilityFilter,
-                    facultyId == null ? "" : facultyId.trim(),
-                    pageable);
+            books =
+                    bookRepository.searchByDepartment(
+                            departmentKey,
+                            hasQuery ? query.trim() : "",
+                            resolveSubjectCode(hasQuery ? query.trim() : ""),
+                            categoryId,
+                            availabilityFilter,
+                            facultyId == null ? "" : facultyId.trim(),
+                            pageable);
         } else {
             String normalizedQuery = hasQuery ? query.trim() : "";
-            books = bookRepository.searchCatalog(
-                    normalizedQuery,
-                    resolveSubjectCode(normalizedQuery),
-                    categoryId,
-                    availabilityFilter,
-                    facultyId == null ? "" : facultyId.trim(),
-                    pageable);
+            books =
+                    bookRepository.searchCatalog(
+                            normalizedQuery,
+                            resolveSubjectCode(normalizedQuery),
+                            categoryId,
+                            availabilityFilter,
+                            facultyId == null ? "" : facultyId.trim(),
+                            pageable);
         }
         return books.map(this::toResponse);
     }
 
     private String normalizeAvailability(String availability) {
-        if (availability == null || availability.isBlank() || "ALL".equalsIgnoreCase(availability)) {
+        if (availability == null
+                || availability.isBlank()
+                || "ALL".equalsIgnoreCase(availability)) {
             return "";
         }
         if ("AVAILABLE".equalsIgnoreCase(availability)) {
@@ -99,15 +114,21 @@ public class BookService {
     }
 
     private BookEntity getBookEntity(Long id) {
-        return bookRepository.findById(id).orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu yêu cầu."));
+        return bookRepository
+                .findById(id)
+                .orElseThrow(
+                        () ->
+                                new org.springframework.web.server.ResponseStatusException(
+                                        org.springframework.http.HttpStatus.NOT_FOUND,
+                                        "Không tìm thấy tài liệu yêu cầu."));
     }
 
     @Transactional
     public BookResponseDTO getBookById(Long id) {
         if (bookRepository.incrementViewCount(id) == 0) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu yêu cầu.");
+                    org.springframework.http.HttpStatus.NOT_FOUND,
+                    "Không tìm thấy tài liệu yêu cầu.");
         }
         return toResponse(getBookEntity(id));
     }
@@ -118,10 +139,14 @@ public class BookService {
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("ISBN không được để trống");
         }
-        BookEntity book = bookRepository.findFirstByIsbn(normalized)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "Không tìm thấy đầu sách có ISBN " + normalized));
+        BookEntity book =
+                bookRepository
+                        .findFirstByIsbn(normalized)
+                        .orElseThrow(
+                                () ->
+                                        new org.springframework.web.server.ResponseStatusException(
+                                                org.springframework.http.HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy đầu sách có ISBN " + normalized));
         return toResponse(book);
     }
 
@@ -164,8 +189,10 @@ public class BookService {
 
     private void resolveCategory(BookEntity book) {
         if (book.getCategory() != null && book.getCategory().getCategoryId() != null) {
-            book.setCategory(categoryRepository.findById(book.getCategory().getCategoryId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found")));
+            book.setCategory(
+                    categoryRepository
+                            .findById(book.getCategory().getCategoryId())
+                            .orElseThrow(() -> new IllegalArgumentException("Category not found")));
         } else {
             book.setCategory(null);
         }
@@ -173,25 +200,28 @@ public class BookService {
 
     private BookResponseDTO toResponse(BookEntity book) {
         List<BookCopyEntity> copies = bookCopyRepository.findByBookId(book.getBookId());
-        long availableCopies = copies.stream()
-                .filter(copy -> "AVAILABLE".equalsIgnoreCase(copy.getStatus()))
-                .count();
-        String location = copies.stream()
-                .map(BookCopyEntity::getShelf)
-                .filter(java.util.Objects::nonNull)
-                .map(shelf -> {
-                    var bookshelf = shelf.getBookshelf();
-                    var floor = bookshelf == null ? null : bookshelf.getFloor();
-                    return java.util.stream.Stream.of(
-                                    floor == null ? null : floor.getName(),
-                                    bookshelf == null ? null : bookshelf.getName(),
-                                    shelf.getName())
-                            .filter(value -> value != null && !value.isBlank())
-                            .collect(java.util.stream.Collectors.joining(" / "));
-                })
-                .filter(value -> !value.isBlank())
-                .distinct()
-                .collect(java.util.stream.Collectors.joining(", "));
+        long availableCopies =
+                copies.stream()
+                        .filter(copy -> "AVAILABLE".equalsIgnoreCase(copy.getStatus()))
+                        .count();
+        String location =
+                copies.stream()
+                        .map(BookCopyEntity::getShelf)
+                        .filter(java.util.Objects::nonNull)
+                        .map(
+                                shelf -> {
+                                    var bookshelf = shelf.getBookshelf();
+                                    var floor = bookshelf == null ? null : bookshelf.getFloor();
+                                    return java.util.stream.Stream.of(
+                                                    floor == null ? null : floor.getName(),
+                                                    bookshelf == null ? null : bookshelf.getName(),
+                                                    shelf.getName())
+                                            .filter(value -> value != null && !value.isBlank())
+                                            .collect(java.util.stream.Collectors.joining(" / "));
+                                })
+                        .filter(value -> !value.isBlank())
+                        .distinct()
+                        .collect(java.util.stream.Collectors.joining(", "));
 
         return BookResponseDTO.builder()
                 .bookId(book.getBookId())
@@ -222,8 +252,9 @@ public class BookService {
                 .status(availableCopies > 0 ? "available" : "out_of_stock")
                 .rating(roundRating(reviewRepository.averageRatingByBookId(book.getBookId())))
                 .reviewsCount(reviewRepository.countByBookId(book.getBookId()))
-                .borrowCount(loanDetailRepository.countBorrowedByBookIdSince(
-                        book.getBookId(), LocalDate.now().withDayOfYear(1).atStartOfDay()))
+                .borrowCount(
+                        loanDetailRepository.countBorrowedByBookIdSince(
+                                book.getBookId(), LocalDate.now().withDayOfYear(1).atStartOfDay()))
                 .viewCount(book.getViewCount() == null ? 0L : book.getViewCount())
                 .build();
     }
@@ -233,8 +264,18 @@ public class BookService {
         if (normalized.isBlank()) {
             return "";
         }
-        if (containsAny(normalized, "k nn", "knn", "nearest neighbor", "machine learning",
-                "hoc may", "deep learning", "tri tue nhan tao", "ttnt", "artificial intelligence", "ai")) {
+        if (containsAny(
+                normalized,
+                "k nn",
+                "knn",
+                "nearest neighbor",
+                "machine learning",
+                "hoc may",
+                "deep learning",
+                "tri tue nhan tao",
+                "ttnt",
+                "artificial intelligence",
+                "ai")) {
             return "IT_DATA_AI";
         }
         if (containsAny(normalized, "an toan thuc pham", "food technology", "food science")) {
@@ -260,7 +301,8 @@ public class BookService {
     }
 
     private String resolveDepartment(BookEntity book) {
-        if (book.getCategory() != null && CategoryEntity.GENERAL_EDUCATION.equals(book.getCategory().getName())) {
+        if (book.getCategory() != null
+                && CategoryEntity.GENERAL_EDUCATION.equals(book.getCategory().getName())) {
             return "Giáo dục đại cương · Dùng chung";
         }
         if (book.getBookId() != null) {
@@ -269,17 +311,19 @@ public class BookService {
                 names = bookRepository.findDepartmentNamesByBookId(book.getBookId());
             }
             if (names != null && !names.isEmpty()) {
-                String joined = names.stream()
-                        .filter(value -> value != null && !value.isBlank())
-                        .distinct()
-                        .limit(2)
-                        .collect(java.util.stream.Collectors.joining(", "));
+                String joined =
+                        names.stream()
+                                .filter(value -> value != null && !value.isBlank())
+                                .distinct()
+                                .limit(2)
+                                .collect(java.util.stream.Collectors.joining(", "));
                 if (!joined.isBlank()) {
                     return joined;
                 }
             }
         }
-        if (book.getCategory() != null && book.getCategory().getName() != null
+        if (book.getCategory() != null
+                && book.getCategory().getName() != null
                 && !book.getCategory().getName().isBlank()) {
             return book.getCategory().getName();
         }
@@ -290,10 +334,14 @@ public class BookService {
         if (book.getDescription() != null && !book.getDescription().isBlank()) {
             return book.getDescription();
         }
-        String category = book.getCategory() == null || book.getCategory().getName() == null
-                ? "Tài liệu chung"
-                : book.getCategory().getName();
-        return "Tài liệu " + book.getTitle() + " thuộc chủ đề " + category
+        String category =
+                book.getCategory() == null || book.getCategory().getName() == null
+                        ? "Tài liệu chung"
+                        : book.getCategory().getName();
+        return "Tài liệu "
+                + book.getTitle()
+                + " thuộc chủ đề "
+                + category
                 + ", phục vụ học tập, nghiên cứu và tham khảo tại Thư viện HUIT.";
     }
 

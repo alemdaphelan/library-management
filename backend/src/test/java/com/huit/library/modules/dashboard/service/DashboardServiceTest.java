@@ -41,13 +41,15 @@ class DashboardServiceTest {
         loanDetailRepository = mock(LoanDetailRepository.class);
         financeAnalytics = mock(FinanceAnalyticsRepository.class);
         analytics = mock(CirculationAnalyticsRepository.class);
-        service = new DashboardService(
-                bookCopyRepository,
-                mock(BookRepository.class),
-                loanTicketRepository,
-                loanDetailRepository,
-                mock(UserRepository.class),
-                financeAnalytics, analytics);
+        service =
+                new DashboardService(
+                        bookCopyRepository,
+                        mock(BookRepository.class),
+                        loanTicketRepository,
+                        loanDetailRepository,
+                        mock(UserRepository.class),
+                        financeAnalytics,
+                        analytics);
     }
 
     @Test
@@ -71,7 +73,8 @@ class DashboardServiceTest {
 
     @Test
     void weeklyStatsAlwaysReturnSevenDaysAndRealCounts() {
-        when(analytics.dailyBorrowCounts(any(LocalDate.class),any(LocalDate.class))).thenReturn(java.util.Map.of(LocalDate.now(),2L));
+        when(analytics.dailyBorrowCounts(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(java.util.Map.of(LocalDate.now(), 2L));
 
         List<WeeklyStatDTO> result = service.getWeeklyStats();
 
@@ -88,10 +91,12 @@ class DashboardServiceTest {
         when(projection.getTitle()).thenReturn("Clean Code");
         when(projection.getAuthor()).thenReturn("Robert C. Martin");
         when(projection.getBorrows()).thenReturn(6L);
-        when(loanDetailRepository.findTrendingBooks(any(Pageable.class))).thenReturn(List.of(projection));
+        when(loanDetailRepository.findTrendingBooks(any(Pageable.class)))
+                .thenReturn(List.of(projection));
 
         List<TrendingBookDTO> result = service.getTrendingBooks();
 
-        assertThat(result).containsExactly(new TrendingBookDTO(8L, "Clean Code", "Robert C. Martin", 6L));
+        assertThat(result)
+                .containsExactly(new TrendingBookDTO(8L, "Clean Code", "Robert C. Martin", 6L));
     }
 }

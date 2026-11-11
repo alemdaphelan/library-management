@@ -12,20 +12,19 @@ import java.util.List;
 
 @Data
 public class ImportReceiptRequestDTO {
-    @NotNull
-    private Long supplierId;
+    @NotNull private Long supplierId;
 
-    @Valid
-    @NotEmpty
-    private List<Line> lines;
+    @Valid @NotEmpty private List<Line> lines;
 
     @Data
     public static class Line {
         private Long bookId;
         private String isbn;
+
         @NotNull
         @Min(1)
         private Long shelfId;
+
         private Long floorId;
         private Long bookshelfId;
 

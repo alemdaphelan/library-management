@@ -47,17 +47,28 @@ class PenaltyCaseServiceTest {
         transactions = mock(TransactionRepository.class);
         wallets = mock(WalletRepository.class);
         AtomicLong ids = new AtomicLong(1);
-        when(cases.save(any())).thenAnswer(invocation -> {
-            PenaltyCaseEntity value = invocation.getArgument(0);
-            if (value.getCaseId() == null) value.setCaseId(ids.getAndIncrement());
-            return value;
-        });
+        when(cases.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            PenaltyCaseEntity value = invocation.getArgument(0);
+                            if (value.getCaseId() == null) value.setCaseId(ids.getAndIncrement());
+                            return value;
+                        });
         LibraryPolicyService policyService = mock(LibraryPolicyService.class);
         when(policyService.technicalProcessingFee()).thenReturn(new BigDecimal("50000"));
         when(policyService.compensationSettlementDays()).thenReturn(30);
-        service = new PenaltyCaseService(cases, mock(CompensationRateRepository.class), details,
-                tickets, copies, transactions, wallets, mock(LateFineService.class),
-                mock(NotificationService.class), policyService);
+        service =
+                new PenaltyCaseService(
+                        cases,
+                        mock(CompensationRateRepository.class),
+                        details,
+                        tickets,
+                        copies,
+                        transactions,
+                        wallets,
+                        mock(LateFineService.class),
+                        mock(NotificationService.class),
+                        policyService);
     }
 
     @Test
@@ -125,8 +136,13 @@ class PenaltyCaseServiceTest {
         if (physicallyReceived) assertThat(detail.getReturnDate()).isEqualTo(receivedAt);
         else assertThat(detail.getPhysicalReturnAt()).isNull();
         assertThat(ticket.getStatus()).isEqualTo("RETURNED");
-        verify(copies).save(argThat(value -> "BC-NEW".equals(value.getBarcode())
-                && "AVAILABLE".equals(value.getStatus()) && value.getBookId().equals(31L)));
+        verify(copies)
+                .save(
+                        argThat(
+                                value ->
+                                        "BC-NEW".equals(value.getBarcode())
+                                                && "AVAILABLE".equals(value.getStatus())
+                                                && value.getBookId().equals(31L)));
     }
 
     @Test
@@ -153,11 +169,21 @@ class PenaltyCaseServiceTest {
         assertThat(wallet.getDepositBalance()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(wallet.getTotalDebt()).isEqualByComparingTo("20000");
         assertThat(result.getPaidAmount()).isEqualByComparingTo("50000");
-        verify(transactions).save(argThat(transaction ->
-                transaction.getPaidAmount().compareTo(new BigDecimal("50000")) == 0
-                        && transaction.getDepositAppliedAmount().compareTo(new BigDecimal("50000")) == 0
-                        && transaction.getDepositAppliedAt() != null
-                        && "PARTIALLY_PAID".equals(transaction.getStatus())));
+        verify(transactions)
+                .save(
+                        argThat(
+                                transaction ->
+                                        transaction
+                                                                .getPaidAmount()
+                                                                .compareTo(new BigDecimal("50000"))
+                                                        == 0
+                                                && transaction
+                                                                .getDepositAppliedAmount()
+                                                                .compareTo(new BigDecimal("50000"))
+                                                        == 0
+                                                && transaction.getDepositAppliedAt() != null
+                                                && "PARTIALLY_PAID"
+                                                        .equals(transaction.getStatus())));
     }
 
     private PenaltyCaseRequestDTO baseRequest(Long detailId, String settlement) {

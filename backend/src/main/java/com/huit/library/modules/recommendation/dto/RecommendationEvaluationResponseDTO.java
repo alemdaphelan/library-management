@@ -13,6 +13,4 @@ public record RecommendationEvaluationResponseDTO(
         RealHistoryAuditDTO realHistory,
         List<EvaluationMethodMetricsDTO> methods,
         String conclusion,
-        String disclaimer
-) {
-}
+        String disclaimer) {}

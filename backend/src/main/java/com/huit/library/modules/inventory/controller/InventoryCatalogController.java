@@ -10,9 +10,15 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
 public class InventoryCatalogController {
     private final CatalogIdentificationService service;
-    public InventoryCatalogController(CatalogIdentificationService service) { this.service = service; }
+
+    public InventoryCatalogController(CatalogIdentificationService service) {
+        this.service = service;
+    }
+
     @GetMapping
-    public CatalogIdentificationDTO identify(@RequestParam(required = false) String isbn, @RequestParam(required = false) Long bookId) {
+    public CatalogIdentificationDTO identify(
+            @RequestParam(required = false) String isbn,
+            @RequestParam(required = false) Long bookId) {
         return service.identify(isbn, bookId);
     }
 }

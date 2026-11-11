@@ -15,14 +15,19 @@ import org.springframework.web.bind.annotation.*;
 public class LoanLossReportController {
     private final LoanService loans;
 
-    public LoanLossReportController(LoanService loans) { this.loans = loans; }
+    public LoanLossReportController(LoanService loans) {
+        this.loans = loans;
+    }
 
     @PostMapping("/{ticketId}/items/{detailId}/loss-report")
     @PreAuthorize("hasRole('STUDENT')")
-    public LoanItemDTO report(@PathVariable Long ticketId, @PathVariable Long detailId,
+    public LoanItemDTO report(
+            @PathVariable Long ticketId,
+            @PathVariable Long detailId,
             @Valid @RequestBody LoanLossReportRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails reader) {
-        return loans.reportLoss(ticketId, detailId, request.description(), reader.getUser().getUserId());
+        return loans.reportLoss(
+                ticketId, detailId, request.description(), reader.getUser().getUserId());
     }
 
     @GetMapping("/loss-reports/{detailId}")

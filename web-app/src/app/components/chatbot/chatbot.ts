@@ -18,7 +18,7 @@ interface ChatMessage {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './chatbot.html',
-  styleUrls: ['./chatbot.css']
+  styleUrls: ['./chatbot.css'],
 })
 export class Chatbot {
   private chatbotService = inject(ChatbotService);
@@ -33,8 +33,8 @@ export class Chatbot {
       text: 'Xin chào! Tôi là Trợ lý RAG của HUIT Library. Câu trả lời của tôi sẽ kèm nguồn từ kho tri thức thư viện.',
       time: this.getCurrentTime(),
       suggests: ['Quy định gia hạn sách?', 'Quá hạn trả sách bị xử lý thế nào?'],
-      sources: []
-    }
+      sources: [],
+    },
   ];
 
   isTyping = false;
@@ -50,7 +50,13 @@ export class Chatbot {
       this.messages[this.messages.length - 1].suggests = [];
     }
 
-    this.messages.push({ sender: 'user', text: text.trim(), time: this.getCurrentTime(), suggests: [], sources: [] });
+    this.messages.push({
+      sender: 'user',
+      text: text.trim(),
+      time: this.getCurrentTime(),
+      suggests: [],
+      sources: [],
+    });
     this.userInput = '';
     this.isTyping = true;
 
@@ -67,24 +73,25 @@ export class Chatbot {
           time: this.getCurrentTime(),
           suggests: response.suggestions ?? [],
           sources: response.sources ?? [],
-          fallbackUsed: response.fallbackUsed
+          fallbackUsed: response.fallbackUsed,
         });
         this.cdr.detectChanges();
       },
       error: (error: HttpErrorResponse) => {
         this.isTyping = false;
-        const message = error.status === 429
-          ? 'Bạn đã gửi quá nhiều câu hỏi. Vui lòng thử lại sau một phút.'
-          : 'Xin lỗi, kho tri thức hiện chưa phản hồi. Bạn có thể thử lại hoặc liên hệ thủ thư.';
+        const message =
+          error.status === 429
+            ? 'Bạn đã gửi quá nhiều câu hỏi. Vui lòng thử lại sau một phút.'
+            : 'Xin lỗi, kho tri thức hiện chưa phản hồi. Bạn có thể thử lại hoặc liên hệ thủ thư.';
         this.messages.push({
           sender: 'bot',
           text: message,
           time: this.getCurrentTime(),
           suggests: ['Thử lại', 'Quy định mượn sách?'],
-          sources: []
+          sources: [],
         });
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 

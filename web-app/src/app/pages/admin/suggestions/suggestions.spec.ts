@@ -12,20 +12,27 @@ describe('AdminSuggestions', () => {
       { title: 'Java', status: 'PENDING', majorId: 'KT', majorName: 'Kế toán' },
       { title: 'Legacy', status: 'PENDING', genre: 'Công nghệ thông tin' },
     ];
-    component.majorFilter = 'CNTT'; component.searchTerm = 'Java';
+    component.majorFilter = 'CNTT';
+    component.searchTerm = 'Java';
     expect(component.filteredSuggestions).toHaveLength(1);
     expect(component.majorOptions).toHaveLength(2);
-    component.majorFilter = '__LEGACY__'; component.searchTerm = '';
-    expect(component.filteredSuggestions.map(p => p.title)).toEqual(['Legacy']);
-    component.majorFilter = ''; component.activeTab = 'ALL';
+    component.majorFilter = '__LEGACY__';
+    component.searchTerm = '';
+    expect(component.filteredSuggestions.map((p) => p.title)).toEqual(['Legacy']);
+    component.majorFilter = '';
+    component.activeTab = 'ALL';
     expect(component.filteredSuggestions).toHaveLength(4);
   });
 
   it('loads summary lazily and opens its exact original in the unchanged individual drawer', () => {
     const component = new AdminSuggestions({} as any, cdr as any);
     component.proposals = [{ proposalId: 7, title: 'Clean Code', status: 'PENDING' }];
-    expect(component.summaryLoaded).toBe(false); component.showSummary(); expect(component.view).toBe('summary');
-    component.openSummaryProposal(7); expect(component.view).toBe('individual'); expect(component.selectedSuggestion?.proposalId).toBe(7);
+    expect(component.summaryLoaded).toBe(false);
+    component.showSummary();
+    expect(component.view).toBe('summary');
+    component.openSummaryProposal(7);
+    expect(component.view).toBe('individual');
+    expect(component.selectedSuggestion?.proposalId).toBe(7);
     component.closeDrawer();
   });
 
@@ -35,7 +42,7 @@ describe('AdminSuggestions', () => {
       getAllProposalsForAdmin: vi.fn(() => of([proposal])),
     };
     const route = {
-      snapshot: { queryParamMap: { get: (key: string) => key === 'referenceId' ? '7' : null } },
+      snapshot: { queryParamMap: { get: (key: string) => (key === 'referenceId' ? '7' : null) } },
     };
     const component = new AdminSuggestions(proposalService as any, cdr as any, route as any);
 
@@ -66,12 +73,14 @@ describe('AdminSuggestions', () => {
 
   it('submits the rejection reason and updates the proposal', () => {
     const proposalService = {
-      updateProposalStatus: vi.fn(() => of({
-        proposalId: 7,
-        title: 'Clean Architecture',
-        status: 'REJECTED',
-        adminNote: 'Đã có đủ bản tương đương',
-      })),
+      updateProposalStatus: vi.fn(() =>
+        of({
+          proposalId: 7,
+          title: 'Clean Architecture',
+          status: 'REJECTED',
+          adminNote: 'Đã có đủ bản tương đương',
+        }),
+      ),
     };
     const component = new AdminSuggestions(proposalService as any, cdr as any);
     component.proposals = [{ proposalId: 7, title: 'Clean Architecture', status: 'PENDING' }];
@@ -80,8 +89,11 @@ describe('AdminSuggestions', () => {
 
     component.rejectSuggestion();
 
-    expect(proposalService.updateProposalStatus)
-      .toHaveBeenCalledWith(7, 'REJECTED', 'Đã có đủ bản tương đương');
+    expect(proposalService.updateProposalStatus).toHaveBeenCalledWith(
+      7,
+      'REJECTED',
+      'Đã có đủ bản tương đương',
+    );
     expect(component.proposals[0].status).toBe('REJECTED');
   });
 });

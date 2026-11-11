@@ -27,14 +27,14 @@ describe('BorrowCartService', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ providers: [BorrowCartService] });
     const restored = TestBed.inject(BorrowCartService);
-    expect(restored.allItems.map(item => item.bookId)).toEqual([1]);
+    expect(restored.allItems.map((item) => item.bookId)).toEqual([1]);
   });
 
   it('removes an item and clears the cart', () => {
     service.add({ bookId: 1, title: 'Sách A' });
     service.add({ bookId: 2, title: 'Sách B' });
     service.remove(1);
-    expect(service.allItems.map(item => item.bookId)).toEqual([2]);
+    expect(service.allItems.map((item) => item.bookId)).toEqual([2]);
 
     service.clear();
     expect(service.count).toBe(0);

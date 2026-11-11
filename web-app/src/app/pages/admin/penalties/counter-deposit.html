@@ -1,26 +1,46 @@
 <form class="panel" (ngSubmit)="submit()">
   <h2>Nạp tiền thế chân tại quầy</h2>
   @if (pending; as deposit) {
-    <p>{{ deposit.readerName }} · MSSV {{ deposit.mssv }} · {{ deposit.request.amount | number:'1.0-0' }} VNĐ</p>
+    <p>{{ deposit.readerName }} · MSSV {{ deposit.mssv }} ·
+      {{ deposit.request.amount | number:'1.0-0' }} VNĐ</p>
     <p role="status">{{ submitting ? 'Đang ghi nhận tiền mặt…' : 'Lượt thu đang chờ kết quả. Hãy thử lại lượt này.' }}</p>
     <button class="primary" type="submit" [disabled]="submitting">Thử lại lượt thu</button>
   } @else {
     <label>MSSV người nộp
-      <input name="depositMssv" [(ngModel)]="mssv" (ngModelChange)="resetReader()" maxlength="30" required>
+      <input
+        name="depositMssv"
+        [(ngModel)]="mssv"
+        (ngModelChange)="resetReader()"
+        maxlength="30"
+        required
+      />
     </label>
     <button type="button" (click)="lookup()" [disabled]="lookingUp || !mssv.trim()">
       {{ lookingUp ? 'Đang tra cứu…' : 'Tra cứu số dư thế chân' }}
     </button>
     @if (reader; as profile) {
-      <p><strong>{{ profile.student.fullName }}</strong> · MSSV {{ profile.student.mssv }}</p>
+      <p>
+        <strong>{{ profile.student.fullName }}</strong> · MSSV {{ profile.student.mssv }}</p>
       <p>Số dư thế chân {{ profile.card.depositBalance | number:'1.0-0' }} VNĐ</p>
       <label>Số tiền mặt đã nhận (VNĐ)
-        <input type="number" name="depositAmount" [(ngModel)]="amount" min="1" [max]="maxAmount" step="1" required>
+        <input
+          type="number"
+          name="depositAmount"
+          [(ngModel)]="amount"
+          min="1"
+          [max]="maxAmount"
+          step="1"
+          required
+        />
       </label>
       <label>Ghi chú
         <textarea name="depositNote" [(ngModel)]="note" maxlength="200"></textarea>
       </label>
-      <button class="primary" type="submit" [disabled]="amount === null || amount < 1 || amount > maxAmount">
+      <button
+        class="primary"
+        type="submit"
+        [disabled]="amount === null || amount < 1 || amount > maxAmount"
+      >
         Xác nhận nạp cọc tiền mặt
       </button>
     }
@@ -29,8 +49,10 @@
     <article class="receipt" role="status">
       <strong>Biên nhận {{ result.receiptNumber }}</strong>
       <p>{{ result.readerName }} · MSSV {{ result.mssv }}</p>
-      <p>Đã nhận {{ result.amount | number:'1.0-0' }} VNĐ tiền mặt lúc {{ result.paidAt | date:'HH:mm dd/MM/yyyy' }}.</p>
-      <p>Số dư thế chân hiện tại <strong>{{ result.depositBalance | number:'1.0-0' }} VNĐ</strong></p>
+      <p>Đã nhận {{ result.amount | number:'1.0-0' }} VNĐ tiền mặt lúc
+        {{ result.paidAt | date:'HH:mm dd/MM/yyyy' }}.</p>
+      <p>Số dư thế chân hiện tại <strong>{{ result.depositBalance | number:'1.0-0' }} VNĐ</strong>
+      </p>
     </article>
   }
 </form>

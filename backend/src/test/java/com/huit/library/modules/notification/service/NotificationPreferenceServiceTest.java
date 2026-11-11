@@ -35,8 +35,7 @@ class NotificationPreferenceServiceTest {
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         NotificationPreferenceService service = new NotificationPreferenceService(repository);
 
-        var result = service.update(userId,
-                new NotificationPreferenceRequestDTO(false, true));
+        var result = service.update(userId, new NotificationPreferenceRequestDTO(false, true));
 
         assertThat(result.userId()).isEqualTo(userId);
         assertThat(result.emailEnabled()).isFalse();

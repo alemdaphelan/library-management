@@ -10,15 +10,16 @@ import java.util.Locale;
 
 @Component
 public class RagInputGuard {
-    private static final List<String> INJECTION_MARKERS = List.of(
-            "ignore previous instructions",
-            "ignore all instructions",
-            "reveal system prompt",
-            "show system prompt",
-            "bỏ qua hướng dẫn trước",
-            "bỏ qua mọi chỉ dẫn",
-            "hiển thị system prompt",
-            "tiết lộ system prompt");
+    private static final List<String> INJECTION_MARKERS =
+            List.of(
+                    "ignore previous instructions",
+                    "ignore all instructions",
+                    "reveal system prompt",
+                    "show system prompt",
+                    "bỏ qua hướng dẫn trước",
+                    "bỏ qua mọi chỉ dẫn",
+                    "hiển thị system prompt",
+                    "tiết lộ system prompt");
 
     private final RagProperties properties;
 
@@ -29,14 +30,17 @@ public class RagInputGuard {
     public String validate(String raw) {
         String question = raw == null ? "" : raw.trim().replace("\u0000", "");
         if (question.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Câu hỏi không được để trống");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Câu hỏi không được để trống");
         }
         if (question.length() > properties.getMaxInputCharacters()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Câu hỏi vượt quá giới hạn cho phép");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Câu hỏi vượt quá giới hạn cho phép");
         }
         String lower = question.toLowerCase(Locale.ROOT);
         if (INJECTION_MARKERS.stream().anyMatch(lower::contains)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
                     "Câu hỏi chứa chỉ dẫn không phù hợp với trợ lý thư viện");
         }
         return question;

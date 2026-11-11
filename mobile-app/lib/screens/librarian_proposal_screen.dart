@@ -61,12 +61,15 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
     }
   }
 
-  int get _pendingCount =>
-      _proposals.where((p) => (p['status'] ?? '').toString().toUpperCase() == 'PENDING').length;
-  int get _approvedCount =>
-      _proposals.where((p) => (p['status'] ?? '').toString().toUpperCase() == 'APPROVED').length;
-  int get _rejectedCount =>
-      _proposals.where((p) => (p['status'] ?? '').toString().toUpperCase() == 'REJECTED').length;
+  int get _pendingCount => _proposals
+      .where((p) => (p['status'] ?? '').toString().toUpperCase() == 'PENDING')
+      .length;
+  int get _approvedCount => _proposals
+      .where((p) => (p['status'] ?? '').toString().toUpperCase() == 'APPROVED')
+      .length;
+  int get _rejectedCount => _proposals
+      .where((p) => (p['status'] ?? '').toString().toUpperCase() == 'REJECTED')
+      .length;
 
   /// Lấy danh sách các ngành học có trong danh sách đề xuất hoặc từ danh mục chính thức
   List<Map<String, String>> get _availableMajorOptions {
@@ -201,7 +204,10 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi duyệt đề xuất: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Lỗi khi duyệt đề xuất: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -295,7 +301,10 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi từ chối đề xuất: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Lỗi khi từ chối đề xuất: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -363,14 +372,14 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
               _detailRow('Email', proposal['userEmail']),
               _detailRow('Ngành học', proposal['majorName']),
               _detailRow('Nhà xuất bản', proposal['publisher']),
-              _detailRow('Năm xuất bản', proposal['publicationYear']?.toString()),
+              _detailRow(
+                'Năm xuất bản',
+                proposal['publicationYear']?.toString(),
+              ),
               _detailRow('Phiên bản', proposal['edition']),
               _detailRow('ISBN', proposal['isbn']),
               if (proposal['estimatedPrice'] != null)
-                _detailRow(
-                  'Giá dự kiến',
-                  '${proposal['estimatedPrice']} VNĐ',
-                ),
+                _detailRow('Giá dự kiến', '${proposal['estimatedPrice']} VNĐ'),
               if (proposal['externalUrl'] != null)
                 _detailRow('Link tham khảo', proposal['externalUrl']),
               const SizedBox(height: 12),
@@ -400,7 +409,8 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                   ],
                 ),
               ),
-              if (proposal['note'] != null && proposal['note'].toString().trim().isNotEmpty) ...[
+              if (proposal['note'] != null &&
+                  proposal['note'].toString().trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
                   'Ghi chú bổ sung: ${proposal['note']}',
@@ -413,7 +423,9 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: status == 'APPROVED' ? Colors.green.shade50 : Colors.red.shade50,
+                    color: status == 'APPROVED'
+                        ? Colors.green.shade50
+                        : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: status == 'APPROVED'
@@ -428,7 +440,9 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                         'Phản hồi từ thủ thư:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: status == 'APPROVED' ? Colors.green.shade800 : Colors.red.shade800,
+                          color: status == 'APPROVED'
+                              ? Colors.green.shade800
+                              : Colors.red.shade800,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -512,13 +526,13 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
     final color = normalized == 'APPROVED'
         ? Colors.green
         : normalized == 'REJECTED'
-            ? Colors.red
-            : Colors.orange;
+        ? Colors.red
+        : Colors.orange;
     final label = normalized == 'APPROVED'
         ? 'Đã duyệt'
         : normalized == 'REJECTED'
-            ? 'Từ chối'
-            : 'Chờ duyệt';
+        ? 'Từ chối'
+        : 'Chờ duyệt';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -579,19 +593,31 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFf8f9ff),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF0284c7).withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: const Color(0xFF0284c7).withValues(alpha: 0.3),
+                    ),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String?>(
                       isExpanded: true,
-                      value: _selectedMajorId != null &&
-                              !_availableMajorOptions.any((m) => m['id'] == _selectedMajorId)
+                      value:
+                          _selectedMajorId != null &&
+                              !_availableMajorOptions.any(
+                                (m) => m['id'] == _selectedMajorId,
+                              )
                           ? null
                           : _selectedMajorId,
-                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF0284c7)),
+                      icon: const Icon(
+                        Icons.arrow_drop_down,
+                        color: Color(0xFF0284c7),
+                      ),
                       hint: const Row(
                         children: [
-                          Icon(Icons.school_outlined, size: 20, color: Color(0xFF0284c7)),
+                          Icon(
+                            Icons.school_outlined,
+                            size: 20,
+                            color: Color(0xFF0284c7),
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Tất cả ngành học',
@@ -608,9 +634,16 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                           value: null,
                           child: Row(
                             children: [
-                              Icon(Icons.all_inclusive, size: 18, color: Colors.grey),
+                              Icon(
+                                Icons.all_inclusive,
+                                size: 18,
+                                color: Colors.grey,
+                              ),
                               SizedBox(width: 8),
-                              Text('Tất cả ngành học', style: TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                'Tất cả ngành học',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ],
                           ),
                         ),
@@ -619,7 +652,11 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                             value: m['id'],
                             child: Row(
                               children: [
-                                const Icon(Icons.school, size: 18, color: Color(0xFF0284c7)),
+                                const Icon(
+                                  Icons.school,
+                                  size: 18,
+                                  color: Color(0xFF0284c7),
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -647,7 +684,10 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Tìm theo tên sách, tác giả, sinh viên, MSSV...',
-                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                    ),
                     prefixIcon: const Icon(Icons.search, size: 20),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -658,7 +698,10 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                             },
                           )
                         : null,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 0,
+                      horizontal: 12,
+                    ),
                     filled: true,
                     fillColor: Colors.grey.shade50,
                     border: OutlineInputBorder(
@@ -680,13 +723,33 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _tabChip('PENDING', 'Chờ duyệt', _pendingCount, Colors.orange),
+                      _tabChip(
+                        'PENDING',
+                        'Chờ duyệt',
+                        _pendingCount,
+                        Colors.orange,
+                      ),
                       const SizedBox(width: 6),
-                      _tabChip('APPROVED', 'Đã duyệt', _approvedCount, Colors.green),
+                      _tabChip(
+                        'APPROVED',
+                        'Đã duyệt',
+                        _approvedCount,
+                        Colors.green,
+                      ),
                       const SizedBox(width: 6),
-                      _tabChip('REJECTED', 'Từ chối', _rejectedCount, Colors.red),
+                      _tabChip(
+                        'REJECTED',
+                        'Từ chối',
+                        _rejectedCount,
+                        Colors.red,
+                      ),
                       const SizedBox(width: 6),
-                      _tabChip('ALL', 'Tất cả', _proposals.length, Colors.blueGrey),
+                      _tabChip(
+                        'ALL',
+                        'Tất cả',
+                        _proposals.length,
+                        Colors.blueGrey,
+                      ),
                     ],
                   ),
                 ),
@@ -699,55 +762,63 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _errorMessage.isNotEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                              const SizedBox(height: 12),
-                              Text(_errorMessage, textAlign: TextAlign.center),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: _loadData,
-                                child: const Text('Thử lại'),
-                              ),
-                            ],
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(_errorMessage, textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _loadData,
+                            child: const Text('Thử lại'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : filtered.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.inbox_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _selectedMajorId != null
+                              ? 'Không có đề xuất nào thuộc ngành đã chọn'
+                              : 'Không tìm thấy đề xuất nào',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      )
-                    : filtered.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _selectedMajorId != null
-                                      ? 'Không có đề xuất nào thuộc ngành đã chọn'
-                                      : 'Không tìm thấy đề xuất nào',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: _loadData,
-                            child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                              itemCount: filtered.length,
-                              itemBuilder: (ctx, idx) {
-                                final item = filtered[idx];
-                                return _buildProposalCard(item);
-                              },
-                            ),
-                          ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadData,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, idx) {
+                        final item = filtered[idx];
+                        return _buildProposalCard(item);
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -768,7 +839,9 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white : color.withValues(alpha: 0.15),
+                color: isSelected
+                    ? Colors.white
+                    : color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -807,9 +880,7 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: isPending
-              ? Colors.orange.shade200
-              : Colors.grey.shade200,
+          color: isPending ? Colors.orange.shade200 : Colors.grey.shade200,
           width: isPending ? 1.5 : 1,
         ),
       ),
@@ -853,7 +924,11 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
               // Thông tin sinh viên đề xuất
               Row(
                 children: [
-                  const Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                  const Icon(
+                    Icons.person_outline,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     userName != null && userMssv != null
@@ -876,7 +951,11 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.school, size: 14, color: Color(0xFF0284c7)),
+                    const Icon(
+                      Icons.school,
+                      size: 14,
+                      color: Color(0xFF0284c7),
+                    ),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
@@ -893,23 +972,31 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                 ),
               ),
 
-              if (item['reason'] != null && item['reason'].toString().trim().isNotEmpty) ...[
+              if (item['reason'] != null &&
+                  item['reason'].toString().trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
                   'Lý do: ${item['reason']}',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
 
-              if (item['adminNote'] != null && item['adminNote'].toString().trim().isNotEmpty) ...[
+              if (item['adminNote'] != null &&
+                  item['adminNote'].toString().trim().isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
                   'Phản hồi: ${item['adminNote']}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: status == 'APPROVED' ? Colors.green.shade700 : Colors.red.shade700,
+                    color: status == 'APPROVED'
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
                   ),
                 ),
               ],
@@ -926,23 +1013,33 @@ class _LibrarianProposalScreenState extends State<LibrarianProposalScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: BorderSide(color: Colors.red.shade300),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         visualDensity: VisualDensity.compact,
                       ),
                       icon: const Icon(Icons.close, size: 16),
                       label: const Text('Từ chối'),
-                      onPressed: _isProcessing ? null : () => _handleReject(item),
+                      onPressed: _isProcessing
+                          ? null
+                          : () => _handleReject(item),
                     ),
                     const SizedBox(width: 8),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         visualDensity: VisualDensity.compact,
                       ),
                       icon: const Icon(Icons.check, size: 16),
                       label: const Text('Duyệt'),
-                      onPressed: _isProcessing ? null : () => _handleApprove(item),
+                      onPressed: _isProcessing
+                          ? null
+                          : () => _handleApprove(item),
                     ),
                   ],
                 ),

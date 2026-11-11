@@ -17,8 +17,9 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public NotificationService(NotificationRepository notificationRepository,
-                               ApplicationEventPublisher eventPublisher) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.notificationRepository = notificationRepository;
         this.eventPublisher = eventPublisher;
     }
@@ -32,12 +33,20 @@ public class NotificationService {
             String referenceId,
             String dedupKey,
             LocalDateTime sentAt) {
-        boolean created = notificationRepository.insertIfAbsent(
-                UUID.randomUUID(), userId, type, content, sentAt,
-                referenceType, referenceId, dedupKey) == 1;
+        boolean created =
+                notificationRepository.insertIfAbsent(
+                                UUID.randomUUID(),
+                                userId,
+                                type,
+                                content,
+                                sentAt,
+                                referenceType,
+                                referenceId,
+                                dedupKey)
+                        == 1;
         if (created) {
-            eventPublisher.publishEvent(new PushNotificationEvent(
-                    userId, type, content, referenceType, referenceId));
+            eventPublisher.publishEvent(
+                    new PushNotificationEvent(userId, type, content, referenceType, referenceId));
         }
         return created;
     }
@@ -49,9 +58,13 @@ public class NotificationService {
 
     @Transactional
     public NotificationEntity markAsRead(UUID notificationId, UUID userId) {
-        NotificationEntity notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"));
+        NotificationEntity notification =
+                notificationRepository
+                        .findById(notificationId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"));
         if (!userId.equals(notification.getUserId())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "Bạn không có quyền cập nhật thông báo này");

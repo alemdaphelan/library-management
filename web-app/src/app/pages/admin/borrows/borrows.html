@@ -5,96 +5,181 @@
       <span class="ph-divider">/</span>
       <span class="ph-title">Theo dõi đang mượn, quá hạn và lịch sử phiếu</span>
     </div>
-    <button class="btn btn-outline-gray" type="button" (click)="loadLoans()" [disabled]="isLoading" *ngIf="activeView === 'loans'">
+    <button
+      class="btn btn-outline-gray"
+      type="button"
+      (click)="loadLoans()"
+      [disabled]="isLoading"
+      *ngIf="activeView === 'loans'"
+    >
       {{ isLoading ? 'Đang tải...' : 'Làm mới' }}
     </button>
   </div>
 
-  <nav class="view-tabs" aria-label="Chọn nội dung theo dõi"><button type="button" (click)="switchView('loans')" [class.active]="activeView === 'loans'" [attr.aria-pressed]="activeView === 'loans'" [disabled]="actionInProgress">Danh sách phiếu mượn</button><button type="button" (click)="switchView('report')" [class.active]="activeView === 'report'" [attr.aria-pressed]="activeView === 'report'" [disabled]="actionInProgress">Báo cáo quá hạn & công nợ</button><button type="button" (click)="switchView('recall')" [class.active]="activeView === 'recall'" [attr.aria-pressed]="activeView === 'recall'" [disabled]="actionInProgress">Yêu cầu trả sách</button></nav>
+  <nav class="view-tabs" aria-label="Chọn nội dung theo dõi">
+    <button
+      type="button"
+      (click)="switchView('loans')"
+      [class.active]="activeView === 'loans'"
+      [attr.aria-pressed]="activeView === 'loans'"
+      [disabled]="actionInProgress"
+    >Danh sách phiếu mượn</button>
+    <button
+      type="button"
+      (click)="switchView('report')"
+      [class.active]="activeView === 'report'"
+      [attr.aria-pressed]="activeView === 'report'"
+      [disabled]="actionInProgress"
+    >Báo cáo quá hạn & công nợ</button>
+    <button
+      type="button"
+      (click)="switchView('recall')"
+      [class.active]="activeView === 'recall'"
+      [attr.aria-pressed]="activeView === 'recall'"
+      [disabled]="actionInProgress"
+    >Yêu cầu trả sách</button>
+  </nav>
 
-  <app-recall-requests *ngIf="recallVisited" [hidden]="activeView !== 'recall'" (busyChange)="actionInProgress=$event" (recalled)="loadLoans()"></app-recall-requests>
+  <app-recall-requests
+    *ngIf="recallVisited"
+    [hidden]="activeView !== 'recall'"
+    (busyChange)="actionInProgress=$event"
+    (recalled)="loadLoans()"
+  ></app-recall-requests>
 
-  <app-student-obligation-report *ngIf="reportVisited" [hidden]="activeView !== 'report'" [initialQuery]="reportInitialQuery" [initialMode]="reportInitialMode" (ticketRequested)="viewDetails($event)"></app-student-obligation-report>
+  <app-student-obligation-report
+    *ngIf="reportVisited"
+    [hidden]="activeView !== 'report'"
+    [initialQuery]="reportInitialQuery"
+    [initialMode]="reportInitialMode"
+    (ticketRequested)="viewDetails($event)"
+  ></app-student-obligation-report>
   <div class="error-state" *ngIf="ticketError" role="alert">{{ ticketError }}</div>
 
   <section class="loan-view" [hidden]="activeView !== 'loans'" aria-label="Danh sách phiếu mượn">
-  <div class="stat-grid">
-    <div class="stat-card">
-      <div class="st-label">TỔNG PHIẾU</div>
-      <div class="st-value">{{ loans.length | number }}</div>
-      <div class="st-desc">Tổng số phiếu trong hệ thống</div>
-    </div>
-    <div class="stat-card">
-      <div class="st-label">ĐANG MƯỢN</div>
-      <div class="st-value">{{ activeCount | number }}</div>
-      <div class="st-desc">Bao gồm các phiếu đã quá hạn</div>
-    </div>
-    <div class="stat-card">
-      <div class="st-label text-danger">CẦN XỬ LÝ QUÁ HẠN</div>
-      <div class="st-value text-danger">{{ overdueCount | number }}</div>
-      <div class="st-desc">Phiếu có ít nhất một tài liệu trễ hạn</div>
-    </div>
-    <div class="stat-card">
-      <div class="st-label">PHÍ TRỄ LŨY KẾ</div>
-      <div class="st-value">{{ recordedLateFine | number:'1.0-0':'en-US' }} <span class="st-unit">VNĐ</span></div>
-      <div class="st-desc">Gồm cả phần có thể đã thanh toán; xem công nợ tại tab Báo cáo</div>
-    </div>
-  </div>
-
-  <div class="filter-box">
-    <div class="filter-controls">
-      <div class="search-input">
-        <input type="search" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" placeholder="Tìm theo mã phiếu, MSSV, họ tên hoặc khoa">
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="st-label">TỔNG PHIẾU</div>
+        <div class="st-value">{{ loans.length | number }}</div>
+        <div class="st-desc">Tổng số phiếu trong hệ thống</div>
       </div>
-      <label class="date-filter">Từ ngày <input type="date" [(ngModel)]="fromDate" (ngModelChange)="applyFilters()"></label>
-      <label class="date-filter">Đến ngày <input type="date" [(ngModel)]="toDate" (ngModelChange)="applyFilters()"></label>
-      <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" aria-label="Lọc trạng thái phiếu">
-        <option value="ALL">Tất cả trạng thái</option>
-        <option value="PENDING">Phiếu cũ cần kiểm tra</option>
-        <option value="RESERVED">Đang giữ chỗ</option>
-        <option value="BORROWING">Đang mượn</option>
-        <option value="OVERDUE">Quá hạn</option>
-        <option value="RETURNED">Đã trả</option>
-        <option value="CANCELLED">Đã hủy</option>
-        <option value="REJECTED">Từ chối</option>
-      </select>
+      <div class="stat-card">
+        <div class="st-label">ĐANG MƯỢN</div>
+        <div class="st-value">{{ activeCount | number }}</div>
+        <div class="st-desc">Bao gồm các phiếu đã quá hạn</div>
+      </div>
+      <div class="stat-card">
+        <div class="st-label text-danger">CẦN XỬ LÝ QUÁ HẠN</div>
+        <div class="st-value text-danger">{{ overdueCount | number }}</div>
+        <div class="st-desc">Phiếu có ít nhất một tài liệu trễ hạn</div>
+      </div>
+      <div class="stat-card">
+        <div class="st-label">PHÍ TRỄ LŨY KẾ</div>
+        <div class="st-value">{{ recordedLateFine | number:'1.0-0':'en-US' }} <span class="st-unit">VNĐ</span>
+        </div>
+        <div class="st-desc">Gồm cả phần có thể đã thanh toán; xem công nợ tại tab Báo cáo</div>
+      </div>
     </div>
-    <div class="st-desc">Hiển thị {{ filteredLoans.length }} / {{ loans.length }} phiếu</div>
-  </div>
 
-  <div class="error-state" *ngIf="errorMessage">{{ errorMessage }}</div>
-  <div class="success-state" *ngIf="successMessage">{{ successMessage }}</div>
-  <div class="loading-state" *ngIf="isLoading">Đang tải dữ liệu lưu thông...</div>
+    <div class="filter-box">
+      <div class="filter-controls">
+        <div class="search-input">
+          <input
+            type="search"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="applyFilters()"
+            placeholder="Tìm theo mã phiếu, MSSV, họ tên hoặc khoa"
+          />
+        </div>
+        <label class="date-filter"
+          >Từ ngày <input type="date" [(ngModel)]="fromDate" (ngModelChange)="applyFilters()"
+        /></label>
+        <label class="date-filter"
+          >Đến ngày <input type="date" [(ngModel)]="toDate" (ngModelChange)="applyFilters()"
+        /></label>
+        <select
+          class="form-select"
+          [(ngModel)]="statusFilter"
+          (ngModelChange)="applyFilters()"
+          aria-label="Lọc trạng thái phiếu"
+        >
+          <option value="ALL">Tất cả trạng thái</option>
+          <option value="PENDING">Phiếu cũ cần kiểm tra</option>
+          <option value="RESERVED">Đang giữ chỗ</option>
+          <option value="BORROWING">Đang mượn</option>
+          <option value="OVERDUE">Quá hạn</option>
+          <option value="RETURNED">Đã trả</option>
+          <option value="CANCELLED">Đã hủy</option>
+          <option value="REJECTED">Từ chối</option>
+        </select>
+      </div>
+      <div class="st-desc">Hiển thị {{ filteredLoans.length }} / {{ loans.length }} phiếu</div>
+    </div>
 
-  <div class="modern-table-container" *ngIf="!isLoading">
-    <table class="modern-table" *ngIf="filteredLoans.length; else emptyLoans">
-      <thead>
-        <tr>
-          <th>PHIẾU</th><th>BẠN ĐỌC</th><th>KHOA / ĐƠN VỊ</th><th>TÀI LIỆU</th>
-          <th>HẠN GẦN NHẤT</th><th>PHÍ TRỄ</th><th>TRẠNG THÁI</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let loan of pagedLoans">
-          <td><strong>#{{ loan.ticketId }}</strong><div class="st-id">{{ loan.createdAt | date:'dd/MM/yyyy HH:mm' }}</div></td>
-          <td><div class="st-name">{{ loan.readerName || 'Chưa có tên' }}</div><div class="st-id">{{ loan.mssv || loan.userId || '—' }}</div></td>
-          <td>{{ loan.department || '—' }}</td>
-          <td><strong>{{ loan.itemCount }}</strong> cuốn<div class="overdue-danger" *ngIf="loan.overdueItemCount">{{ loan.overdueItemCount }} cuốn quá hạn</div></td>
-          <td>{{ loan.nearestDueDate ? (loan.nearestDueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
-          <td [class.fee-danger]="loan.totalLateFine > 0">{{ loan.totalLateFine | number:'1.0-0':'en-US' }} VNĐ</td>
-          <td><span class="badge" [ngClass]="statusClass(loan.status)">{{ statusLabel(loan.status) }}</span></td>
-          <td><button class="btn btn-action-sub" type="button" (click)="viewDetails(loan.ticketId)">Xem chi tiết</button></td>
-        </tr>
-      </tbody>
-    </table>
-    <ng-template #emptyLoans><div class="empty-list">Không có phiếu nào khớp bộ lọc.</div></ng-template>
-    <nav class="table-pagination" *ngIf="filteredLoans.length > pageSize" aria-label="Phân trang phiếu mượn">
-      <button type="button" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">Trước</button>
-      <span>Trang {{ currentPage }} / {{ totalPages }}</span>
-      <button type="button" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">Tiếp</button>
-    </nav>
-  </div>
+    <div class="error-state" *ngIf="errorMessage">{{ errorMessage }}</div>
+    <div class="success-state" *ngIf="successMessage">{{ successMessage }}</div>
+    <div class="loading-state" *ngIf="isLoading">Đang tải dữ liệu lưu thông...</div>
 
+    <div class="modern-table-container" *ngIf="!isLoading">
+      <table class="modern-table" *ngIf="filteredLoans.length; else emptyLoans">
+        <thead>
+          <tr>
+            <th>PHIẾU</th>
+            <th>BẠN ĐỌC</th>
+            <th>KHOA / ĐƠN VỊ</th>
+            <th>TÀI LIỆU</th>
+            <th>HẠN GẦN NHẤT</th>
+            <th>PHÍ TRỄ</th>
+            <th>TRẠNG THÁI</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let loan of pagedLoans">
+            <td>
+              <strong>#{{ loan.ticketId }}</strong>
+              <div class="st-id">{{ loan.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
+            </td>
+            <td>
+              <div class="st-name">{{ loan.readerName || 'Chưa có tên' }}</div>
+              <div class="st-id">{{ loan.mssv || loan.userId || '—' }}</div>
+            </td>
+            <td>{{ loan.department || '—' }}</td>
+            <td>
+              <strong>{{ loan.itemCount }}</strong> cuốn<div class="overdue-danger" *ngIf="loan.overdueItemCount">{{ loan.overdueItemCount }} cuốn quá hạn</div>
+            </td>
+            <td>{{ loan.nearestDueDate ? (loan.nearestDueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+            <td [class.fee-danger]="loan.totalLateFine > 0">{{ loan.totalLateFine | number:'1.0-0':'en-US' }} VNĐ</td>
+            <td>
+              <span
+                class="badge"
+                [ngClass]="statusClass(loan.status)"
+                >{{ statusLabel(loan.status) }}</span
+              >
+            </td>
+            <td>
+              <button class="btn btn-action-sub" type="button" (click)="viewDetails(loan.ticketId)">Xem chi tiết</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #emptyLoans
+        ><div class="empty-list">Không có phiếu nào khớp bộ lọc.</div></ng-template
+      >
+      <nav
+        class="table-pagination"
+        *ngIf="filteredLoans.length > pageSize"
+        aria-label="Phân trang phiếu mượn"
+      >
+        <button type="button" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">Trước</button>
+        <span>Trang {{ currentPage }} / {{ totalPages }}</span>
+        <button
+          type="button"
+          (click)="changePage(currentPage + 1)"
+          [disabled]="currentPage === totalPages"
+        >Tiếp</button>
+      </nav>
+    </div>
   </section>
 
   <div class="detail-backdrop" *ngIf="selectedLoan || detailLoading" (click)="closeDetails()">
@@ -105,35 +190,70 @@
           <div>
             <div class="st-id">PHIẾU MƯỢN</div>
             <h2>#{{ selectedLoan.ticketId }} · {{ selectedLoan.readerName || 'Chưa có tên' }}</h2>
-            <p>{{ selectedLoan.mssv || selectedLoan.userId }} · {{ selectedLoan.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+            <p>{{ selectedLoan.mssv || selectedLoan.userId }} ·
+              {{ selectedLoan.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
           </div>
           <button class="detail-close" type="button" (click)="closeDetails()" aria-label="Đóng">×</button>
         </div>
         <div class="detail-meta">
-          <span class="badge" [ngClass]="statusClass(selectedLoan.status)">{{ statusLabel(selectedLoan.status) }}</span>
-          <span>Loại phiếu: {{ selectedLoan.ticketType === 'ONSITE' ? 'Đọc tại chỗ' : 'Mượn về' }}</span>
+          <span
+            class="badge"
+            [ngClass]="statusClass(selectedLoan.status)"
+            >{{ statusLabel(selectedLoan.status) }}</span
+          >
+          <span>Loại phiếu:
+            {{ selectedLoan.ticketType === 'ONSITE' ? 'Đọc tại chỗ' : 'Mượn về' }}</span
+          >
         </div>
         <p *ngIf="selectedLoan.status === 'PENDING' || selectedLoan.status === 'RESERVED'">
-          <a [routerLink]="['/admin/circulation']" [queryParams]="{ referenceType: 'LOAN_TICKET', referenceId: selectedLoan.ticketId }">Mở phiếu tại quầy mượn trả</a>
-          <span *ngIf="selectedLoan.status === 'PENDING'"> — Phiếu cũ sẽ được kiểm tra lại trước khi giao sách.</span>
+          <a
+            [routerLink]="['/admin/circulation']"
+            [queryParams]="{ referenceType: 'LOAN_TICKET', referenceId: selectedLoan.ticketId }"
+            >Mở phiếu tại quầy mượn trả</a
+          >
+          <span *ngIf="selectedLoan.status === 'PENDING'">
+            — Phiếu cũ sẽ được kiểm tra lại trước khi giao sách.</span
+          >
         </p>
         <p *ngIf="selectedLoan.status === 'BORROWING' || selectedLoan.status === 'OVERDUE'">
-          <a [routerLink]="['/admin/circulation']" [queryParams]="{ referenceType: 'LOAN_TICKET', referenceId: selectedLoan.ticketId, mode: 'return' }">Kiểm tra trả / báo mất tại quầy</a>
+          <a
+            [routerLink]="['/admin/circulation']"
+            [queryParams]="{ referenceType: 'LOAN_TICKET', referenceId: selectedLoan.ticketId, mode: 'return' }"
+            >Kiểm tra trả / báo mất tại quầy</a
+          >
         </p>
         <div class="detail-note" *ngIf="selectedLoan.decisionNote">Ghi chú xử lý: {{ selectedLoan.decisionNote }}</div>
-        <div class="decision-box" *ngIf="selectedLoan.status === 'PENDING' || selectedLoan.status === 'RESERVED'">
+        <div
+          class="decision-box"
+          *ngIf="selectedLoan.status === 'PENDING' || selectedLoan.status === 'RESERVED'"
+        >
           <label for="rejection-reason">Lý do từ chối giữ chỗ</label>
-          <textarea id="rejection-reason" maxlength="500" [(ngModel)]="rejectionReason" placeholder="Chỉ từ chối khi cần, bắt buộc ghi rõ lý do"></textarea>
+          <textarea
+            id="rejection-reason"
+            maxlength="500"
+            [(ngModel)]="rejectionReason"
+            placeholder="Chỉ từ chối khi cần, bắt buộc ghi rõ lý do"
+          ></textarea>
           <div class="decision-actions">
-            <button type="button" class="btn btn-outline-gray" (click)="rejectSelected()" [disabled]="actionInProgress">Từ chối giữ chỗ</button>
+            <button
+              type="button"
+              class="btn btn-outline-gray"
+              (click)="rejectSelected()"
+              [disabled]="actionInProgress"
+            >Từ chối giữ chỗ</button>
           </div>
         </div>
         <div class="detail-items">
           <article class="detail-item" *ngFor="let item of selectedLoan.items">
-            <div><strong>{{ item.bookTitle }}</strong><p>{{ item.author || 'Chưa có tác giả' }} · Barcode {{ item.barcode }}</p></div>
+            <div>
+              <strong>{{ item.bookTitle }}</strong>
+              <p>{{ item.author || 'Chưa có tác giả' }} · Barcode {{ item.barcode }}</p>
+            </div>
             <div class="detail-item-right">
               <span>Hạn: {{ item.dueDate ? (item.dueDate | date:'dd/MM/yyyy HH:mm') : '—' }}</span>
-              <strong [class.fee-danger]="item.lateFineAccrued > 0">Phạt: {{ item.lateFineAccrued | number:'1.0-0':'en-US' }} VNĐ</strong>
+              <strong [class.fee-danger]="item.lateFineAccrued > 0"
+                >Phạt: {{ item.lateFineAccrued | number:'1.0-0':'en-US' }} VNĐ</strong
+              >
             </div>
           </article>
           <div class="empty-list" *ngIf="!selectedLoan.items.length">Phiếu chưa có tài liệu.</div>

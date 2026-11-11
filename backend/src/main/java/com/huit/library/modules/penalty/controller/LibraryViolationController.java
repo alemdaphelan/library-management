@@ -30,8 +30,7 @@ public class LibraryViolationController {
     public ResponseEntity<?> record(
             @Valid @RequestBody LibraryViolationRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
-        return ResponseEntity.ok(violationService.record(
-                request, operator.getUser().getUserId()));
+        return ResponseEntity.ok(violationService.record(request, operator.getUser().getUserId()));
     }
 
     @GetMapping("/users/{userId}")

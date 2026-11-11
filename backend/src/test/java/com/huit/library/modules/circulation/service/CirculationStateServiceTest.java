@@ -66,32 +66,34 @@ class CirculationStateServiceTest {
         when(policyService.maximumOpenItems()).thenReturn(3);
         when(policyService.homeLoanDays()).thenReturn(10);
         when(policyService.recallReturnDays()).thenReturn(7);
-        when(borrowingValuePolicyService.getSnapshot(any(), any())).thenReturn(
-                new BorrowingValuePolicyService.BorrowingValueSnapshot(
-                        new BigDecimal("100000"),
-                        BigDecimal.ZERO,
-                        BigDecimal.ZERO,
-                        new BigDecimal("150000"),
-                        new BigDecimal("150000"),
-                        true,
-                        true,
-                        true,
-                        "Hạn mức giá trị còn lại là 150.000 đồng."));
-        service = new CirculationStateService(
-                ticketRepository,
-                detailRepository,
-                historyRepository,
-                copyRepository,
-                userRepository,
-                walletRepository,
-                operationRepository,
-                new CirculationStateMachine(),
-                mock(LateFineService.class),
-                waitlistService,
-                notificationService,
-                mock(LibraryHoursService.class),
-                policyService,
-                borrowingValuePolicyService);
+        when(borrowingValuePolicyService.getSnapshot(any(), any()))
+                .thenReturn(
+                        new BorrowingValuePolicyService.BorrowingValueSnapshot(
+                                new BigDecimal("100000"),
+                                BigDecimal.ZERO,
+                                BigDecimal.ZERO,
+                                new BigDecimal("150000"),
+                                new BigDecimal("150000"),
+                                true,
+                                true,
+                                true,
+                                "Hạn mức giá trị còn lại là 150.000 đồng."));
+        service =
+                new CirculationStateService(
+                        ticketRepository,
+                        detailRepository,
+                        historyRepository,
+                        copyRepository,
+                        userRepository,
+                        walletRepository,
+                        operationRepository,
+                        new CirculationStateMachine(),
+                        mock(LateFineService.class),
+                        waitlistService,
+                        notificationService,
+                        mock(LibraryHoursService.class),
+                        policyService,
+                        borrowingValuePolicyService);
     }
 
     @Test
@@ -120,9 +122,15 @@ class CirculationStateServiceTest {
         assertThat(detail.getRecallDueAt()).isAfter(LocalDateTime.now().plusDays(6));
         assertThat(detail.getRecallDueAt()).isBefore(LocalDateTime.now().plusDays(8));
         verify(detailRepository).save(detail);
-        verify(notificationService).createOnce(
-                eq(readerId), eq("LOAN_RECALL"), contains("BC-RECALL-901"),
-                eq("LOAN_DETAIL"), eq("901"), eq("LOAN_RECALL:901"), any(LocalDateTime.class));
+        verify(notificationService)
+                .createOnce(
+                        eq(readerId),
+                        eq("LOAN_RECALL"),
+                        contains("BC-RECALL-901"),
+                        eq("LOAN_DETAIL"),
+                        eq("901"),
+                        eq("LOAN_RECALL:901"),
+                        any(LocalDateTime.class));
     }
 
     @Test
@@ -162,7 +170,8 @@ class CirculationStateServiceTest {
         var result = service.autoApproveReservation(ticket);
         assertThat(result.getStatus()).isEqualTo(LoanTicketStatus.RESERVED);
         assertThat(ticket.getProcessedBy()).isNull();
-        ArgumentCaptor<LoanStatusHistoryEntity> audit = ArgumentCaptor.forClass(LoanStatusHistoryEntity.class);
+        ArgumentCaptor<LoanStatusHistoryEntity> audit =
+                ArgumentCaptor.forClass(LoanStatusHistoryEntity.class);
         verify(historyRepository).save(audit.capture());
         assertThat(audit.getValue().getFromStatus()).isEqualTo(LoanTicketStatus.PENDING);
         assertThat(audit.getValue().getToStatus()).isEqualTo(LoanTicketStatus.RESERVED);
@@ -174,7 +183,8 @@ class CirculationStateServiceTest {
     void legacyValidationRejectsExpiredHoldWithoutChangingState() {
         LoanTicketEntity ticket = legacyTicket();
         stubHeldDetail(ticket, LocalDateTime.now().minusSeconds(1));
-        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+        assertThatThrownBy(
+                        () -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
                 .hasMessageContaining("hết hạn");
         assertThat(ticket.getStatus()).isEqualTo("PENDING");
         verify(historyRepository, never()).save(any());
@@ -185,7 +195,8 @@ class CirculationStateServiceTest {
         LoanTicketEntity ticket = legacyTicket();
         BookCopyEntity copy = stubHeldDetail(ticket, LocalDateTime.now().plusHours(2));
         copy.setLockedByUser(UUID.randomUUID());
-        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+        assertThatThrownBy(
+                        () -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
                 .hasMessageContaining("bản sao");
         verify(historyRepository, never()).save(any());
     }
@@ -193,7 +204,8 @@ class CirculationStateServiceTest {
     @Test
     void legacyValidationRejectsEmptyTicket() {
         LoanTicketEntity ticket = legacyTicket();
-        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+        assertThatThrownBy(
+                        () -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
                 .hasMessageContaining("đủ tài liệu");
         verify(historyRepository, never()).save(any());
     }
@@ -215,19 +227,24 @@ class CirculationStateServiceTest {
         WalletEntity wallet = new WalletEntity();
         wallet.setTotalDebt(new BigDecimal("150000"));
         when(walletRepository.findByUserId(ticket.getUserId())).thenReturn(Optional.of(wallet));
-        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+        assertThatThrownBy(
+                        () -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
                 .hasMessageContaining("còn nợ");
         wallet.setTotalDebt(BigDecimal.ZERO);
         reader.setCardStatus("LOCKED");
-        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+        assertThatThrownBy(
+                        () -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
                 .hasMessageContaining("bị khóa");
         reader.setCardStatus("ACTIVE");
         reader.setCardExpiryDate(LocalDateTime.now().minusDays(1));
-        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+        assertThatThrownBy(
+                        () -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
                 .hasMessageContaining("hết hạn");
         reader.setCardExpiryDate(LocalDateTime.now().plusDays(1));
-        when(detailRepository.countOverdueItemsByUserId(eq(ticket.getUserId()), any())).thenReturn(1L);
-        assertThatThrownBy(() -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
+        when(detailRepository.countOverdueItemsByUserId(eq(ticket.getUserId()), any()))
+                .thenReturn(1L);
+        assertThatThrownBy(
+                        () -> service.approveReservation(ticket.getTicketId(), UUID.randomUUID()))
                 .hasMessageContaining("quá hạn");
         verify(historyRepository, never()).save(any());
     }
@@ -238,7 +255,8 @@ class CirculationStateServiceTest {
         UserEntity reader = new UserEntity();
         reader.setUserId(ticket.getUserId());
         reader.setCardStatus("ACTIVE");
-        when(ticketRepository.findByIdForUpdate(ticket.getTicketId())).thenReturn(Optional.of(ticket));
+        when(ticketRepository.findByIdForUpdate(ticket.getTicketId()))
+                .thenReturn(Optional.of(ticket));
         when(userRepository.findByIdForUpdate(ticket.getUserId())).thenReturn(Optional.of(reader));
         when(detailRepository.countOpenItemsByUserId(eq(ticket.getUserId()), any())).thenReturn(1L);
         return ticket;
@@ -254,8 +272,10 @@ class CirculationStateServiceTest {
         copy.setStatus("RESERVED");
         copy.setLockedByUser(ticket.getUserId());
         copy.setLockedUntil(deadline);
-        when(detailRepository.findByTicketIdForUpdate(ticket.getTicketId())).thenReturn(List.of(detail));
-        when(copyRepository.findAllByBarcodeInForUpdate(List.of("LEGACY-COPY"))).thenReturn(List.of(copy));
+        when(detailRepository.findByTicketIdForUpdate(ticket.getTicketId()))
+                .thenReturn(List.of(detail));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("LEGACY-COPY")))
+                .thenReturn(List.of(copy));
         return copy;
     }
 
@@ -288,9 +308,11 @@ class CirculationStateServiceTest {
         assertThat(eligibility.isEligible()).isFalse();
         assertThat(eligibility.getMessage()).contains("lớp hướng dẫn");
         assertThatThrownBy(() -> service.ensureEligibleForReservation(readerId))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("lớp hướng dẫn");
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("lớp hướng dẫn");
         assertThatThrownBy(() -> service.ensureEligibleForRenewal(readerId))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("lớp hướng dẫn");
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("lớp hướng dẫn");
     }
 
     @Test
@@ -329,9 +351,11 @@ class CirculationStateServiceTest {
 
         when(ticketRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(ticket));
         when(detailRepository.findByTicketIdForUpdate(11L)).thenReturn(List.of(detail));
-        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-011"))).thenReturn(List.of(copy));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-011")))
+                .thenReturn(List.of(copy));
 
-        LoanStateResponseDTO result = service.rejectReservation(11L, librarianId, "Thẻ thư viện hết hạn");
+        LoanStateResponseDTO result =
+                service.rejectReservation(11L, librarianId, "Thẻ thư viện hết hạn");
 
         assertThat(result.getStatus()).isEqualTo(LoanTicketStatus.REJECTED);
         assertThat(detail.getReturnStatus()).isEqualTo("CANCELLED");
@@ -381,7 +405,8 @@ class CirculationStateServiceTest {
         request.setBarcodes(List.of("BC-102", "BC-101"));
         request.setNote("Sách nguyên vẹn");
 
-        when(operationRepository.findByIdempotencyKey("manual-checkout-1")).thenReturn(Optional.empty());
+        when(operationRepository.findByIdempotencyKey("manual-checkout-1"))
+                .thenReturn(Optional.empty());
         when(userRepository.findByMssv("2001234567")).thenReturn(Optional.of(reader));
         when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(reader));
         when(walletRepository.findByUserId(readerId)).thenReturn(Optional.empty());
@@ -390,11 +415,13 @@ class CirculationStateServiceTest {
         when(detailRepository.countOpenItemsByUserIdAndBookId(eq(readerId), any())).thenReturn(0L);
         when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-101", "BC-102")))
                 .thenReturn(List.of(first, second));
-        when(ticketRepository.save(any(LoanTicketEntity.class))).thenAnswer(invocation -> {
-            LoanTicketEntity value = invocation.getArgument(0);
-            value.setTicketId(81L);
-            return value;
-        });
+        when(ticketRepository.save(any(LoanTicketEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            LoanTicketEntity value = invocation.getArgument(0);
+                            value.setTicketId(81L);
+                            return value;
+                        });
         when(operationRepository.saveAndFlush(any(CirculationOperationEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -425,7 +452,8 @@ class CirculationStateServiceTest {
         copy.setLockedByUser(readerId);
 
         when(detailRepository.findByTicketIdForUpdate(55L)).thenReturn(List.of(detail));
-        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-055"))).thenReturn(List.of(copy));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-055")))
+                .thenReturn(List.of(copy));
 
         LoanStateResponseDTO result = service.cancelReservation(ticket, readerId);
 
@@ -448,7 +476,7 @@ class CirculationStateServiceTest {
         when(walletRepository.findByUserId(readerId)).thenReturn(Optional.empty());
         when(detailRepository.countOverdueItemsByUserId(eq(readerId), any())).thenReturn(0L);
         when(detailRepository.countOpenItemsByUserId(
-                readerId, List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE")))
+                        readerId, List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE")))
                 .thenReturn(3L, 2L);
 
         assertThatThrownBy(() -> service.ensureEligibleForReservation(readerId, 1))

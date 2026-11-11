@@ -47,7 +47,8 @@ class AuthControllerTest {
 
         ResponseEntity<?> response = controller.refreshToken(request);
 
-        org.assertj.core.api.Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
         org.assertj.core.api.Assertions.assertThat(response.getBody())
                 .isEqualTo("Refresh token không hợp lệ hoặc đã hết hạn");
     }
@@ -58,9 +59,12 @@ class AuthControllerTest {
         AuthController controller = new AuthController(authService, mock(TokenService.class));
         ForgotPasswordRequestDTO request = new ForgotPasswordRequestDTO();
         request.setEmail("user@huit.edu.vn");
-        doThrow(new OtpDeliveryException("Không thể gửi mã OTP lúc này. Vui lòng thử lại sau.",
-                new IllegalStateException("smtp down")))
-                .when(authService).forgotPassword("user@huit.edu.vn");
+        doThrow(
+                        new OtpDeliveryException(
+                                "Không thể gửi mã OTP lúc này. Vui lòng thử lại sau.",
+                                new IllegalStateException("smtp down")))
+                .when(authService)
+                .forgotPassword("user@huit.edu.vn");
 
         ResponseEntity<?> response = controller.forgotPassword(request);
 
@@ -90,7 +94,8 @@ class AuthControllerTest {
 
         ResponseEntity<?> response = controller.updateProfile(authentication, request);
 
-        org.assertj.core.api.Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
+                .isEqualTo(HttpStatus.OK);
         verify(authService).updateProfile(authenticatedUserId, request);
     }
 }

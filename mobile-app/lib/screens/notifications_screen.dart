@@ -47,8 +47,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     _load(showLoading: false);
   }
 
-  int get _unreadCount =>
-      _items.where((item) => item['isRead'] != true).length;
+  int get _unreadCount => _items.where((item) => item['isRead'] != true).length;
 
   Future<void> _load({bool showLoading = true}) async {
     if (showLoading && mounted) {

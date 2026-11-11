@@ -13,7 +13,8 @@ import java.util.Set;
 
 @Component
 public class CirculationStateMachine {
-    private static final Map<LoanTicketStatus, Set<LoanTicketStatus>> ALLOWED_TRANSITIONS = buildTransitions();
+    private static final Map<LoanTicketStatus, Set<LoanTicketStatus>> ALLOWED_TRANSITIONS =
+            buildTransitions();
 
     public LoanTicketStatus transition(LoanTicketEntity ticket, LoanTicketStatus target) {
         LoanTicketStatus current = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
@@ -33,12 +34,22 @@ public class CirculationStateMachine {
     }
 
     private static Map<LoanTicketStatus, Set<LoanTicketStatus>> buildTransitions() {
-        Map<LoanTicketStatus, Set<LoanTicketStatus>> transitions = new EnumMap<>(LoanTicketStatus.class);
-        transitions.put(LoanTicketStatus.PENDING,
-                EnumSet.of(LoanTicketStatus.RESERVED, LoanTicketStatus.REJECTED, LoanTicketStatus.CANCELLED));
-        transitions.put(LoanTicketStatus.RESERVED,
-                EnumSet.of(LoanTicketStatus.BORROWING, LoanTicketStatus.REJECTED, LoanTicketStatus.CANCELLED));
-        transitions.put(LoanTicketStatus.BORROWING,
+        Map<LoanTicketStatus, Set<LoanTicketStatus>> transitions =
+                new EnumMap<>(LoanTicketStatus.class);
+        transitions.put(
+                LoanTicketStatus.PENDING,
+                EnumSet.of(
+                        LoanTicketStatus.RESERVED,
+                        LoanTicketStatus.REJECTED,
+                        LoanTicketStatus.CANCELLED));
+        transitions.put(
+                LoanTicketStatus.RESERVED,
+                EnumSet.of(
+                        LoanTicketStatus.BORROWING,
+                        LoanTicketStatus.REJECTED,
+                        LoanTicketStatus.CANCELLED));
+        transitions.put(
+                LoanTicketStatus.BORROWING,
                 EnumSet.of(LoanTicketStatus.OVERDUE, LoanTicketStatus.RETURNED));
         transitions.put(LoanTicketStatus.OVERDUE, EnumSet.of(LoanTicketStatus.RETURNED));
         transitions.put(LoanTicketStatus.RETURNED, EnumSet.noneOf(LoanTicketStatus.class));

@@ -16,13 +16,16 @@ public class LocationController {
     private final LocationService locationService;
     private final ShelfSubjectRuleService shelfSubjectRuleService;
 
-    public LocationController(LocationService locationService, ShelfSubjectRuleService shelfSubjectRuleService) {
+    public LocationController(
+            LocationService locationService, ShelfSubjectRuleService shelfSubjectRuleService) {
         this.locationService = locationService;
         this.shelfSubjectRuleService = shelfSubjectRuleService;
     }
 
     @GetMapping("/floors")
-    public ResponseEntity<?> getFloors() { return ResponseEntity.ok(locationService.getFloors()); }
+    public ResponseEntity<?> getFloors() {
+        return ResponseEntity.ok(locationService.getFloors());
+    }
 
     @PostMapping("/floors")
     @PreAuthorize("hasRole('ADMIN')")
@@ -32,7 +35,8 @@ public class LocationController {
 
     @PutMapping("/floors/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateFloor(@PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
+    public ResponseEntity<?> updateFloor(
+            @PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.updateFloor(id, request));
     }
 
@@ -56,7 +60,8 @@ public class LocationController {
 
     @PutMapping("/bookshelves/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateBookshelf(@PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
+    public ResponseEntity<?> updateBookshelf(
+            @PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.updateBookshelf(id, request));
     }
 
@@ -83,15 +88,18 @@ public class LocationController {
     }
 
     @GetMapping("/shelves/{id}/books/page")
-    public ResponseEntity<?> getShelfBooksPage(@PathVariable Long id, @RequestParam(defaultValue="0") int page,
-                                              @RequestParam(defaultValue="50") int size) {
+    public ResponseEntity<?> getShelfBooksPage(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(locationService.getCopiesPage(id, page, size));
     }
 
     @GetMapping("/unplaced-copies")
-    public ResponseEntity<?> getUnplacedCopies(@RequestParam(defaultValue="0") int page,
-                                             @RequestParam(required=false) Long targetShelf,
-                                             @RequestParam(defaultValue="50") int size) {
+    public ResponseEntity<?> getUnplacedCopies(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Long targetShelf,
+            @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(locationService.getCopiesPage(null, targetShelf, page, size));
     }
 
@@ -103,8 +111,7 @@ public class LocationController {
     @PutMapping("/shelves/{id}/subjects")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> replaceShelfSubjects(
-            @PathVariable Long id,
-            @Valid @RequestBody ShelfSubjectRuleRequestDTO request) {
+            @PathVariable Long id, @Valid @RequestBody ShelfSubjectRuleRequestDTO request) {
         return ResponseEntity.ok(shelfSubjectRuleService.replaceShelfSubjects(id, request));
     }
 
@@ -116,7 +123,8 @@ public class LocationController {
 
     @PutMapping("/shelves/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateShelf(@PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
+    public ResponseEntity<?> updateShelf(
+            @PathVariable Long id, @Valid @RequestBody LocationRequestDTO request) {
         return ResponseEntity.ok(locationService.updateShelf(id, request));
     }
 

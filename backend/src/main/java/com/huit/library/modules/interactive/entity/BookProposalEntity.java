@@ -23,17 +23,25 @@ public class BookProposalEntity extends BaseEntity {
     private String isbn;
     private Integer publicationYear;
     private String edition;
+
     @Column(precision = 15, scale = 2)
     private BigDecimal estimatedPrice;
+
     @Column(length = 1000)
     private String externalUrl;
+
     private String genre;
+
     @Column(length = 128)
     private String majorId;
+
     private String majorName;
+
     @Column(length = 1000)
     private String majorSourceReference;
+
     private String urgencyLevel;
+
     @Column(length = 1000)
     private String reason;
 
@@ -42,6 +50,7 @@ public class BookProposalEntity extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String adminNote;
+
     private Long approvedBookId;
     private String status; // PENDING, APPROVED, REJECTED
 }

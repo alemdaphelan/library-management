@@ -17,7 +17,7 @@ describe('Orientation', () => {
     capacity: 30,
     status: 'SCHEDULED',
     enrolledCount: 0,
-    enrollments: []
+    enrollments: [],
   };
   const service = {
     list: vi.fn(() => of([orientationClass])),
@@ -31,9 +31,12 @@ describe('Orientation', () => {
     unassign: vi.fn(() => of(void 0)),
     attendance: vi.fn(() => of(orientationClass)),
     template: vi.fn(),
-    importAttendance: vi.fn()
+    importAttendance: vi.fn(),
   };
-  const auth = { getRole: vi.fn(() => 'ADMIN'), getUserProfile: vi.fn(() => ({ userId: 'admin-id', fullName: 'Admin' })) };
+  const auth = {
+    getRole: vi.fn(() => 'ADMIN'),
+    getUserProfile: vi.fn(() => ({ userId: 'admin-id', fullName: 'Admin' })),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -41,8 +44,8 @@ describe('Orientation', () => {
       imports: [Orientation],
       providers: [
         { provide: OrientationService, useValue: service },
-        { provide: AuthService, useValue: auth }
-      ]
+        { provide: AuthService, useValue: auth },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(Orientation);
     component = fixture.componentInstance;
@@ -60,7 +63,10 @@ describe('Orientation', () => {
     component.form.location = 'Phòng A2';
     component.save();
 
-    expect(service.update).toHaveBeenCalledWith(1, expect.objectContaining({ location: 'Phòng A2' }));
+    expect(service.update).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ location: 'Phòng A2' }),
+    );
     expect(component.success).toContain('cập nhật');
   });
 
@@ -73,19 +79,34 @@ describe('Orientation', () => {
   });
 
   it('permits attendance after class starts and displays the updated card status', () => {
-    const enrollment = { enrollmentId: 1, student: { userId: 'student-id', fullName: 'Sinh viên A' }, status: 'ASSIGNED' };
+    const enrollment = {
+      enrollmentId: 1,
+      student: { userId: 'student-id', fullName: 'Sinh viên A' },
+      status: 'ASSIGNED',
+    };
     component.openClass(orientationClass);
     component.setAttendance(enrollment, 'ATTENDED');
     expect(service.attendance).not.toHaveBeenCalled();
 
-    const started = { ...orientationClass, startAt: '2000-01-01T08:00:00', enrolledCount: 1, enrollments: [enrollment] };
-    const activated = { ...started, status: 'COMPLETED', enrollments: [{ ...enrollment, status: 'ATTENDED', cardStatus: 'ACTIVE' }] };
+    const started = {
+      ...orientationClass,
+      startAt: '2000-01-01T08:00:00',
+      enrolledCount: 1,
+      enrollments: [enrollment],
+    };
+    const activated = {
+      ...started,
+      status: 'COMPLETED',
+      enrollments: [{ ...enrollment, status: 'ATTENDED', cardStatus: 'ACTIVE' }],
+    };
     service.attendance.mockReturnValueOnce(of(activated));
     service.list.mockReturnValueOnce(of([activated]));
     component.openClass(started);
     component.setAttendance(enrollment, 'ATTENDED');
 
-    expect(service.attendance).toHaveBeenCalledWith(1, [{ userId: 'student-id', status: 'ATTENDED', note: '' }]);
+    expect(service.attendance).toHaveBeenCalledWith(1, [
+      { userId: 'student-id', status: 'ATTENDED', note: '' },
+    ]);
     expect(fixture.nativeElement.textContent).toContain('Thẻ hoạt động');
   });
 });

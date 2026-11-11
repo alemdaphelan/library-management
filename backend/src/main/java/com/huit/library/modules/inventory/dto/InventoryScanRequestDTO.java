@@ -10,6 +10,6 @@ public class InventoryScanRequestDTO {
 
     @jakarta.validation.constraints.Size(max = 1000)
     private String scannedLocation;
-    @jakarta.validation.constraints.Positive
-    private Long scannedShelfId;
+
+    @jakarta.validation.constraints.Positive private Long scannedShelfId;
 }

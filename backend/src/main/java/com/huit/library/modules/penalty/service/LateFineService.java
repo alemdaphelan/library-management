@@ -34,30 +34,31 @@ public class LateFineService {
     }
 
     public BigDecimal accrueLateFine(
-            LoanTicketEntity ticket,
-            LoanDetailEntity detail,
-            LocalDateTime calculatedAt) {
-        LocalDateTime effectiveAt = detail.getFineStoppedAt() != null
-                && detail.getFineStoppedAt().isBefore(calculatedAt)
-                ? detail.getFineStoppedAt()
-                : calculatedAt;
+            LoanTicketEntity ticket, LoanDetailEntity detail, LocalDateTime calculatedAt) {
+        LocalDateTime effectiveAt =
+                detail.getFineStoppedAt() != null
+                                && detail.getFineStoppedAt().isBefore(calculatedAt)
+                        ? detail.getFineStoppedAt()
+                        : calculatedAt;
         if (detail.getDueDate() == null || !detail.getDueDate().isBefore(effectiveAt)) {
             return BigDecimal.ZERO;
         }
 
-        long chargeableDays = ChronoUnit.DAYS.between(
-                detail.getDueDate().toLocalDate(), effectiveAt.toLocalDate());
+        long chargeableDays =
+                ChronoUnit.DAYS.between(
+                        detail.getDueDate().toLocalDate(), effectiveAt.toLocalDate());
         if (chargeableDays <= 0) {
             return BigDecimal.ZERO;
         }
-        BigDecimal rate = "ONSITE".equalsIgnoreCase(ticket.getTicketType())
-                ? policyService.onsiteLateFinePerDay() : policyService.homeLateFinePerDay();
-        BigDecimal expectedFine = rate
-                .multiply(BigDecimal.valueOf(chargeableDays))
-                .setScale(2, RoundingMode.UNNECESSARY);
-        BigDecimal currentFine = detail.getLateFineAccrued() == null
-                ? BigDecimal.ZERO
-                : detail.getLateFineAccrued();
+        BigDecimal rate =
+                "ONSITE".equalsIgnoreCase(ticket.getTicketType())
+                        ? policyService.onsiteLateFinePerDay()
+                        : policyService.homeLateFinePerDay();
+        BigDecimal expectedFine =
+                rate.multiply(BigDecimal.valueOf(chargeableDays))
+                        .setScale(2, RoundingMode.UNNECESSARY);
+        BigDecimal currentFine =
+                detail.getLateFineAccrued() == null ? BigDecimal.ZERO : detail.getLateFineAccrued();
         BigDecimal additionalFine = expectedFine.subtract(currentFine);
         if (additionalFine.signum() <= 0) {
             return BigDecimal.ZERO;
@@ -66,8 +67,10 @@ public class LateFineService {
         detail.setLateFineAccrued(expectedFine);
         loanDetailRepository.save(detail);
 
-        WalletEntity wallet = walletRepository.findByUserIdForUpdate(ticket.getUserId())
-                .orElseGet(() -> newWallet(ticket));
+        WalletEntity wallet =
+                walletRepository
+                        .findByUserIdForUpdate(ticket.getUserId())
+                        .orElseGet(() -> newWallet(ticket));
         BigDecimal availableDeposit = zero(wallet.getDepositBalance());
         BigDecimal depositApplied = availableDeposit.min(additionalFine);
         BigDecimal debtAdded = additionalFine.subtract(depositApplied);
@@ -86,9 +89,12 @@ public class LateFineService {
             transaction.setDepositAppliedAmount(depositApplied);
             transaction.setDepositAppliedAt(depositApplied.signum() > 0 ? calculatedAt : null);
             transaction.setType("FINE");
-            transaction.setReason("Phạt trả trễ " + chargeableDays + " ngày cho bản sao " + detail.getBarcode());
-            transaction.setStatus(debtAdded.signum() == 0 ? "PAID" :
-                    (depositApplied.signum() > 0 ? "PARTIALLY_PAID" : "OUTSTANDING"));
+            transaction.setReason(
+                    "Phạt trả trễ " + chargeableDays + " ngày cho bản sao " + detail.getBarcode());
+            transaction.setStatus(
+                    debtAdded.signum() == 0
+                            ? "PAID"
+                            : (depositApplied.signum() > 0 ? "PARTIALLY_PAID" : "OUTSTANDING"));
             if (depositApplied.signum() > 0) {
                 transaction.setPaymentMethod("SECURITY_DEPOSIT");
                 transaction.setPaidAt(calculatedAt);

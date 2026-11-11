@@ -12,8 +12,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JwtResponseDTO {
-    @Builder.Default
-    private String tokenType = "Bearer";
+    @Builder.Default private String tokenType = "Bearer";
     private String accessToken;
     private String refreshToken;
     private UUID userId;

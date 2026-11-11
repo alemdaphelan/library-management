@@ -29,7 +29,9 @@ public class TokenService {
     }
 
     public void blacklistToken(String jwt) {
-        redisTemplate.opsForValue().set(BLACKLIST_PREFIX + jwt, "true", Duration.ofMillis(jwtExpirationMs));
+        redisTemplate
+                .opsForValue()
+                .set(BLACKLIST_PREFIX + jwt, "true", Duration.ofMillis(jwtExpirationMs));
     }
 
     public boolean isTokenBlacklisted(String jwt) {
@@ -39,9 +41,12 @@ public class TokenService {
     public String generateAndStoreRefreshToken(String email) {
         String refreshToken = UUID.randomUUID().toString();
         long sessionVersion = getSessionVersion(email);
-        redisTemplate.opsForValue().set(REFRESH_TOKEN_PREFIX + refreshToken,
-                sessionVersion + REFRESH_VALUE_SEPARATOR + email,
-                Duration.ofMillis(refreshTokenDurationMs));
+        redisTemplate
+                .opsForValue()
+                .set(
+                        REFRESH_TOKEN_PREFIX + refreshToken,
+                        sessionVersion + REFRESH_VALUE_SEPARATOR + email,
+                        Duration.ofMillis(refreshTokenDurationMs));
         return refreshToken;
     }
 

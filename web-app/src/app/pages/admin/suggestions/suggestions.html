@@ -7,106 +7,172 @@
   </div>
 
   <!-- Alert Banner -->
-  <div *ngIf="alertMessage" class="alert-box" [ngClass]="alertMessage.type" style="margin-bottom: 20px; padding: 12px 16px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 8px;"
-       [style.background]="alertMessage.type === 'success' ? '#dcfce7' : '#fee2e2'"
-       [style.color]="alertMessage.type === 'success' ? '#166534' : '#991b1b'"
-       [style.border]="alertMessage.type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca'">
+  <div
+    *ngIf="alertMessage"
+    class="alert-box"
+    [ngClass]="alertMessage.type"
+    style="margin-bottom: 20px; padding: 12px 16px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 8px;"
+    [style.background]="alertMessage.type === 'success' ? '#dcfce7' : '#fee2e2'"
+    [style.color]="alertMessage.type === 'success' ? '#166534' : '#991b1b'"
+    [style.border]="alertMessage.type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca'"
+  >
     <span>{{ alertMessage.text }}</span>
   </div>
 
   <div class="view-tabs" role="group" aria-label="Chế độ đề xuất">
-    <button class="btn-outline" [attr.aria-pressed]="view === 'individual'" (click)="view = 'individual'">Từng đề xuất</button>
+    <button
+      class="btn-outline"
+      [attr.aria-pressed]="view === 'individual'"
+      (click)="view = 'individual'"
+    >Từng đề xuất</button>
     <button class="btn-outline" [attr.aria-pressed]="view === 'summary'" (click)="showSummary()">Tổng hợp / Excel</button>
   </div>
-  <app-proposal-summary *ngIf="summaryLoaded" [hidden]="view !== 'summary'" (openProposal)="openSummaryProposal($event)"></app-proposal-summary>
+  <app-proposal-summary
+    *ngIf="summaryLoaded"
+    [hidden]="view !== 'summary'"
+    (openProposal)="openSummaryProposal($event)"
+  ></app-proposal-summary>
   <div [hidden]="view !== 'individual'">
-  <!-- Custom Tabs -->
-  <div class="custom-tabs">
-    <button class="tab-btn" [class.active]="activeTab === 'PENDING'" (click)="setTab('PENDING')">
-      Chờ duyệt <span class="tab-badge pending" *ngIf="pendingCount > 0">{{ pendingCount }}</span>
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'APPROVED'" (click)="setTab('APPROVED')">
-      Đã duyệt <span class="tab-badge" *ngIf="approvedCount > 0">{{ approvedCount }}</span>
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'REJECTED'" (click)="setTab('REJECTED')">
-      Đã từ chối <span class="tab-badge" *ngIf="rejectedCount > 0">{{ rejectedCount }}</span>
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'ALL'" (click)="setTab('ALL')">
-      Tất cả <span class="tab-badge">{{ proposals.length }}</span>
-    </button>
-  </div>
-
-  <!-- Data Table -->
-  <div class="table-container">
-    <div class="table-toolbar">
-      <div class="search-box">
-        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" [(ngModel)]="searchTerm" class="form-control" placeholder="Tìm tên sách, tác giả, sinh viên, MSSV...">
-      </div>
-      <label>Ngành học
-        <select class="form-control" [(ngModel)]="majorFilter">
-          <option value="">Tất cả ngành</option>
-          <option *ngFor="let m of majorOptions" [value]="m.id">{{ m.name }}</option>
-          <option value="__LEGACY__">Đề xuất cũ chưa gán ngành</option>
-        </select>
-      </label>
-      <button class="btn-outline btn-sm" (click)="loadProposals()" [disabled]="isLoading" style="display: inline-flex; align-items: center; gap: 6px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-        Làm mới
+    <!-- Custom Tabs -->
+    <div class="custom-tabs">
+      <button class="tab-btn" [class.active]="activeTab === 'PENDING'" (click)="setTab('PENDING')">
+        Chờ duyệt <span class="tab-badge pending" *ngIf="pendingCount > 0">{{ pendingCount }}</span>
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'APPROVED'"
+        (click)="setTab('APPROVED')"
+      >
+        Đã duyệt <span class="tab-badge" *ngIf="approvedCount > 0">{{ approvedCount }}</span>
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'REJECTED'"
+        (click)="setTab('REJECTED')"
+      >
+        Đã từ chối <span class="tab-badge" *ngIf="rejectedCount > 0">{{ rejectedCount }}</span>
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'ALL'" (click)="setTab('ALL')">
+        Tất cả <span class="tab-badge">{{ proposals.length }}</span>
       </button>
     </div>
 
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th width="35%">Tên Sách / Tác Giả / NXB</th>
-          <th width="22%">Sinh viên đề xuất</th>
-          <th width="15%">Ngày gửi</th>
-          <th width="13%" class="text-center">Trạng thái</th>
-          <th width="15%" class="text-center">Xử lý</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngIf="isLoading">
-          <td colspan="5" class="text-center" style="padding: 40px; color: #64748b;">
-            Đang tải dữ liệu đề xuất sách...
-          </td>
-        </tr>
-        <tr *ngFor="let s of filteredSuggestions" (click)="openDrawer(s)" style="cursor: pointer;">
-          <td>
-            <div style="font-weight: 600; color: #0f172a; margin-bottom: 4px;">{{ s.title }}</div>
-            <div style="font-size: 0.85rem; color: #64748b;">
-              Tác giả: {{ s.authorName || 'Chưa rõ' }}
-              <span *ngIf="s.publisher"> • NXB: {{ s.publisher }}</span>
-            </div>
-            <div>Ngành: {{ s.majorName || 'Đề xuất cũ chưa gán ngành' }}</div>
-          </td>
-          <td>
-            <div style="font-weight: 600; color: #1e293b;">{{ s.userName || 'Sinh viên' }}</div>
-            <div style="font-size: 0.8rem; color: #64748b;">
-              <span *ngIf="s.userMssv">MSSV: {{ s.userMssv }}</span>
-              <span *ngIf="!s.userMssv && s.userEmail">{{ s.userEmail }}</span>
-            </div>
-          </td>
-          <td>{{ s.createdAt ? (s.createdAt | date:'dd/MM/yyyy HH:mm') : 'N/A' }}</td>
-          <td class="text-center">
-            <span class="badge badge-warning" *ngIf="s.status === 'PENDING'">Chờ duyệt</span>
-            <span class="badge badge-available" *ngIf="s.status === 'APPROVED'">Đã duyệt</span>
-            <span class="badge badge-danger" *ngIf="s.status === 'REJECTED'">Từ chối</span>
-          </td>
-          <td class="text-center">
-            <button class="btn-primary btn-sm" style="padding: 6px 14px;" (click)="$event.stopPropagation(); openDrawer(s)" *ngIf="s.status === 'PENDING'">Duyệt ngay</button>
-            <button class="btn-outline btn-sm" (click)="$event.stopPropagation(); openDrawer(s)" *ngIf="s.status !== 'PENDING'">Chi tiết</button>
-          </td>
-        </tr>
-        <tr *ngIf="!isLoading && filteredSuggestions.length === 0">
-          <td colspan="5" class="text-center" style="padding: 40px; color: #64748b;">
-            Không có dữ liệu đề xuất nào phù hợp.
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    <!-- Data Table -->
+    <div class="table-container">
+      <div class="table-toolbar">
+        <div class="search-box">
+          <svg
+            class="search-icon"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            class="form-control"
+            placeholder="Tìm tên sách, tác giả, sinh viên, MSSV..."
+          />
+        </div>
+        <label>Ngành học
+          <select class="form-control" [(ngModel)]="majorFilter">
+            <option value="">Tất cả ngành</option>
+            <option *ngFor="let m of majorOptions" [value]="m.id">{{ m.name }}</option>
+            <option value="__LEGACY__">Đề xuất cũ chưa gán ngành</option>
+          </select>
+        </label>
+        <button
+          class="btn-outline btn-sm"
+          (click)="loadProposals()"
+          [disabled]="isLoading"
+          style="display: inline-flex; align-items: center; gap: 6px;"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Làm mới
+        </button>
+      </div>
+
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th width="35%">Tên Sách / Tác Giả / NXB</th>
+            <th width="22%">Sinh viên đề xuất</th>
+            <th width="15%">Ngày gửi</th>
+            <th width="13%" class="text-center">Trạng thái</th>
+            <th width="15%" class="text-center">Xử lý</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="isLoading">
+            <td colspan="5" class="text-center" style="padding: 40px; color: #64748b;">
+              Đang tải dữ liệu đề xuất sách...
+            </td>
+          </tr>
+          <tr
+            *ngFor="let s of filteredSuggestions"
+            (click)="openDrawer(s)"
+            style="cursor: pointer;"
+          >
+            <td>
+              <div style="font-weight: 600; color: #0f172a; margin-bottom: 4px;">{{ s.title }}</div>
+              <div style="font-size: 0.85rem; color: #64748b;">
+                Tác giả: {{ s.authorName || 'Chưa rõ' }}
+                <span *ngIf="s.publisher"> • NXB: {{ s.publisher }}</span>
+              </div>
+              <div>Ngành: {{ s.majorName || 'Đề xuất cũ chưa gán ngành' }}</div>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #1e293b;">{{ s.userName || 'Sinh viên' }}</div>
+              <div style="font-size: 0.8rem; color: #64748b;">
+                <span *ngIf="s.userMssv">MSSV: {{ s.userMssv }}</span>
+                <span *ngIf="!s.userMssv && s.userEmail">{{ s.userEmail }}</span>
+              </div>
+            </td>
+            <td>{{ s.createdAt ? (s.createdAt | date:'dd/MM/yyyy HH:mm') : 'N/A' }}</td>
+            <td class="text-center">
+              <span class="badge badge-warning" *ngIf="s.status === 'PENDING'">Chờ duyệt</span>
+              <span class="badge badge-available" *ngIf="s.status === 'APPROVED'">Đã duyệt</span>
+              <span class="badge badge-danger" *ngIf="s.status === 'REJECTED'">Từ chối</span>
+            </td>
+            <td class="text-center">
+              <button
+                class="btn-primary btn-sm"
+                style="padding: 6px 14px;"
+                (click)="$event.stopPropagation(); openDrawer(s)"
+                *ngIf="s.status === 'PENDING'"
+              >Duyệt ngay</button>
+              <button
+                class="btn-outline btn-sm"
+                (click)="$event.stopPropagation(); openDrawer(s)"
+                *ngIf="s.status !== 'PENDING'"
+              >Chi tiết</button>
+            </td>
+          </tr>
+          <tr *ngIf="!isLoading && filteredSuggestions.length === 0">
+            <td colspan="5" class="text-center" style="padding: 40px; color: #64748b;">
+              Không có dữ liệu đề xuất nào phù hợp.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -117,15 +183,17 @@
     <h2 class="drawer-title">Chi tiết Đề xuất sách</h2>
     <button class="drawer-close" (click)="closeDrawer()">&times;</button>
   </div>
-  
+
   <div class="drawer-body" *ngIf="selectedSuggestion">
     <div class="detail-card">
       <div class="detail-title">{{ selectedSuggestion.title }}</div>
       <div class="detail-author">
         Tác giả: <strong>{{ selectedSuggestion.authorName || 'Chưa rõ' }}</strong>
-        <span *ngIf="selectedSuggestion.publisher"> | NXB: <strong>{{ selectedSuggestion.publisher }}</strong></span>
+        <span *ngIf="selectedSuggestion.publisher">
+          | NXB: <strong>{{ selectedSuggestion.publisher }}</strong></span
+        >
       </div>
-      
+
       <div class="detail-meta">
         <div class="meta-item">
           <div class="meta-label">Người đề xuất</div>
@@ -149,7 +217,10 @@
         </div>
         <div class="meta-item">
           <div class="meta-label">Năm / Phiên bản</div>
-          <div class="meta-val">{{ selectedSuggestion.publicationYear || 'Chưa rõ' }}<span *ngIf="selectedSuggestion.edition"> · {{ selectedSuggestion.edition }}</span></div>
+          <div class="meta-val">{{ selectedSuggestion.publicationYear || 'Chưa rõ'
+
+            }}<span *ngIf="selectedSuggestion.edition"> · {{ selectedSuggestion.edition }}</span>
+          </div>
         </div>
         <div class="meta-item">
           <div class="meta-label">Ngành học</div>
@@ -173,8 +244,15 @@
 
     <div class="form-group" style="margin-top: 16px;" *ngIf="selectedSuggestion.externalUrl">
       <label>Đường dẫn tham khảo:</label>
-      <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; word-break: break-all;">
-        <a [href]="selectedSuggestion.externalUrl" target="_blank" rel="noopener noreferrer">{{ selectedSuggestion.externalUrl }}</a>
+      <div
+        style="background: #f1f5f9; padding: 10px 14px; border-radius: 6px; font-size: 0.9rem; word-break: break-all;"
+      >
+        <a
+          [href]="selectedSuggestion.externalUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          >{{ selectedSuggestion.externalUrl }}</a
+        >
       </div>
     </div>
 
@@ -183,37 +261,77 @@
       <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 6px; font-size: 0.9rem;">{{ selectedSuggestion.note }}</div>
     </div>
 
-    <div class="form-group" style="margin-top: 20px;" *ngIf="selectedSuggestion.status === 'PENDING'">
+    <div
+      class="form-group"
+      style="margin-top: 20px;"
+      *ngIf="selectedSuggestion.status === 'PENDING'"
+    >
       <label>Ghi chú của Thủ thư (bắt buộc khi từ chối):</label>
-      <textarea [(ngModel)]="adminNoteInput" maxlength="1000" class="form-control" rows="4" placeholder="Nhập lý do từ chối hoặc ghi chú phản hồi..."></textarea>
+      <textarea
+        [(ngModel)]="adminNoteInput"
+        maxlength="1000"
+        class="form-control"
+        rows="4"
+        placeholder="Nhập lý do từ chối hoặc ghi chú phản hồi..."
+      ></textarea>
     </div>
-    
+
     <div *ngIf="selectedSuggestion.status === 'APPROVED'">
       <div class="status-banner">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
         Đề xuất này đã được DUYỆT.
       </div>
-      <div *ngIf="selectedSuggestion.adminNote" style="margin-top: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px;">
+      <div
+        *ngIf="selectedSuggestion.adminNote"
+        style="margin-top: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px;"
+      >
         <div style="font-weight: 600; color: #166534; font-size: 0.85rem; margin-bottom: 4px;">Ghi chú của thủ thư:</div>
         <div style="color: #14532d; font-size: 0.95rem;">{{ selectedSuggestion.adminNote }}</div>
       </div>
-      <div style="margin-top: 12px; background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 8px; color: #1e3a8a;">
-        Đầu sách #{{ selectedSuggestion.approvedBookId || 'đang cập nhật' }} đã được tạo với 0 bản sao. Hãy lập phiếu nhập kho để bổ sung bản sách vật lý.
+      <div
+        style="margin-top: 12px; background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px; border-radius: 8px; color: #1e3a8a;"
+      >
+        Đầu sách #{{ selectedSuggestion.approvedBookId || 'đang cập nhật' }} đã được tạo với 0 bản
+        sao. Hãy lập phiếu nhập kho để bổ sung bản sách vật lý.
       </div>
     </div>
 
     <div *ngIf="selectedSuggestion.status === 'REJECTED'">
       <div class="status-banner error">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
         Đề xuất này đã bị TỪ CHỐI.
       </div>
-      <div *ngIf="selectedSuggestion.adminNote" style="margin-top: 12px; background: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 8px;">
+      <div
+        *ngIf="selectedSuggestion.adminNote"
+        style="margin-top: 12px; background: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 8px;"
+      >
         <div style="font-weight: 600; color: #991b1b; font-size: 0.85rem; margin-bottom: 4px;">Lý do từ chối:</div>
         <div style="color: #7f1d1d; font-size: 0.95rem;">{{ selectedSuggestion.adminNote }}</div>
       </div>
     </div>
   </div>
-  
+
   <div class="drawer-footer" *ngIf="selectedSuggestion?.status === 'PENDING'">
     <button class="btn-outline btn-reject" (click)="rejectSuggestion()" [disabled]="isUpdating">
       {{ isUpdating ? 'Đang xử lý...' : 'Từ chối' }}

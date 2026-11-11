@@ -16,8 +16,9 @@ class LibrarianQrService {
   }
 
   static Future<Map<String, dynamic>> issueMyCard() async {
-    final data = await ApiService.get('/api/v1/qr/cards/me')
-        .timeout(const Duration(seconds: 10));
+    final data = await ApiService.get(
+      '/api/v1/qr/cards/me',
+    ).timeout(const Duration(seconds: 10));
     return Map<String, dynamic>.from(data as Map);
   }
 
@@ -77,8 +78,14 @@ class LibrarianQrService {
       .toList();
 
   static bool isReturnable(Map item) {
-    if (item['returnable'] == false || item['returnDate'] != null || item['physicalReturnAt'] != null) return false;
-    return const ['BORROWING', 'OVERDUE'].contains(item['itemStatus']?.toString().toUpperCase());
+    if (item['returnable'] == false ||
+        item['returnDate'] != null ||
+        item['physicalReturnAt'] != null)
+      return false;
+    return const [
+      'BORROWING',
+      'OVERDUE',
+    ].contains(item['itemStatus']?.toString().toUpperCase());
   }
 
   static String operationKey(String operation) {

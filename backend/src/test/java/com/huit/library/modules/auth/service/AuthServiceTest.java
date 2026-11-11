@@ -44,9 +44,16 @@ class AuthServiceTest {
         redisTemplate = mock(StringRedisTemplate.class);
         valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        authService = new AuthService(
-                mock(AuthenticationManager.class), mock(JwtUtils.class), userRepository,
-                passwordEncoder, tokenService, mailSender, redisTemplate, "no-reply@huit.edu.vn");
+        authService =
+                new AuthService(
+                        mock(AuthenticationManager.class),
+                        mock(JwtUtils.class),
+                        userRepository,
+                        passwordEncoder,
+                        tokenService,
+                        mailSender,
+                        redisTemplate,
+                        "no-reply@huit.edu.vn");
     }
 
     @Test
@@ -93,7 +100,8 @@ class AuthServiceTest {
 
     @Test
     void changePasswordRejectsPasswordWithoutUppercaseOrSpecialCharacter() {
-        assertThatThrownBy(() -> authService.changePassword(UUID.randomUUID(), "old", "new-password"))
+        assertThatThrownBy(
+                        () -> authService.changePassword(UUID.randomUUID(), "old", "new-password"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("chữ hoa");
         verifyNoInteractions(userRepository);
@@ -106,14 +114,19 @@ class AuthServiceTest {
         user.setFullName("Nguyen Van A");
         when(userRepository.findFirstByEmailOrMssv("user@huit.edu.vn", "user@huit.edu.vn"))
                 .thenReturn(Optional.of(user));
-        when(valueOperations.setIfAbsent("auth:otp:resend:user@huit.edu.vn", "1", 10, TimeUnit.SECONDS))
+        when(valueOperations.setIfAbsent(
+                        "auth:otp:resend:user@huit.edu.vn", "1", 10, TimeUnit.SECONDS))
                 .thenReturn(true, false);
 
         authService.forgotPassword("user@huit.edu.vn");
         authService.forgotPassword("user@huit.edu.vn");
 
-        verify(valueOperations, times(1)).set(startsWith("auth:otp:user@huit.edu.vn"),
-                matches("\\d{6}"), eq(10L), eq(TimeUnit.MINUTES));
+        verify(valueOperations, times(1))
+                .set(
+                        startsWith("auth:otp:user@huit.edu.vn"),
+                        matches("\\d{6}"),
+                        eq(10L),
+                        eq(TimeUnit.MINUTES));
         verify(mailSender, times(1)).send(any(org.springframework.mail.SimpleMailMessage.class));
     }
 
@@ -124,10 +137,12 @@ class AuthServiceTest {
         user.setFullName("Nguyen Van A");
         when(userRepository.findFirstByEmailOrMssv("user@huit.edu.vn", "user@huit.edu.vn"))
                 .thenReturn(Optional.of(user));
-        when(valueOperations.setIfAbsent("auth:otp:resend:user@huit.edu.vn", "1", 10, TimeUnit.SECONDS))
+        when(valueOperations.setIfAbsent(
+                        "auth:otp:resend:user@huit.edu.vn", "1", 10, TimeUnit.SECONDS))
                 .thenReturn(true);
         doThrow(new MailSendException("SMTP unavailable"))
-                .when(mailSender).send(any(org.springframework.mail.SimpleMailMessage.class));
+                .when(mailSender)
+                .send(any(org.springframework.mail.SimpleMailMessage.class));
 
         assertThatThrownBy(() -> authService.forgotPassword("user@huit.edu.vn"))
                 .isInstanceOf(OtpDeliveryException.class)

@@ -21,7 +21,8 @@ public class RagAdminController {
     private final RagKnowledgeIndexService indexService;
     private final RagEvaluationService evaluationService;
 
-    public RagAdminController(RagKnowledgeIndexService indexService, RagEvaluationService evaluationService) {
+    public RagAdminController(
+            RagKnowledgeIndexService indexService, RagEvaluationService evaluationService) {
         this.indexService = indexService;
         this.evaluationService = evaluationService;
     }
@@ -39,9 +40,10 @@ public class RagAdminController {
     }
 
     @PostMapping("/evaluate")
-    @Operation(summary = "Evaluate RAG retrieval, grounding, refusal and latency on the controlled dataset")
-    public RagEvaluationReportDTO evaluate(
-            @RequestParam(defaultValue = "0") long delayMillis) {
+    @Operation(
+            summary =
+                    "Evaluate RAG retrieval, grounding, refusal and latency on the controlled dataset")
+    public RagEvaluationReportDTO evaluate(@RequestParam(defaultValue = "0") long delayMillis) {
         return evaluationService.evaluate(delayMillis);
     }
 }

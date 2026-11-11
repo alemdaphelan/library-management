@@ -9,10 +9,13 @@ import { RequiredFieldsService } from './services/required-fields.service';
   standalone: true,
   imports: [RouterOutlet, CommonModule],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.css',
 })
 export class App {
   protected readonly title = signal('web-app');
 
-  constructor(public dialogService: DialogService, requiredFields: RequiredFieldsService) {}
+  constructor(
+    public dialogService: DialogService,
+    requiredFields: RequiredFieldsService,
+  ) {}
 }

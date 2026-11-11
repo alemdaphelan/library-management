@@ -24,11 +24,11 @@ describe('BookService interactions', () => {
 
     const requests = http.match(`${environment.apiUrl}/books/7/reviews`);
     expect(requests).toHaveLength(2);
-    const getRequest = requests.find(request => request.request.method === 'GET')!;
+    const getRequest = requests.find((request) => request.request.method === 'GET')!;
     expect(getRequest.request.method).toBe('GET');
     getRequest.flush({ bookId: 7, averageRating: 0, reviewCount: 0, reviews: [] });
 
-    const saveRequest = requests.find(request => request.request.method === 'POST')!;
+    const saveRequest = requests.find((request) => request.request.method === 'POST')!;
     expect(saveRequest.request.method).toBe('POST');
     expect(saveRequest.request.body).toEqual({ rating: 5, comment: 'Hữu ích' });
     saveRequest.flush({ bookId: 7, averageRating: 5, reviewCount: 1, reviews: [] });
@@ -41,11 +41,11 @@ describe('BookService interactions', () => {
 
     const requests = http.match(`${environment.apiUrl}/users/wishlist`);
     expect(requests).toHaveLength(2);
-    const listRequest = requests.find(request => request.request.method === 'GET')!;
+    const listRequest = requests.find((request) => request.request.method === 'GET')!;
     expect(listRequest.request.method).toBe('GET');
     listRequest.flush([]);
 
-    const addRequest = requests.find(request => request.request.method === 'POST')!;
+    const addRequest = requests.find((request) => request.request.method === 'POST')!;
     expect(addRequest.request.method).toBe('POST');
     expect(addRequest.request.body).toEqual({ bookId: 9 });
     addRequest.flush({ bookId: 9 });
@@ -69,13 +69,12 @@ describe('BookService interactions', () => {
 
     const departmentRequest = http.expectOne(`${environment.apiUrl}/books/departments`);
     expect(departmentRequest.request.method).toBe('GET');
-    departmentRequest.flush([
-      { key: 'cong nghe thong tin', displayName: 'Công nghệ thông tin' },
-    ]);
+    departmentRequest.flush([{ key: 'cong nghe thong tin', displayName: 'Công nghệ thông tin' }]);
 
-    const catalogRequest = http.expectOne(request =>
-      request.url === `${environment.apiUrl}/books`
-      && request.params.get('department') === 'cong nghe thong tin'
+    const catalogRequest = http.expectOne(
+      (request) =>
+        request.url === `${environment.apiUrl}/books` &&
+        request.params.get('department') === 'cong nghe thong tin',
     );
     expect(catalogRequest.request.method).toBe('GET');
     expect(catalogRequest.request.params.get('availability')).toBe('AVAILABLE');

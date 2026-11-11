@@ -35,8 +35,11 @@ class TokenServiceTest {
 
         tokenService.generateAndStoreRefreshToken("User@Example.com");
 
-        verify(values).set(startsWith("jwt:refresh:"), eq("3|User@Example.com"),
-                eq(Duration.ofMillis(2_592_000_000L)));
+        verify(values)
+                .set(
+                        startsWith("jwt:refresh:"),
+                        eq("3|User@Example.com"),
+                        eq(Duration.ofMillis(2_592_000_000L)));
     }
 
     @Test

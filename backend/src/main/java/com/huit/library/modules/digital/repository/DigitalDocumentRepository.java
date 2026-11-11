@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface DigitalDocumentRepository extends JpaRepository<DigitalDocumentEntity, Long> {
     List<DigitalDocumentEntity> findAllByOrderByCreatedAtDesc();
+
     List<DigitalDocumentEntity> findByBookIdOrderByCreatedAtDesc(Long bookId);
 }

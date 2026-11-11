@@ -10,5 +10,4 @@ public record RagChatResponseDTO(
         List<String> suggestions,
         boolean grounded,
         boolean fallbackUsed,
-        String model) {
-}
+        String model) {}

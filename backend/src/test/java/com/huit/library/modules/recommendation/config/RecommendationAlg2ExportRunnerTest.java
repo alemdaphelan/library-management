@@ -25,20 +25,15 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class RecommendationAlg2ExportRunnerTest {
 
-    @Mock
-    private RecommendationExperimentDatasetService datasetService;
+    @Mock private RecommendationExperimentDatasetService datasetService;
 
-    @Mock
-    private RecommendationExperimentExporter experimentExporter;
+    @Mock private RecommendationExperimentExporter experimentExporter;
 
-    @Mock
-    private RecommendationAlg2EvaluationService evaluationService;
+    @Mock private RecommendationAlg2EvaluationService evaluationService;
 
-    @Mock
-    private RecommendationAlg2Exporter alg2Exporter;
+    @Mock private RecommendationAlg2Exporter alg2Exporter;
 
-    @Mock
-    private ApplicationArguments arguments;
+    @Mock private ApplicationArguments arguments;
 
     @Test
     void exportsAlg1AndEvaluatesAlg2FromTheSameDatasetSnapshot() throws Exception {
@@ -47,11 +42,9 @@ class RecommendationAlg2ExportRunnerTest {
         Path alg1Directory = Path.of("target/test-alg1");
         Path alg2Directory = Path.of("target/test-alg2");
 
-        RecommendationAlg2ExportRunner runner = new RecommendationAlg2ExportRunner(
-                datasetService,
-                experimentExporter,
-                evaluationService,
-                alg2Exporter);
+        RecommendationAlg2ExportRunner runner =
+                new RecommendationAlg2ExportRunner(
+                        datasetService, experimentExporter, evaluationService, alg2Exporter);
         ReflectionTestUtils.setField(runner, "alg1OutputDirectory", alg1Directory.toString());
         ReflectionTestUtils.setField(runner, "outputDirectory", alg2Directory.toString());
         ReflectionTestUtils.setField(runner, "topK", 10);
@@ -63,7 +56,8 @@ class RecommendationAlg2ExportRunnerTest {
 
         runner.run(arguments);
 
-        InOrder order = inOrder(datasetService, experimentExporter, evaluationService, alg2Exporter);
+        InOrder order =
+                inOrder(datasetService, experimentExporter, evaluationService, alg2Exporter);
         order.verify(datasetService).buildDataset();
         order.verify(experimentExporter).export(eq(dataset), eq(alg1Directory));
         order.verify(evaluationService).evaluate(eq(dataset), eq(10));
@@ -72,10 +66,10 @@ class RecommendationAlg2ExportRunnerTest {
     }
 
     private RecommendationExperimentDataset dataset() {
-        RecommendationExperimentDataset.Summary summary = new RecommendationExperimentDataset.Summary(
-                2, 4, 4, 4, 2.0, 1.0,
-                0.0, 25.0, 0.0, 0.0, 0.0, 0.0,
-                0.5, 2, 1, 1, 1, 1, 0, 1);
+        RecommendationExperimentDataset.Summary summary =
+                new RecommendationExperimentDataset.Summary(
+                        2, 4, 4, 4, 2.0, 1.0, 0.0, 25.0, 0.0, 0.0, 0.0, 0.0, 0.5, 2, 1, 1, 1, 1, 0,
+                        1);
         return new RecommendationExperimentDataset(
                 "alg-1-test",
                 Instant.parse("2026-11-04T00:00:00Z"),

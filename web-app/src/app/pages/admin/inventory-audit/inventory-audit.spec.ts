@@ -48,8 +48,10 @@ describe('InventoryAudit', () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [InventoryAudit],
-      providers: [{ provide: InventoryAuditService, useValue: service },
-        {provide: LocationService, useValue: {getFloors: () => of([])}}],
+      providers: [
+        { provide: InventoryAuditService, useValue: service },
+        { provide: LocationService, useValue: { getFloors: () => of([]) } },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(InventoryAudit);
@@ -93,15 +95,18 @@ describe('InventoryAudit', () => {
     type ScanCallback = Parameters<BrowserMultiFormatReader['decodeFromConstraints']>[2];
     let decode!: ScanCallback;
     const controls = { stop: vi.fn() };
-    const decoder = vi.spyOn(BrowserMultiFormatReader.prototype, 'decodeFromConstraints').mockImplementation(async (_, __, callback) => {
-      decode = callback;
-      return controls;
-    });
+    const decoder = vi
+      .spyOn(BrowserMultiFormatReader.prototype, 'decodeFromConstraints')
+      .mockImplementation(async (_, __, callback) => {
+        decode = callback;
+        return controls;
+      });
     try {
       component.shelfId = 3;
       component.scannedLocation = 'Tầng 1 / Dãy A / Ngăn 01';
       await component.startCamera();
-      const read = (value: string) => decode({ getText: () => value } as Parameters<ScanCallback>[0], undefined, controls);
+      const read = (value: string) =>
+        decode({ getText: () => value } as Parameters<ScanCallback>[0], undefined, controls);
       read('BC-002');
       read('BC-002');
       read('BC-003');
@@ -120,7 +125,9 @@ describe('InventoryAudit', () => {
   });
 
   it('opens the disposal workspace lazily with the selected audit as its source', () => {
-    expect(component.disposalsLoaded).toBe(false); component.showDisposals(true);
-    expect(component.view).toBe('disposals'); expect(component.disposalAuditId).toBe(9);
+    expect(component.disposalsLoaded).toBe(false);
+    component.showDisposals(true);
+    expect(component.view).toBe('disposals');
+    expect(component.disposalAuditId).toBe(9);
   });
 });

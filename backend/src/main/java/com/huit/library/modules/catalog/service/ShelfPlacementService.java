@@ -12,8 +12,14 @@ import java.util.Map;
 
 @Service
 public class ShelfPlacementService {
-    public record Placement(Long shelfId, Long bookshelfId, Long floorId, String shelfName, String bookshelfName,
-                            String floorName, String subjectName) {}
+    public record Placement(
+            Long shelfId,
+            Long bookshelfId,
+            Long floorId,
+            String shelfName,
+            String bookshelfName,
+            String floorName,
+            String subjectName) {}
 
     private final ShelfSubjectRuleRepository rules;
 
@@ -28,8 +34,16 @@ public class ShelfPlacementService {
             var shelf = rule.getShelf();
             var bookshelf = shelf.getBookshelf();
             var floor = bookshelf.getFloor();
-            result.putIfAbsent(shelf.getShelfId(), new Placement(shelf.getShelfId(), bookshelf.getBookshelfId(),
-                    floor.getFloorId(), shelf.getName(), bookshelf.getName(), floor.getName(), rule.getSubject().getName()));
+            result.putIfAbsent(
+                    shelf.getShelfId(),
+                    new Placement(
+                            shelf.getShelfId(),
+                            bookshelf.getBookshelfId(),
+                            floor.getFloorId(),
+                            shelf.getName(),
+                            bookshelf.getName(),
+                            floor.getName(),
+                            rule.getSubject().getName()));
         }
         return List.copyOf(result.values());
     }
@@ -40,8 +54,10 @@ public class ShelfPlacementService {
             return;
         }
         if (!rules.hasActiveRules(shelfId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Admin cần cấu hình chủ đề cho ngăn trước khi xếp sách");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Admin cần cấu hình chủ đề cho ngăn trước khi xếp sách");
         }
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "Đầu sách không thuộc chủ đề được phép xếp tại ngăn này");
+        throw new ResponseStatusException(
+                HttpStatus.CONFLICT, "Đầu sách không thuộc chủ đề được phép xếp tại ngăn này");
     }
 }

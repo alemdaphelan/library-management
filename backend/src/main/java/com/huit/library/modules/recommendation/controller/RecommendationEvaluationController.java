@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/admin/recommendations")
-@Tag(name = "Recommendation Evaluation", description = "Offline evaluation for the recommendation module")
+@Tag(
+        name = "Recommendation Evaluation",
+        description = "Offline evaluation for the recommendation module")
 public class RecommendationEvaluationController {
     private final RecommendationEvaluationService evaluationService;
 

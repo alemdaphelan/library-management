@@ -37,8 +37,7 @@ public class BorrowingValuePolicyService {
             boolean priceKnown,
             boolean depositEligible,
             boolean eligible,
-            String message) {
-    }
+            String message) {}
 
     public BorrowingValuePolicyService(
             LoanDetailRepository loanDetailRepository,
@@ -54,7 +53,8 @@ public class BorrowingValuePolicyService {
     }
 
     public void ensureCanAddBooks(UUID userId, Collection<Long> requestedBookIds) {
-        var uniqueBookIds = new LinkedHashSet<>(requestedBookIds == null ? List.of() : requestedBookIds);
+        var uniqueBookIds =
+                new LinkedHashSet<>(requestedBookIds == null ? List.of() : requestedBookIds);
         if (uniqueBookIds.isEmpty()) {
             return;
         }
@@ -76,13 +76,15 @@ public class BorrowingValuePolicyService {
 
     private BorrowingValueSnapshot calculateSnapshot(
             UUID userId, Collection<Long> requestedBookIds, WalletEntity wallet) {
-        BigDecimal deposit = wallet == null ? BigDecimal.ZERO : zeroIfNull(wallet.getDepositBalance());
+        BigDecimal deposit =
+                wallet == null ? BigDecimal.ZERO : zeroIfNull(wallet.getDepositBalance());
         BigDecimal minimum = zeroIfNull(policyService.minimumSecurityDeposit());
         BigDecimal margin = zeroIfNull(policyService.borrowingValueMargin());
         BigDecimal maximumValue = deposit.add(margin);
 
         ValueTotal current = totalValue(loanDetailRepository.findOpenBookIdsByUserId(userId));
-        var requestedIds = new LinkedHashSet<>(requestedBookIds == null ? List.of() : requestedBookIds);
+        var requestedIds =
+                new LinkedHashSet<>(requestedBookIds == null ? List.of() : requestedBookIds);
         ValueTotal requested = totalValue(requestedIds);
         BigDecimal projectedValue = current.amount().add(requested.amount());
         BigDecimal remaining = maximumValue.subtract(current.amount()).max(BigDecimal.ZERO);
@@ -95,21 +97,37 @@ public class BorrowingValuePolicyService {
         if (!priceKnown) {
             message = current.message() != null ? current.message() : requested.message();
         } else if (!depositEligible) {
-            message = "Tiền thế chân hiện tại là " + formatMoney(deposit)
-                    + ", thấp hơn mức tối thiểu " + formatMoney(minimum)
-                    + ". Vui lòng bổ sung tiền thế chân trước khi mượn sách.";
+            message =
+                    "Tiền thế chân hiện tại là "
+                            + formatMoney(deposit)
+                            + ", thấp hơn mức tối thiểu "
+                            + formatMoney(minimum)
+                            + ". Vui lòng bổ sung tiền thế chân trước khi mượn sách.";
         } else if (!withinLimit) {
-            message = "Tổng giá trị tài liệu đang mượn và đăng ký dự kiến là " + formatMoney(projectedValue)
-                    + ", vượt giới hạn " + formatMoney(maximumValue)
-                    + " (tiền thế chân " + formatMoney(deposit)
-                    + " + biên cho phép " + formatMoney(margin) + ").";
+            message =
+                    "Tổng giá trị tài liệu đang mượn và đăng ký dự kiến là "
+                            + formatMoney(projectedValue)
+                            + ", vượt giới hạn "
+                            + formatMoney(maximumValue)
+                            + " (tiền thế chân "
+                            + formatMoney(deposit)
+                            + " + biên cho phép "
+                            + formatMoney(margin)
+                            + ").";
         } else {
             message = "Hạn mức giá trị còn lại là " + formatMoney(remaining) + ".";
         }
 
         return new BorrowingValueSnapshot(
-                deposit, current.amount(), requested.amount(), maximumValue, remaining,
-                priceKnown, depositEligible, eligible, message);
+                deposit,
+                current.amount(),
+                requested.amount(),
+                maximumValue,
+                remaining,
+                priceKnown,
+                depositEligible,
+                eligible,
+                message);
     }
 
     private ValueTotal totalValue(Collection<Long> bookIds) {
@@ -119,9 +137,14 @@ public class BorrowingValuePolicyService {
         var uniqueIds = new LinkedHashSet<>(bookIds);
         List<BookEntity> books = bookRepository.findAllById(uniqueIds);
         if (books.size() != uniqueIds.size()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ tài liệu cần kiểm tra giá trị");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ tài liệu cần kiểm tra giá trị");
         }
-        var byId = books.stream().collect(java.util.stream.Collectors.toMap(BookEntity::getBookId, book -> book));
+        var byId =
+                books.stream()
+                        .collect(
+                                java.util.stream.Collectors.toMap(
+                                        BookEntity::getBookId, book -> book));
         BigDecimal amount = BigDecimal.ZERO;
         for (Long bookId : bookIds) {
             BookValuationService.BookValue value = bookValuationService.resolve(byId.get(bookId));
@@ -134,10 +157,13 @@ public class BorrowingValuePolicyService {
     }
 
     private WalletEntity requireWalletForUpdate(UUID userId) {
-        return walletRepository.findByUserIdForUpdate(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "Tài khoản chưa có ví tiền thế chân. Vui lòng liên hệ thủ thư để kích hoạt quyền mượn."));
+        return walletRepository
+                .findByUserIdForUpdate(userId)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Tài khoản chưa có ví tiền thế chân. Vui lòng liên hệ thủ thư để kích hoạt quyền mượn."));
     }
 
     private void requireEligible(BorrowingValueSnapshot snapshot) {
@@ -146,8 +172,7 @@ public class BorrowingValuePolicyService {
         }
     }
 
-    private record ValueTotal(BigDecimal amount, boolean known, String message) {
-    }
+    private record ValueTotal(BigDecimal amount, boolean known, String message) {}
 
     private BigDecimal zeroIfNull(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
@@ -155,6 +180,7 @@ public class BorrowingValuePolicyService {
 
     private String formatMoney(BigDecimal value) {
         return NumberFormat.getIntegerInstance(Locale.forLanguageTag("vi-VN"))
-                .format(value == null ? BigDecimal.ZERO : value) + " đồng";
+                        .format(value == null ? BigDecimal.ZERO : value)
+                + " đồng";
     }
 }

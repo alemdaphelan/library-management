@@ -11,10 +11,13 @@ import java.util.UUID;
 @Repository
 public interface ReviewRepository extends JpaRepository<ReviewEntity, Long> {
     List<ReviewEntity> findByBookIdOrderByUpdatedAtDesc(Long bookId);
+
     Optional<ReviewEntity> findByBookIdAndUserId(Long bookId, UUID userId);
+
     long countByBookId(Long bookId);
 
     @org.springframework.data.jpa.repository.Query(
             "select coalesce(avg(review.rating), 0) from ReviewEntity review where review.bookId = :bookId")
-    Double averageRatingByBookId(@org.springframework.data.repository.query.Param("bookId") Long bookId);
+    Double averageRatingByBookId(
+            @org.springframework.data.repository.query.Param("bookId") Long bookId);
 }

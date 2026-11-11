@@ -23,7 +23,8 @@ describe('Suggest', () => {
 
   it('submits the complete acquisition proposal payload', () => {
     vi.spyOn(component.authService, 'isLoggedIn').mockReturnValue(true);
-    const submit = vi.spyOn((component as any).proposalService, 'submitProposal')
+    const submit = vi
+      .spyOn((component as any).proposalService, 'submitProposal')
       .mockReturnValue(of({ proposalId: 1, title: 'Clean Architecture' }));
     component.suggestion = {
       title: 'Clean Architecture',
@@ -41,11 +42,13 @@ describe('Suggest', () => {
 
     component.onSubmit();
 
-    expect(submit).toHaveBeenCalledWith(expect.objectContaining({
-      isbn: '9780132350884',
-      publicationYear: 2024,
-      estimatedPrice: 150000,
-      urgencyLevel: 'HIGH',
-    }));
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isbn: '9780132350884',
+        publicationYear: 2024,
+        estimatedPrice: 150000,
+        urgencyLevel: 'HIGH',
+      }),
+    );
   });
 });

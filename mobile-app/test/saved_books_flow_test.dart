@@ -19,6 +19,7 @@ http.Response _jsonResponse(Object body, [int statusCode = 200]) {
     headers: const {'content-type': 'application/json; charset=utf-8'},
   );
 }
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{
@@ -42,7 +43,8 @@ void main() {
 
       ApiService.testClient = MockClient((request) async {
         final path = request.url.path;
-        if (request.method == 'GET' && path.endsWith('/users/wishlist/16/status')) {
+        if (request.method == 'GET' &&
+            path.endsWith('/users/wishlist/16/status')) {
           return _jsonResponse({'saved': false});
         }
         if (request.method == 'POST' && path.endsWith('/users/wishlist')) {
@@ -111,10 +113,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.bookmark), findsOneWidget);
-      expect(
-        find.text('Đã lưu vào danh sách sách đã lưu.'),
-        findsOneWidget,
-      );
+      expect(find.text('Đã lưu vào danh sách sách đã lưu.'), findsOneWidget);
 
       // Now tap again to unsave
       await tester.tap(saveButton);
@@ -131,14 +130,12 @@ void main() {
     (WidgetTester tester) async {
       ApiService.testClient = MockClient((request) async {
         final path = request.url.path;
-        if (request.method == 'GET' && path.endsWith('/users/wishlist/25/status')) {
+        if (request.method == 'GET' &&
+            path.endsWith('/users/wishlist/25/status')) {
           return _jsonResponse({'saved': false});
         }
         if (request.method == 'POST' && path.endsWith('/users/wishlist')) {
-          return _jsonResponse(
-            {'message': 'Không tìm thấy đầu sách #25'},
-            404,
-          );
+          return _jsonResponse({'message': 'Không tìm thấy đầu sách #25'}, 404);
         }
         return _jsonResponse({});
       });
@@ -195,13 +192,13 @@ void main() {
         if (request.method == 'GET' && path.endsWith('/users/wishlist')) {
           return _jsonResponse(serverWishlist);
         }
-        if (request.method == 'DELETE' && path.endsWith('/users/wishlist/101')) {
+        if (request.method == 'DELETE' &&
+            path.endsWith('/users/wishlist/101')) {
           if (failNextDelete) {
             failNextDelete = false;
-            return _jsonResponse(
-              {'message': 'Không thể kết nối máy chủ thư viện.'},
-              503,
-            );
+            return _jsonResponse({
+              'message': 'Không thể kết nối máy chủ thư viện.',
+            }, 503);
           }
           serverWishlist.removeWhere((item) => item['bookId'] == 101);
           return http.Response('', 204);
@@ -209,14 +206,15 @@ void main() {
         return _jsonResponse({});
       });
 
-      await tester.pumpWidget(
-        const MaterialApp(home: SavedBooksScreen()),
-      );
+      await tester.pumpWidget(const MaterialApp(home: SavedBooksScreen()));
       await tester.pumpAndSettle();
 
       expect(find.text('Trí tuệ nhân tạo hiện đại'), findsAtLeastNWidgets(1));
       expect(find.text('PGS.TS Nguyễn Văn C'), findsAtLeastNWidgets(1));
-      expect(find.text('Công nghệ thông tin · Trí tuệ nhân tạo'), findsOneWidget);
+      expect(
+        find.text('Công nghệ thông tin · Trí tuệ nhân tạo'),
+        findsOneWidget,
+      );
       expect(find.text('Vị trí: Tầng 3 / Dãy B / Kệ 02'), findsOneWidget);
       expect(find.text('Còn sách (2/4 bản sẵn sàng)'), findsOneWidget);
       expect(WishlistService.isSavedSync(101), isTrue);
@@ -243,7 +241,8 @@ void main() {
     'Switching accounts or logging out clears WishlistService session cache immediately',
     () async {
       ApiService.testClient = MockClient((request) async {
-        if (request.method == 'GET' && request.url.path.endsWith('/users/wishlist')) {
+        if (request.method == 'GET' &&
+            request.url.path.endsWith('/users/wishlist')) {
           return _jsonResponse([
             {
               'wishlistId': 'w-1',

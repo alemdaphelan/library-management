@@ -9,19 +9,24 @@ describe('DigitalAssets', () => {
   let fixture: ComponentFixture<DigitalAssets>;
   let component: DigitalAssets;
   const asset: DigitalAsset = {
-    id: 7, name: 'Giáo trình.pdf', type: 'PDF', size: 1024,
-    bookId: 2, bookTitle: 'Lập trình Java', accessLevel: 'AUTHENTICATED',
-    createdAt: '2026-10-18T08:00:00'
+    id: 7,
+    name: 'Giáo trình.pdf',
+    type: 'PDF',
+    size: 1024,
+    bookId: 2,
+    bookTitle: 'Lập trình Java',
+    accessLevel: 'AUTHENTICATED',
+    createdAt: '2026-10-18T08:00:00',
   };
   const service = {
     getAssets: vi.fn(() => of([asset])),
     uploadAsset: vi.fn(() => of({ type: HttpEventType.Response, body: asset })),
     updateAsset: vi.fn(() => of(asset)),
     deleteAsset: vi.fn(() => of(void 0)),
-    downloadAsset: vi.fn()
+    downloadAsset: vi.fn(),
   };
   const bookService = {
-    getBookByIsbn: vi.fn(() => of({ bookId: 2, title: 'Lập trình Java', isbn: '9786040000012' }))
+    getBookByIsbn: vi.fn(() => of({ bookId: 2, title: 'Lập trình Java', isbn: '9786040000012' })),
   };
 
   beforeEach(async () => {
@@ -30,8 +35,8 @@ describe('DigitalAssets', () => {
       imports: [DigitalAssets],
       providers: [
         { provide: DigitalAssetsService, useValue: service },
-        { provide: BookService, useValue: bookService }
-      ]
+        { provide: BookService, useValue: bookService },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(DigitalAssets);
     component = fixture.componentInstance;
@@ -53,7 +58,9 @@ describe('DigitalAssets', () => {
     component.saveEdit();
 
     expect(service.updateAsset).toHaveBeenCalledWith(7, {
-      displayName: 'Giáo trình mới', bookId: 2, accessLevel: 'AUTHENTICATED'
+      displayName: 'Giáo trình mới',
+      bookId: 2,
+      accessLevel: 'AUTHENTICATED',
     });
   });
 

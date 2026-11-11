@@ -39,8 +39,11 @@ public class BookController {
         this.hybridRecommendationService = hybridRecommendationService;
         this.bookInteractionService = bookInteractionService;
     }
+
     @GetMapping
-    @Operation(summary = "Search Books", description = "Search by text with optional category and HUIT major filters.")
+    @Operation(
+            summary = "Search Books",
+            description = "Search by text with optional category and HUIT major filters.")
     public ResponseEntity<?> searchBooks(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) Long categoryId,
@@ -51,34 +54,42 @@ public class BookController {
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         org.springframework.data.domain.Page<BookResponseDTO> bookPage =
-                bookService.searchBooks(query, categoryId, department, availability, facultyId, pageable);
-        
+                bookService.searchBooks(
+                        query, categoryId, department, availability, facultyId, pageable);
+
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("content", bookPage.getContent());
         response.put("totalPages", bookPage.getTotalPages());
         response.put("totalElements", bookPage.getTotalElements());
         response.put("size", bookPage.getSize());
         response.put("number", bookPage.getNumber());
-        
+
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/departments")
-    @Operation(summary = "List Search Majors", description = "Lists configured HUIT majors available for catalog filtering.")
+    @Operation(
+            summary = "List Search Majors",
+            description = "Lists configured HUIT majors available for catalog filtering.")
     public ResponseEntity<?> getSearchDepartments() {
         return ResponseEntity.ok(bookService.getSearchDepartments());
     }
 
     @GetMapping("/isbn/{isbn}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Find book by ISBN", description = "Exact ISBN lookup used by the goods receipt form.")
+    @Operation(
+            summary = "Find book by ISBN",
+            description = "Exact ISBN lookup used by the goods receipt form.")
     public ResponseEntity<?> getBookByIsbn(@PathVariable String isbn) {
         return ResponseEntity.ok(bookService.getBookByIsbn(isbn));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get Book Details", description = "Detailed view including ISBN and DDC call number.")
-    public ResponseEntity<?> getBookById(@Parameter(description = "Book ID") @PathVariable Long id) {
+    @Operation(
+            summary = "Get Book Details",
+            description = "Detailed view including ISBN and DDC call number.")
+    public ResponseEntity<?> getBookById(
+            @Parameter(description = "Book ID") @PathVariable Long id) {
         return ResponseEntity.ok(bookService.getBookById(id));
     }
 
@@ -105,7 +116,10 @@ public class BookController {
     }
 
     @GetMapping({"/recommendations", "/recommendations/popular"})
-    @Operation(summary = "Get Popularity Baseline", description = "Ranks recent loans with time decay and falls back to the catalog when history is sparse.")
+    @Operation(
+            summary = "Get Popularity Baseline",
+            description =
+                    "Ranks recent loans with time decay and falls back to the catalog when history is sparse.")
     public ResponseEntity<?> getRecommendations(
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(defaultValue = "365") int windowDays) {
@@ -114,16 +128,22 @@ public class BookController {
 
     @GetMapping("/recommendations/personalized")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Get Personalized Recommendations", description = "Hybrid ranking using borrowing history, department affinity, and popularity with cold-start support.")
+    @Operation(
+            summary = "Get Personalized Recommendations",
+            description =
+                    "Hybrid ranking using borrowing history, department affinity, and popularity with cold-start support.")
     public ResponseEntity<?> getPersonalizedRecommendations(
             @AuthenticationPrincipal CustomUserDetails principal,
             @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(hybridRecommendationService.getPersonalizedRecommendations(
-                principal.getUser().getUserId(), limit));
+        return ResponseEntity.ok(
+                hybridRecommendationService.getPersonalizedRecommendations(
+                        principal.getUser().getUserId(), limit));
     }
 
     @GetMapping("/{id}/similar")
-    @Operation(summary = "Get Similar Books", description = "Returns books ranked by TF-IDF and cosine similarity.")
+    @Operation(
+            summary = "Get Similar Books",
+            description = "Returns books ranked by TF-IDF and cosine similarity.")
     public ResponseEntity<?> getSimilarBooks(
             @Parameter(description = "Source book ID") @PathVariable Long id,
             @RequestParam(defaultValue = "10") int limit) {
@@ -132,30 +152,33 @@ public class BookController {
 
     @PostMapping("/{id}/reviews")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Add Review", description = "Creates one review after the reader has actually borrowed the book.")
+    @Operation(
+            summary = "Add Review",
+            description = "Creates one review after the reader has actually borrowed the book.")
     public ResponseEntity<?> addReview(
             @Parameter(description = "Book ID") @PathVariable Long id,
             @Valid @RequestBody BookReviewRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(bookInteractionService.saveReview(
-                id, principal.getUser().getUserId(), request));
+        return ResponseEntity.ok(
+                bookInteractionService.saveReview(id, principal.getUser().getUserId(), request));
     }
 
     @GetMapping("/{id}/reviews")
-    @Operation(summary = "List book reviews", description = "Returns real rating statistics and reader comments.")
+    @Operation(
+            summary = "List book reviews",
+            description = "Returns real rating statistics and reader comments.")
     public ResponseEntity<?> getReviews(
-            @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(bookInteractionService.getReviews(
-                id, principal == null ? null : principal.getUser().getUserId()));
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(
+                bookInteractionService.getReviews(
+                        id, principal == null ? null : principal.getUser().getUserId()));
     }
 
     @DeleteMapping("/{id}/reviews/me")
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Delete my book review")
     public ResponseEntity<Void> deleteMyReview(
-            @PathVariable Long id,
-            @AuthenticationPrincipal CustomUserDetails principal) {
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails principal) {
         bookInteractionService.deleteReview(id, principal.getUser().getUserId());
         return ResponseEntity.noContent().build();
     }

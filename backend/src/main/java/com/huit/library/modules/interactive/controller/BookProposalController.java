@@ -17,7 +17,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/proposals")
-@Tag(name = "Book Proposals", description = "Endpoints for recommending/proposing new books to library")
+@Tag(
+        name = "Book Proposals",
+        description = "Endpoints for recommending/proposing new books to library")
 public class BookProposalController {
 
     private final BookProposalService proposalService;
@@ -28,12 +30,14 @@ public class BookProposalController {
 
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Submit book proposal", description = "Student/reader submits a recommendation to buy new book")
+    @Operation(
+            summary = "Submit book proposal",
+            description = "Student/reader submits a recommendation to buy new book")
     public ResponseEntity<ProposalResponseDTO> submitProposal(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody CreateProposalRequestDTO req) {
-        return ResponseEntity.ok(proposalService.createProposal(
-                userDetails.getUser().getUserId(), req));
+        return ResponseEntity.ok(
+                proposalService.createProposal(userDetails.getUser().getUserId(), req));
     }
 
     @GetMapping("/majors")
@@ -44,24 +48,32 @@ public class BookProposalController {
 
     @GetMapping("/my")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Get my proposals", description = "Reader views their submitted proposals and approval status")
+    @Operation(
+            summary = "Get my proposals",
+            description = "Reader views their submitted proposals and approval status")
     public ResponseEntity<List<ProposalResponseDTO>> getMyProposals(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        List<ProposalResponseDTO> list = proposalService.getMyProposals(userDetails.getUser().getUserId());
+        List<ProposalResponseDTO> list =
+                proposalService.getMyProposals(userDetails.getUser().getUserId());
         return ResponseEntity.ok(list);
     }
 
     @GetMapping("/admin")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Get all proposals for admin", description = "Librarian/admin views all proposals submitted by readers")
+    @Operation(
+            summary = "Get all proposals for admin",
+            description = "Librarian/admin views all proposals submitted by readers")
     public ResponseEntity<?> getAllProposalsForAdmin() {
         return ResponseEntity.ok(proposalService.getAllProposals());
     }
 
     @PutMapping("/admin/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Update proposal status", description = "Librarian/admin approves or rejects a proposal")
-    public ResponseEntity<?> updateProposalStatus(@PathVariable Long id, @Valid @RequestBody UpdateProposalStatusDTO req) {
+    @Operation(
+            summary = "Update proposal status",
+            description = "Librarian/admin approves or rejects a proposal")
+    public ResponseEntity<?> updateProposalStatus(
+            @PathVariable Long id, @Valid @RequestBody UpdateProposalStatusDTO req) {
         try {
             ProposalResponseDTO result = proposalService.updateStatus(id, req);
             return ResponseEntity.ok(result);

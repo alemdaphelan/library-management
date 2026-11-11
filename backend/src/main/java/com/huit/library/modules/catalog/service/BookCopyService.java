@@ -19,16 +19,25 @@ import java.util.Set;
 @Service
 public class BookCopyService {
 
-    private static final Set<String> ALLOWED_STATUSES = Set.of(
-            "AVAILABLE", "BORROWED", "BORROWING", "OVERDUE", "RESERVED", "LOST", "DAMAGED", "MAINTENANCE"
-    );
+    private static final Set<String> ALLOWED_STATUSES =
+            Set.of(
+                    "AVAILABLE",
+                    "BORROWED",
+                    "BORROWING",
+                    "OVERDUE",
+                    "RESERVED",
+                    "LOST",
+                    "DAMAGED",
+                    "MAINTENANCE");
 
     private final BookCopyRepository bookCopyRepository;
     private final ShelfRepository shelfRepository;
     private final ShelfPlacementService placement;
 
-    public BookCopyService(BookCopyRepository bookCopyRepository, ShelfRepository shelfRepository,
-                           ShelfPlacementService placement) {
+    public BookCopyService(
+            BookCopyRepository bookCopyRepository,
+            ShelfRepository shelfRepository,
+            ShelfPlacementService placement) {
         this.bookCopyRepository = bookCopyRepository;
         this.shelfRepository = shelfRepository;
         this.placement = placement;
@@ -36,9 +45,7 @@ public class BookCopyService {
 
     @Transactional(readOnly = true)
     public List<BookCopyResponseDTO> getCopiesByBookId(Long bookId) {
-        return bookCopyRepository.findByBookId(bookId).stream()
-                .map(this::toResponse)
-                .toList();
+        return bookCopyRepository.findByBookId(bookId).stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -48,13 +55,18 @@ public class BookCopyService {
 
     @Transactional
     public BookCopyResponseDTO updateLocation(String barcode, Long shelfId) {
-        BookCopyEntity copy = bookCopyRepository.findAllByBarcodeInForUpdate(List.of(barcode)).stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("Book copy not found"));
-        ShelfEntity shelf = shelfRepository.findByIdForUpdate(shelfId)
-                .orElseThrow(() -> new RuntimeException("Shelf not found"));
+        BookCopyEntity copy =
+                bookCopyRepository.findAllByBarcodeInForUpdate(List.of(barcode)).stream()
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("Book copy not found"));
+        ShelfEntity shelf =
+                shelfRepository
+                        .findByIdForUpdate(shelfId)
+                        .orElseThrow(() -> new RuntimeException("Shelf not found"));
         placement.requireAllowed(copy.getBookId(), shelfId);
         if ((copy.getShelf() == null || !shelfId.equals(copy.getShelf().getShelfId()))
-                && shelf.getCapacity() != null && bookCopyRepository.countByShelf_ShelfId(shelfId) >= shelf.getCapacity()) {
+                && shelf.getCapacity() != null
+                && bookCopyRepository.countByShelf_ShelfId(shelfId) >= shelf.getCapacity()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ngăn đã đủ sức chứa");
         }
         copy.setShelf(shelf);
@@ -63,7 +75,8 @@ public class BookCopyService {
 
     @Transactional
     public BookCopyResponseDTO updateStatus(String barcode, String newStatus) {
-        String normalizedStatus = newStatus == null ? "" : newStatus.trim().toUpperCase(Locale.ROOT);
+        String normalizedStatus =
+                newStatus == null ? "" : newStatus.trim().toUpperCase(Locale.ROOT);
         if (!ALLOWED_STATUSES.contains(normalizedStatus)) {
             throw new IllegalArgumentException("Invalid book copy status");
         }
@@ -73,7 +86,8 @@ public class BookCopyService {
     }
 
     private BookCopyEntity findCopy(String barcode) {
-        return bookCopyRepository.findById(barcode)
+        return bookCopyRepository
+                .findById(barcode)
                 .orElseThrow(() -> new RuntimeException("Book copy not found"));
     }
 
@@ -81,12 +95,13 @@ public class BookCopyService {
         ShelfEntity shelf = copy.getShelf();
         BookshelfEntity bookshelf = shelf == null ? null : shelf.getBookshelf();
         FloorEntity floor = bookshelf == null ? null : bookshelf.getFloor();
-        String location = java.util.stream.Stream.of(
-                        floor == null ? null : floor.getName(),
-                        bookshelf == null ? null : bookshelf.getName(),
-                        shelf == null ? null : shelf.getName())
-                .filter(value -> value != null && !value.isBlank())
-                .collect(java.util.stream.Collectors.joining(" / "));
+        String location =
+                java.util.stream.Stream.of(
+                                floor == null ? null : floor.getName(),
+                                bookshelf == null ? null : bookshelf.getName(),
+                                shelf == null ? null : shelf.getName())
+                        .filter(value -> value != null && !value.isBlank())
+                        .collect(java.util.stream.Collectors.joining(" / "));
 
         return BookCopyResponseDTO.builder()
                 .barcode(copy.getBarcode())

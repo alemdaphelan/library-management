@@ -9,7 +9,7 @@ import { AuthService } from '../../services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './auth.html',
-  styleUrls: ['./auth.css']
+  styleUrls: ['./auth.css'],
 })
 export class Auth implements OnInit, OnDestroy {
   mode: 'login' | 'forgot' = 'login';
@@ -29,7 +29,11 @@ export class Auth implements OnInit, OnDestroy {
     this.showPassword = !this.showPassword;
   }
 
-  constructor(private router: Router, private authService: AuthService, private cdr: ChangeDetectorRef) { }
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit() {
     if (window.location.pathname.includes('forgot-password')) {
@@ -81,7 +85,11 @@ export class Auth implements OnInit, OnDestroy {
         return err.error.error;
       }
     }
-    if (err.message && typeof err.message === 'string' && !err.message.includes('Http failure response')) {
+    if (
+      err.message &&
+      typeof err.message === 'string' &&
+      !err.message.includes('Http failure response')
+    ) {
       return err.message;
     }
     return fallback;
@@ -94,22 +102,31 @@ export class Auth implements OnInit, OnDestroy {
     this.authService.login(this.loginData.username, this.loginData.password).subscribe({
       next: (response) => {
         this.isSubmitting = false;
-        if (response.role === 'ADMIN' || response.role === 'LIBRARIAN' || response.role === 'ACCOUNTANT' || response.role === 'TREASURER') {
+        if (
+          response.role === 'ADMIN' ||
+          response.role === 'LIBRARIAN' ||
+          response.role === 'ACCOUNTANT' ||
+          response.role === 'TREASURER'
+        ) {
           this.router.navigate(['/admin']);
         } else {
-          this.router.navigate(['/']); 
+          this.router.navigate(['/']);
         }
       },
       error: (err) => {
         console.error('Login error:', err);
         this.isSubmitting = false;
         if (err.status === 0) {
-          this.errorMessage = 'Không thể kết nối đến hệ thống thư viện. Vui lòng thử lại hoặc liên hệ người quản trị.';
+          this.errorMessage =
+            'Không thể kết nối đến hệ thống thư viện. Vui lòng thử lại hoặc liên hệ người quản trị.';
         } else {
-          this.errorMessage = this.extractErrorMessage(err, 'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!');
+          this.errorMessage = this.extractErrorMessage(
+            err,
+            'Sai tên đăng nhập hoặc mật khẩu. Vui lòng thử lại!',
+          );
         }
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -129,21 +146,24 @@ export class Auth implements OnInit, OnDestroy {
           sessionStorage.setItem('forgotEmail', this.forgotData.email);
           this.startResendCountdown();
           this.cdr.detectChanges();
-          
+
           setTimeout(() => {
             this.successMessage = '';
             this.cdr.detectChanges();
           }, 3000);
-        } catch(e) {
+        } catch (e) {
           console.error(e);
         }
       },
       error: (err: any) => {
         console.error('Forgot password error:', err);
         this.isSubmitting = false;
-        this.errorMessage = this.extractErrorMessage(err, 'Đã có lỗi xảy ra khi gửi yêu cầu khôi phục.');
+        this.errorMessage = this.extractErrorMessage(
+          err,
+          'Đã có lỗi xảy ra khi gửi yêu cầu khôi phục.',
+        );
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -162,9 +182,12 @@ export class Auth implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         this.isSubmitting = false;
-        this.errorMessage = this.extractErrorMessage(err, 'Không thể gửi lại mã OTP. Vui lòng thử lại.');
+        this.errorMessage = this.extractErrorMessage(
+          err,
+          'Không thể gửi lại mã OTP. Vui lòng thử lại.',
+        );
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -209,7 +232,7 @@ export class Auth implements OnInit, OnDestroy {
         this.isSubmitting = false;
         this.errorMessage = this.extractErrorMessage(err, 'Mã OTP không hợp lệ hoặc đã hết hạn.');
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -226,21 +249,23 @@ export class Auth implements OnInit, OnDestroy {
       return;
     }
 
-    this.authService.resetPassword(this.forgotData.email, this.forgotData.otp, this.forgotData.newPassword).subscribe({
-      next: (res: any) => {
-        this.isSubmitting = false;
-        this.successMessage = 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.';
-        this.cdr.detectChanges();
-        setTimeout(() => {
-          this.toggleMode('login', new Event('click'));
-        }, 3000);
-      },
-      error: (err: any) => {
-        console.error('Reset password error:', err);
-        this.isSubmitting = false;
-        this.errorMessage = this.extractErrorMessage(err, 'Đặt lại mật khẩu thất bại.');
-        this.cdr.detectChanges();
-      }
-    });
+    this.authService
+      .resetPassword(this.forgotData.email, this.forgotData.otp, this.forgotData.newPassword)
+      .subscribe({
+        next: (res: any) => {
+          this.isSubmitting = false;
+          this.successMessage = 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.';
+          this.cdr.detectChanges();
+          setTimeout(() => {
+            this.toggleMode('login', new Event('click'));
+          }, 3000);
+        },
+        error: (err: any) => {
+          console.error('Reset password error:', err);
+          this.isSubmitting = false;
+          this.errorMessage = this.extractErrorMessage(err, 'Đặt lại mật khẩu thất bại.');
+          this.cdr.detectChanges();
+        },
+      });
   }
 }

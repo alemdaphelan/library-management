@@ -13,12 +13,14 @@ import java.util.UUID;
 
 public interface OrientationClassRepository extends JpaRepository<OrientationClassEntity, Long> {
     List<OrientationClassEntity> findAllByOrderByStartAtAsc();
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from OrientationClassEntity c where c.classId = :id")
     Optional<OrientationClassEntity> findByIdForUpdate(@Param("id") Long id);
 
     boolean existsByFacilitatorIdAndStartAtLessThanAndEndAtGreaterThan(
             UUID facilitatorId, LocalDateTime endAt, LocalDateTime startAt);
+
     boolean existsByFacilitatorIdAndClassIdNotAndStartAtLessThanAndEndAtGreaterThan(
             UUID facilitatorId, Long classId, LocalDateTime endAt, LocalDateTime startAt);
 }

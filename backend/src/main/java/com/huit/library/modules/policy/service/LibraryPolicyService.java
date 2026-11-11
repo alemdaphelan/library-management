@@ -65,17 +65,24 @@ public class LibraryPolicyService {
 
     @Transactional(readOnly = true)
     public List<LibraryPolicyHistoryResponseDTO> getHistory() {
-        List<LibraryPolicyHistoryEntity> history = historyRepository.findAllByOrderByChangedAtDescHistoryIdDesc();
-        List<UUID> actorIds = history.stream()
-                .map(LibraryPolicyHistoryEntity::getChangedBy)
-                .filter(Objects::nonNull)
-                .distinct()
+        List<LibraryPolicyHistoryEntity> history =
+                historyRepository.findAllByOrderByChangedAtDescHistoryIdDesc();
+        List<UUID> actorIds =
+                history.stream()
+                        .map(LibraryPolicyHistoryEntity::getChangedBy)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        Map<UUID, UserEntity> actors =
+                actorIds.isEmpty()
+                        ? Collections.emptyMap()
+                        : userRepository.findAllById(actorIds).stream()
+                                .collect(
+                                        Collectors.toMap(
+                                                UserEntity::getUserId, Function.identity()));
+        return history.stream()
+                .map(item -> toHistoryResponse(item, actors.get(item.getChangedBy())))
                 .toList();
-        Map<UUID, UserEntity> actors = actorIds.isEmpty()
-                ? Collections.emptyMap()
-                : userRepository.findAllById(actorIds).stream()
-                        .collect(Collectors.toMap(UserEntity::getUserId, Function.identity()));
-        return history.stream().map(item -> toHistoryResponse(item, actors.get(item.getChangedBy()))).toList();
     }
 
     @Transactional
@@ -100,19 +107,57 @@ public class LibraryPolicyService {
         return toResponse(saved);
     }
 
-    public int maximumOpenItems() { return current().getMaximumOpenItems(); }
-    public int homeLoanDays() { return current().getHomeLoanDays(); }
-    public int renewalDays() { return current().getRenewalDays(); }
-    public int maximumRenewalCount() { return current().getMaximumRenewalCount(); }
-    public int waitlistHoldHours() { return current().getWaitlistHoldHours(); }
-    public BigDecimal homeLateFinePerDay() { return current().getHomeLateFinePerDay(); }
-    public BigDecimal onsiteLateFinePerDay() { return current().getOnsiteLateFinePerDay(); }
-    public BigDecimal technicalProcessingFee() { return current().getTechnicalProcessingFee(); }
-    public int compensationSettlementDays() { return current().getCompensationSettlementDays(); }
-    public BigDecimal minimumSecurityDeposit() { return current().getMinimumSecurityDeposit(); }
-    public BigDecimal borrowingValueMargin() { return current().getBorrowingValueMargin(); }
-    public int recallReturnDays() { return current().getRecallReturnDays(); }
-    public int overdueDebtProcessingDays() { return current().getOverdueDebtProcessingDays(); }
+    public int maximumOpenItems() {
+        return current().getMaximumOpenItems();
+    }
+
+    public int homeLoanDays() {
+        return current().getHomeLoanDays();
+    }
+
+    public int renewalDays() {
+        return current().getRenewalDays();
+    }
+
+    public int maximumRenewalCount() {
+        return current().getMaximumRenewalCount();
+    }
+
+    public int waitlistHoldHours() {
+        return current().getWaitlistHoldHours();
+    }
+
+    public BigDecimal homeLateFinePerDay() {
+        return current().getHomeLateFinePerDay();
+    }
+
+    public BigDecimal onsiteLateFinePerDay() {
+        return current().getOnsiteLateFinePerDay();
+    }
+
+    public BigDecimal technicalProcessingFee() {
+        return current().getTechnicalProcessingFee();
+    }
+
+    public int compensationSettlementDays() {
+        return current().getCompensationSettlementDays();
+    }
+
+    public BigDecimal minimumSecurityDeposit() {
+        return current().getMinimumSecurityDeposit();
+    }
+
+    public BigDecimal borrowingValueMargin() {
+        return current().getBorrowingValueMargin();
+    }
+
+    public int recallReturnDays() {
+        return current().getRecallReturnDays();
+    }
+
+    public int overdueDebtProcessingDays() {
+        return current().getOverdueDebtProcessingDays();
+    }
 
     private LibraryPolicyEntity current() {
         return repository.findById(POLICY_ID).orElseGet(this::defaults);
@@ -178,8 +223,7 @@ public class LibraryPolicyService {
     }
 
     private LibraryPolicyHistoryResponseDTO toHistoryResponse(
-            LibraryPolicyHistoryEntity history,
-            UserEntity actor) {
+            LibraryPolicyHistoryEntity history, UserEntity actor) {
         return LibraryPolicyHistoryResponseDTO.builder()
                 .historyId(history.getHistoryId())
                 .maximumOpenItems(history.getMaximumOpenItems())
@@ -196,9 +240,10 @@ public class LibraryPolicyService {
                 .recallReturnDays(history.getRecallReturnDays())
                 .overdueDebtProcessingDays(history.getOverdueDebtProcessingDays())
                 .changedBy(history.getChangedBy())
-                .changedByName(actor == null
-                        ? (history.getChangedBy() == null ? "Hệ thống" : "Quản trị viên")
-                        : actor.getFullName())
+                .changedByName(
+                        actor == null
+                                ? (history.getChangedBy() == null ? "Hệ thống" : "Quản trị viên")
+                                : actor.getFullName())
                 .changedByEmail(actor == null ? null : actor.getEmail())
                 .changedAt(history.getChangedAt())
                 .build();

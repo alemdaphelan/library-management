@@ -58,18 +58,24 @@ public class BookRecommendationService {
         double halfLifeDays = Math.max(30.0, windowDays / 4.0);
         int queryLimit = Math.max(100, limit * 10);
 
-        List<BookPopularityProjection> popularity = loanDetailRepository.findPopularityScores(
-                since, asOf, halfLifeDays, PageRequest.of(0, queryLimit));
-        Map<Long, BookEntity> booksById = bookRepository.findAllById(
-                        popularity.stream().map(BookPopularityProjection::getBookId).toList())
-                .stream()
-                .collect(Collectors.toMap(BookEntity::getBookId, Function.identity()));
+        List<BookPopularityProjection> popularity =
+                loanDetailRepository.findPopularityScores(
+                        since, asOf, halfLifeDays, PageRequest.of(0, queryLimit));
+        Map<Long, BookEntity> booksById =
+                bookRepository
+                        .findAllById(
+                                popularity.stream()
+                                        .map(BookPopularityProjection::getBookId)
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(BookEntity::getBookId, Function.identity()));
 
-        double maxWeightedScore = popularity.stream()
-                .mapToDouble(BookPopularityProjection::getWeightedScore)
-                .filter(Double::isFinite)
-                .max()
-                .orElse(0.0);
+        double maxWeightedScore =
+                popularity.stream()
+                        .mapToDouble(BookPopularityProjection::getWeightedScore)
+                        .filter(Double::isFinite)
+                        .max()
+                        .orElse(0.0);
         List<RecommendationItemDTO> items = new ArrayList<>();
         Set<Long> usedBookIds = new java.util.HashSet<>();
         for (BookPopularityProjection score : popularity) {
@@ -77,17 +83,24 @@ public class BookRecommendationService {
             if (book == null || !hasUsableTitle(book) || items.size() >= limit) {
                 continue;
             }
-            double normalizedScore = maxWeightedScore > 0
-                    ? Math.log1p(Math.max(score.getWeightedScore(), 0.0)) / Math.log1p(maxWeightedScore)
-                    : 0.0;
-            items.add(toItem(
-                    book,
-                    normalizedScore,
-                    0.0,
-                    0.0,
-                    normalizedScore,
-                    score.getBorrowCount(),
-                    "Được mượn " + score.getBorrowCount() + " lượt trong " + windowDays + " ngày gần đây"));
+            double normalizedScore =
+                    maxWeightedScore > 0
+                            ? Math.log1p(Math.max(score.getWeightedScore(), 0.0))
+                                    / Math.log1p(maxWeightedScore)
+                            : 0.0;
+            items.add(
+                    toItem(
+                            book,
+                            normalizedScore,
+                            0.0,
+                            0.0,
+                            normalizedScore,
+                            score.getBorrowCount(),
+                            "Được mượn "
+                                    + score.getBorrowCount()
+                                    + " lượt trong "
+                                    + windowDays
+                                    + " ngày gần đây"));
             usedBookIds.add(book.getBookId());
         }
 
@@ -95,7 +108,8 @@ public class BookRecommendationService {
             appendFallbackItems(
                     items,
                     usedBookIds,
-                    bookRepository.findRecommendationFallback(PageRequest.of(0, Math.max(limit * 5, 50))),
+                    bookRepository.findRecommendationFallback(
+                            PageRequest.of(0, Math.max(limit * 5, 50))),
                     limit);
         }
         if (items.size() < limit) {
@@ -106,41 +120,45 @@ public class BookRecommendationService {
                     limit);
         }
 
-        long totalBorrows = popularity.stream().mapToLong(BookPopularityProjection::getBorrowCount).sum();
-        boolean dataSufficient = popularity.size() >= MIN_POPULAR_BOOKS_FOR_SUFFICIENT_DATA
-                && totalBorrows >= MIN_BORROWS_FOR_SUFFICIENT_DATA;
+        long totalBorrows =
+                popularity.stream().mapToLong(BookPopularityProjection::getBorrowCount).sum();
+        boolean dataSufficient =
+                popularity.size() >= MIN_POPULAR_BOOKS_FOR_SUFFICIENT_DATA
+                        && totalBorrows >= MIN_BORROWS_FOR_SUFFICIENT_DATA;
         return new RecommendationResponseDTO(
-                "POPULARITY_BASELINE",
-                dataSufficient,
-                popularity.size(),
-                asOf,
-                List.copyOf(items));
+                "POPULARITY_BASELINE", dataSufficient, popularity.size(), asOf, List.copyOf(items));
     }
 
     @Transactional(readOnly = true)
     public RecommendationResponseDTO getSimilarBooks(Long sourceBookId, int requestedLimit) {
         int limit = clamp(requestedLimit, 1, 50);
-        BookEntity source = bookRepository.findById(sourceBookId)
-                .orElseThrow(() -> new IllegalArgumentException("Book not found: " + sourceBookId));
+        BookEntity source =
+                bookRepository
+                        .findById(sourceBookId)
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "Book not found: " + sourceBookId));
         List<BookSubjectAssignmentEntity> sourceAssignments =
                 subjectAssignmentRepository.findByBook_BookIdOrderByConfidenceDesc(sourceBookId);
 
         LinkedHashMap<Long, BookEntity> candidatesById = new LinkedHashMap<>();
-        List<Long> subjectIds = sourceAssignments.stream()
-                .map(assignment -> assignment.getSubject().getSubjectId())
-                .distinct()
-                .toList();
+        List<Long> subjectIds =
+                sourceAssignments.stream()
+                        .map(assignment -> assignment.getSubject().getSubjectId())
+                        .distinct()
+                        .toList();
         if (!subjectIds.isEmpty()) {
-            subjectAssignmentRepository.findCandidateBooksSharingSubjects(
-                            subjectIds,
-                            sourceBookId,
-                            PageRequest.of(0, DEFAULT_CANDIDATE_POOL))
+            subjectAssignmentRepository
+                    .findCandidateBooksSharingSubjects(
+                            subjectIds, sourceBookId, PageRequest.of(0, DEFAULT_CANDIDATE_POOL))
                     .forEach(book -> candidatesById.putIfAbsent(book.getBookId(), book));
         }
 
         int remainingCapacity = DEFAULT_CANDIDATE_POOL - candidatesById.size();
         if (remainingCapacity > 0 && source.getCategory() != null) {
-            bookRepository.findByCategory_CategoryIdAndBookIdNotOrderByBookIdAsc(
+            bookRepository
+                    .findByCategory_CategoryIdAndBookIdNotOrderByBookIdAsc(
                             source.getCategory().getCategoryId(),
                             sourceBookId,
                             PageRequest.of(0, remainingCapacity))
@@ -148,37 +166,47 @@ public class BookRecommendationService {
         }
         remainingCapacity = DEFAULT_CANDIDATE_POOL - candidatesById.size();
         if (remainingCapacity > 0) {
-            bookRepository.findByBookIdNotOrderByBookIdAsc(
-                            sourceBookId,
-                            PageRequest.of(0, remainingCapacity))
+            bookRepository
+                    .findByBookIdNotOrderByBookIdAsc(
+                            sourceBookId, PageRequest.of(0, remainingCapacity))
                     .forEach(book -> candidatesById.putIfAbsent(book.getBookId(), book));
         }
 
-        List<BookEntity> candidates = candidatesById.values().stream()
-                .filter(this::hasUsableTitle)
-                .toList();
-        List<Long> documentIds = candidates.stream().map(BookEntity::getBookId).collect(Collectors.toCollection(ArrayList::new));
+        List<BookEntity> candidates =
+                candidatesById.values().stream().filter(this::hasUsableTitle).toList();
+        List<Long> documentIds =
+                candidates.stream()
+                        .map(BookEntity::getBookId)
+                        .collect(Collectors.toCollection(ArrayList::new));
         documentIds.add(sourceBookId);
-        Map<Long, List<String>> subjectTerms = toSubjectTerms(
-                subjectAssignmentRepository.findByBook_BookIdIn(documentIds));
-        Map<Long, Double> similarityScores = similarityEngine.score(source, candidates, subjectTerms);
+        Map<Long, List<String>> subjectTerms =
+                toSubjectTerms(subjectAssignmentRepository.findByBook_BookIdIn(documentIds));
+        Map<Long, Double> similarityScores =
+                similarityEngine.score(source, candidates, subjectTerms);
 
-        List<RecommendationItemDTO> items = candidates.stream()
-                .filter(candidate -> similarityScores.containsKey(candidate.getBookId()))
-                .sorted(Comparator
-                        .comparingDouble((BookEntity candidate) -> similarityScores.get(candidate.getBookId()))
-                        .reversed()
-                        .thenComparing(BookEntity::getBookId))
-                .limit(limit)
-                .map(candidate -> toItem(
-                        candidate,
-                        similarityScores.get(candidate.getBookId()),
-                        similarityScores.get(candidate.getBookId()),
-                        0.0,
-                        0.0,
-                        0,
-                        "Nội dung tương tự sách “" + safe(source.getTitle()) + "” theo TF-IDF/Cosine"))
-                .toList();
+        List<RecommendationItemDTO> items =
+                candidates.stream()
+                        .filter(candidate -> similarityScores.containsKey(candidate.getBookId()))
+                        .sorted(
+                                Comparator.comparingDouble(
+                                                (BookEntity candidate) ->
+                                                        similarityScores.get(candidate.getBookId()))
+                                        .reversed()
+                                        .thenComparing(BookEntity::getBookId))
+                        .limit(limit)
+                        .map(
+                                candidate ->
+                                        toItem(
+                                                candidate,
+                                                similarityScores.get(candidate.getBookId()),
+                                                similarityScores.get(candidate.getBookId()),
+                                                0.0,
+                                                0.0,
+                                                0,
+                                                "Nội dung tương tự sách “"
+                                                        + safe(source.getTitle())
+                                                        + "” theo TF-IDF/Cosine"))
+                        .toList();
 
         return new RecommendationResponseDTO(
                 "TF_IDF_COSINE",
@@ -188,12 +216,18 @@ public class BookRecommendationService {
                 items);
     }
 
-    private Map<Long, List<String>> toSubjectTerms(Collection<BookSubjectAssignmentEntity> assignments) {
-        return assignments.stream().collect(Collectors.groupingBy(
-                assignment -> assignment.getBook().getBookId(),
-                Collectors.mapping(
-                        assignment -> assignment.getSubject().getCode() + " " + assignment.getSubject().getName(),
-                        Collectors.toList())));
+    private Map<Long, List<String>> toSubjectTerms(
+            Collection<BookSubjectAssignmentEntity> assignments) {
+        return assignments.stream()
+                .collect(
+                        Collectors.groupingBy(
+                                assignment -> assignment.getBook().getBookId(),
+                                Collectors.mapping(
+                                        assignment ->
+                                                assignment.getSubject().getCode()
+                                                        + " "
+                                                        + assignment.getSubject().getName(),
+                                        Collectors.toList())));
     }
 
     private RecommendationItemDTO toItem(
@@ -205,9 +239,11 @@ public class BookRecommendationService {
             long borrowCount,
             String reason) {
         String categoryName = book.getCategory() == null ? null : book.getCategory().getName();
-        String imageUrl = firstNonBlank(book.getImageUrlM(), book.getImageUrlL(), book.getImageUrlS());
+        String imageUrl =
+                firstNonBlank(book.getImageUrlM(), book.getImageUrlL(), book.getImageUrlS());
         long copies = bookCopyRepository.findByBookId(book.getBookId()).size();
-        long availableCopies = bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE");
+        long availableCopies =
+                bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE");
         return new RecommendationItemDTO(
                 book.getBookId(),
                 book.getTitle(),
@@ -236,14 +272,15 @@ public class BookRecommendationService {
                 return;
             }
             if (hasUsableTitle(book) && usedBookIds.add(book.getBookId())) {
-                items.add(toItem(
-                        book,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0,
-                        "Danh mục đã phân loại được dùng dự phòng vì lịch sử mượn hiện chưa đủ"));
+                items.add(
+                        toItem(
+                                book,
+                                0.0,
+                                0.0,
+                                0.0,
+                                0.0,
+                                0,
+                                "Danh mục đã phân loại được dùng dự phòng vì lịch sử mượn hiện chưa đủ"));
             }
         }
     }

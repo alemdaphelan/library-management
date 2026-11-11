@@ -23,13 +23,15 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ProblemDetail> handleValidation(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ProblemDetail> handleValidation(
+            MethodArgumentNotValidException exception) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        String detail = exception.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .filter(message -> message != null && !message.isBlank())
-                .findFirst()
-                .orElse("Dữ liệu gửi lên chưa hợp lệ. Vui lòng kiểm tra lại.");
+        String detail =
+                exception.getBindingResult().getFieldErrors().stream()
+                        .map(FieldError::getDefaultMessage)
+                        .filter(message -> message != null && !message.isBlank())
+                        .findFirst()
+                        .orElse("Dữ liệu gửi lên chưa hợp lệ. Vui lòng kiểm tra lại.");
         problem.setDetail(detail);
         return ResponseEntity.badRequest().body(problem);
     }

@@ -11,16 +11,18 @@ import java.util.UUID;
 
 @Data
 public class DebtPaymentRequestDTO {
-    @NotNull
-    private UUID userId;
+    @NotNull private UUID userId;
+
     @NotNull
     @DecimalMin(value = "0.01")
     private BigDecimal amount;
-    @NotBlank
-    private String method;
+
+    @NotBlank private String method;
+
     @NotBlank
     @Size(max = 100)
     private String idempotencyKey;
+
     @Size(max = 500)
     private String note;
 }

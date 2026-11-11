@@ -8,11 +8,18 @@ import java.util.List;
 
 @Repository
 public interface InventoryAuditRepository extends JpaRepository<InventoryAuditEntity, Long> {
-    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-    @org.springframework.data.jpa.repository.Query("select a from InventoryAuditEntity a where a.auditId = :id")
-    java.util.Optional<InventoryAuditEntity> findByIdForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
+    @org.springframework.data.jpa.repository.Lock(
+            jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query(
+            "select a from InventoryAuditEntity a where a.auditId = :id")
+    java.util.Optional<InventoryAuditEntity> findByIdForUpdate(
+            @org.springframework.data.repository.query.Param("id") Long id);
+
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_READ)
-    @org.springframework.data.jpa.repository.Query("select a from InventoryAuditEntity a where a.auditId = :id")
-    java.util.Optional<InventoryAuditEntity> findForDisposal(@org.springframework.data.repository.query.Param("id") Long id);
+    @org.springframework.data.jpa.repository.Query(
+            "select a from InventoryAuditEntity a where a.auditId = :id")
+    java.util.Optional<InventoryAuditEntity> findForDisposal(
+            @org.springframework.data.repository.query.Param("id") Long id);
+
     List<InventoryAuditEntity> findAllByOrderByCreatedAtDesc();
 }

@@ -38,8 +38,7 @@ public record RecommendationExperimentDataset(
             long warmUsers,
             long sparseUsers,
             long newUsers,
-            long newBooks) {
-    }
+            long newBooks) {}
 
     public record Interaction(
             UUID userId,
@@ -50,8 +49,7 @@ public record RecommendationExperimentDataset(
             int renewalCount,
             double preferenceWeight,
             Split split,
-            UserCohort cohort) {
-    }
+            UserCohort cohort) {}
 
     public enum Split {
         TRAIN,

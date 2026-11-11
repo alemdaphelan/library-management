@@ -16,7 +16,9 @@ class JwtUtilsTest {
         TokenService tokenService = mock(TokenService.class);
         when(tokenService.getSessionVersion("user@huit.edu.vn")).thenReturn(7L);
         JwtUtils jwtUtils = new JwtUtils(tokenService);
-        ReflectionTestUtils.setField(jwtUtils, "jwtSecret",
+        ReflectionTestUtils.setField(
+                jwtUtils,
+                "jwtSecret",
                 "test-secret-key-that-is-long-enough-for-hmac-sha-256-signing");
         ReflectionTestUtils.setField(jwtUtils, "jwtExpirationMs", 60_000);
 
@@ -24,8 +26,9 @@ class JwtUtilsTest {
         user.setEmail("user@huit.edu.vn");
         user.setRoleId("STUDENT");
         CustomUserDetails principal = new CustomUserDetails(user);
-        var authentication = new UsernamePasswordAuthenticationToken(
-                principal, null, principal.getAuthorities());
+        var authentication =
+                new UsernamePasswordAuthenticationToken(
+                        principal, null, principal.getAuthorities());
 
         String token = jwtUtils.generateJwtToken(authentication);
 

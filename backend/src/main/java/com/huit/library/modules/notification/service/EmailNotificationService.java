@@ -37,23 +37,28 @@ public class EmailNotificationService {
         if (!preferenceService.isEmailEnabled(event.userId())) {
             return;
         }
-        userRepository.findById(event.userId()).ifPresent(user -> {
-            if (user.getEmail() == null || user.getEmail().isBlank()) {
-                return;
-            }
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                if (fromEmail != null && !fromEmail.isBlank()) {
-                    message.setFrom(fromEmail);
-                }
-                message.setTo(user.getEmail());
-                message.setSubject(titleFor(event.type()));
-                message.setText(event.content());
-                mailSender.send(message);
-            } catch (RuntimeException exception) {
-                LOGGER.warn("Could not send library email notification: {}", exception.getMessage());
-            }
-        });
+        userRepository
+                .findById(event.userId())
+                .ifPresent(
+                        user -> {
+                            if (user.getEmail() == null || user.getEmail().isBlank()) {
+                                return;
+                            }
+                            try {
+                                SimpleMailMessage message = new SimpleMailMessage();
+                                if (fromEmail != null && !fromEmail.isBlank()) {
+                                    message.setFrom(fromEmail);
+                                }
+                                message.setTo(user.getEmail());
+                                message.setSubject(titleFor(event.type()));
+                                message.setText(event.content());
+                                mailSender.send(message);
+                            } catch (RuntimeException exception) {
+                                LOGGER.warn(
+                                        "Could not send library email notification: {}",
+                                        exception.getMessage());
+                            }
+                        });
     }
 
     private String titleFor(String type) {

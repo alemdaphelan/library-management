@@ -23,7 +23,7 @@ export class Borrows implements OnInit {
   recallVisited = false;
   reportVisited = false;
   reportInitialQuery = '';
-  reportInitialMode: 'EITHER'|'OVERDUE' = 'EITHER';
+  reportInitialMode: 'EITHER' | 'OVERDUE' = 'EITHER';
   loans: LoanTicketSummary[] = [];
   selectedLoan: LoanTicketDetail | null = null;
   searchTerm = '';
@@ -48,12 +48,13 @@ export class Borrows implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    if(this.route?.snapshot.queryParamMap.get('view')==='report') {
-      this.reportInitialQuery=(this.route.snapshot.queryParamMap.get('q')||'').slice(0,100);
-      this.reportInitialMode=this.route.snapshot.queryParamMap.get('reportMode')==='OVERDUE'?'OVERDUE':'EITHER';
+    if (this.route?.snapshot.queryParamMap.get('view') === 'report') {
+      this.reportInitialQuery = (this.route.snapshot.queryParamMap.get('q') || '').slice(0, 100);
+      this.reportInitialMode =
+        this.route.snapshot.queryParamMap.get('reportMode') === 'OVERDUE' ? 'OVERDUE' : 'EITHER';
       this.switchView('report');
     }
-    if(this.route?.snapshot.queryParamMap.get('view')==='recall') this.switchView('recall');
+    if (this.route?.snapshot.queryParamMap.get('view') === 'recall') this.switchView('recall');
     const referenceType = this.route?.snapshot.queryParamMap.get('referenceType');
     const referenceId = Number(this.route?.snapshot.queryParamMap.get('referenceId'));
     if (referenceType === 'LOAN_TICKET' && Number.isSafeInteger(referenceId) && referenceId > 0) {
@@ -71,14 +72,14 @@ export class Borrows implements OnInit {
 
   get filteredLoans(): LoanTicketSummary[] {
     const query = this.searchTerm.trim().toLocaleLowerCase('vi');
-    return this.loans.filter(loan => {
+    return this.loans.filter((loan) => {
       const matchesStatus = this.statusFilter === 'ALL' || loan.status === this.statusFilter;
       const created = loan.createdAt ? new Date(loan.createdAt) : null;
       const from = this.fromDate ? new Date(`${this.fromDate}T00:00:00`) : null;
       const to = this.toDate ? new Date(`${this.toDate}T23:59:59.999`) : null;
       const matchesDate = !created || ((!from || created >= from) && (!to || created <= to));
       const searchable = [loan.ticketId, loan.mssv, loan.readerName, loan.department]
-        .filter(value => value !== null && value !== undefined)
+        .filter((value) => value !== null && value !== undefined)
         .join(' ')
         .toLocaleLowerCase('vi');
       return matchesStatus && matchesDate && (!query || searchable.includes(query));
@@ -103,11 +104,13 @@ export class Borrows implements OnInit {
   }
 
   get activeCount(): number {
-    return this.loans.filter(loan => loan.status === 'BORROWING' || loan.status === 'OVERDUE').length;
+    return this.loans.filter((loan) => loan.status === 'BORROWING' || loan.status === 'OVERDUE')
+      .length;
   }
 
   get overdueCount(): number {
-    return this.loans.filter(loan => loan.status === 'OVERDUE' || loan.overdueItemCount > 0).length;
+    return this.loans.filter((loan) => loan.status === 'OVERDUE' || loan.overdueItemCount > 0)
+      .length;
   }
 
   get recordedLateFine(): number {
@@ -118,7 +121,7 @@ export class Borrows implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     this.circulationService.getStaffLoans().subscribe({
-      next: loans => {
+      next: (loans) => {
         this.loans = loans || [];
         this.isLoading = false;
         if (this.requestedTicketId) {
@@ -128,7 +131,7 @@ export class Borrows implements OnInit {
         }
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.isLoading = false;
         this.errorMessage = this.extractError(error, 'Không thể tải danh sách phiếu mượn.');
         this.cdr.detectChanges();
@@ -142,12 +145,12 @@ export class Borrows implements OnInit {
     this.errorMessage = '';
     this.rejectionReason = '';
     this.circulationService.getLoan(ticketId).subscribe({
-      next: loan => {
+      next: (loan) => {
         this.selectedLoan = loan;
         this.detailLoading = false;
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.detailLoading = false;
         this.ticketError = this.extractError(error, `Không thể tải phiếu #${ticketId}.`);
         this.cdr.detectChanges();
@@ -162,7 +165,12 @@ export class Borrows implements OnInit {
 
   rejectSelected(): void {
     const reason = this.rejectionReason.trim();
-    if (!this.selectedLoan || !['PENDING', 'RESERVED'].includes(this.selectedLoan.status) || this.actionInProgress) return;
+    if (
+      !this.selectedLoan ||
+      !['PENDING', 'RESERVED'].includes(this.selectedLoan.status) ||
+      this.actionInProgress
+    )
+      return;
     if (!reason) {
       this.errorMessage = 'Cần nhập lý do từ chối phiếu.';
       return;
@@ -171,13 +179,13 @@ export class Borrows implements OnInit {
     this.actionInProgress = true;
     this.errorMessage = '';
     this.circulationService.rejectReservation(ticketId, reason).subscribe({
-      next: result => {
+      next: (result) => {
         this.actionInProgress = false;
         this.successMessage = result.message || `Đã từ chối phiếu #${ticketId}.`;
         this.closeDetails();
         this.loadLoans();
       },
-      error: error => {
+      error: (error) => {
         this.actionInProgress = false;
         this.errorMessage = this.extractError(error, `Không thể từ chối phiếu #${ticketId}.`);
       },
@@ -185,15 +193,19 @@ export class Borrows implements OnInit {
   }
 
   statusLabel(status: LoanTicketStatus | string): string {
-    return ({
-      PENDING: 'Phiếu cũ cần kiểm tra',
-      RESERVED: 'Đang giữ chỗ',
-      BORROWING: 'Đang mượn',
-      OVERDUE: 'Quá hạn',
-      RETURNED: 'Đã trả',
-      CANCELLED: 'Đã hủy',
-      REJECTED: 'Từ chối',
-    } as Record<string, string>)[status] || status;
+    return (
+      (
+        {
+          PENDING: 'Phiếu cũ cần kiểm tra',
+          RESERVED: 'Đang giữ chỗ',
+          BORROWING: 'Đang mượn',
+          OVERDUE: 'Quá hạn',
+          RETURNED: 'Đã trả',
+          CANCELLED: 'Đã hủy',
+          REJECTED: 'Từ chối',
+        } as Record<string, string>
+      )[status] || status
+    );
   }
 
   statusClass(status: LoanTicketStatus | string): string {

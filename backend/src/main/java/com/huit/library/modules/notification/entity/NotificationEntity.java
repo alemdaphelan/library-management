@@ -23,6 +23,7 @@ public class NotificationEntity extends BaseEntity {
     private LocalDateTime sentAt;
     private String referenceType;
     private String referenceId;
+
     @Column(unique = true, length = 200)
     private String dedupKey;
 }

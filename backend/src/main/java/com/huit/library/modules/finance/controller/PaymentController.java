@@ -23,7 +23,8 @@ public class PaymentController {
     private final DebtLedgerService debtLedgerService;
     private final LibraryHoursService libraryHoursService;
 
-    public PaymentController(DebtLedgerService debtLedgerService, LibraryHoursService libraryHoursService) {
+    public PaymentController(
+            DebtLedgerService debtLedgerService, LibraryHoursService libraryHoursService) {
         this.debtLedgerService = debtLedgerService;
         this.libraryHoursService = libraryHoursService;
     }
@@ -34,8 +35,8 @@ public class PaymentController {
             @Valid @RequestBody DebtPaymentRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
         libraryHoursService.requireCounterOpen("ghi nhận thanh toán");
-        return ResponseEntity.ok(debtLedgerService.recordPayment(
-                request, operator.getUser().getUserId()));
+        return ResponseEntity.ok(
+                debtLedgerService.recordPayment(request, operator.getUser().getUserId()));
     }
 
     @PostMapping("/deposit-topup")
@@ -43,13 +44,14 @@ public class PaymentController {
     public ResponseEntity<?> recordDepositTopup(
             @Valid @RequestBody CounterDepositRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
-        return ResponseEntity.ok(debtLedgerService.recordCounterDepositTopUp(
-                request.getUserId(),
-                request.getAmount(),
-                request.getMethod(),
-                operator.getUser().getUserId(),
-                request.getIdempotencyKey(),
-                request.getNote()));
+        return ResponseEntity.ok(
+                debtLedgerService.recordCounterDepositTopUp(
+                        request.getUserId(),
+                        request.getAmount(),
+                        request.getMethod(),
+                        operator.getUser().getUserId(),
+                        request.getIdempotencyKey(),
+                        request.getNote()));
     }
 
     @GetMapping("/ledger/{userId}")
@@ -69,8 +71,7 @@ public class PaymentController {
     @GetMapping("/my-ledger")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<?> getMyLedger(@AuthenticationPrincipal CustomUserDetails user) {
-        return ResponseEntity.ok(debtLedgerService.getUserLedger(
-                user.getUser().getUserId()));
+        return ResponseEntity.ok(debtLedgerService.getUserLedger(user.getUser().getUserId()));
     }
 
     @PostMapping("/adjustments")
@@ -78,8 +79,8 @@ public class PaymentController {
     public ResponseEntity<?> requestAdjustment(
             @Valid @RequestBody AdjustmentRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
-        return ResponseEntity.ok(debtLedgerService.requestAdjustment(
-                request, operator.getUser().getUserId()));
+        return ResponseEntity.ok(
+                debtLedgerService.requestAdjustment(request, operator.getUser().getUserId()));
     }
 
     @PatchMapping("/adjustments/{adjustmentId}")
@@ -88,8 +89,9 @@ public class PaymentController {
             @PathVariable Long adjustmentId,
             @Valid @RequestBody AdjustmentReviewRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails admin) {
-        return ResponseEntity.ok(debtLedgerService.reviewAdjustment(
-                adjustmentId, request, admin.getUser().getUserId()));
+        return ResponseEntity.ok(
+                debtLedgerService.reviewAdjustment(
+                        adjustmentId, request, admin.getUser().getUserId()));
     }
 
     @GetMapping("/adjustments")

@@ -28,7 +28,8 @@ public class PushDeviceService {
         String normalizedDeviceId = trimToNull(request.deviceId());
         LocalDateTime now = LocalDateTime.now();
 
-        Optional<PushDeviceRegistrationEntity> existingByToken = repository.findByToken(normalizedToken);
+        Optional<PushDeviceRegistrationEntity> existingByToken =
+                repository.findByToken(normalizedToken);
         PushDeviceRegistrationEntity registration = existingByToken.orElse(null);
 
         if (normalizedDeviceId != null) {
@@ -40,7 +41,9 @@ public class PushDeviceService {
                         registration = other;
                         continue;
                     }
-                    if (registration == null || !Objects.equals(other.getRegistrationId(), registration.getRegistrationId())) {
+                    if (registration == null
+                            || !Objects.equals(
+                                    other.getRegistrationId(), registration.getRegistrationId())) {
                         other.setActive(false);
                         other.setLastSeenAt(now);
                         repository.save(other);
@@ -54,7 +57,8 @@ public class PushDeviceService {
         }
         registration.setUserId(userId);
         registration.setToken(normalizedToken);
-        registration.setIdentifierType(request.identifierType() == null ? "TOKEN" : request.identifierType());
+        registration.setIdentifierType(
+                request.identifierType() == null ? "TOKEN" : request.identifierType());
         registration.setPlatform(normalizedPlatform);
         registration.setDeviceId(normalizedDeviceId);
         registration.setActive(true);
@@ -67,17 +71,23 @@ public class PushDeviceService {
         if (token == null || token.isBlank()) {
             return;
         }
-        repository.findByUserIdAndToken(userId, token.trim()).ifPresent(registration -> {
-            registration.setActive(false);
-            registration.setLastSeenAt(LocalDateTime.now());
-            repository.save(registration);
-        });
+        repository
+                .findByUserIdAndToken(userId, token.trim())
+                .ifPresent(
+                        registration -> {
+                            registration.setActive(false);
+                            registration.setLastSeenAt(LocalDateTime.now());
+                            repository.save(registration);
+                        });
     }
 
     private PushDeviceResponseDTO toResponse(PushDeviceRegistrationEntity entity) {
         return new PushDeviceResponseDTO(
-                entity.getRegistrationId(), entity.getPlatform(), entity.getDeviceId(),
-                Boolean.TRUE.equals(entity.getActive()), entity.getLastSeenAt());
+                entity.getRegistrationId(),
+                entity.getPlatform(),
+                entity.getDeviceId(),
+                Boolean.TRUE.equals(entity.getActive()),
+                entity.getLastSeenAt());
     }
 
     private String trimToNull(String value) {

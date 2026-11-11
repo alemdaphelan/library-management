@@ -19,7 +19,7 @@
   --status-available: #10b981; /* Emerald */
   --status-pending: #f59e0b; /* Amber */
   --status-danger: #ef4444; /* Red */
-  
+
   /* Utilities */
   --border-radius: 8px;
   --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -32,7 +32,12 @@ body {
   color: var(--text-main);
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: var(--text-main);
   font-weight: 600;
 }
@@ -94,5 +99,13 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.85em;
 }
 /* Required indicators follow the same convention in all role-specific forms. */
-label .required, label .req, label .required-marker, label.has-required-field span[aria-hidden="true"] { color:#b91c1c; }
-.required-marker { font-weight:700; margin-inline-end:4px; }
+label .required,
+label .req,
+label .required-marker,
+label.has-required-field span[aria-hidden='true'] {
+  color: #b91c1c;
+}
+.required-marker {
+  font-weight: 700;
+  margin-inline-end: 4px;
+}

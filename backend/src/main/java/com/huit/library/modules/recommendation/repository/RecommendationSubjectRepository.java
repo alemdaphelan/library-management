@@ -7,7 +7,8 @@ import java.util.Optional;
 import java.util.Collection;
 import java.util.List;
 
-public interface RecommendationSubjectRepository extends JpaRepository<RecommendationSubjectEntity, Long> {
+public interface RecommendationSubjectRepository
+        extends JpaRepository<RecommendationSubjectEntity, Long> {
     Optional<RecommendationSubjectEntity> findByCodeAndActiveTrue(String code);
 
     List<RecommendationSubjectEntity> findByActiveTrueOrderByNameAsc();

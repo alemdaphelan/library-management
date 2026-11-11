@@ -12,8 +12,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UserAuthorizationContractTest {
     @Test
     void writeOperationsAreAdminOnly() throws Exception {
-        assertAdminOnly("createStudent", com.huit.library.modules.auth.dto.StudentUpsertRequestDTO.class);
-        assertAdminOnly("updateStudent", String.class, com.huit.library.modules.auth.dto.StudentUpsertRequestDTO.class);
+        assertAdminOnly(
+                "createStudent", com.huit.library.modules.auth.dto.StudentUpsertRequestDTO.class);
+        assertAdminOnly(
+                "updateStudent",
+                String.class,
+                com.huit.library.modules.auth.dto.StudentUpsertRequestDTO.class);
         assertAdminOnly("deleteStudent", String.class);
         assertAdminOnly("syncWithUniversity", java.util.List.class);
     }
@@ -43,6 +47,7 @@ class UserAuthorizationContractTest {
 
     private void assertStudentOnly(String methodName, Class<?>... parameterTypes) throws Exception {
         Method method = UserController.class.getMethod(methodName, parameterTypes);
-        assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
+        assertThat(method.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasRole('STUDENT')");
     }
 }

@@ -16,4 +16,3 @@ public class BookReviewSummaryDTO {
     private String reviewEligibilityMessage;
     private List<BookReviewDTO> reviews;
 }
-

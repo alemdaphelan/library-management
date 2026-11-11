@@ -7,6 +7,5 @@ import jakarta.validation.constraints.Size;
 public record DigitalAssetUpdateDTO(
         Long bookId,
         @NotBlank @Size(max = 255) String displayName,
-        @Pattern(regexp = "AUTHENTICATED|STAFF_ONLY", message = "Mức truy cập không hợp lệ") String accessLevel
-) {
-}
+        @Pattern(regexp = "AUTHENTICATED|STAFF_ONLY", message = "Mức truy cập không hợp lệ")
+                String accessLevel) {}

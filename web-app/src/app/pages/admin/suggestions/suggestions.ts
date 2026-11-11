@@ -10,7 +10,7 @@ import { ProposalSummary } from './proposal-summary';
   standalone: true,
   imports: [CommonModule, FormsModule, ProposalSummary],
   templateUrl: './suggestions.html',
-  styleUrls: ['./suggestions.css']
+  styleUrls: ['./suggestions.css'],
 })
 export class AdminSuggestions implements OnInit {
   view: 'individual' | 'summary' = 'individual';
@@ -26,7 +26,9 @@ export class AdminSuggestions implements OnInit {
   get majorOptions(): { id: string; name: string }[] {
     const majors = new Map<string, string>();
     for (const p of this.proposals) if (p.majorId) majors.set(p.majorId, p.majorName || p.majorId);
-    return [...majors].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+    return [...majors]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
   }
   adminNoteInput = '';
   alertMessage: { type: 'success' | 'error'; text: string } | null = null;
@@ -54,7 +56,9 @@ export class AdminSuggestions implements OnInit {
         this.proposals = data || [];
         this.isLoading = false;
         if (this.requestedProposalId) {
-          const requested = this.proposals.find(item => item.proposalId === this.requestedProposalId);
+          const requested = this.proposals.find(
+            (item) => item.proposalId === this.requestedProposalId,
+          );
           if (requested) {
             this.activeTab = 'ALL';
             this.openDrawer(requested);
@@ -68,40 +72,41 @@ export class AdminSuggestions implements OnInit {
         this.isLoading = false;
         this.showAlert('error', 'Không thể tải danh sách đề xuất. Vui lòng thử lại!');
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
   get pendingCount(): number {
-    return this.proposals.filter(s => s.status === 'PENDING').length;
+    return this.proposals.filter((s) => s.status === 'PENDING').length;
   }
 
   get approvedCount(): number {
-    return this.proposals.filter(s => s.status === 'APPROVED').length;
+    return this.proposals.filter((s) => s.status === 'APPROVED').length;
   }
 
   get rejectedCount(): number {
-    return this.proposals.filter(s => s.status === 'REJECTED').length;
+    return this.proposals.filter((s) => s.status === 'REJECTED').length;
   }
 
   get filteredSuggestions(): BookProposal[] {
     let result = this.proposals;
-    if (this.majorFilter === '__LEGACY__') result = result.filter(s => !s.majorId);
-    else if (this.majorFilter) result = result.filter(s => s.majorId === this.majorFilter);
+    if (this.majorFilter === '__LEGACY__') result = result.filter((s) => !s.majorId);
+    else if (this.majorFilter) result = result.filter((s) => s.majorId === this.majorFilter);
 
     if (this.activeTab !== 'ALL') {
-      result = result.filter(s => s.status === this.activeTab);
+      result = result.filter((s) => s.status === this.activeTab);
     }
 
     if (this.searchTerm.trim()) {
       const q = this.searchTerm.trim().toLowerCase();
-      result = result.filter(s =>
-        (s.title && s.title.toLowerCase().includes(q)) ||
-        (s.authorName && s.authorName.toLowerCase().includes(q)) ||
-        (s.userName && s.userName.toLowerCase().includes(q)) ||
-        (s.userMssv && s.userMssv.toLowerCase().includes(q)) ||
-        (s.userEmail && s.userEmail.toLowerCase().includes(q)) ||
-        (s.publisher && s.publisher.toLowerCase().includes(q))
+      result = result.filter(
+        (s) =>
+          (s.title && s.title.toLowerCase().includes(q)) ||
+          (s.authorName && s.authorName.toLowerCase().includes(q)) ||
+          (s.userName && s.userName.toLowerCase().includes(q)) ||
+          (s.userMssv && s.userMssv.toLowerCase().includes(q)) ||
+          (s.userEmail && s.userEmail.toLowerCase().includes(q)) ||
+          (s.publisher && s.publisher.toLowerCase().includes(q)),
       );
     }
 
@@ -112,11 +117,23 @@ export class AdminSuggestions implements OnInit {
     this.activeTab = tab;
   }
 
-  showSummary(): void { this.summaryLoaded = true; this.view = 'summary'; }
+  showSummary(): void {
+    this.summaryLoaded = true;
+    this.view = 'summary';
+  }
   openSummaryProposal(id: number): void {
-    const proposal = this.proposals.find(p => p.proposalId === id);
-    if (!proposal) { this.showAlert('error', 'Đề xuất chưa có trong danh sách hiện tại. Làm mới danh sách để xem.'); return; }
-    this.view = 'individual'; this.activeTab = 'ALL'; this.searchTerm = ''; this.openDrawer(proposal);
+    const proposal = this.proposals.find((p) => p.proposalId === id);
+    if (!proposal) {
+      this.showAlert(
+        'error',
+        'Đề xuất chưa có trong danh sách hiện tại. Làm mới danh sách để xem.',
+      );
+      return;
+    }
+    this.view = 'individual';
+    this.activeTab = 'ALL';
+    this.searchTerm = '';
+    this.openDrawer(proposal);
   }
 
   openDrawer(suggestion: BookProposal): void {
@@ -139,31 +156,33 @@ export class AdminSuggestions implements OnInit {
     if (!this.selectedSuggestion || !this.selectedSuggestion.proposalId) return;
 
     this.isUpdating = true;
-    this.proposalService.updateProposalStatus(
-      this.selectedSuggestion.proposalId,
-      'APPROVED',
-      this.adminNoteInput.trim() || undefined
-    ).subscribe({
-      next: (updated) => {
-        this.isUpdating = false;
-        if (this.selectedSuggestion) {
-          this.selectedSuggestion.status = 'APPROVED';
-          this.selectedSuggestion.adminNote = updated.adminNote || this.adminNoteInput.trim();
-        }
-        // Update in list
-        const index = this.proposals.findIndex(p => p.proposalId === updated.proposalId);
-        if (index !== -1) {
-          this.proposals[index] = { ...this.proposals[index], ...updated };
-        }
-        this.showAlert('success', 'Đã duyệt đề xuất sách thành công!');
-        this.closeDrawer();
-      },
-      error: (err) => {
-        this.isUpdating = false;
-        console.error('Lỗi khi duyệt đề xuất:', err);
-        this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi duyệt đề xuất!'));
-      }
-    });
+    this.proposalService
+      .updateProposalStatus(
+        this.selectedSuggestion.proposalId,
+        'APPROVED',
+        this.adminNoteInput.trim() || undefined,
+      )
+      .subscribe({
+        next: (updated) => {
+          this.isUpdating = false;
+          if (this.selectedSuggestion) {
+            this.selectedSuggestion.status = 'APPROVED';
+            this.selectedSuggestion.adminNote = updated.adminNote || this.adminNoteInput.trim();
+          }
+          // Update in list
+          const index = this.proposals.findIndex((p) => p.proposalId === updated.proposalId);
+          if (index !== -1) {
+            this.proposals[index] = { ...this.proposals[index], ...updated };
+          }
+          this.showAlert('success', 'Đã duyệt đề xuất sách thành công!');
+          this.closeDrawer();
+        },
+        error: (err) => {
+          this.isUpdating = false;
+          console.error('Lỗi khi duyệt đề xuất:', err);
+          this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi duyệt đề xuất!'));
+        },
+      });
   }
 
   rejectSuggestion(): void {
@@ -174,36 +193,39 @@ export class AdminSuggestions implements OnInit {
     }
 
     this.isUpdating = true;
-    this.proposalService.updateProposalStatus(
-      this.selectedSuggestion.proposalId,
-      'REJECTED',
-      this.adminNoteInput.trim() || undefined
-    ).subscribe({
-      next: (updated) => {
-        this.isUpdating = false;
-        if (this.selectedSuggestion) {
-          this.selectedSuggestion.status = 'REJECTED';
-          this.selectedSuggestion.adminNote = updated.adminNote || this.adminNoteInput.trim();
-        }
-        // Update in list
-        const index = this.proposals.findIndex(p => p.proposalId === updated.proposalId);
-        if (index !== -1) {
-          this.proposals[index] = { ...this.proposals[index], ...updated };
-        }
-        this.showAlert('success', 'Đã từ chối đề xuất sách.');
-        this.closeDrawer();
-      },
-      error: (err) => {
-        this.isUpdating = false;
-        console.error('Lỗi khi từ chối đề xuất:', err);
-        this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi từ chối đề xuất!'));
-      }
-    });
+    this.proposalService
+      .updateProposalStatus(
+        this.selectedSuggestion.proposalId,
+        'REJECTED',
+        this.adminNoteInput.trim() || undefined,
+      )
+      .subscribe({
+        next: (updated) => {
+          this.isUpdating = false;
+          if (this.selectedSuggestion) {
+            this.selectedSuggestion.status = 'REJECTED';
+            this.selectedSuggestion.adminNote = updated.adminNote || this.adminNoteInput.trim();
+          }
+          // Update in list
+          const index = this.proposals.findIndex((p) => p.proposalId === updated.proposalId);
+          if (index !== -1) {
+            this.proposals[index] = { ...this.proposals[index], ...updated };
+          }
+          this.showAlert('success', 'Đã từ chối đề xuất sách.');
+          this.closeDrawer();
+        },
+        error: (err) => {
+          this.isUpdating = false;
+          console.error('Lỗi khi từ chối đề xuất:', err);
+          this.showAlert('error', this.extractError(err, 'Có lỗi xảy ra khi từ chối đề xuất!'));
+        },
+      });
   }
 
   private extractError(error: any, fallback: string): string {
     const body = error?.error;
-    const message = typeof body === 'string' ? body : body?.detail ?? body?.message ?? body?.error;
+    const message =
+      typeof body === 'string' ? body : (body?.detail ?? body?.message ?? body?.error);
     return typeof message === 'string' && message.trim() ? message : fallback;
   }
 

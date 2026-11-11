@@ -21,15 +21,27 @@ public final class PopularityBaselineModel implements Alg2RecommendationModel {
         Map<Long, Double> trainScores = new HashMap<>();
         interactions.stream()
                 .filter(interaction -> interaction.split() == Split.TRAIN)
-                .forEach(interaction -> trainScores.merge(
-                        interaction.bookId(), interaction.preferenceWeight(), Double::sum));
-        double maximum = trainScores.values().stream().mapToDouble(Double::doubleValue).max().orElse(1.0);
-        this.ranking = catalog.stream()
-                .map(book -> new ScoredBook(
-                        book.bookId(), trainScores.getOrDefault(book.bookId(), 0.0) / maximum))
-                .sorted(Comparator.comparingDouble(ScoredBook::score).reversed()
-                        .thenComparing(ScoredBook::bookId))
-                .toList();
+                .forEach(
+                        interaction ->
+                                trainScores.merge(
+                                        interaction.bookId(),
+                                        interaction.preferenceWeight(),
+                                        Double::sum));
+        double maximum =
+                trainScores.values().stream().mapToDouble(Double::doubleValue).max().orElse(1.0);
+        this.ranking =
+                catalog.stream()
+                        .map(
+                                book ->
+                                        new ScoredBook(
+                                                book.bookId(),
+                                                trainScores.getOrDefault(book.bookId(), 0.0)
+                                                        / maximum))
+                        .sorted(
+                                Comparator.comparingDouble(ScoredBook::score)
+                                        .reversed()
+                                        .thenComparing(ScoredBook::bookId))
+                        .toList();
     }
 
     @Override
@@ -50,18 +62,14 @@ public final class PopularityBaselineModel implements Alg2RecommendationModel {
                 break;
             }
             if (!excluded.contains(candidate.bookId())) {
-                items.add(new RecommendationItem(candidate.bookId(), candidate.score(), items.size() + 1));
+                items.add(
+                        new RecommendationItem(
+                                candidate.bookId(), candidate.score(), items.size() + 1));
             }
         }
         return new RecommendationResult(
-                userId,
-                method(),
-                false,
-                null,
-                System.nanoTime() - startedAt,
-                List.copyOf(items));
+                userId, method(), false, null, System.nanoTime() - startedAt, List.copyOf(items));
     }
 
-    private record ScoredBook(Long bookId, double score) {
-    }
+    private record ScoredBook(Long bookId, double score) {}
 }

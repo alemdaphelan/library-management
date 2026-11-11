@@ -28,17 +28,17 @@ export class PortalLayout implements OnInit, OnDestroy {
     public authService: AuthService,
     public borrowCartService: BorrowCartService,
     private notificationService: NotificationService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
-    this.authService.profile$.subscribe(profile => {
+    this.authService.profile$.subscribe((profile) => {
       this.userAvatar = profile?.avatarUrl || null;
     });
     if (this.authService.isLoggedIn()) {
       this.authService.fetchMyProfile().subscribe({
         next: () => {},
-        error: () => {}
+        error: () => {},
       });
       this.loadNotifications();
       this.notificationRefreshTimer = setInterval(() => {
@@ -70,7 +70,7 @@ export class PortalLayout implements OnInit, OnDestroy {
   }
 
   get unreadNotificationCount(): number {
-    return this.notifications.filter(item => !item.isRead).length;
+    return this.notifications.filter((item) => !item.isRead).length;
   }
 
   openNotifications(): void {
@@ -86,7 +86,7 @@ export class PortalLayout implements OnInit, OnDestroy {
     this.libraryCard = null;
     this.modalError = '';
     this.authService.fetchLibraryCard().subscribe({
-      next: card => {
+      next: (card) => {
         this.libraryCard = card;
         this.cardLoading = false;
         this.cdr.detectChanges();
@@ -109,7 +109,7 @@ export class PortalLayout implements OnInit, OnDestroy {
   loadNotifications(showLoading = true): void {
     if (showLoading) this.notificationLoading = true;
     this.notificationService.getMyNotifications().subscribe({
-      next: notifications => {
+      next: (notifications) => {
         this.notifications = notifications || [];
         this.notificationLoading = false;
         this.modalError = '';
@@ -126,9 +126,10 @@ export class PortalLayout implements OnInit, OnDestroy {
   markNotificationRead(notification: LibraryNotification): void {
     if (notification.isRead) return;
     this.notificationService.markAsRead(notification.notifId).subscribe({
-      next: updated => {
-        this.notifications = this.notifications.map(item =>
-          item.notifId === updated.notifId ? updated : item);
+      next: (updated) => {
+        this.notifications = this.notifications.map((item) =>
+          item.notifId === updated.notifId ? updated : item,
+        );
         this.cdr.detectChanges();
       },
       error: () => {
@@ -139,38 +140,58 @@ export class PortalLayout implements OnInit, OnDestroy {
   }
 
   markAllNotificationsRead(): void {
-    this.notifications.filter(item => !item.isRead)
-      .forEach(item => this.markNotificationRead(item));
+    this.notifications
+      .filter((item) => !item.isRead)
+      .forEach((item) => this.markNotificationRead(item));
   }
 
   notificationLabel(type: string): string {
-    return ({
-      LOAN_DUE_SOON: 'Sắp đến hạn',
-      DUE_SOON: 'Sắp đến hạn',
-      LOAN_OVERDUE: 'Quá hạn',
-      OVERDUE: 'Quá hạn',
-      PROPOSAL_APPROVED: 'Đề xuất được duyệt',
-      PROPOSAL_REJECTED: 'Đề xuất bị từ chối',
-      LOAN_APPROVED: 'Yêu cầu mượn được duyệt',
-      LOAN_REJECTED: 'Yêu cầu mượn bị từ chối',
-      WAITLIST_READY: 'Sách sẵn sàng',
-      ACCOUNT_LOCKED: 'Tài khoản bị khóa',
-      ACCOUNT_UNLOCKED: 'Tài khoản mở lại',
-      CIRCULATION_LOCKED: 'Quyền mượn bị khóa',
-      CIRCULATION_UNLOCKED: 'Quyền mượn mở lại',
-      RESERVATION_NO_SHOW: 'Cảnh báo nhận sách',
-    } as Record<string, string>)[type] || 'Thông báo thư viện';
+    return (
+      (
+        {
+          LOAN_DUE_SOON: 'Sắp đến hạn',
+          DUE_SOON: 'Sắp đến hạn',
+          LOAN_OVERDUE: 'Quá hạn',
+          OVERDUE: 'Quá hạn',
+          PROPOSAL_APPROVED: 'Đề xuất được duyệt',
+          PROPOSAL_REJECTED: 'Đề xuất bị từ chối',
+          LOAN_APPROVED: 'Yêu cầu mượn được duyệt',
+          LOAN_REJECTED: 'Yêu cầu mượn bị từ chối',
+          WAITLIST_READY: 'Sách sẵn sàng',
+          ACCOUNT_LOCKED: 'Tài khoản bị khóa',
+          ACCOUNT_UNLOCKED: 'Tài khoản mở lại',
+          CIRCULATION_LOCKED: 'Quyền mượn bị khóa',
+          CIRCULATION_UNLOCKED: 'Quyền mượn mở lại',
+          RESERVATION_NO_SHOW: 'Cảnh báo nhận sách',
+        } as Record<string, string>
+      )[type] || 'Thông báo thư viện'
+    );
   }
 
   notificationTone(type: string): 'danger' | 'warning' | 'success' | 'info' {
     const normalized = (type || '').toUpperCase();
-    if (normalized.includes('OVERDUE') || normalized.includes('REJECTED') || normalized.includes('LOCKED') || normalized.includes('PENALTY')) {
+    if (
+      normalized.includes('OVERDUE') ||
+      normalized.includes('REJECTED') ||
+      normalized.includes('LOCKED') ||
+      normalized.includes('PENALTY')
+    ) {
       return 'danger';
     }
-    if (normalized.includes('DUE_SOON') || normalized.includes('REMINDER') || normalized.includes('WAITLIST') || normalized.includes('NO_SHOW')) {
+    if (
+      normalized.includes('DUE_SOON') ||
+      normalized.includes('REMINDER') ||
+      normalized.includes('WAITLIST') ||
+      normalized.includes('NO_SHOW')
+    ) {
       return 'warning';
     }
-    if (normalized.includes('APPROVED') || normalized.includes('UNLOCKED') || normalized.includes('RETURNED') || normalized.includes('PAYMENT')) {
+    if (
+      normalized.includes('APPROVED') ||
+      normalized.includes('UNLOCKED') ||
+      normalized.includes('RETURNED') ||
+      normalized.includes('PAYMENT')
+    ) {
       return 'success';
     }
     return 'info';
@@ -194,4 +215,3 @@ export class PortalLayout implements OnInit, OnDestroy {
     this.isUserMenuOpen = false;
   }
 }
-

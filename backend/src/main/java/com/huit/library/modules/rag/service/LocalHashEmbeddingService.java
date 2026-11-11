@@ -45,11 +45,12 @@ public class LocalHashEmbeddingService {
         if (text == null || text.isBlank()) {
             return List.of();
         }
-        String normalized = Normalizer.normalize(text.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "")
-                .replace('đ', 'd')
-                .replaceAll("[^a-z0-9]+", " ")
-                .trim();
+        String normalized =
+                Normalizer.normalize(text.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}+", "")
+                        .replace('đ', 'd')
+                        .replaceAll("[^a-z0-9]+", " ")
+                        .trim();
         if (normalized.isBlank()) {
             return List.of();
         }

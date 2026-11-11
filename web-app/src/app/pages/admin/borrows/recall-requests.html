@@ -1,32 +1,71 @@
 <section class="recalls" aria-labelledby="recall-title">
   <h2 id="recall-title">Yêu cầu trả sách đang mượn</h2>
-  <p>Chọn đúng cuốn và gửi lý do cho bạn đọc. Hạn trả được giữ nguyên nếu còn dưới 7 ngày hoặc đã quá hạn; hạn xa hơn được rút còn 7 ngày từ lúc gửi.</p>
+  <p>Chọn đúng cuốn và gửi lý do cho bạn đọc. Hạn trả được giữ nguyên nếu còn dưới 7 ngày hoặc đã quá
+    hạn; hạn xa hơn được rút còn 7 ngày từ lúc gửi.</p>
   <form class="filters" (ngSubmit)="applyFilters()">
-    <label>Tìm bạn đọc hoặc sách<input name="recallSearch" [(ngModel)]="q" maxlength="200" placeholder="MSSV, tên, mã vạch, tên sách, số phiếu" [disabled]="saving"></label>
+    <label>Tìm bạn đọc hoặc sách<input
+        name="recallSearch"
+        [(ngModel)]="q"
+        maxlength="200"
+        placeholder="MSSV, tên, mã vạch, tên sách, số phiếu"
+        [disabled]="saving"
+    /></label>
     <label>Trạng thái yêu cầu<select name="recallState" [(ngModel)]="state" [disabled]="saving">
-      <option value="ALL">Tất cả đang mượn</option><option value="NOT_RECALLED">Chưa yêu cầu trả</option>
-      <option value="RECALLED">Đã yêu cầu trả</option><option value="OVERDUE">Đã quá hạn</option>
-    </select></label>
+        <option value="ALL">Tất cả đang mượn</option>
+        <option value="NOT_RECALLED">Chưa yêu cầu trả</option>
+        <option value="RECALLED">Đã yêu cầu trả</option>
+        <option value="OVERDUE">Đã quá hạn</option>
+      </select></label
+    >
     <button type="submit" [disabled]="saving||loading">Lọc danh sách</button>
     <button type="button" (click)="load()" [disabled]="saving||loading">Làm mới</button>
   </form>
   <div *ngIf="result" class="success" role="status">
     <strong>Đã ghi nhận yêu cầu trả {{ result.bookTitle }} · {{ result.barcode }}</strong>
-    <p>Hạn trước yêu cầu: {{ result.recallPreviousDueDate | date:'dd/MM/yyyy HH:mm' }} · Hạn sau yêu cầu: {{ result.recallDueDate | date:'dd/MM/yyyy HH:mm' }}</p>
-    <p>Lý do: {{ result.recallReason }} · Gửi lúc {{ result.recallRequestedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+    <p>Hạn trước yêu cầu: {{ result.recallPreviousDueDate | date:'dd/MM/yyyy HH:mm' }} · Hạn sau yêu
+      cầu: {{ result.recallDueDate | date:'dd/MM/yyyy HH:mm' }}</p>
+    <p>Lý do: {{ result.recallReason }} · Gửi lúc
+      {{ result.recallRequestedAt | date:'dd/MM/yyyy HH:mm' }}</p>
   </div>
   <p *ngIf="loading" role="status">Đang tải sách đang mượn…</p>
-  <p *ngIf="error" class="error" role="alert">{{ error }} <button type="button" (click)="load()">Thử lại</button></p>
+  <p *ngIf="error" class="error" role="alert">{{ error }} <button type="button" (click)="load()">Thử lại</button>
+  </p>
   <div class="table-wrap" *ngIf="!loading&&!error">
     <table *ngIf="items.length;else empty">
-      <thead><tr><th>Bạn đọc / Phiếu</th><th>Tài liệu</th><th>Hạn trả</th><th>Yêu cầu trả</th><th>Thao tác</th></tr></thead>
-      <tbody><tr *ngFor="let item of items">
-        <td><strong>{{ item.readerName || 'Chưa xác nhận bạn đọc' }}</strong><br>{{ item.mssv || 'Chưa có MSSV' }} · #{{ item.ticketId }}</td>
-        <td><strong>{{ item.bookTitle }}</strong><br>{{ item.barcode || 'Chưa có mã vạch' }}<br><small *ngIf="item.lossReportedAt">Đã báo mất; chờ xử lý sự cố</small></td>
-        <td>{{ item.dueDate ? (item.dueDate | date:'dd/MM/yyyy HH:mm') : 'Chưa có hạn trả' }}</td>
-        <td><ng-container *ngIf="item.isRecalled;else notRecalled"><strong>Đã yêu cầu trả</strong><br>{{ item.recallReason || 'Lệnh thu hồi cũ, cần đối chiếu hồ sơ' }}<br>{{ item.recallRequestedAt | date:'dd/MM/yyyy HH:mm' }}</ng-container><ng-template #notRecalled>Chưa yêu cầu</ng-template></td>
-        <td><button type="button" (click)="open(item)" [disabled]="saving||!canRequest(item)">Yêu cầu trả cuốn này</button></td>
-      </tr></tbody>
+      <thead>
+        <tr>
+          <th>Bạn đọc / Phiếu</th>
+          <th>Tài liệu</th>
+          <th>Hạn trả</th>
+          <th>Yêu cầu trả</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of items">
+          <td>
+            <strong>{{ item.readerName || 'Chưa xác nhận bạn đọc' }}</strong>
+            <br />{{ item.mssv || 'Chưa có MSSV' }} · #{{ item.ticketId }}</td>
+          <td>
+            <strong>{{ item.bookTitle }}</strong>
+            <br />{{ item.barcode || 'Chưa có mã vạch' }}<br /><small *ngIf="item.lossReportedAt"
+              >Đã báo mất; chờ xử lý sự cố</small
+            >
+          </td>
+          <td>{{ item.dueDate ? (item.dueDate | date:'dd/MM/yyyy HH:mm') : 'Chưa có hạn trả' }}</td>
+          <td>
+            <ng-container *ngIf="item.isRecalled;else notRecalled"
+              ><strong>Đã yêu cầu trả</strong>
+              <br />{{ item.recallReason || 'Lệnh thu hồi cũ, cần đối chiếu hồ sơ'
+
+              }}<br />{{ item.recallRequestedAt | date:'dd/MM/yyyy HH:mm' }}</ng-container>
+            <ng-template #notRecalled>Chưa yêu cầu</ng-template>
+          </td>
+          <td>
+            <button type="button" (click)="open(item)" [disabled]="saving||!canRequest(item)">Yêu cầu trả cuốn này</button>
+          </td>
+        </tr>
+      </tbody>
     </table>
     <ng-template #empty><p>Không có cuốn đang mượn khớp bộ lọc.</p></ng-template>
   </div>
@@ -38,15 +77,28 @@
   <div class="backdrop" *ngIf="selected">
     <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="recall-form-title">
       <h3 id="recall-form-title">Xác nhận yêu cầu trả sách</h3>
-      <p><strong>{{ selected.readerName }}</strong> · {{ selected.mssv }} · Phiếu #{{ selected.ticketId }}</p>
-      <p><strong>{{ selected.bookTitle }}</strong> · {{ selected.barcode }}</p>
-      <p>Hạn hiện tại: {{ selected.dueDate | date:'dd/MM/yyyy HH:mm' }}. Hệ thống sẽ giữ hạn gần hơn, không kéo dài hạn trả.</p>
+      <p>
+        <strong>{{ selected.readerName }}</strong> · {{ selected.mssv }} · Phiếu #{{ selected.ticketId }}</p>
+      <p>
+        <strong>{{ selected.bookTitle }}</strong> · {{ selected.barcode }}</p>
+      <p>Hạn hiện tại: {{ selected.dueDate | date:'dd/MM/yyyy HH:mm' }}. Hệ thống sẽ giữ hạn gần hơn,
+        không kéo dài hạn trả.</p>
       <form (ngSubmit)="submit()">
         <label for="recall-reason">Lý do yêu cầu trả</label>
-        <textarea id="recall-reason" name="recallReason" [(ngModel)]="reason" rows="4" maxlength="1000" required [disabled]="saving||uncertain"></textarea>
+        <textarea
+          id="recall-reason"
+          name="recallReason"
+          [(ngModel)]="reason"
+          rows="4"
+          maxlength="1000"
+          required
+          [disabled]="saving||uncertain"
+        ></textarea>
         <p class="error" role="alert" *ngIf="formError">{{ formError }}</p>
-        <div class="actions"><button type="button" (click)="close()" [disabled]="saving">Đóng biểu mẫu</button>
-          <button type="submit" [disabled]="saving||!reason.trim()">{{ saving?'Đang gửi…':uncertain?'Gửi lại cùng yêu cầu':'Gửi yêu cầu trả' }}</button></div>
+        <div class="actions">
+          <button type="button" (click)="close()" [disabled]="saving">Đóng biểu mẫu</button>
+          <button type="submit" [disabled]="saving||!reason.trim()">{{ saving?'Đang gửi…':uncertain?'Gửi lại cùng yêu cầu':'Gửi yêu cầu trả' }}</button>
+        </div>
       </form>
     </section>
   </div>

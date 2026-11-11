@@ -1,18 +1,37 @@
 <section class="mock-panel" *ngIf="enabled" aria-labelledby="mock-payment-title">
   <strong class="mock-label">GIẢ LẬP · CHỈ DÙNG KIỂM THỬ</strong>
   <h2 id="mock-payment-title">Thử nạp cọc và trả công nợ</h2>
-  <p>Không có tiền thật. Kết quả thành công sẽ cập nhật dữ liệu thử của tài khoản; nạp cọc không tự trả nợ.</p>
+  <p>Không có tiền thật. Kết quả thành công sẽ cập nhật dữ liệu thử của tài khoản; nạp cọc không tự
+    trả nợ.</p>
   <form (ngSubmit)="create()" *ngIf="!session || draft">
-    <label>Mục đích giả lập<select name="mockPurpose" [(ngModel)]="purpose" (ngModelChange)="selectPurpose()" [disabled]="busy || !!draft">
-      <option value="DEBT">Trả công nợ</option><option value="DEPOSIT">Nạp tiền thế chân</option>
-    </select></label>
-    <label>Số tiền giả lập (VNĐ)<input name="mockAmount" type="number" min="1000" max="100000000" step="1" required [(ngModel)]="amount" [disabled]="busy || !!draft"></label>
+    <label>Mục đích giả lập<select
+        name="mockPurpose"
+        [(ngModel)]="purpose"
+        (ngModelChange)="selectPurpose()"
+        [disabled]="busy || !!draft"
+      >
+        <option value="DEBT">Trả công nợ</option>
+        <option value="DEPOSIT">Nạp tiền thế chân</option>
+      </select></label
+    >
+    <label>Số tiền giả lập (VNĐ)<input
+        name="mockAmount"
+        type="number"
+        min="1000"
+        max="100000000"
+        step="1"
+        required
+        [(ngModel)]="amount"
+        [disabled]="busy || !!draft"
+    /></label>
     <button type="submit" [disabled]="busy || !!draft">Tạo phiên giả lập</button>
   </form>
   <p class="error" role="alert" *ngIf="error">{{ error }}</p>
   <p *ngIf="busy" role="status">Đang xử lý phiên giả lập…</p>
   <div *ngIf="session">
-    <strong role="status">{{ statusLabel() }} · {{ session.amount | number:'1.0-0':'en-US' }} VNĐ</strong>
+    <strong role="status"
+      >{{ statusLabel() }} · {{ session.amount | number:'1.0-0':'en-US' }} VNĐ</strong
+    >
     <p class="reference">Mã phiên: {{ session.reference }}</p>
     <p *ngIf="session.paymentTransactionId">Giao dịch kiểm thử #{{ session.paymentTransactionId }}</p>
     <div class="actions" *ngIf="session.status === 'PENDING'">

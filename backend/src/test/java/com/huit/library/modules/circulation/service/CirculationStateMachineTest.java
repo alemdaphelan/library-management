@@ -13,28 +13,46 @@ class CirculationStateMachineTest {
 
     @Test
     void supportsOfficialReservationAndLoanLifecycle() {
-        assertThat(stateMachine.canTransition(LoanTicketStatus.PENDING, LoanTicketStatus.RESERVED)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.RESERVED, LoanTicketStatus.BORROWING)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.BORROWING, LoanTicketStatus.OVERDUE)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.BORROWING, LoanTicketStatus.RETURNED)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.OVERDUE, LoanTicketStatus.RETURNED)).isTrue();
+        assertThat(stateMachine.canTransition(LoanTicketStatus.PENDING, LoanTicketStatus.RESERVED))
+                .isTrue();
+        assertThat(
+                        stateMachine.canTransition(
+                                LoanTicketStatus.RESERVED, LoanTicketStatus.BORROWING))
+                .isTrue();
+        assertThat(stateMachine.canTransition(LoanTicketStatus.BORROWING, LoanTicketStatus.OVERDUE))
+                .isTrue();
+        assertThat(
+                        stateMachine.canTransition(
+                                LoanTicketStatus.BORROWING, LoanTicketStatus.RETURNED))
+                .isTrue();
+        assertThat(stateMachine.canTransition(LoanTicketStatus.OVERDUE, LoanTicketStatus.RETURNED))
+                .isTrue();
     }
 
     @Test
     void supportsCancellationAndRejectionOnlyBeforeCheckout() {
-        assertThat(stateMachine.canTransition(LoanTicketStatus.PENDING, LoanTicketStatus.CANCELLED)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.PENDING, LoanTicketStatus.REJECTED)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.RESERVED, LoanTicketStatus.CANCELLED)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.RESERVED, LoanTicketStatus.REJECTED)).isTrue();
-        assertThat(stateMachine.canTransition(LoanTicketStatus.BORROWING, LoanTicketStatus.CANCELLED)).isFalse();
+        assertThat(stateMachine.canTransition(LoanTicketStatus.PENDING, LoanTicketStatus.CANCELLED))
+                .isTrue();
+        assertThat(stateMachine.canTransition(LoanTicketStatus.PENDING, LoanTicketStatus.REJECTED))
+                .isTrue();
+        assertThat(
+                        stateMachine.canTransition(
+                                LoanTicketStatus.RESERVED, LoanTicketStatus.CANCELLED))
+                .isTrue();
+        assertThat(stateMachine.canTransition(LoanTicketStatus.RESERVED, LoanTicketStatus.REJECTED))
+                .isTrue();
+        assertThat(
+                        stateMachine.canTransition(
+                                LoanTicketStatus.BORROWING, LoanTicketStatus.CANCELLED))
+                .isFalse();
     }
 
     @Test
     void terminalStatesCannotTransition() {
-        for (LoanTicketStatus terminal : new LoanTicketStatus[]{
-                LoanTicketStatus.RETURNED,
-                LoanTicketStatus.CANCELLED,
-                LoanTicketStatus.REJECTED}) {
+        for (LoanTicketStatus terminal :
+                new LoanTicketStatus[] {
+                    LoanTicketStatus.RETURNED, LoanTicketStatus.CANCELLED, LoanTicketStatus.REJECTED
+                }) {
             for (LoanTicketStatus target : LoanTicketStatus.values()) {
                 assertThat(stateMachine.canTransition(terminal, target)).isFalse();
             }

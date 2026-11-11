@@ -10,11 +10,12 @@ import java.math.BigDecimal;
 
 @Data
 public class AdjustmentRequestDTO {
-    @NotNull
-    private Long transactionId;
+    @NotNull private Long transactionId;
+
     @NotNull
     @DecimalMin(value = "0.01")
     private BigDecimal amount;
+
     @NotBlank
     @Size(max = 1000)
     private String reason;

@@ -16,13 +16,16 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/inventory")
-@Tag(name = "9. Inventory & POS", description = "Endpoints for physical library operations, POS and audits")
+@Tag(
+        name = "9. Inventory & POS",
+        description = "Endpoints for physical library operations, POS and audits")
 public class InventoryController {
 
     private final InventoryService inventoryService;
     private final InventoryAuditService inventoryAuditService;
 
-    public InventoryController(InventoryService inventoryService, InventoryAuditService inventoryAuditService) {
+    public InventoryController(
+            InventoryService inventoryService, InventoryAuditService inventoryAuditService) {
         this.inventoryService = inventoryService;
         this.inventoryAuditService = inventoryAuditService;
     }
@@ -43,7 +46,9 @@ public class InventoryController {
 
     @PostMapping("/receipts")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Import Books", description = "Import new books from Suppliers (Goods Receipts).")
+    @Operation(
+            summary = "Import Books",
+            description = "Import new books from Suppliers (Goods Receipts).")
     public ResponseEntity<?> importBooks(@Valid @RequestBody ImportReceiptRequestDTO request) {
         return ResponseEntity.ok(inventoryService.importBooks(request));
     }
@@ -57,7 +62,9 @@ public class InventoryController {
 
     @GetMapping("/receipts/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    public ResponseEntity<?> getReceipt(@PathVariable Long id) { return ResponseEntity.ok(inventoryService.getReceipt(id)); }
+    public ResponseEntity<?> getReceipt(@PathVariable Long id) {
+        return ResponseEntity.ok(inventoryService.getReceipt(id));
+    }
 
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
@@ -67,7 +74,9 @@ public class InventoryController {
     }
 
     @PostMapping("/shift-handover")
-    @Operation(summary = "Shift Handover", description = "POS end-of-shift cash discrepancy logging.")
+    @Operation(
+            summary = "Shift Handover",
+            description = "POS end-of-shift cash discrepancy logging.")
     public ResponseEntity<?> shiftHandover() {
         return ResponseEntity.ok().build();
     }
@@ -76,7 +85,9 @@ public class InventoryController {
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Start inventory audit")
     public ResponseEntity<?> createAudit(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(inventoryAuditService.createAudit(userDetails == null ? null : userDetails.getUser()));
+        return ResponseEntity.ok(
+                inventoryAuditService.createAudit(
+                        userDetails == null ? null : userDetails.getUser()));
     }
 
     @GetMapping("/audits")
@@ -96,8 +107,8 @@ public class InventoryController {
     @PostMapping("/audits/{auditId}/scans")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     @Operation(summary = "Scan a barcode in an inventory audit")
-    public ResponseEntity<?> scan(@PathVariable Long auditId,
-                                  @Valid @RequestBody InventoryScanRequestDTO request) {
+    public ResponseEntity<?> scan(
+            @PathVariable Long auditId, @Valid @RequestBody InventoryScanRequestDTO request) {
         return ResponseEntity.ok(inventoryAuditService.scan(auditId, request));
     }
 

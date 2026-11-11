@@ -25,12 +25,14 @@ class LibraryPolicyServiceTest {
     @Test
     void updatesAllPolicyValuesAndAuditActor() {
         LibraryPolicyRepository repository = mock(LibraryPolicyRepository.class);
-        LibraryPolicyHistoryRepository historyRepository = mock(LibraryPolicyHistoryRepository.class);
+        LibraryPolicyHistoryRepository historyRepository =
+                mock(LibraryPolicyHistoryRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         LibraryPolicyEntity existing = defaults();
         when(repository.findById(1L)).thenReturn(Optional.of(existing));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        LibraryPolicyService service = new LibraryPolicyService(repository, historyRepository, userRepository);
+        LibraryPolicyService service =
+                new LibraryPolicyService(repository, historyRepository, userRepository);
         LibraryPolicyRequestDTO request = new LibraryPolicyRequestDTO();
         request.setMaximumOpenItems(5);
         request.setHomeLoanDays(14);
@@ -58,10 +60,11 @@ class LibraryPolicyServiceTest {
     void exposesSafeDefaultsBeforeMigrationSeedIsAvailable() {
         LibraryPolicyRepository repository = mock(LibraryPolicyRepository.class);
         when(repository.findById(1L)).thenReturn(Optional.empty());
-        LibraryPolicyService service = new LibraryPolicyService(
-                repository,
-                mock(LibraryPolicyHistoryRepository.class),
-                mock(UserRepository.class));
+        LibraryPolicyService service =
+                new LibraryPolicyService(
+                        repository,
+                        mock(LibraryPolicyHistoryRepository.class),
+                        mock(UserRepository.class));
 
         assertThat(service.maximumOpenItems()).isEqualTo(3);
         assertThat(service.homeLoanDays()).isEqualTo(10);
@@ -72,7 +75,8 @@ class LibraryPolicyServiceTest {
     @Test
     void returnsNewestHistoryFirstWithActorInformation() {
         LibraryPolicyRepository repository = mock(LibraryPolicyRepository.class);
-        LibraryPolicyHistoryRepository historyRepository = mock(LibraryPolicyHistoryRepository.class);
+        LibraryPolicyHistoryRepository historyRepository =
+                mock(LibraryPolicyHistoryRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         UUID actorId = UUID.randomUUID();
         LibraryPolicyHistoryEntity history = history(2L, actorId);
@@ -80,9 +84,11 @@ class LibraryPolicyServiceTest {
         actor.setUserId(actorId);
         actor.setFullName("Admin Thư viện");
         actor.setEmail("admin@huit.edu.vn");
-        when(historyRepository.findAllByOrderByChangedAtDescHistoryIdDesc()).thenReturn(List.of(history));
+        when(historyRepository.findAllByOrderByChangedAtDescHistoryIdDesc())
+                .thenReturn(List.of(history));
         when(userRepository.findAllById(List.of(actorId))).thenReturn(List.of(actor));
-        LibraryPolicyService service = new LibraryPolicyService(repository, historyRepository, userRepository);
+        LibraryPolicyService service =
+                new LibraryPolicyService(repository, historyRepository, userRepository);
 
         var result = service.getHistory();
 

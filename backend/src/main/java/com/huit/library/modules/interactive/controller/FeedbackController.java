@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.*;
 public class FeedbackController {
 
     @PostMapping("/complaints")
-    @Operation(summary = "Submit Complaint", description = "Submit a user complaint to the library admin.")
+    @Operation(
+            summary = "Submit Complaint",
+            description = "Submit a user complaint to the library admin.")
     public ResponseEntity<?> submitComplaint() {
         return ResponseEntity.ok().build();
     }
-
 }

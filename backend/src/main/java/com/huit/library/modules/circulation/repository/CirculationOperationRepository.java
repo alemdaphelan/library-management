@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface CirculationOperationRepository extends JpaRepository<CirculationOperationEntity, UUID> {
+public interface CirculationOperationRepository
+        extends JpaRepository<CirculationOperationEntity, UUID> {
     Optional<CirculationOperationEntity> findByIdempotencyKey(String idempotencyKey);
 }

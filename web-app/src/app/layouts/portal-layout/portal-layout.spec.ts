@@ -9,14 +9,18 @@ describe('PortalLayout', () => {
   let component: PortalLayout;
   let fixture: ComponentFixture<PortalLayout>;
   const notificationService = {
-    getMyNotifications: vi.fn(() => of([{
-      notifId: 'notification-1',
-      userId: 'reader-1',
-      type: 'LOAN_OVERDUE',
-      content: 'Tài liệu của bạn đã quá hạn.',
-      isRead: false,
-      sentAt: '2026-10-27T08:00:00',
-    }])),
+    getMyNotifications: vi.fn(() =>
+      of([
+        {
+          notifId: 'notification-1',
+          userId: 'reader-1',
+          type: 'LOAN_OVERDUE',
+          content: 'Tài liệu của bạn đã quá hạn.',
+          isRead: false,
+          sentAt: '2026-10-27T08:00:00',
+        },
+      ]),
+    ),
     markAsRead: vi.fn(),
   };
 

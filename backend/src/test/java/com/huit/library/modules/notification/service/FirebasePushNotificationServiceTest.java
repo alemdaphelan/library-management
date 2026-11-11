@@ -27,7 +27,8 @@ class FirebasePushNotificationServiceTest {
         ObjectProvider<FirebaseMessaging> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(messaging);
 
-        PushDeviceRegistrationRepository deviceRepository = mock(PushDeviceRegistrationRepository.class);
+        PushDeviceRegistrationRepository deviceRepository =
+                mock(PushDeviceRegistrationRepository.class);
         NotificationPreferenceService preferenceService = mock(NotificationPreferenceService.class);
         UUID userId = UUID.randomUUID();
         PushDeviceRegistrationEntity device = new PushDeviceRegistrationEntity();
@@ -38,14 +39,17 @@ class FirebasePushNotificationServiceTest {
         when(preferenceService.isPushEnabled(userId)).thenReturn(true);
         when(deviceRepository.findByUserIdAndActiveTrue(userId)).thenReturn(List.of(device));
 
-        FirebasePushNotificationService service = new FirebasePushNotificationService(
-                provider, deviceRepository, preferenceService);
-        service.send(new PushNotificationEvent(
-                userId, "LOAN_APPROVED", "Phiếu #15 đã được duyệt", "LOAN_TICKET", "15"));
+        FirebasePushNotificationService service =
+                new FirebasePushNotificationService(provider, deviceRepository, preferenceService);
+        service.send(
+                new PushNotificationEvent(
+                        userId, "LOAN_APPROVED", "Phiếu #15 đã được duyệt", "LOAN_TICKET", "15"));
 
         var captured = org.mockito.ArgumentCaptor.forClass(Message.class);
         verify(messaging).send(captured.capture());
-        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(captured.getValue(), "token"))
+        assertThat(
+                        org.springframework.test.util.ReflectionTestUtils.getField(
+                                captured.getValue(), "token"))
                 .isEqualTo("fcm-valid-token");
         verify(deviceRepository, never()).save(any());
     }
@@ -53,7 +57,8 @@ class FirebasePushNotificationServiceTest {
     @Test
     void routesInstallationIdToFidTargetInsteadOfLegacyToken() throws Exception {
         FirebaseMessaging messaging = mock(FirebaseMessaging.class);
-        @SuppressWarnings("unchecked") ObjectProvider<FirebaseMessaging> provider = mock(ObjectProvider.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<FirebaseMessaging> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(messaging);
         var repository = mock(PushDeviceRegistrationRepository.class);
         var preferences = mock(NotificationPreferenceService.class);
@@ -64,12 +69,19 @@ class FirebasePushNotificationServiceTest {
         when(preferences.isPushEnabled(user)).thenReturn(true);
         when(repository.findByUserIdAndActiveTrue(user)).thenReturn(List.of(device));
         new FirebasePushNotificationService(provider, repository, preferences)
-                .send(new PushNotificationEvent(user, "LOAN_APPROVED", "Approved", "LOAN_TICKET", "15"));
+                .send(
+                        new PushNotificationEvent(
+                                user, "LOAN_APPROVED", "Approved", "LOAN_TICKET", "15"));
         var captured = org.mockito.ArgumentCaptor.forClass(Message.class);
         verify(messaging).send(captured.capture());
-        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(captured.getValue(), "fid"))
+        assertThat(
+                        org.springframework.test.util.ReflectionTestUtils.getField(
+                                captured.getValue(), "fid"))
                 .isEqualTo("installation-id");
-        assertThat(org.springframework.test.util.ReflectionTestUtils.getField(captured.getValue(), "token")).isNull();
+        assertThat(
+                        org.springframework.test.util.ReflectionTestUtils.getField(
+                                captured.getValue(), "token"))
+                .isNull();
     }
 
     @Test
@@ -79,7 +91,8 @@ class FirebasePushNotificationServiceTest {
         ObjectProvider<FirebaseMessaging> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(messaging);
 
-        PushDeviceRegistrationRepository deviceRepository = mock(PushDeviceRegistrationRepository.class);
+        PushDeviceRegistrationRepository deviceRepository =
+                mock(PushDeviceRegistrationRepository.class);
         NotificationPreferenceService preferenceService = mock(NotificationPreferenceService.class);
         UUID userId = UUID.randomUUID();
         PushDeviceRegistrationEntity expiredDevice = new PushDeviceRegistrationEntity();
@@ -93,10 +106,11 @@ class FirebasePushNotificationServiceTest {
         when(preferenceService.isPushEnabled(userId)).thenReturn(true);
         when(deviceRepository.findByUserIdAndActiveTrue(userId)).thenReturn(List.of(expiredDevice));
 
-        FirebasePushNotificationService service = new FirebasePushNotificationService(
-                provider, deviceRepository, preferenceService);
-        service.send(new PushNotificationEvent(
-                userId, "LOAN_OVERDUE", "Sách quá hạn 1 ngày", "LOAN_DETAIL", "22"));
+        FirebasePushNotificationService service =
+                new FirebasePushNotificationService(provider, deviceRepository, preferenceService);
+        service.send(
+                new PushNotificationEvent(
+                        userId, "LOAN_OVERDUE", "Sách quá hạn 1 ngày", "LOAN_DETAIL", "22"));
 
         assertThat(expiredDevice.getActive()).isFalse();
         verify(deviceRepository).save(expiredDevice);

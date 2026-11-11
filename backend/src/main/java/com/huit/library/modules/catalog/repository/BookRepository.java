@@ -16,7 +16,8 @@ import java.util.Optional;
 
 @Repository
 public interface BookRepository extends JpaRepository<BookEntity, Long> {
-    String OFFICIAL_FACULTY_ASSIGNMENTS = """
+    String OFFICIAL_FACULTY_ASSIGNMENTS =
+            """
             FROM material_classifications profile
             JOIN material_major_assignments assignment ON assignment.profile_id = profile.profile_id
             JOIN academic_majors major ON major.major_id = assignment.major_id
@@ -26,12 +27,17 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     String GENERAL_EDUCATION = "c.name = '" + CategoryEntity.GENERAL_EDUCATION + "'";
 
     // Use sourced HUIT subject affinities for books without official assignments.
-    String FACULTY_FILTER = """
+    String FACULTY_FILTER =
+            """
             AND (:facultyId = '' OR (
-                """ + GENERAL_EDUCATION + """
+                """
+                    + GENERAL_EDUCATION
+                    + """
                 AND EXISTS (SELECT 1 FROM academic_faculties f WHERE f.faculty_id = :facultyId)
             ) OR EXISTS (SELECT 1
-            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
+            """
+                    + OFFICIAL_FACULTY_ASSIGNMENTS
+                    + """
                 AND major.faculty_id = :facultyId
             ) OR (
                 b.book_id IN (
@@ -45,30 +51,47 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
                     JOIN book_subject_assignments subject_assignment ON subject_assignment.subject_id = subject.subject_id
                     WHERE mapping.faculty_id = :facultyId AND affinity.source = 'HUIT_2026'
                 ) AND NOT EXISTS (SELECT 1
-            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
+            """
+                    + OFFICIAL_FACULTY_ASSIGNMENTS
+                    + """
                 )
             ))
             """;
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             select * from books where regexp_replace(upper(coalesce(isbn, '')), '[[:space:]-]', '', 'g') = :isbn13
                or (:isbn10 <> '' and regexp_replace(upper(coalesce(isbn, '')), '[[:space:]-]', '', 'g') = :isbn10)
             order by book_id
-            """, nativeQuery = true)
-    List<BookEntity> findInventoryIsbnCandidates(@Param("isbn13") String isbn13, @Param("isbn10") String isbn10);
+            """,
+            nativeQuery = true)
+    List<BookEntity> findInventoryIsbnCandidates(
+            @Param("isbn13") String isbn13, @Param("isbn10") String isbn10);
+
     Optional<BookEntity> findFirstByIsbn(String isbn);
-    Page<BookEntity> findByTitleContainingIgnoreCaseOrIsbnContainingIgnoreCaseOrAuthorContainingIgnoreCase(String title, String isbn, String author, Pageable pageable);
-    
+
+    Page<BookEntity>
+            findByTitleContainingIgnoreCaseOrIsbnContainingIgnoreCaseOrAuthorContainingIgnoreCase(
+                    String title, String isbn, String author, Pageable pageable);
+
     Page<BookEntity> findByCategory_CategoryId(Long categoryId, Pageable pageable);
-    
-    Page<BookEntity> findByCategory_CategoryIdAndTitleContainingIgnoreCaseOrCategory_CategoryIdAndAuthorContainingIgnoreCase(
-            Long categoryId1, String title, Long categoryId2, String author, Pageable pageable);
+
+    Page<BookEntity>
+            findByCategory_CategoryIdAndTitleContainingIgnoreCaseOrCategory_CategoryIdAndAuthorContainingIgnoreCase(
+                    Long categoryId1,
+                    String title,
+                    Long categoryId2,
+                    String author,
+                    Pageable pageable);
 
     @Modifying
-    @Query("update BookEntity book set book.viewCount = coalesce(book.viewCount, 0) + 1 where book.bookId = :bookId")
+    @Query(
+            "update BookEntity book set book.viewCount = coalesce(book.viewCount, 0) + 1 where book.bookId = :bookId")
     int incrementViewCount(@Param("bookId") Long bookId);
 
-    String CATALOG_MATCH = """
+    String CATALOG_MATCH =
+            """
             FROM books b
             LEFT JOIN categories c ON c.category_id = b.category_id
             WHERE (:categoryId IS NULL OR b.category_id = :categoryId)
@@ -109,7 +132,8 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
                   )
             """;
 
-    @Query(value = "SELECT b.* " + CATALOG_MATCH + FACULTY_FILTER,
+    @Query(
+            value = "SELECT b.* " + CATALOG_MATCH + FACULTY_FILTER,
             countQuery = "SELECT COUNT(*) " + CATALOG_MATCH + FACULTY_FILTER,
             nativeQuery = true)
     Page<BookEntity> searchCatalog(
@@ -120,7 +144,9 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             @Param("facultyId") String facultyId,
             Pageable pageable);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT b.* FROM books b
             WHERE b.title IS NOT NULL AND BTRIM(b.title) <> ''
               AND EXISTS (
@@ -128,14 +154,18 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
                     WHERE assignment.book_id = b.book_id
                   )
             ORDER BY COALESCE(b.publish_year, 0) DESC, LOWER(BTRIM(b.title)), b.book_id
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<BookEntity> findRecommendationFallback(Pageable pageable);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT b.* FROM books b
             WHERE b.title IS NOT NULL AND BTRIM(b.title) <> ''
             ORDER BY COALESCE(b.publish_year, 0) DESC, LOWER(BTRIM(b.title)), b.book_id
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<BookEntity> findCatalogFallback(Pageable pageable);
 
     List<BookEntity> findByCategory_CategoryIdAndBookIdNotOrderByBookIdAsc(
@@ -146,7 +176,9 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     List<BookEntity> findByCategory_CategoryIdInOrderByBookIdAsc(
             Collection<Long> categoryIds, Pageable pageable);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT affinity.display_name
             FROM book_subject_assignments assignment
             JOIN department_subject_affinities affinity
@@ -154,49 +186,68 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
              AND affinity.active = TRUE
             WHERE assignment.book_id = :bookId
             ORDER BY assignment.primary_subject DESC, assignment.confidence DESC, affinity.weight DESC, affinity.display_name
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<String> findDepartmentNamesByBookId(@Param("bookId") Long bookId);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT DISTINCT major.major_name
             FROM material_classifications profile
             JOIN material_major_assignments assignment ON assignment.profile_id = profile.profile_id
             JOIN academic_majors major ON major.major_id = assignment.major_id
             WHERE profile.material_kind = 'BOOK' AND profile.material_id = :bookId
             ORDER BY major.major_name
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<String> findOfficialMajorNamesByBookId(@Param("bookId") Long bookId);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT DISTINCT assignment.book_id
             FROM book_subject_assignments assignment
             JOIN department_subject_affinities affinity
               ON affinity.subject_id = assignment.subject_id
              AND affinity.active = TRUE
             ORDER BY assignment.book_id
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<Long> findBookIdsWithActiveDepartmentMapping();
 
     // Official assignments override inferred subjects. Shared books do not need a major assignment.
-    String MAJOR_KEY = """
+    String MAJOR_KEY =
+            """
             btrim(regexp_replace(translate(lower(regexp_replace(
                 normalize(major.major_name, NFD), U&'[\\0300-\\036f]', '', 'g')), 'đ', 'd'), '[^a-z0-9]+', ' ', 'g'))
             """;
-    String DEPARTMENT_FILTER = """
+    String DEPARTMENT_FILTER =
+            """
             AND ((
-                """ + GENERAL_EDUCATION + """
+                """
+                    + GENERAL_EDUCATION
+                    + """
                 AND (EXISTS (SELECT 1 FROM department_subject_affinities affinity
                              WHERE affinity.active AND affinity.department_key = :departmentKey)
                      OR EXISTS (SELECT 1 FROM academic_majors major
-                                WHERE major.major_code = :departmentKey OR (""" + MAJOR_KEY + """
+                                WHERE major.major_code = :departmentKey OR ("""
+                    + MAJOR_KEY
+                    + """
                                     = :departmentKey)))
             ) OR EXISTS (SELECT 1
-            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
-                AND (major.major_code = :departmentKey OR (""" + MAJOR_KEY + """
+            """
+                    + OFFICIAL_FACULTY_ASSIGNMENTS
+                    + """
+                AND (major.major_code = :departmentKey OR ("""
+                    + MAJOR_KEY
+                    + """
                     = :departmentKey))
             ) OR (
                 NOT EXISTS (SELECT 1
-            """ + OFFICIAL_FACULTY_ASSIGNMENTS + """
+            """
+                    + OFFICIAL_FACULTY_ASSIGNMENTS
+                    + """
                 ) AND b.book_id IN (
                     SELECT assignment.book_id
                     FROM department_subject_affinities affinity
@@ -207,7 +258,8 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
             ))
             """;
 
-    @Query(value = "SELECT b.* " + CATALOG_MATCH + FACULTY_FILTER + DEPARTMENT_FILTER,
+    @Query(
+            value = "SELECT b.* " + CATALOG_MATCH + FACULTY_FILTER + DEPARTMENT_FILTER,
             countQuery = "SELECT COUNT(*) " + CATALOG_MATCH + FACULTY_FILTER + DEPARTMENT_FILTER,
             nativeQuery = true)
     Page<BookEntity> searchByDepartment(

@@ -87,7 +87,8 @@ public class CirculationMaintenanceService {
             }
         }
 
-        int dueSoonNotifications = createDueSoonNotifications(now) + createPenaltyCaseReminders(now);
+        int dueSoonNotifications =
+                createDueSoonNotifications(now) + createPenaltyCaseReminders(now);
         overdueDebtService.processAt(now);
         return new CirculationMaintenanceResult(
                 expiredReservations, overdueTickets, dueSoonNotifications);
@@ -104,26 +105,32 @@ public class CirculationMaintenanceService {
         }
 
         List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticketId);
-        List<String> barcodes = details.stream()
-                .map(LoanDetailEntity::getBarcode)
-                .filter(Objects::nonNull)
-                .distinct()
-                .sorted()
-                .toList();
-        List<BookCopyEntity> copies = barcodes.isEmpty()
-                ? List.of()
-                : bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
-        boolean hasExpiredCopy = copies.stream().anyMatch(copy ->
-                "RESERVED".equalsIgnoreCase(copy.getStatus())
-                        && copy.getLockedUntil() != null
-                        && copy.getLockedUntil().isBefore(now));
+        List<String> barcodes =
+                details.stream()
+                        .map(LoanDetailEntity::getBarcode)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .sorted()
+                        .toList();
+        List<BookCopyEntity> copies =
+                barcodes.isEmpty()
+                        ? List.of()
+                        : bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
+        boolean hasExpiredCopy =
+                copies.stream()
+                        .anyMatch(
+                                copy ->
+                                        "RESERVED".equalsIgnoreCase(copy.getStatus())
+                                                && copy.getLockedUntil() != null
+                                                && copy.getLockedUntil().isBefore(now));
         if (!hasExpiredCopy) {
             return false;
         }
 
         transition(ticket, LoanTicketStatus.CANCELLED, "Tự động hủy do quá hạn nhận sách");
         for (LoanDetailEntity detail : details) {
-            if (LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus()) == LoanDetailStatus.PENDING) {
+            if (LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus())
+                    == LoanDetailStatus.PENDING) {
                 detail.setReturnStatus(LoanDetailStatus.CANCELLED.name());
                 loanDetailRepository.save(detail);
             }
@@ -138,10 +145,13 @@ public class CirculationMaintenanceService {
             }
         }
         notificationService.createOnce(
-                ticket.getUserId(), "RESERVATION_EXPIRED",
+                ticket.getUserId(),
+                "RESERVATION_EXPIRED",
                 "Phiếu #" + ticketId + " đã tự hủy vì quá hạn nhận sách.",
-                "LOAN_TICKET", ticketId.toString(),
-                "RESERVATION_EXPIRED:" + ticketId, now);
+                "LOAN_TICKET",
+                ticketId.toString(),
+                "RESERVATION_EXPIRED:" + ticketId,
+                now);
         reservationNoShowService.record(
                 ticket.getUserId(), now, "LOAN_TICKET", ticketId.toString());
         return true;
@@ -167,29 +177,38 @@ public class CirculationMaintenanceService {
             overdueViolationService.recordFirstOverdue(ticket, now);
         }
 
-        List<String> barcodes = overdueDetails.stream()
-                .map(LoanDetailEntity::getBarcode)
-                .filter(Objects::nonNull)
-                .distinct()
-                .sorted()
-                .toList();
-        List<BookCopyEntity> copies = barcodes.isEmpty()
-                ? List.of()
-                : bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
+        List<String> barcodes =
+                overdueDetails.stream()
+                        .map(LoanDetailEntity::getBarcode)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .sorted()
+                        .toList();
+        List<BookCopyEntity> copies =
+                barcodes.isEmpty()
+                        ? List.of()
+                        : bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
         for (LoanDetailEntity detail : overdueDetails) {
             detail.setReturnStatus(LoanDetailStatus.OVERDUE.name());
             loanDetailRepository.save(detail);
             lateFineService.accrueLateFine(ticket, detail, now);
-            long overdueDay = ChronoUnit.DAYS.between(
-                    detail.getDueDate().toLocalDate(), now.toLocalDate());
+            long overdueDay =
+                    ChronoUnit.DAYS.between(detail.getDueDate().toLocalDate(), now.toLocalDate());
             if (shouldNotifyOverdue(overdueDay)) {
                 notificationService.createOnce(
-                        ticket.getUserId(), "LOAN_OVERDUE",
-                        "Tài liệu " + detail.getBarcode() + " của phiếu #" + ticketId
-                                + " đã quá hạn " + overdueDay
+                        ticket.getUserId(),
+                        "LOAN_OVERDUE",
+                        "Tài liệu "
+                                + detail.getBarcode()
+                                + " của phiếu #"
+                                + ticketId
+                                + " đã quá hạn "
+                                + overdueDay
                                 + " ngày và đã phát sinh tiền phạt.",
-                        "LOAN_DETAIL", detail.getDetailId().toString(),
-                        "LOAN_OVERDUE:" + detail.getDetailId() + ":DAY:" + overdueDay, now);
+                        "LOAN_DETAIL",
+                        detail.getDetailId().toString(),
+                        "LOAN_OVERDUE:" + detail.getDetailId() + ":DAY:" + overdueDay,
+                        now);
             }
         }
         for (BookCopyEntity copy : copies) {
@@ -205,27 +224,45 @@ public class CirculationMaintenanceService {
         int created = 0;
         LocalDateTime until = now.plusDays(dueSoonDays);
         for (LoanDetailEntity detail : loanDetailRepository.findDueSoon(now, until)) {
-            LoanTicketEntity ticket = loanTicketRepository.findById(detail.getTicketId()).orElse(null);
+            LoanTicketEntity ticket =
+                    loanTicketRepository.findById(detail.getTicketId()).orElse(null);
             if (ticket == null || ticket.getUserId() == null || detail.getDueDate() == null) {
                 continue;
             }
-            long daysUntilDue = ChronoUnit.DAYS.between(now.toLocalDate(), detail.getDueDate().toLocalDate());
+            long daysUntilDue =
+                    ChronoUnit.DAYS.between(now.toLocalDate(), detail.getDueDate().toLocalDate());
             if (daysUntilDue == 0) {
                 if (notificationService.createOnce(
-                        ticket.getUserId(), "DUE_TODAY",
-                        "Tài liệu " + detail.getBarcode() + " đến hạn trả hôm nay ("
-                                + detail.getDueDate().toLocalDate() + "). Vui lòng hoàn trả đúng hạn.",
-                        "LOAN_DETAIL", detail.getDetailId().toString(),
-                        "LOAN_DUE_TODAY:" + detail.getDetailId() + ":" + detail.getDueDate().toLocalDate(), now)) {
+                        ticket.getUserId(),
+                        "DUE_TODAY",
+                        "Tài liệu "
+                                + detail.getBarcode()
+                                + " đến hạn trả hôm nay ("
+                                + detail.getDueDate().toLocalDate()
+                                + "). Vui lòng hoàn trả đúng hạn.",
+                        "LOAN_DETAIL",
+                        detail.getDetailId().toString(),
+                        "LOAN_DUE_TODAY:"
+                                + detail.getDetailId()
+                                + ":"
+                                + detail.getDueDate().toLocalDate(),
+                        now)) {
                     created++;
                 }
             } else {
                 String dueKey = detail.getDueDate().toString();
                 if (notificationService.createOnce(
-                        ticket.getUserId(), "LOAN_DUE_SOON",
-                        "Tài liệu " + detail.getBarcode() + " sẽ đến hạn vào " + detail.getDueDate() + ".",
-                        "LOAN_DETAIL", detail.getDetailId().toString(),
-                        "LOAN_DUE_SOON:" + detail.getDetailId() + ":" + dueKey, now)) {
+                        ticket.getUserId(),
+                        "LOAN_DUE_SOON",
+                        "Tài liệu "
+                                + detail.getBarcode()
+                                + " sẽ đến hạn vào "
+                                + detail.getDueDate()
+                                + ".",
+                        "LOAN_DETAIL",
+                        detail.getDetailId().toString(),
+                        "LOAN_DUE_SOON:" + detail.getDetailId() + ":" + dueKey,
+                        now)) {
                     created++;
                 }
             }
@@ -235,19 +272,27 @@ public class CirculationMaintenanceService {
 
     private int createPenaltyCaseReminders(LocalDateTime now) {
         int created = 0;
-        for (PenaltyCaseEntity penaltyCase : penaltyCaseRepository.findByStatusIn(
-                List.of("OUTSTANDING", "WAITING_REPLACEMENT"))) {
-            long day = ChronoUnit.DAYS.between(
-                    penaltyCase.getReportedAt().toLocalDate(), now.toLocalDate());
+        for (PenaltyCaseEntity penaltyCase :
+                penaltyCaseRepository.findByStatusIn(
+                        List.of("OUTSTANDING", "WAITING_REPLACEMENT"))) {
+            long day =
+                    ChronoUnit.DAYS.between(
+                            penaltyCase.getReportedAt().toLocalDate(), now.toLocalDate());
             if (day != 20 && day != 25 && day != 29) {
                 continue;
             }
             if (notificationService.createOnce(
-                    penaltyCase.getUserId(), "PENALTY_CASE_DUE",
-                    "Hồ sơ đền bù #" + penaltyCase.getCaseId()
-                            + " phải hoàn tất trước " + penaltyCase.getSettlementDueAt().toLocalDate() + ".",
-                    "PENALTY_CASE", penaltyCase.getCaseId().toString(),
-                    "PENALTY_CASE_DUE:" + penaltyCase.getCaseId() + ":DAY:" + day, now)) {
+                    penaltyCase.getUserId(),
+                    "PENALTY_CASE_DUE",
+                    "Hồ sơ đền bù #"
+                            + penaltyCase.getCaseId()
+                            + " phải hoàn tất trước "
+                            + penaltyCase.getSettlementDueAt().toLocalDate()
+                            + ".",
+                    "PENALTY_CASE",
+                    penaltyCase.getCaseId().toString(),
+                    "PENALTY_CASE_DUE:" + penaltyCase.getCaseId() + ":DAY:" + day,
+                    now)) {
                 created++;
             }
         }
@@ -255,14 +300,13 @@ public class CirculationMaintenanceService {
     }
 
     private boolean shouldNotifyOverdue(long overdueDay) {
-        return overdueDay == 1 || overdueDay == 3 || overdueDay == 7
+        return overdueDay == 1
+                || overdueDay == 3
+                || overdueDay == 7
                 || (overdueDay > 7 && overdueDay % 7 == 0);
     }
 
-    private void transition(
-            LoanTicketEntity ticket,
-            LoanTicketStatus target,
-            String reason) {
+    private void transition(LoanTicketEntity ticket, LoanTicketStatus target, String reason) {
         LoanTicketStatus previous = stateMachine.transition(ticket, target);
         ticket.setDecisionNote(reason);
         loanTicketRepository.save(ticket);

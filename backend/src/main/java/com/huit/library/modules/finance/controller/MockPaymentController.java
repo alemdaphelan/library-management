@@ -18,18 +18,28 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasRole('STUDENT')")
 public class MockPaymentController {
     private final MockPaymentService payments;
-    public MockPaymentController(MockPaymentService payments) { this.payments = payments; }
+
+    public MockPaymentController(MockPaymentService payments) {
+        this.payments = payments;
+    }
+
     @PostMapping
-    public OnlinePaymentSessionDTO create(@Valid @RequestBody MockPaymentModels.Create request,
+    public OnlinePaymentSessionDTO create(
+            @Valid @RequestBody MockPaymentModels.Create request,
             @AuthenticationPrincipal CustomUserDetails user) {
         return payments.create(user.getUser().getUserId(), request);
     }
+
     @GetMapping("/{reference}")
-    public OnlinePaymentSessionDTO get(@PathVariable String reference, @AuthenticationPrincipal CustomUserDetails user) {
+    public OnlinePaymentSessionDTO get(
+            @PathVariable String reference, @AuthenticationPrincipal CustomUserDetails user) {
         return payments.get(user.getUser().getUserId(), reference);
     }
+
     @PostMapping("/{reference}/finish")
-    public OnlinePaymentSessionDTO finish(@PathVariable String reference, @Valid @RequestBody MockPaymentModels.Finish request,
+    public OnlinePaymentSessionDTO finish(
+            @PathVariable String reference,
+            @Valid @RequestBody MockPaymentModels.Finish request,
             @AuthenticationPrincipal CustomUserDetails user) {
         return payments.finish(user.getUser().getUserId(), reference, request.outcome());
     }

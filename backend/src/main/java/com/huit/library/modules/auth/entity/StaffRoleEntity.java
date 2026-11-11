@@ -10,10 +10,10 @@ import lombok.EqualsAndHashCode;
 @Entity
 @Table(name = "staff_roles")
 public class StaffRoleEntity extends BaseEntity {
-    @Id
-    private String roleId;
+    @Id private String roleId;
 
     private String roleName;
+
     @Column(columnDefinition = "json")
     private String permissions;
 }

@@ -6,14 +6,22 @@ for (let index = 2; index < process.argv.length; index += 2) {
   args.set(process.argv[index], process.argv[index + 1]);
 }
 
-const baseUrl = (args.get('--base-url') ?? process.env.BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+const baseUrl = (args.get('--base-url') ?? process.env.BASE_URL ?? 'http://localhost:8080').replace(
+  /\/$/,
+  '',
+);
 const endpoint = args.get('--endpoint') ?? '/books?page=0&size=10';
 const requestCount = Number(args.get('--requests') ?? 200);
 const concurrency = Number(args.get('--concurrency') ?? 20);
 const maxP95Ms = Number(args.get('--max-p95-ms') ?? 1500);
 const output = args.get('--output');
 
-if (!Number.isInteger(requestCount) || requestCount < 1 || !Number.isInteger(concurrency) || concurrency < 1) {
+if (
+  !Number.isInteger(requestCount) ||
+  requestCount < 1 ||
+  !Number.isInteger(concurrency) ||
+  concurrency < 1
+) {
   throw new Error('requests and concurrency must be positive integers');
 }
 
@@ -50,7 +58,8 @@ async function worker() {
 
 await Promise.all(Array.from({ length: Math.min(concurrency, requestCount) }, () => worker()));
 latencies.sort((left, right) => left - right);
-const percentile = (ratio) => latencies[Math.min(latencies.length - 1, Math.ceil(latencies.length * ratio) - 1)];
+const percentile = (ratio) =>
+  latencies[Math.min(latencies.length - 1, Math.ceil(latencies.length * ratio) - 1)];
 const elapsedMs = performance.now() - startedAt;
 const report = {
   generatedAt: new Date().toISOString(),

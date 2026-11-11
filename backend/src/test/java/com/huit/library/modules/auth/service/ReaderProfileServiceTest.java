@@ -26,21 +26,33 @@ class ReaderProfileServiceTest {
         LoanService loanService = mock(LoanService.class);
         DebtLedgerService debtService = mock(DebtLedgerService.class);
         PenaltyCaseService penaltyService = mock(PenaltyCaseService.class);
-        ReaderProfileService service = new ReaderProfileService(
-                userService, cardService, loanService, debtService, penaltyService);
+        ReaderProfileService service =
+                new ReaderProfileService(
+                        userService, cardService, loanService, debtService, penaltyService);
         UUID userId = UUID.randomUUID();
         UserEntity student = new UserEntity();
         student.setUserId(userId);
         student.setUserType("STUDENT");
         student.setMssv("2001231849");
-        LoanTicketSummaryDTO ownLoan = LoanTicketSummaryDTO.builder().ticketId(1L).userId(userId).build();
+        LoanTicketSummaryDTO ownLoan =
+                LoanTicketSummaryDTO.builder().ticketId(1L).userId(userId).build();
         TransactionEntity debt = new TransactionEntity();
         debt.setTransactionId(3L);
         PenaltyCaseEntity penaltyCase = new PenaltyCaseEntity();
         penaltyCase.setCaseId(4L);
-        LibraryCardResponseDTO card = new LibraryCardResponseDTO(
-                true, student.getMssv(), "Sinh viên", "CNTT", "ACTIVE",
-                null, null, BigDecimal.ZERO, BigDecimal.ZERO, null, null);
+        LibraryCardResponseDTO card =
+                new LibraryCardResponseDTO(
+                        true,
+                        student.getMssv(),
+                        "Sinh viên",
+                        "CNTT",
+                        "ACTIVE",
+                        null,
+                        null,
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        null,
+                        null);
         when(userService.getStudentByMssv(student.getMssv())).thenReturn(student);
         when(cardService.get(userId)).thenReturn(card);
         when(loanService.getUserLoanSummaries(userId)).thenReturn(List.of(ownLoan));
@@ -51,7 +63,9 @@ class ReaderProfileServiceTest {
 
         assertThat(result.getStudent()).isSameAs(student);
         assertThat(result.getCard()).isSameAs(card);
-        assertThat(result.getLoans()).extracting(LoanTicketSummaryDTO::getTicketId).containsExactly(1L);
+        assertThat(result.getLoans())
+                .extracting(LoanTicketSummaryDTO::getTicketId)
+                .containsExactly(1L);
         assertThat(result.getLedger()).containsExactly(debt);
         assertThat(result.getPenaltyCases()).containsExactly(penaltyCase);
     }

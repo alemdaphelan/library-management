@@ -48,7 +48,7 @@
   padding: 0 20px;
   background-color: #0f172a;
   gap: 15px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .logo-box {
@@ -117,7 +117,7 @@
 }
 
 .nav-item:hover {
-  background-color: rgba(255,255,255,0.05);
+  background-color: rgba(255, 255, 255, 0.05);
   color: white;
 }
 
@@ -149,7 +149,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0 30px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   z-index: 10;
 }
 
@@ -307,7 +307,7 @@
   margin-top: 15px;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   min-width: 180px;
   z-index: 1000;
   display: flex;
@@ -338,16 +338,54 @@
 }
 
 @media (max-width: 800px) {
-  .admin-sidebar { width: 60px; flex-shrink: 0; }
-  .admin-sidebar.collapsed { width: 0; }
-  .admin-sidebar .logo-text, .admin-sidebar .nav-section-title { display: none; }
-  .admin-sidebar .nav-item-text { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .admin-sidebar .nav-item { padding: 12px 0; justify-content: center; }
-  .admin-sidebar .nav-item.active { margin-right: 0; border-radius: 0; }
-  .admin-sidebar .sidebar-header { padding: 0; justify-content: center; }
-  .admin-topbar { padding: 0 12px; gap: 12px; }
-  .tb-left { gap: 10px; }
-  .branch-selector { max-width: 130px; padding: 6px; font-size: .7rem; }
-  .user-info { display: none; }
-  .admin-content { padding: 20px 12px; }
+  .admin-sidebar {
+    width: 60px;
+    flex-shrink: 0;
+  }
+  .admin-sidebar.collapsed {
+    width: 0;
+  }
+  .admin-sidebar .logo-text,
+  .admin-sidebar .nav-section-title {
+    display: none;
+  }
+  .admin-sidebar .nav-item-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .admin-sidebar .nav-item {
+    padding: 12px 0;
+    justify-content: center;
+  }
+  .admin-sidebar .nav-item.active {
+    margin-right: 0;
+    border-radius: 0;
+  }
+  .admin-sidebar .sidebar-header {
+    padding: 0;
+    justify-content: center;
+  }
+  .admin-topbar {
+    padding: 0 12px;
+    gap: 12px;
+  }
+  .tb-left {
+    gap: 10px;
+  }
+  .branch-selector {
+    max-width: 130px;
+    padding: 6px;
+    font-size: 0.7rem;
+  }
+  .user-info {
+    display: none;
+  }
+  .admin-content {
+    padding: 20px 12px;
+  }
 }

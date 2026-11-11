@@ -31,16 +31,16 @@ export interface RecommendationResponse {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class HomeService {
   private booksUrl = `${environment.apiUrl}/books`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   getPopularRecommendations(limit: number = 10): Observable<RecommendationResponse> {
     return this.http.get<RecommendationResponse>(`${this.booksUrl}/recommendations/popular`, {
-      params: { limit: limit.toString() }
+      params: { limit: limit.toString() },
     });
   }
 
@@ -50,10 +50,10 @@ export class HomeService {
       return this.getPopularRecommendations(limit);
     }
 
-    return this.http.get<RecommendationResponse>(`${this.booksUrl}/recommendations/personalized`, {
-      params: { limit: limit.toString() }
-    }).pipe(
-      catchError(() => this.getPopularRecommendations(limit))
-    );
+    return this.http
+      .get<RecommendationResponse>(`${this.booksUrl}/recommendations/personalized`, {
+        params: { limit: limit.toString() },
+      })
+      .pipe(catchError(() => this.getPopularRecommendations(limit)));
   }
 }

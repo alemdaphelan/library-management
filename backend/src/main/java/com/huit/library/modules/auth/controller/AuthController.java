@@ -28,7 +28,8 @@ public class AuthController {
     private final AuthService authService;
     private final com.huit.library.core.security.TokenService tokenService;
 
-    public AuthController(AuthService authService, com.huit.library.core.security.TokenService tokenService) {
+    public AuthController(
+            AuthService authService, com.huit.library.core.security.TokenService tokenService) {
         this.authService = authService;
         this.tokenService = tokenService;
     }
@@ -46,20 +47,25 @@ public class AuthController {
 
     @PostMapping("/logout")
     @Operation(summary = "Logout", description = "Blacklist the current JWT token in Redis.")
-    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader,
-                                    @RequestBody(required = false) LogoutRequestDTO request) {
+    public ResponseEntity<?> logout(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody(required = false) LogoutRequestDTO request) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String jwt = authHeader.substring(7);
             tokenService.blacklistToken(jwt);
         }
-        if (request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+        if (request != null
+                && request.getRefreshToken() != null
+                && !request.getRefreshToken().isBlank()) {
             tokenService.deleteRefreshToken(request.getRefreshToken());
         }
         return ResponseEntity.ok().body("User logged out successfully!");
     }
 
     @PostMapping("/refresh-token")
-    @Operation(summary = "Refresh Token", description = "Get a new JWT and refresh token using a valid refresh token.")
+    @Operation(
+            summary = "Refresh Token",
+            description = "Get a new JWT and refresh token using a valid refresh token.")
     public ResponseEntity<?> refreshToken(@Valid @RequestBody RefreshTokenRequestDTO request) {
         try {
             JwtResponseDTO response = authService.refreshToken(request.getRefreshToken());
@@ -71,14 +77,17 @@ public class AuthController {
 
     @PostMapping("/change-password")
     @Operation(summary = "Change Password", description = "Change user password.")
-    public ResponseEntity<?> changePassword(Authentication authentication,
-                                            @Valid @RequestBody ChangePasswordRequestDTO request) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
+    public ResponseEntity<?> changePassword(
+            Authentication authentication, @Valid @RequestBody ChangePasswordRequestDTO request) {
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
         try {
-            authService.changePassword(userDetails.getUser().getUserId(),
-                    request.getCurrentPassword(), request.getNewPassword());
+            authService.changePassword(
+                    userDetails.getUser().getUserId(),
+                    request.getCurrentPassword(),
+                    request.getNewPassword());
             return ResponseEntity.ok().body("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -90,7 +99,8 @@ public class AuthController {
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
         try {
             authService.forgotPassword(request.getEmail().trim());
-            return ResponseEntity.ok().body("Nếu tài khoản tồn tại, mã OTP sẽ được gửi đến email đã đăng ký.");
+            return ResponseEntity.ok()
+                    .body("Nếu tài khoản tồn tại, mã OTP sẽ được gửi đến email đã đăng ký.");
         } catch (OtpDeliveryException e) {
             return ResponseEntity.status(503).body(e.getMessage());
         }
@@ -111,7 +121,8 @@ public class AuthController {
     @Operation(summary = "Reset Password", description = "Set new password using OTP")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
         try {
-            authService.resetPassword(request.getEmail(), request.getOtp(), request.getNewPassword());
+            authService.resetPassword(
+                    request.getEmail(), request.getOtp(), request.getNewPassword());
             return ResponseEntity.ok().body("Đặt lại mật khẩu thành công!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -119,52 +130,74 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Get current user profile", description = "Retrieve current authenticated user information")
-    public ResponseEntity<?> getCurrentUser(org.springframework.security.core.Authentication authentication) {
+    @Operation(
+            summary = "Get current user profile",
+            description = "Retrieve current authenticated user information")
+    public ResponseEntity<?> getCurrentUser(
+            org.springframework.security.core.Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
-        if (authentication.getPrincipal() instanceof com.huit.library.core.security.CustomUserDetails) {
-            com.huit.library.core.security.CustomUserDetails userDetails = (com.huit.library.core.security.CustomUserDetails) authentication.getPrincipal();
+        if (authentication.getPrincipal()
+                instanceof com.huit.library.core.security.CustomUserDetails) {
+            com.huit.library.core.security.CustomUserDetails userDetails =
+                    (com.huit.library.core.security.CustomUserDetails)
+                            authentication.getPrincipal();
             return ResponseEntity.ok(authService.getFreshUser(userDetails.getUser().getUserId()));
         }
         return ResponseEntity.status(401).body("Unauthorized");
     }
 
     @PutMapping("/me")
-    @Operation(summary = "Update current user profile", description = "Update full name, phone, or avatar")
-    public ResponseEntity<?> updateProfile(org.springframework.security.core.Authentication authentication,
-                                           @Valid @RequestBody com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
+    @Operation(
+            summary = "Update current user profile",
+            description = "Update full name, phone, or avatar")
+    public ResponseEntity<?> updateProfile(
+            org.springframework.security.core.Authentication authentication,
+            @Valid @RequestBody com.huit.library.modules.auth.dto.UpdateProfileRequestDTO request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
-        if (authentication.getPrincipal() instanceof com.huit.library.core.security.CustomUserDetails) {
-            com.huit.library.core.security.CustomUserDetails userDetails = (com.huit.library.core.security.CustomUserDetails) authentication.getPrincipal();
-            return ResponseEntity.ok(authService.updateProfile(userDetails.getUser().getUserId(), request));
+        if (authentication.getPrincipal()
+                instanceof com.huit.library.core.security.CustomUserDetails) {
+            com.huit.library.core.security.CustomUserDetails userDetails =
+                    (com.huit.library.core.security.CustomUserDetails)
+                            authentication.getPrincipal();
+            return ResponseEntity.ok(
+                    authService.updateProfile(userDetails.getUser().getUserId(), request));
         }
         return ResponseEntity.status(401).body("Unauthorized");
     }
 
-    @PostMapping(value = "/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(
+            value = "/avatar",
+            consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload user avatar", description = "Upload image file as avatar")
-    public ResponseEntity<?> uploadAvatar(org.springframework.security.core.Authentication authentication,
-                                          @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    public ResponseEntity<?> uploadAvatar(
+            org.springframework.security.core.Authentication authentication,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body("Unauthorized");
         }
-        if (authentication.getPrincipal() instanceof com.huit.library.core.security.CustomUserDetails) {
-            com.huit.library.core.security.CustomUserDetails userDetails = (com.huit.library.core.security.CustomUserDetails) authentication.getPrincipal();
+        if (authentication.getPrincipal()
+                instanceof com.huit.library.core.security.CustomUserDetails) {
+            com.huit.library.core.security.CustomUserDetails userDetails =
+                    (com.huit.library.core.security.CustomUserDetails)
+                            authentication.getPrincipal();
             try {
                 if (file.isEmpty()) {
                     return ResponseEntity.badRequest().body("Vui lòng chọn tệp ảnh hợp lệ");
                 }
-                String contentType = file.getContentType() != null ? file.getContentType() : "image/jpeg";
+                String contentType =
+                        file.getContentType() != null ? file.getContentType() : "image/jpeg";
                 String base64 = java.util.Base64.getEncoder().encodeToString(file.getBytes());
                 String dataUrl = "data:" + contentType + ";base64," + base64;
-                
-                com.huit.library.modules.auth.dto.UpdateProfileRequestDTO req = new com.huit.library.modules.auth.dto.UpdateProfileRequestDTO();
+
+                com.huit.library.modules.auth.dto.UpdateProfileRequestDTO req =
+                        new com.huit.library.modules.auth.dto.UpdateProfileRequestDTO();
                 req.setAvatarUrl(dataUrl);
-                UserEntity updated = authService.updateProfile(userDetails.getUser().getUserId(), req);
+                UserEntity updated =
+                        authService.updateProfile(userDetails.getUser().getUserId(), req);
                 return ResponseEntity.ok(updated);
             } catch (Exception e) {
                 return ResponseEntity.badRequest().body("Lỗi tải ảnh lên: " + e.getMessage());

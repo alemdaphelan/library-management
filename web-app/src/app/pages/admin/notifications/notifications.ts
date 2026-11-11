@@ -33,20 +33,26 @@ export class Notifications implements OnInit {
   }
 
   get unreadCount(): number {
-    return this.notifications.filter(notification => !notification.isRead).length;
+    return this.notifications.filter((notification) => !notification.isRead).length;
   }
 
   get overdueCount(): number {
-    return this.notifications.filter(notification => notification.type === 'LOAN_OVERDUE').length;
+    return this.notifications.filter((notification) => notification.type === 'LOAN_OVERDUE').length;
   }
 
   get filteredNotifications(): LibraryNotification[] {
     const query = this.searchTerm.trim().toLocaleLowerCase('vi');
-    return this.notifications.filter(notification => {
-      const matchesRead = this.readFilter === 'ALL'
-        || (this.readFilter === 'READ' && notification.isRead)
-        || (this.readFilter === 'UNREAD' && !notification.isRead);
-      const searchable = [notification.content, notification.type, notification.referenceType, notification.referenceId]
+    return this.notifications.filter((notification) => {
+      const matchesRead =
+        this.readFilter === 'ALL' ||
+        (this.readFilter === 'READ' && notification.isRead) ||
+        (this.readFilter === 'UNREAD' && !notification.isRead);
+      const searchable = [
+        notification.content,
+        notification.type,
+        notification.referenceType,
+        notification.referenceId,
+      ]
         .filter(Boolean)
         .join(' ')
         .toLocaleLowerCase('vi');
@@ -58,12 +64,12 @@ export class Notifications implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     this.notificationService.getMyNotifications().subscribe({
-      next: notifications => {
+      next: (notifications) => {
         this.notifications = notifications || [];
         this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.isLoading = false;
         this.errorMessage = this.extractError(error, 'Không thể tải thông báo.');
         this.cdr.detectChanges();
@@ -76,12 +82,14 @@ export class Notifications implements OnInit {
     this.markingId = notification.notifId;
     this.errorMessage = '';
     this.notificationService.markAsRead(notification.notifId).subscribe({
-      next: updated => {
-        this.notifications = this.notifications.map(item => item.notifId === updated.notifId ? updated : item);
+      next: (updated) => {
+        this.notifications = this.notifications.map((item) =>
+          item.notifId === updated.notifId ? updated : item,
+        );
         this.markingId = null;
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.markingId = null;
         this.errorMessage = this.extractError(error, 'Không thể đánh dấu thông báo đã đọc.');
         this.cdr.detectChanges();
@@ -91,22 +99,25 @@ export class Notifications implements OnInit {
 
   openNotification(notification: LibraryNotification): void {
     const target = this.notificationTarget(notification);
-    const navigate = () => this.router.navigate([target.path], {
-      queryParams: target.queryParams,
-    });
+    const navigate = () =>
+      this.router.navigate([target.path], {
+        queryParams: target.queryParams,
+      });
     if (notification.isRead) {
       void navigate();
       return;
     }
     this.markingId = notification.notifId;
     this.notificationService.markAsRead(notification.notifId).subscribe({
-      next: updated => {
-        this.notifications = this.notifications.map(item => item.notifId === updated.notifId ? updated : item);
+      next: (updated) => {
+        this.notifications = this.notifications.map((item) =>
+          item.notifId === updated.notifId ? updated : item,
+        );
         this.markingId = null;
         this.cdr.detectChanges();
         void navigate();
       },
-      error: error => {
+      error: (error) => {
         this.markingId = null;
         this.errorMessage = this.extractError(error, 'Không thể mở thông báo.');
         this.cdr.detectChanges();
@@ -115,19 +126,25 @@ export class Notifications implements OnInit {
   }
 
   markAllAsRead(): void {
-    const unread = this.notifications.filter(notification => !notification.isRead);
+    const unread = this.notifications.filter((notification) => !notification.isRead);
     if (!unread.length || this.markingAll) return;
     this.markingAll = true;
     this.errorMessage = '';
-    forkJoin(unread.map(notification => this.notificationService.markAsRead(notification.notifId))).subscribe({
-      next: updatedNotifications => {
-        const updatedById = new Map(updatedNotifications.map(notification => [notification.notifId, notification]));
-        this.notifications = this.notifications.map(notification => updatedById.get(notification.notifId) || notification);
+    forkJoin(
+      unread.map((notification) => this.notificationService.markAsRead(notification.notifId)),
+    ).subscribe({
+      next: (updatedNotifications) => {
+        const updatedById = new Map(
+          updatedNotifications.map((notification) => [notification.notifId, notification]),
+        );
+        this.notifications = this.notifications.map(
+          (notification) => updatedById.get(notification.notifId) || notification,
+        );
         this.markingAll = false;
         this.successMessage = `Đã đánh dấu ${updatedNotifications.length} thông báo là đã đọc.`;
         this.cdr.detectChanges();
       },
-      error: error => {
+      error: (error) => {
         this.markingAll = false;
         this.errorMessage = this.extractError(error, 'Không thể đánh dấu tất cả thông báo.');
         this.cdr.detectChanges();
@@ -137,30 +154,34 @@ export class Notifications implements OnInit {
   }
 
   typeLabel(type: string): string {
-    return ({
-      LOAN_DUE_SOON: 'Sắp đến hạn',
-      LOAN_OVERDUE: 'Quá hạn',
-      LOAN_APPROVED: 'Hệ thống đã giữ chỗ',
-      LOAN_REJECTED: 'Yêu cầu mượn bị từ chối',
-      RESERVATION_EXPIRED: 'Hết hạn giữ chỗ',
-      RESERVATION_NO_SHOW: 'Không đến nhận sách',
-      LOAN_REQUEST_PENDING: 'Yêu cầu mượn cũ',
-      LOAN_RESERVED: 'Phiếu đã giữ chỗ',
-      LOAN_RECALLED: 'Yêu cầu trả tài liệu',
-      LOAN_LOSS_REPORTED: 'Bạn đọc báo mất sách',
-      BOOK_PROPOSAL_PENDING: 'Đề xuất sách mới',
-      IMPORT_COMPLETED: 'Đã nhập kho',
-      PROPOSAL_APPROVED: 'Đề xuất được duyệt',
-      PROPOSAL_REJECTED: 'Đề xuất bị từ chối',
-      PENALTY_CASE_CREATED: 'Hồ sơ phạt mới',
-      PENALTY_CASE_DUE: 'Sắp hết hạn đền bù',
-      DEBT_PAYMENT: 'Đã thu tiền',
-      CIRCULATION_LOCKED: 'Đã khóa quyền mượn',
-      CIRCULATION_UNLOCKED: 'Đã mở quyền mượn',
-      WAIVER_DECISION: 'Đã có quyết định miễn giảm',
-      WAITLIST_AVAILABLE: 'Sách trong hàng đợi đã sẵn sàng',
-      WAITLIST_EXPIRED: 'Lượt hàng đợi đã hết hạn',
-    } as Record<string, string>)[type] || 'Thông báo hệ thống';
+    return (
+      (
+        {
+          LOAN_DUE_SOON: 'Sắp đến hạn',
+          LOAN_OVERDUE: 'Quá hạn',
+          LOAN_APPROVED: 'Hệ thống đã giữ chỗ',
+          LOAN_REJECTED: 'Yêu cầu mượn bị từ chối',
+          RESERVATION_EXPIRED: 'Hết hạn giữ chỗ',
+          RESERVATION_NO_SHOW: 'Không đến nhận sách',
+          LOAN_REQUEST_PENDING: 'Yêu cầu mượn cũ',
+          LOAN_RESERVED: 'Phiếu đã giữ chỗ',
+          LOAN_RECALLED: 'Yêu cầu trả tài liệu',
+          LOAN_LOSS_REPORTED: 'Bạn đọc báo mất sách',
+          BOOK_PROPOSAL_PENDING: 'Đề xuất sách mới',
+          IMPORT_COMPLETED: 'Đã nhập kho',
+          PROPOSAL_APPROVED: 'Đề xuất được duyệt',
+          PROPOSAL_REJECTED: 'Đề xuất bị từ chối',
+          PENALTY_CASE_CREATED: 'Hồ sơ phạt mới',
+          PENALTY_CASE_DUE: 'Sắp hết hạn đền bù',
+          DEBT_PAYMENT: 'Đã thu tiền',
+          CIRCULATION_LOCKED: 'Đã khóa quyền mượn',
+          CIRCULATION_UNLOCKED: 'Đã mở quyền mượn',
+          WAIVER_DECISION: 'Đã có quyết định miễn giảm',
+          WAITLIST_AVAILABLE: 'Sách trong hàng đợi đã sẵn sàng',
+          WAITLIST_EXPIRED: 'Lượt hàng đợi đã hết hạn',
+        } as Record<string, string>
+      )[type] || 'Thông báo hệ thống'
+    );
   }
 
   typeClass(type: string): string {
@@ -171,35 +192,45 @@ export class Notifications implements OnInit {
 
   actionLabel(notification: LibraryNotification): string {
     const referenceType = (notification.referenceType || '').toUpperCase();
-    return ({
-      BOOK_PROPOSAL: 'Mở đề xuất',
-      LOAN_TICKET: 'Mở phiếu mượn',
-      LOAN_LOSS_REPORT: 'Tiếp nhận báo mất',
-      LOAN_DETAIL: 'Mở quản lý mượn',
-      WAITLIST: 'Mở quản lý mượn',
-      GOODS_RECEIPT: 'Mở phiếu nhập',
-      PENALTY_CASE: 'Mở hồ sơ phạt',
-      TRANSACTION: 'Mở thu phạt',
-      BOOK: 'Mở danh mục sách',
-      USER: 'Mở hồ sơ bạn đọc',
-    } as Record<string, string>)[referenceType] || 'Xem chi tiết';
+    return (
+      (
+        {
+          BOOK_PROPOSAL: 'Mở đề xuất',
+          LOAN_TICKET: 'Mở phiếu mượn',
+          LOAN_LOSS_REPORT: 'Tiếp nhận báo mất',
+          LOAN_DETAIL: 'Mở quản lý mượn',
+          WAITLIST: 'Mở quản lý mượn',
+          GOODS_RECEIPT: 'Mở phiếu nhập',
+          PENALTY_CASE: 'Mở hồ sơ phạt',
+          TRANSACTION: 'Mở thu phạt',
+          BOOK: 'Mở danh mục sách',
+          USER: 'Mở hồ sơ bạn đọc',
+        } as Record<string, string>
+      )[referenceType] || 'Xem chi tiết'
+    );
   }
 
-  private notificationTarget(notification: LibraryNotification): { path: string; queryParams?: Record<string, string> } {
+  private notificationTarget(notification: LibraryNotification): {
+    path: string;
+    queryParams?: Record<string, string>;
+  } {
     const type = (notification.referenceType || '').toUpperCase();
     const referenceId = notification.referenceId;
-    const target = ({
-      BOOK_PROPOSAL: '/admin/suggestions',
-      LOAN_TICKET: '/admin/circulation',
-      LOAN_LOSS_REPORT: '/admin/penalties',
-      LOAN_DETAIL: '/admin/borrows',
-      WAITLIST: '/admin/circulation',
-      GOODS_RECEIPT: '/admin/imports',
-      PENALTY_CASE: '/admin/penalties',
-      TRANSACTION: '/admin/penalties',
-      BOOK: '/admin/books',
-      USER: '/admin/accounts',
-    } as Record<string, string>)[type] || '/admin';
+    const target =
+      (
+        {
+          BOOK_PROPOSAL: '/admin/suggestions',
+          LOAN_TICKET: '/admin/circulation',
+          LOAN_LOSS_REPORT: '/admin/penalties',
+          LOAN_DETAIL: '/admin/borrows',
+          WAITLIST: '/admin/circulation',
+          GOODS_RECEIPT: '/admin/imports',
+          PENALTY_CASE: '/admin/penalties',
+          TRANSACTION: '/admin/penalties',
+          BOOK: '/admin/books',
+          USER: '/admin/accounts',
+        } as Record<string, string>
+      )[type] || '/admin';
     return {
       path: target,
       queryParams: referenceId ? { referenceType: type, referenceId } : undefined,

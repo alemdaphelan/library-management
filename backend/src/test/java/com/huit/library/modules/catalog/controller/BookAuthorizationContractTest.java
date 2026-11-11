@@ -11,15 +11,22 @@ class BookAuthorizationContractTest {
 
     @Test
     void personalizedReaderFeaturesRequireStudentRole() throws Exception {
-        assertStudentOnly(BookController.class.getMethod(
-                "getPersonalizedRecommendations", CustomUserDetails.class, int.class));
-        assertStudentOnly(BookController.class.getMethod(
-                "addReview", Long.class, BookReviewRequestDTO.class, CustomUserDetails.class));
-        assertStudentOnly(BookController.class.getMethod(
-                "deleteMyReview", Long.class, CustomUserDetails.class));
+        assertStudentOnly(
+                BookController.class.getMethod(
+                        "getPersonalizedRecommendations", CustomUserDetails.class, int.class));
+        assertStudentOnly(
+                BookController.class.getMethod(
+                        "addReview",
+                        Long.class,
+                        BookReviewRequestDTO.class,
+                        CustomUserDetails.class));
+        assertStudentOnly(
+                BookController.class.getMethod(
+                        "deleteMyReview", Long.class, CustomUserDetails.class));
     }
 
     private void assertStudentOnly(java.lang.reflect.Method method) {
-        assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
+        assertThat(method.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasRole('STUDENT')");
     }
 }

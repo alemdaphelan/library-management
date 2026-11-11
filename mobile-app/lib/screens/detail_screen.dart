@@ -512,7 +512,8 @@ class _DetailScreenState extends State<DetailScreen> {
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(
-                        onPressed: _cardEligible && _priceKnown && _monetaryEligible
+                        onPressed:
+                            _cardEligible && _priceKnown && _monetaryEligible
                             ? () => Navigator.pop(ctx, true)
                             : null,
                         style: ElevatedButton.styleFrom(
@@ -839,7 +840,8 @@ class _DetailScreenState extends State<DetailScreen> {
       helperTextColor = Colors.amber.shade900;
     } else if (cardBlocked) {
       buttonLabel = 'THẺ CHƯA ĐỦ ĐIỀU KIỆN';
-      helperBannerText = _eligibilityMessage ?? 'Vui lòng kiểm tra thẻ thư viện.';
+      helperBannerText =
+          _eligibilityMessage ?? 'Vui lòng kiểm tra thẻ thư viện.';
       helperBannerColor = Colors.red.shade50;
       helperTextColor = Colors.red.shade900;
     } else if (reachedThreeDocLimit) {

@@ -8,8 +8,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ShelfSubjectRuleRepository extends JpaRepository<ShelfSubjectRuleEntity, Long> {
-    // Catalog-only groups organize books without assigning a subject for recommendation or reporting.
-    String BOOK_MATCHES_SUBJECT = """
+    // Catalog-only groups organize books without assigning a subject for recommendation or
+    // reporting.
+    String BOOK_MATCHES_SUBJECT =
+            """
             (book.bookId is not null and (
                 (subject.code <> 'SHELF_UNCLASSIFIED'
                   and exists(select a.assignmentId from BookSubjectAssignmentEntity a
@@ -21,32 +23,40 @@ public interface ShelfSubjectRuleRepository extends JpaRepository<ShelfSubjectRu
             ))
             """;
 
-    @Query("""
+    @Query(
+            """
             select rule from ShelfSubjectRuleEntity rule
             join fetch rule.shelf shelf join fetch shelf.bookshelf bookshelf join fetch bookshelf.floor floor
             join fetch rule.subject subject
             where rule.active=true and subject.active=true
               and exists(select book.bookId from BookEntity book where book.bookId=:bookId and
-            """ + BOOK_MATCHES_SUBJECT + """
+            """
+                    + BOOK_MATCHES_SUBJECT
+                    + """
               )
             order by floor.floorId,bookshelf.bookshelfId,shelf.shelfId,subject.subjectId
             """)
     List<ShelfSubjectRuleEntity> findMatchingPlacementRules(@Param("bookId") Long bookId);
 
-    @Query("""
+    @Query(
+            """
             select count(rule) > 0 from ShelfSubjectRuleEntity rule
             where rule.shelf.shelfId=:shelfId and rule.active=true and rule.subject.active=true
             """)
     boolean hasActiveRules(@Param("shelfId") Long shelfId);
 
-    @Query("""
+    @Query(
+            """
             select count(rule) > 0 from ShelfSubjectRuleEntity rule join rule.subject subject
             where rule.shelf.shelfId=:shelfId and rule.active=true and subject.active=true
               and exists(select book.bookId from BookEntity book where book.bookId=:bookId and
-            """ + BOOK_MATCHES_SUBJECT + ")")
+            """
+                    + BOOK_MATCHES_SUBJECT
+                    + ")")
     boolean allowsPlacement(@Param("shelfId") Long shelfId, @Param("bookId") Long bookId);
 
-    List<ShelfSubjectRuleEntity> findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(Long shelfId);
+    List<ShelfSubjectRuleEntity> findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(
+            Long shelfId);
 
     void deleteByShelf_ShelfId(Long shelfId);
 }

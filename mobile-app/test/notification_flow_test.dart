@@ -82,14 +82,17 @@ void main() {
       expect(fine.penaltyCaseId, isNull);
     });
 
-    test('routes general and circulation lock notifications to NotificationsScreen', () {
-      final locked = NotificationService.resolveNavigationTarget({
-        'type': 'CIRCULATION_LOCKED',
-        'referenceType': 'USER',
-        'referenceId': '00000000-0000-0000-0000-002001230219',
-      });
-      expect(locked.destination, NotificationDestination.notifications);
-    });
+    test(
+      'routes general and circulation lock notifications to NotificationsScreen',
+      () {
+        final locked = NotificationService.resolveNavigationTarget({
+          'type': 'CIRCULATION_LOCKED',
+          'referenceType': 'USER',
+          'referenceId': '00000000-0000-0000-0000-002001230219',
+        });
+        expect(locked.destination, NotificationDestination.notifications);
+      },
+    );
   });
 
   testWidgets(
@@ -155,12 +158,11 @@ void main() {
         return http.Response('[]', 200);
       });
 
-      final initialRevision = PushNotificationService.notificationRevision.value;
+      final initialRevision =
+          PushNotificationService.notificationRevision.value;
 
       await http.runWithClient(() async {
-        await tester.pumpWidget(
-          const MaterialApp(home: NotificationsScreen()),
-        );
+        await tester.pumpWidget(const MaterialApp(home: NotificationsScreen()));
         await tester.pumpAndSettle();
 
         expect(find.text('Quyền mượn đã bị khóa'), findsOneWidget);

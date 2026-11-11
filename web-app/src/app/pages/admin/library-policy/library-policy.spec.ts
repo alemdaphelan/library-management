@@ -12,21 +12,34 @@ describe('LibraryPolicy', () => {
     updatePolicy: vi.fn(),
   };
   const policy = {
-    maximumOpenItems: 3, homeLoanDays: 10, renewalDays: 10, maximumRenewalCount: 1, waitlistHoldHours: 48,
-    minimumSecurityDeposit: 100000, borrowingValueMargin: 50000, recallReturnDays: 7, overdueDebtProcessingDays: 30,
-    homeLateFinePerDay: 1000, onsiteLateFinePerDay: 5000,
-    technicalProcessingFee: 50000, compensationSettlementDays: 30,
+    maximumOpenItems: 3,
+    homeLoanDays: 10,
+    renewalDays: 10,
+    maximumRenewalCount: 1,
+    waitlistHoldHours: 48,
+    minimumSecurityDeposit: 100000,
+    borrowingValueMargin: 50000,
+    recallReturnDays: 7,
+    overdueDebtProcessingDays: 30,
+    homeLateFinePerDay: 1000,
+    onsiteLateFinePerDay: 5000,
+    technicalProcessingFee: 50000,
+    compensationSettlementDays: 30,
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
     service.getPolicy.mockReturnValue(of(policy));
-    service.getHistory.mockReturnValue(of([{
-      ...policy,
-      historyId: 1,
-      changedByName: 'Hệ thống',
-      changedAt: '2026-10-29T08:00:00',
-    }]));
+    service.getHistory.mockReturnValue(
+      of([
+        {
+          ...policy,
+          historyId: 1,
+          changedByName: 'Hệ thống',
+          changedAt: '2026-10-29T08:00:00',
+        },
+      ]),
+    );
     service.updatePolicy.mockReturnValue(of(policy));
     await TestBed.configureTestingModule({
       imports: [LibraryPolicy],
@@ -53,21 +66,31 @@ describe('LibraryPolicy', () => {
   });
 
   it('shows backend failure', () => {
-    service.updatePolicy.mockReturnValue(throwError(() => ({ error: { message: 'Không hợp lệ' } })));
+    service.updatePolicy.mockReturnValue(
+      throwError(() => ({ error: { message: 'Không hợp lệ' } })),
+    );
     component.save();
     expect(component.error).toBe('Không hợp lệ');
   });
 
   it('shows differences between policy versions', () => {
     component.history = [
-      { ...policy, maximumOpenItems: 5, historyId: 2, changedByName: 'Admin', changedAt: '2026-10-29T09:00:00' },
+      {
+        ...policy,
+        maximumOpenItems: 5,
+        historyId: 2,
+        changedByName: 'Admin',
+        changedAt: '2026-10-29T09:00:00',
+      },
       { ...policy, historyId: 1, changedByName: 'Hệ thống', changedAt: '2026-10-29T08:00:00' },
     ];
 
-    expect(component.changesFor(0)).toEqual([{
-      label: 'Số tài liệu tối đa',
-      before: '3 tài liệu',
-      after: '5 tài liệu',
-    }]);
+    expect(component.changesFor(0)).toEqual([
+      {
+        label: 'Số tài liệu tối đa',
+        before: '3 tài liệu',
+        after: '5 tài liệu',
+      },
+    ]);
   });
 });

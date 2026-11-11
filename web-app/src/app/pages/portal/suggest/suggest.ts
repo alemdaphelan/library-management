@@ -11,7 +11,7 @@ import { finalize } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './suggest.html',
-  styleUrls: ['./suggest.css']
+  styleUrls: ['./suggest.css'],
 })
 export class Suggest implements OnInit {
   activeTab: 'form' | 'history' = 'form';
@@ -27,7 +27,7 @@ export class Suggest implements OnInit {
     externalUrl: '',
     genre: '',
     urgencyLevel: 'NORMAL' as 'LOW' | 'NORMAL' | 'HIGH',
-    reason: ''
+    reason: '',
   };
 
   myProposals: BookProposal[] = [];
@@ -40,7 +40,7 @@ export class Suggest implements OnInit {
     private proposalService: ProposalService,
     public authService: AuthService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
@@ -58,19 +58,22 @@ export class Suggest implements OnInit {
 
   loadMyProposals() {
     this.isLoadingHistory = true;
-    this.proposalService.getMyProposals().pipe(
-      finalize(() => {
-        this.isLoadingHistory = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-      next: (list) => {
-        this.myProposals = list;
-      },
-      error: (err) => {
-        console.error('Lỗi tải lịch sử đề xuất:', err);
-      }
-    });
+    this.proposalService
+      .getMyProposals()
+      .pipe(
+        finalize(() => {
+          this.isLoadingHistory = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (list) => {
+          this.myProposals = list;
+        },
+        error: (err) => {
+          console.error('Lỗi tải lịch sử đề xuất:', err);
+        },
+      });
   }
 
   onSubmit() {
@@ -106,29 +109,40 @@ export class Suggest implements OnInit {
       reason: this.suggestion.reason.trim(),
     };
 
-    this.proposalService.submitProposal(payload).pipe(
-      finalize(() => {
-        this.isSubmitting = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-      next: (res) => {
-        this.isSubmitted = true;
-        this.suggestion = {
-          title: '', authorName: '', publisher: '', isbn: '', publicationYear: null,
-          edition: '', estimatedPrice: null, externalUrl: '', genre: '',
-          urgencyLevel: 'NORMAL', reason: ''
-        };
-        this.loadMyProposals();
-        setTimeout(() => {
-          this.isSubmitted = false;
-        }, 5000);
-      },
-      error: (err) => {
-        console.error('Error submitting proposal:', err);
-        this.errorMessage = this.extractErrorMessage(err);
-      }
-    });
+    this.proposalService
+      .submitProposal(payload)
+      .pipe(
+        finalize(() => {
+          this.isSubmitting = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: (res) => {
+          this.isSubmitted = true;
+          this.suggestion = {
+            title: '',
+            authorName: '',
+            publisher: '',
+            isbn: '',
+            publicationYear: null,
+            edition: '',
+            estimatedPrice: null,
+            externalUrl: '',
+            genre: '',
+            urgencyLevel: 'NORMAL',
+            reason: '',
+          };
+          this.loadMyProposals();
+          setTimeout(() => {
+            this.isSubmitted = false;
+          }, 5000);
+        },
+        error: (err) => {
+          console.error('Error submitting proposal:', err);
+          this.errorMessage = this.extractErrorMessage(err);
+        },
+      });
   }
 
   private extractErrorMessage(err: any): string {

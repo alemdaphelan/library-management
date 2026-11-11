@@ -8,6 +8,4 @@ public record EvaluationMethodMetricsDTO(
         double catalogCoverage,
         double p50LatencyMs,
         double p95LatencyMs,
-        int totalRecommendations
-) {
-}
+        int totalRecommendations) {}

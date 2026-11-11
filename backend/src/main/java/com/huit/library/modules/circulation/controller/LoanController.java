@@ -26,20 +26,26 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/loans")
-@Tag(name = "4. Circulation", description = "Endpoints for book borrowing, reservations, and returning")
+@Tag(
+        name = "4. Circulation",
+        description = "Endpoints for book borrowing, reservations, and returning")
 public class LoanController {
 
     private final LoanService loanService;
     private final CirculationStateService circulationStateService;
 
-    public LoanController(LoanService loanService, CirculationStateService circulationStateService) {
+    public LoanController(
+            LoanService loanService, CirculationStateService circulationStateService) {
         this.loanService = loanService;
         this.circulationStateService = circulationStateService;
     }
 
     @PostMapping("/reserve")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Automatically reserve a book", description = "An eligible reader receives a RESERVED hold immediately, or joins WAITLIST when no copy is available. Checkout still happens at the desk.")
+    @Operation(
+            summary = "Automatically reserve a book",
+            description =
+                    "An eligible reader receives a RESERVED hold immediately, or joins WAITLIST when no copy is available. Checkout still happens at the desk.")
     public ResponseEntity<BorrowResponseDTO> reserveBook(
             @Valid @RequestBody BorrowRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -49,17 +55,23 @@ public class LoanController {
 
     @PostMapping("/reserve-batch")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Reserve multiple books in one ticket", description = "Automatically creates a RESERVED ticket for up to three books, including valid waitlist holds owned by the reader. The batch is atomic.")
+    @Operation(
+            summary = "Reserve multiple books in one ticket",
+            description =
+                    "Automatically creates a RESERVED ticket for up to three books, including valid waitlist holds owned by the reader. The batch is atomic.")
     public ResponseEntity<BatchBorrowResponseDTO> reserveBooks(
             @Valid @RequestBody BatchBorrowRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(loanService.reserveBooks(
-                request, userDetails.getUser().getUserId()));
+        return ResponseEntity.ok(
+                loanService.reserveBooks(request, userDetails.getUser().getUserId()));
     }
 
     @GetMapping("/my-loans")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Get My Loans", description = "Retrieve list of all active and past loans/reservations for logged-in user.")
+    @Operation(
+            summary = "Get My Loans",
+            description =
+                    "Retrieve list of all active and past loans/reservations for logged-in user.")
     public ResponseEntity<?> getMyLoans(@AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getUserId();
         return ResponseEntity.ok(loanService.getMyLoans(userId));
@@ -67,41 +79,54 @@ public class LoanController {
 
     @GetMapping("/my-eligibility")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Get my borrow eligibility", description = "Returns the number of open documents and remaining slots within the three-document limit.")
+    @Operation(
+            summary = "Get my borrow eligibility",
+            description =
+                    "Returns the number of open documents and remaining slots within the three-document limit.")
     public ResponseEntity<BorrowEligibilityDTO> getMyBorrowEligibility(
             @org.springframework.web.bind.annotation.RequestParam(required = false) Long bookId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(circulationStateService.getBorrowEligibility(
-                userDetails.getUser().getUserId(), bookId));
+        return ResponseEntity.ok(
+                circulationStateService.getBorrowEligibility(
+                        userDetails.getUser().getUserId(), bookId));
     }
 
     @GetMapping("/staff")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "List loan tickets for staff", description = "Returns real circulation tickets for the librarian management screen.")
+    @Operation(
+            summary = "List loan tickets for staff",
+            description = "Returns real circulation tickets for the librarian management screen.")
     public ResponseEntity<?> getStaffLoans() {
         return ResponseEntity.ok(loanService.getStaffLoans());
     }
 
     @GetMapping("/{ticketId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Get loan ticket detail", description = "Returns reader and copy details required for checkout at the circulation desk.")
+    @Operation(
+            summary = "Get loan ticket detail",
+            description =
+                    "Returns reader and copy details required for checkout at the circulation desk.")
     public ResponseEntity<?> getLoan(@PathVariable Long ticketId) {
         return ResponseEntity.ok(loanService.getLoan(ticketId));
     }
 
     @GetMapping("/active-item/{barcode}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Resolve active loan item by barcode", description = "Returns the active ticket and book information before accepting a return.")
+    @Operation(
+            summary = "Resolve active loan item by barcode",
+            description =
+                    "Returns the active ticket and book information before accepting a return.")
     public ResponseEntity<?> getActiveLoanItem(@PathVariable String barcode) {
         return ResponseEntity.ok(loanService.getActiveLoanItem(barcode));
     }
 
     @PostMapping("/cancel/{ticketId}")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Cancel Reservation", description = "Reader cancels a pending reservation.")
+    @Operation(
+            summary = "Cancel Reservation",
+            description = "Reader cancels a pending reservation.")
     public ResponseEntity<?> cancelReservation(
-            @PathVariable Long ticketId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @PathVariable Long ticketId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getUserId();
         loanService.cancelReservation(ticketId, userId);
         return ResponseEntity.ok("Đã hủy phiếu mượn/đặt giữ thành công");
@@ -109,83 +134,104 @@ public class LoanController {
 
     @PostMapping("/renew/{ticketId}")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Renew Loan", description = "Reader renews a currently borrowed book according to the active library policy.")
+    @Operation(
+            summary = "Renew Loan",
+            description =
+                    "Reader renews a currently borrowed book according to the active library policy.")
     public ResponseEntity<?> renewLoan(
-            @PathVariable Long ticketId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
+            @PathVariable Long ticketId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         UUID userId = userDetails.getUser().getUserId();
         return ResponseEntity.ok(loanService.renewLoan(ticketId, userId));
     }
 
     @PostMapping("/renew/{ticketId}/items/{detailId}")
     @PreAuthorize("hasRole('STUDENT')")
-    @Operation(summary = "Renew one loan item", description = "Renews exactly one borrowed item according to the active library policy.")
+    @Operation(
+            summary = "Renew one loan item",
+            description =
+                    "Renews exactly one borrowed item according to the active library policy.")
     public ResponseEntity<?> renewLoanItem(
             @PathVariable Long ticketId,
             @PathVariable Long detailId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(loanService.renewLoan(
-                ticketId, detailId, userDetails.getUser().getUserId()));
+        return ResponseEntity.ok(
+                loanService.renewLoan(ticketId, detailId, userDetails.getUser().getUserId()));
     }
 
     @PostMapping("/{ticketId}/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Revalidate a legacy reservation", description = "Compatibility endpoint: checks eligibility, held copies and expiry before automatically moving PENDING to RESERVED. A valid RESERVED ticket is returned without another transition.")
+    @Operation(
+            summary = "Revalidate a legacy reservation",
+            description =
+                    "Compatibility endpoint: checks eligibility, held copies and expiry before automatically moving PENDING to RESERVED. A valid RESERVED ticket is returned without another transition.")
     public ResponseEntity<LoanStateResponseDTO> approveReservation(
-            @PathVariable Long ticketId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(circulationStateService.approveReservation(
-                ticketId, userDetails.getUser().getUserId()));
+            @PathVariable Long ticketId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(
+                circulationStateService.approveReservation(
+                        ticketId, userDetails.getUser().getUserId()));
     }
 
     @PostMapping("/{ticketId}/reject")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Reject reservation", description = "Rejects a pending or reserved request, records the reason and releases its copies.")
+    @Operation(
+            summary = "Reject reservation",
+            description =
+                    "Rejects a pending or reserved request, records the reason and releases its copies.")
     public ResponseEntity<LoanStateResponseDTO> rejectReservation(
             @PathVariable Long ticketId,
             @Valid @RequestBody RejectLoanRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(circulationStateService.rejectReservation(
-                ticketId, userDetails.getUser().getUserId(), request.getReason()));
+        return ResponseEntity.ok(
+                circulationStateService.rejectReservation(
+                        ticketId, userDetails.getUser().getUserId(), request.getReason()));
     }
 
     @PostMapping("/checkout")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Counter Checkout", description = "Librarian processes book checkout at the desk using barcodes.")
+    @Operation(
+            summary = "Counter Checkout",
+            description = "Librarian processes book checkout at the desk using barcodes.")
     public ResponseEntity<?> checkoutBooks(
             @Valid @RequestBody CheckoutRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(circulationStateService.checkout(
-                request, userDetails.getUser().getUserId()));
+        return ResponseEntity.ok(
+                circulationStateService.checkout(request, userDetails.getUser().getUserId()));
     }
 
     @PostMapping("/manual-checkout")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Manual counter checkout", description = "Creates and checks out a walk-in loan by MSSV and physical-copy barcodes.")
+    @Operation(
+            summary = "Manual counter checkout",
+            description =
+                    "Creates and checks out a walk-in loan by MSSV and physical-copy barcodes.")
     public ResponseEntity<?> manualCheckout(
             @Valid @RequestBody ManualCheckoutRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(circulationStateService.manualCheckout(
-                request, userDetails.getUser().getUserId()));
+        return ResponseEntity.ok(
+                circulationStateService.manualCheckout(request, userDetails.getUser().getUserId()));
     }
 
     @PostMapping("/return")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Counter Return", description = "Librarian processes book returns at the desk.")
+    @Operation(
+            summary = "Counter Return",
+            description = "Librarian processes book returns at the desk.")
     public ResponseEntity<?> returnBooks(
             @Valid @RequestBody ReturnRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(circulationStateService.returnBooks(
-                request, userDetails.getUser().getUserId()));
+        return ResponseEntity.ok(
+                circulationStateService.returnBooks(request, userDetails.getUser().getUserId()));
     }
 
     @PostMapping("/items/{detailId}/recall")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Recall a borrowed item", description = "Requires a borrowed item to be returned within the configured recall period, without extending an earlier due date.")
+    @Operation(
+            summary = "Recall a borrowed item",
+            description =
+                    "Requires a borrowed item to be returned within the configured recall period, without extending an earlier due date.")
     public ResponseEntity<RecallResponseDTO> recallItem(
-            @PathVariable Long detailId,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(circulationStateService.recallBook(
-                detailId, userDetails.getUser().getUserId()));
+            @PathVariable Long detailId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(
+                circulationStateService.recallBook(detailId, userDetails.getUser().getUserId()));
     }
 }

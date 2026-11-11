@@ -63,49 +63,74 @@ public class RecommendationEvaluationService {
         RealHistoryAuditDTO realHistory = auditRealHistory();
 
         List<BookSubjectAssignmentEntity> assignments = assignmentRepository.findAllForEvaluation();
-        List<DepartmentSubjectAffinityEntity> affinities = affinityRepository.findAllActiveForEvaluation();
+        List<DepartmentSubjectAffinityEntity> affinities =
+                affinityRepository.findAllActiveForEvaluation();
 
-        LinkedHashMap<Long, BookEntity> catalogById = assignments.stream()
-                .map(BookSubjectAssignmentEntity::getBook)
-                .filter(this::hasUsableTitle)
-                .collect(Collectors.toMap(
-                        BookEntity::getBookId,
-                        book -> book,
-                        (first, ignored) -> first,
-                        LinkedHashMap::new));
-        List<BookEntity> catalog = catalogById.values().stream()
-                .sorted(Comparator.comparing(BookEntity::getBookId))
-                .toList();
+        LinkedHashMap<Long, BookEntity> catalogById =
+                assignments.stream()
+                        .map(BookSubjectAssignmentEntity::getBook)
+                        .filter(this::hasUsableTitle)
+                        .collect(
+                                Collectors.toMap(
+                                        BookEntity::getBookId,
+                                        book -> book,
+                                        (first, ignored) -> first,
+                                        LinkedHashMap::new));
+        List<BookEntity> catalog =
+                catalogById.values().stream()
+                        .sorted(Comparator.comparing(BookEntity::getBookId))
+                        .toList();
 
-        Map<Long, List<BookSubjectAssignmentEntity>> assignmentsByBook = assignments.stream()
-                .collect(Collectors.groupingBy(assignment -> assignment.getBook().getBookId()));
-        Map<Long, List<String>> subjectTerms = assignments.stream()
-                .collect(Collectors.groupingBy(
-                        assignment -> assignment.getBook().getBookId(),
-                        Collectors.mapping(
-                                assignment -> assignment.getSubject().getCode() + " "
-                                        + assignment.getSubject().getName(),
-                                Collectors.toList())));
-        Map<Long, List<BookEntity>> booksBySubject = assignments.stream()
-                .filter(assignment -> assignment.getConfidence().doubleValue() >= 0.70)
-                .collect(Collectors.groupingBy(
-                        assignment -> assignment.getSubject().getSubjectId(),
-                        Collectors.collectingAndThen(
-                                Collectors.mapping(BookSubjectAssignmentEntity::getBook, Collectors.toList()),
-                                books -> books.stream()
-                                        .filter(this::hasUsableTitle)
-                                        .collect(Collectors.toMap(
-                                                BookEntity::getBookId,
-                                                book -> book,
-                                                (first, ignored) -> first))
-                                        .values().stream()
-                                        .sorted(Comparator.comparing(BookEntity::getBookId))
-                                        .toList())));
-        Map<String, List<DepartmentSubjectAffinityEntity>> affinitiesByDepartment = affinities.stream()
-                .collect(Collectors.groupingBy(
-                        DepartmentSubjectAffinityEntity::getDepartmentKey,
-                        LinkedHashMap::new,
-                        Collectors.toList()));
+        Map<Long, List<BookSubjectAssignmentEntity>> assignmentsByBook =
+                assignments.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        assignment -> assignment.getBook().getBookId()));
+        Map<Long, List<String>> subjectTerms =
+                assignments.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        assignment -> assignment.getBook().getBookId(),
+                                        Collectors.mapping(
+                                                assignment ->
+                                                        assignment.getSubject().getCode()
+                                                                + " "
+                                                                + assignment.getSubject().getName(),
+                                                Collectors.toList())));
+        Map<Long, List<BookEntity>> booksBySubject =
+                assignments.stream()
+                        .filter(assignment -> assignment.getConfidence().doubleValue() >= 0.70)
+                        .collect(
+                                Collectors.groupingBy(
+                                        assignment -> assignment.getSubject().getSubjectId(),
+                                        Collectors.collectingAndThen(
+                                                Collectors.mapping(
+                                                        BookSubjectAssignmentEntity::getBook,
+                                                        Collectors.toList()),
+                                                books ->
+                                                        books.stream()
+                                                                .filter(this::hasUsableTitle)
+                                                                .collect(
+                                                                        Collectors.toMap(
+                                                                                BookEntity
+                                                                                        ::getBookId,
+                                                                                book -> book,
+                                                                                (first, ignored) ->
+                                                                                        first))
+                                                                .values()
+                                                                .stream()
+                                                                .sorted(
+                                                                        Comparator.comparing(
+                                                                                BookEntity
+                                                                                        ::getBookId))
+                                                                .toList())));
+        Map<String, List<DepartmentSubjectAffinityEntity>> affinitiesByDepartment =
+                affinities.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        DepartmentSubjectAffinityEntity::getDepartmentKey,
+                                        LinkedHashMap::new,
+                                        Collectors.toList()));
         Map<Long, Double> popularityScores = loadPopularityScores();
         double[] weights = normalizedWeights();
 
@@ -115,7 +140,8 @@ public class RecommendationEvaluationService {
         accumulators.put("PROPOSED_HYBRID", new MethodAccumulator("PROPOSED_HYBRID"));
 
         int evaluatedScenarios = 0;
-        for (Map.Entry<String, List<DepartmentSubjectAffinityEntity>> entry : affinitiesByDepartment.entrySet()) {
+        for (Map.Entry<String, List<DepartmentSubjectAffinityEntity>> entry :
+                affinitiesByDepartment.entrySet()) {
             if (evaluatedScenarios >= scenarioLimit || entry.getValue().isEmpty()) {
                 break;
             }
@@ -127,27 +153,37 @@ public class RecommendationEvaluationService {
             }
 
             List<BookEntity> profileBooks = selectProfileBooks(targetBooks, entry.getKey());
-            Set<Long> profileIds = profileBooks.stream()
-                    .map(BookEntity::getBookId)
-                    .collect(Collectors.toSet());
+            Set<Long> profileIds =
+                    profileBooks.stream().map(BookEntity::getBookId).collect(Collectors.toSet());
             List<BookEntity> candidates = buildCandidates(targetBooks, catalog, profileIds);
-            Set<Long> relevantIds = targetBooks.stream()
-                    .map(BookEntity::getBookId)
-                    .filter(id -> !profileIds.contains(id))
-                    .filter(id -> candidates.stream().anyMatch(candidate -> candidate.getBookId().equals(id)))
-                    .collect(Collectors.toSet());
+            Set<Long> relevantIds =
+                    targetBooks.stream()
+                            .map(BookEntity::getBookId)
+                            .filter(id -> !profileIds.contains(id))
+                            .filter(
+                                    id ->
+                                            candidates.stream()
+                                                    .anyMatch(
+                                                            candidate ->
+                                                                    candidate
+                                                                            .getBookId()
+                                                                            .equals(id)))
+                            .collect(Collectors.toSet());
             if (relevantIds.size() < MIN_RELEVANT_BOOKS) {
                 continue;
             }
 
-            Map<Long, Double> departmentWeights = entry.getValue().stream()
-                    .collect(Collectors.toMap(
-                            affinity -> affinity.getSubject().getSubjectId(),
-                            affinity -> affinity.getWeight().doubleValue(),
-                            Math::max));
-            List<TfIdfSimilarityEngine.WeightedBook> weightedProfile = profileBooks.stream()
-                    .map(book -> new TfIdfSimilarityEngine.WeightedBook(book, 1.0))
-                    .toList();
+            Map<Long, Double> departmentWeights =
+                    entry.getValue().stream()
+                            .collect(
+                                    Collectors.toMap(
+                                            affinity -> affinity.getSubject().getSubjectId(),
+                                            affinity -> affinity.getWeight().doubleValue(),
+                                            Math::max));
+            List<TfIdfSimilarityEngine.WeightedBook> weightedProfile =
+                    profileBooks.stream()
+                            .map(book -> new TfIdfSimilarityEngine.WeightedBook(book, 1.0))
+                            .toList();
 
             if (evaluatedScenarios == 0) {
                 // Warm each implementation once so JIT/class loading does not distort p50/p95.
@@ -178,22 +214,24 @@ public class RecommendationEvaluationService {
                     accumulators.get("PROPOSED_HYBRID"),
                     relevantIds,
                     k,
-                    () -> rankByHybrid(
-                            weightedProfile,
-                            candidates,
-                            subjectTerms,
-                            assignmentsByBook,
-                            departmentWeights,
-                            popularityScores,
-                            weights,
-                            k));
+                    () ->
+                            rankByHybrid(
+                                    weightedProfile,
+                                    candidates,
+                                    subjectTerms,
+                                    assignmentsByBook,
+                                    departmentWeights,
+                                    popularityScores,
+                                    weights,
+                                    k));
             evaluatedScenarios++;
         }
 
         int scenarioCount = evaluatedScenarios;
-        List<EvaluationMethodMetricsDTO> metrics = accumulators.values().stream()
-                .map(accumulator -> accumulator.toDto(scenarioCount, catalog.size()))
-                .toList();
+        List<EvaluationMethodMetricsDTO> metrics =
+                accumulators.values().stream()
+                        .map(accumulator -> accumulator.toDto(scenarioCount, catalog.size()))
+                        .toList();
         String conclusion = buildConclusion(metrics, evaluatedScenarios);
         return new RecommendationEvaluationResponseDTO(
                 LocalDateTime.now(),
@@ -210,9 +248,11 @@ public class RecommendationEvaluationService {
     }
 
     private RealHistoryAuditDTO auditRealHistory() {
-        List<EvaluationInteractionProjection> interactions = loanDetailRepository.findEvaluationInteractions();
-        Map<java.util.UUID, List<EvaluationInteractionProjection>> byUser = interactions.stream()
-                .collect(Collectors.groupingBy(EvaluationInteractionProjection::getUserId));
+        List<EvaluationInteractionProjection> interactions =
+                loanDetailRepository.findEvaluationInteractions();
+        Map<java.util.UUID, List<EvaluationInteractionProjection>> byUser =
+                interactions.stream()
+                        .collect(Collectors.groupingBy(EvaluationInteractionProjection::getUserId));
         int eligibleUsers = 0;
         int trainingInteractions = 0;
         int testInteractions = 0;
@@ -228,11 +268,13 @@ public class RecommendationEvaluationService {
                 testInteractions += testSize;
             }
         }
-        boolean sufficient = eligibleUsers >= MIN_REAL_USERS_FOR_PUBLICATION
-                && interactions.size() >= MIN_REAL_INTERACTIONS_FOR_PUBLICATION;
-        String note = sufficient
-                ? "Đủ ngưỡng tối thiểu nội bộ để chạy holdout hành vi; vẫn cần mô tả thiên lệch dữ liệu."
-                : "Chưa đủ tối thiểu 30 người dùng hợp lệ và 200 tương tác; không công bố Precision/Recall như dữ liệu thật.";
+        boolean sufficient =
+                eligibleUsers >= MIN_REAL_USERS_FOR_PUBLICATION
+                        && interactions.size() >= MIN_REAL_INTERACTIONS_FOR_PUBLICATION;
+        String note =
+                sufficient
+                        ? "Đủ ngưỡng tối thiểu nội bộ để chạy holdout hành vi; vẫn cần mô tả thiên lệch dữ liệu."
+                        : "Chưa đủ tối thiểu 30 người dùng hợp lệ và 200 tương tác; không công bố Precision/Recall như dữ liệu thật.";
         return new RealHistoryAuditDTO(
                 "PRODUCTION_LOAN_HISTORY",
                 interactions.size(),
@@ -247,23 +289,26 @@ public class RecommendationEvaluationService {
 
     private Map<Long, Double> loadPopularityScores() {
         LocalDateTime asOf = LocalDateTime.now();
-        List<BookPopularityProjection> popularity = loanDetailRepository.findPopularityScores(
-                asOf.minusDays(3_650),
-                asOf,
-                365.0,
-                PageRequest.of(0, 5_000));
-        double max = popularity.stream()
-                .mapToDouble(BookPopularityProjection::getWeightedScore)
-                .filter(Double::isFinite)
-                .max()
-                .orElse(0.0);
+        List<BookPopularityProjection> popularity =
+                loanDetailRepository.findPopularityScores(
+                        asOf.minusDays(3_650), asOf, 365.0, PageRequest.of(0, 5_000));
+        double max =
+                popularity.stream()
+                        .mapToDouble(BookPopularityProjection::getWeightedScore)
+                        .filter(Double::isFinite)
+                        .max()
+                        .orElse(0.0);
         if (max <= 0) {
             return Map.of();
         }
-        return popularity.stream().collect(Collectors.toMap(
-                BookPopularityProjection::getBookId,
-                item -> Math.log1p(Math.max(item.getWeightedScore(), 0.0)) / Math.log1p(max),
-                Math::max));
+        return popularity.stream()
+                .collect(
+                        Collectors.toMap(
+                                BookPopularityProjection::getBookId,
+                                item ->
+                                        Math.log1p(Math.max(item.getWeightedScore(), 0.0))
+                                                / Math.log1p(max),
+                                Math::max));
     }
 
     private List<BookEntity> selectProfileBooks(List<BookEntity> books, String departmentKey) {
@@ -271,7 +316,8 @@ public class RecommendationEvaluationService {
         List<BookEntity> profile = new ArrayList<>();
         for (int offset = 0; offset < books.size() && profile.size() < PROFILE_BOOKS; offset++) {
             BookEntity book = books.get((start + offset) % books.size());
-            if (profile.stream().noneMatch(existing -> existing.getBookId().equals(book.getBookId()))) {
+            if (profile.stream()
+                    .noneMatch(existing -> existing.getBookId().equals(book.getBookId()))) {
                 profile.add(book);
             }
         }
@@ -279,9 +325,7 @@ public class RecommendationEvaluationService {
     }
 
     private List<BookEntity> buildCandidates(
-            List<BookEntity> targetBooks,
-            List<BookEntity> catalog,
-            Set<Long> profileIds) {
+            List<BookEntity> targetBooks, List<BookEntity> catalog, Set<Long> profileIds) {
         LinkedHashMap<Long, BookEntity> candidates = new LinkedHashMap<>();
         targetBooks.stream()
                 .filter(book -> !profileIds.contains(book.getBookId()))
@@ -293,14 +337,14 @@ public class RecommendationEvaluationService {
     }
 
     private List<Long> rankByPopularity(
-            List<BookEntity> candidates,
-            Map<Long, Double> popularity,
-            int k) {
+            List<BookEntity> candidates, Map<Long, Double> popularity, int k) {
         return candidates.stream()
-                .sorted(Comparator
-                        .comparingDouble((BookEntity book) -> popularity.getOrDefault(book.getBookId(), 0.0))
-                        .reversed()
-                        .thenComparing(BookEntity::getBookId))
+                .sorted(
+                        Comparator.comparingDouble(
+                                        (BookEntity book) ->
+                                                popularity.getOrDefault(book.getBookId(), 0.0))
+                                .reversed()
+                                .thenComparing(BookEntity::getBookId))
                 .limit(k)
                 .map(BookEntity::getBookId)
                 .toList();
@@ -313,10 +357,12 @@ public class RecommendationEvaluationService {
             int k) {
         Map<Long, Double> scores = similarityEngine.scoreProfile(profile, candidates, subjectTerms);
         return candidates.stream()
-                .sorted(Comparator
-                        .comparingDouble((BookEntity book) -> scores.getOrDefault(book.getBookId(), 0.0))
-                        .reversed()
-                        .thenComparing(BookEntity::getBookId))
+                .sorted(
+                        Comparator.comparingDouble(
+                                        (BookEntity book) ->
+                                                scores.getOrDefault(book.getBookId(), 0.0))
+                                .reversed()
+                                .thenComparing(BookEntity::getBookId))
                 .limit(k)
                 .map(BookEntity::getBookId)
                 .toList();
@@ -331,25 +377,33 @@ public class RecommendationEvaluationService {
             Map<Long, Double> popularity,
             double[] weights,
             int k) {
-        Map<Long, Double> content = similarityEngine.scoreProfile(profile, candidates, subjectTerms);
+        Map<Long, Double> content =
+                similarityEngine.scoreProfile(profile, candidates, subjectTerms);
         Map<Long, Double> hybrid = new HashMap<>();
         for (BookEntity candidate : candidates) {
-            double department = assignmentsByBook.getOrDefault(candidate.getBookId(), List.of()).stream()
-                    .mapToDouble(assignment -> departmentWeights.getOrDefault(
-                                    assignment.getSubject().getSubjectId(), 0.0)
-                            * assignment.getConfidence().doubleValue())
-                    .max()
-                    .orElse(0.0);
-            double score = weights[0] * content.getOrDefault(candidate.getBookId(), 0.0)
-                    + weights[1] * department
-                    + weights[2] * popularity.getOrDefault(candidate.getBookId(), 0.0);
+            double department =
+                    assignmentsByBook.getOrDefault(candidate.getBookId(), List.of()).stream()
+                            .mapToDouble(
+                                    assignment ->
+                                            departmentWeights.getOrDefault(
+                                                            assignment.getSubject().getSubjectId(),
+                                                            0.0)
+                                                    * assignment.getConfidence().doubleValue())
+                            .max()
+                            .orElse(0.0);
+            double score =
+                    weights[0] * content.getOrDefault(candidate.getBookId(), 0.0)
+                            + weights[1] * department
+                            + weights[2] * popularity.getOrDefault(candidate.getBookId(), 0.0);
             hybrid.put(candidate.getBookId(), score);
         }
         return candidates.stream()
-                .sorted(Comparator
-                        .comparingDouble((BookEntity book) -> hybrid.getOrDefault(book.getBookId(), 0.0))
-                        .reversed()
-                        .thenComparing(BookEntity::getBookId))
+                .sorted(
+                        Comparator.comparingDouble(
+                                        (BookEntity book) ->
+                                                hybrid.getOrDefault(book.getBookId(), 0.0))
+                                .reversed()
+                                .thenComparing(BookEntity::getBookId))
                 .limit(k)
                 .map(BookEntity::getBookId)
                 .toList();
@@ -364,7 +418,8 @@ public class RecommendationEvaluationService {
         List<Long> recommendations = ranking.get();
         double elapsedMs = (System.nanoTime() - startedAt) / 1_000_000.0;
         long hits = recommendations.stream().filter(relevantIds::contains).count();
-        accumulator.precisionSum += recommendations.isEmpty() ? 0.0 : hits / (double) recommendations.size();
+        accumulator.precisionSum +=
+                recommendations.isEmpty() ? 0.0 : hits / (double) recommendations.size();
         accumulator.recallSum += hits / (double) relevantIds.size();
         accumulator.hitRateSum += hits > 0 ? 1.0 : 0.0;
         accumulator.recommendedBookIds.addAll(recommendations);
@@ -378,30 +433,34 @@ public class RecommendationEvaluationService {
         double popularity = Math.max(0.0, properties.getPopularityWeight());
         double total = content + department + popularity;
         return total == 0
-                ? new double[]{0.50, 0.35, 0.15}
-                : new double[]{content / total, department / total, popularity / total};
+                ? new double[] {0.50, 0.35, 0.15}
+                : new double[] {content / total, department / total, popularity / total};
     }
 
     private String buildConclusion(List<EvaluationMethodMetricsDTO> methods, int scenarios) {
         if (scenarios == 0) {
             return "Không có đủ nhóm chủ đề để chạy proxy evaluation.";
         }
-        EvaluationMethodMetricsDTO hybrid = methods.stream()
-                .filter(method -> method.method().equals("PROPOSED_HYBRID"))
-                .findFirst()
-                .orElseThrow();
-        EvaluationMethodMetricsDTO popularity = methods.stream()
-                .filter(method -> method.method().equals("POPULARITY_BASELINE"))
-                .findFirst()
-                .orElseThrow();
+        EvaluationMethodMetricsDTO hybrid =
+                methods.stream()
+                        .filter(method -> method.method().equals("PROPOSED_HYBRID"))
+                        .findFirst()
+                        .orElseThrow();
+        EvaluationMethodMetricsDTO popularity =
+                methods.stream()
+                        .filter(method -> method.method().equals("POPULARITY_BASELINE"))
+                        .findFirst()
+                        .orElseThrow();
         return hybrid.precisionAtK() >= popularity.precisionAtK()
                 ? "Trong proxy theo chủ đề, Hybrid đạt Precision@K không thấp hơn Popularity; cần xác nhận lại bằng lịch sử thật khi đủ mẫu."
                 : "Proxy chưa chứng minh Hybrid vượt Popularity; cần xem lại trọng số và dữ liệu trước khi kết luận.";
     }
 
     private boolean hasUsableTitle(BookEntity book) {
-        return book != null && book.getBookId() != null
-                && book.getTitle() != null && !book.getTitle().isBlank();
+        return book != null
+                && book.getBookId() != null
+                && book.getTitle() != null
+                && !book.getTitle().isBlank();
     }
 
     private int clamp(int value, int minimum, int maximum) {
@@ -432,7 +491,9 @@ public class RecommendationEvaluationService {
                     scenarios == 0 ? 0.0 : round(precisionSum / scenarios, 6),
                     scenarios == 0 ? 0.0 : round(recallSum / scenarios, 6),
                     scenarios == 0 ? 0.0 : round(hitRateSum / scenarios, 6),
-                    catalogSize == 0 ? 0.0 : round(recommendedBookIds.size() / (double) catalogSize, 6),
+                    catalogSize == 0
+                            ? 0.0
+                            : round(recommendedBookIds.size() / (double) catalogSize, 6),
                     round(percentile(latenciesMs, 0.50), 3),
                     round(percentile(latenciesMs, 0.95), 3),
                     totalRecommendations);

@@ -8,5 +8,4 @@ public record PushDeviceResponseDTO(
         String platform,
         String deviceId,
         boolean active,
-        LocalDateTime lastSeenAt) {
-}
+        LocalDateTime lastSeenAt) {}

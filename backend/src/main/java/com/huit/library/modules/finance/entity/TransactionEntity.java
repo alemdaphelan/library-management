@@ -38,6 +38,7 @@ public class TransactionEntity extends BaseEntity {
     private BigDecimal depositAppliedAmount;
     private LocalDateTime depositAppliedAt;
     private LocalDateTime overdueProcessedAt;
+
     @Column(unique = true, length = 160)
     private String dedupKey;
 }

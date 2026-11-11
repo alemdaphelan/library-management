@@ -60,18 +60,34 @@ public class BookInteractionService {
     public BookReviewSummaryDTO getReviews(Long bookId, UUID currentUserId) {
         requireBook(bookId);
         List<ReviewEntity> entities = reviewRepository.findByBookIdOrderByUpdatedAtDesc(bookId);
-        Map<UUID, String> reviewerNames = userRepository.findAllById(
-                        entities.stream().map(ReviewEntity::getUserId).distinct().toList())
-                .stream()
-                .collect(Collectors.toMap(
-                        user -> user.getUserId(),
-                        user -> user.getFullName() == null ? "Bạn đọc HUIT" : user.getFullName()));
-        List<BookReviewDTO> reviews = entities.stream()
-                .map(review -> toReview(review, reviewerNames.get(review.getUserId()), currentUserId))
-                .toList();
-        BookReviewDTO myReview = reviews.stream().filter(BookReviewDTO::isMine).findFirst().orElse(null);
-        boolean hasBorrowed = currentUserId != null
-                && loanDetailRepository.countBorrowedItemsByUserIdAndBookId(currentUserId, bookId) > 0;
+        Map<UUID, String> reviewerNames =
+                userRepository
+                        .findAllById(
+                                entities.stream().map(ReviewEntity::getUserId).distinct().toList())
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        user -> user.getUserId(),
+                                        user ->
+                                                user.getFullName() == null
+                                                        ? "Bạn đọc HUIT"
+                                                        : user.getFullName()));
+        List<BookReviewDTO> reviews =
+                entities.stream()
+                        .map(
+                                review ->
+                                        toReview(
+                                                review,
+                                                reviewerNames.get(review.getUserId()),
+                                                currentUserId))
+                        .toList();
+        BookReviewDTO myReview =
+                reviews.stream().filter(BookReviewDTO::isMine).findFirst().orElse(null);
+        boolean hasBorrowed =
+                currentUserId != null
+                        && loanDetailRepository.countBorrowedItemsByUserIdAndBookId(
+                                        currentUserId, bookId)
+                                > 0;
         boolean reviewEligible = currentUserId != null && myReview == null && hasBorrowed;
         return BookReviewSummaryDTO.builder()
                 .bookId(bookId)
@@ -79,7 +95,8 @@ public class BookInteractionService {
                 .reviewCount(entities.size())
                 .myReview(myReview)
                 .reviewEligible(reviewEligible)
-                .reviewEligibilityMessage(reviewEligibilityMessage(currentUserId, myReview, hasBorrowed))
+                .reviewEligibilityMessage(
+                        reviewEligibilityMessage(currentUserId, myReview, hasBorrowed))
                 .reviews(reviews)
                 .build();
     }
@@ -108,8 +125,14 @@ public class BookInteractionService {
 
     @Transactional
     public void deleteReview(Long bookId, UUID userId) {
-        ReviewEntity review = reviewRepository.findByBookIdAndUserId(bookId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bạn chưa đánh giá tài liệu này"));
+        ReviewEntity review =
+                reviewRepository
+                        .findByBookIdAndUserId(bookId, userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Bạn chưa đánh giá tài liệu này"));
         reviewRepository.delete(review);
     }
 
@@ -128,8 +151,13 @@ public class BookInteractionService {
         if (seenBookIds.isEmpty()) {
             return List.of();
         }
-        Map<Long, BookEntity> books = bookRepository.findAllById(new ArrayList<>(seenBookIds)).stream()
-                .collect(Collectors.toMap(BookEntity::getBookId, Function.identity(), (left, right) -> left));
+        Map<Long, BookEntity> books =
+                bookRepository.findAllById(new ArrayList<>(seenBookIds)).stream()
+                        .collect(
+                                Collectors.toMap(
+                                        BookEntity::getBookId,
+                                        Function.identity(),
+                                        (left, right) -> left));
         return deduplicated.stream()
                 .map(entry -> toWishlistItem(entry, books.get(parseBookId(entry.getBookId()))))
                 .filter(Objects::nonNull)
@@ -175,7 +203,8 @@ public class BookInteractionService {
     }
 
     private WishlistEntity findExistingAndCleanupDuplicates(UUID userId, String bookId) {
-        List<WishlistEntity> matches = wishlistRepository.findAllByUserIdAndBookIdOrderByAddedAtDesc(userId, bookId);
+        List<WishlistEntity> matches =
+                wishlistRepository.findAllByUserIdAndBookIdOrderByAddedAtDesc(userId, bookId);
         if (matches != null && !matches.isEmpty()) {
             if (matches.size() > 1) {
                 wishlistRepository.deleteAll(matches.subList(1, matches.size()));
@@ -187,7 +216,8 @@ public class BookInteractionService {
 
     private void requireUserId(UUID userId) {
         if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập để sử dụng danh sách sách đã lưu");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập để sử dụng danh sách sách đã lưu");
         }
     }
 
@@ -198,14 +228,22 @@ public class BookInteractionService {
     }
 
     private BookEntity requireBook(Long bookId) {
-        return bookRepository.findById(bookId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đầu sách #" + bookId));
+        return bookRepository
+                .findById(bookId)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Không tìm thấy đầu sách #" + bookId));
     }
 
     private BookReviewDTO toReview(ReviewEntity review, String reviewerName, UUID currentUserId) {
         return BookReviewDTO.builder()
                 .reviewId(review.getReviewId())
-                .reviewerName(reviewerName == null || reviewerName.isBlank() ? "Bạn đọc HUIT" : reviewerName)
+                .reviewerName(
+                        reviewerName == null || reviewerName.isBlank()
+                                ? "Bạn đọc HUIT"
+                                : reviewerName)
                 .rating(review.getRating())
                 .comment(review.getComment())
                 .createdAt(review.getCreatedAt())
@@ -222,12 +260,17 @@ public class BookInteractionService {
         if (copyList == null) {
             copyList = List.of();
         }
-        long availableFromList = copyList.stream()
-                .filter(copy -> copy != null && "AVAILABLE".equalsIgnoreCase(copy.getStatus()))
-                .count();
-        long available = copyList.isEmpty()
-                ? bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE")
-                : availableFromList;
+        long availableFromList =
+                copyList.stream()
+                        .filter(
+                                copy ->
+                                        copy != null
+                                                && "AVAILABLE".equalsIgnoreCase(copy.getStatus()))
+                        .count();
+        long available =
+                copyList.isEmpty()
+                        ? bookCopyRepository.countByBookIdAndStatus(book.getBookId(), "AVAILABLE")
+                        : availableFromList;
         long totalCopies = Math.max(copyList.size(), available);
         String location = resolveLocation(copyList);
         return WishlistItemDTO.builder()
@@ -264,16 +307,17 @@ public class BookInteractionService {
         return copies.stream()
                 .map(BookCopyEntity::getShelf)
                 .filter(Objects::nonNull)
-                .map(shelf -> {
-                    var bookshelf = shelf.getBookshelf();
-                    var floor = bookshelf == null ? null : bookshelf.getFloor();
-                    return Stream.of(
-                                    floor == null ? null : floor.getName(),
-                                    bookshelf == null ? null : bookshelf.getName(),
-                                    shelf.getName())
-                            .filter(value -> value != null && !value.isBlank())
-                            .collect(Collectors.joining(" / "));
-                })
+                .map(
+                        shelf -> {
+                            var bookshelf = shelf.getBookshelf();
+                            var floor = bookshelf == null ? null : bookshelf.getFloor();
+                            return Stream.of(
+                                            floor == null ? null : floor.getName(),
+                                            bookshelf == null ? null : bookshelf.getName(),
+                                            shelf.getName())
+                                    .filter(value -> value != null && !value.isBlank())
+                                    .collect(Collectors.joining(" / "));
+                        })
                 .filter(value -> !value.isBlank())
                 .distinct()
                 .collect(Collectors.joining(", "));
@@ -283,17 +327,19 @@ public class BookInteractionService {
         if (book.getBookId() != null) {
             List<String> names = bookRepository.findDepartmentNamesByBookId(book.getBookId());
             if (names != null && !names.isEmpty()) {
-                String joined = names.stream()
-                        .filter(value -> value != null && !value.isBlank())
-                        .distinct()
-                        .limit(2)
-                        .collect(Collectors.joining(", "));
+                String joined =
+                        names.stream()
+                                .filter(value -> value != null && !value.isBlank())
+                                .distinct()
+                                .limit(2)
+                                .collect(Collectors.joining(", "));
                 if (!joined.isBlank()) {
                     return joined;
                 }
             }
         }
-        if (book.getCategory() != null && book.getCategory().getName() != null
+        if (book.getCategory() != null
+                && book.getCategory().getName() != null
                 && !book.getCategory().getName().isBlank()) {
             return book.getCategory().getName();
         }
@@ -316,7 +362,8 @@ public class BookInteractionService {
         return value == null ? 0.0 : Math.round(value * 10.0) / 10.0;
     }
 
-    private String reviewEligibilityMessage(UUID currentUserId, BookReviewDTO myReview, boolean hasBorrowed) {
+    private String reviewEligibilityMessage(
+            UUID currentUserId, BookReviewDTO myReview, boolean hasBorrowed) {
         if (currentUserId == null) {
             return "Đăng nhập để đánh giá tài liệu";
         }

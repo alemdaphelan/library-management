@@ -9,17 +9,28 @@
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '180s';
-LOCK TABLE books, book_copies, receipt_details, reviews, wishlists, waitlists, loan_details,
-    book_subject_assignments, digital_documents, disposal_proposals, material_classifications IN SHARE ROW EXCLUSIVE MODE;
-
+LOCK TABLE books,
+book_copies,
+receipt_details,
+reviews,
+wishlists,
+waitlists,
+loan_details,
+book_subject_assignments,
+digital_documents,
+disposal_proposals,
+material_classifications IN SHARE ROW EXCLUSIVE MODE;
 CREATE TEMP TABLE verified_catalog_map ON COMMIT DROP AS
-SELECT c.book_id AS old_id, b.book_id AS new_id
-FROM book_copies c JOIN books b ON b.book_id = c.book_id + 269922
-WHERE c.book_id BETWEEN 1653 AND 271574
-  AND c.barcode = 'BC-' || c.book_id || '-1'
-  AND c.created_at = timestamp '2026-10-09 14:58:21.900779'
-  AND c.shelf_id IN ((abs(hashtext(coalesce(b.publisher, 'Unknown'))) % 160) + 1,
-                     (abs(hashtext(coalesce(b.publisher, ''))) % 160) + 1);
+SELECT
+    c.book_id AS old_id, b.book_id AS new_id
+FROM
+    book_copies c
+    JOIN books b ON b.book_id = c.book_id + 269922
+WHERE
+    c.book_id BETWEEN 1653 AND 271574
+    AND c.barcode = 'BC-' || c.book_id || '-1'
+    AND c.created_at = timestamp '2026-10-09 14:58:21.900779'
+    AND c.shelf_id IN ((abs(hashtext(coalesce(b.publisher, 'Unknown'))) % 160) + 1, (abs(hashtext(coalesce(b.publisher, ''))) % 160) + 1);
 
 DO $$
 BEGIN
@@ -39,18 +50,77 @@ BEGIN
     END IF;
 END $$;
 
-ALTER TABLE verified_catalog_map ADD PRIMARY KEY (old_id);
-CREATE TEMP TABLE copy_fingerprint ON COMMIT DROP AS
-SELECT count(*) AS copies, md5(string_agg(concat_ws('|',barcode, status, shelf_id), E'\n' ORDER BY barcode)) AS fingerprint
-FROM book_copies;
+ALTER TABLE verified_catalog_map
+    ADD PRIMARY KEY (old_id);
 
-UPDATE book_copies t SET book_id=m.new_id FROM verified_catalog_map m WHERE t.book_id=m.old_id;
-UPDATE receipt_details t SET book_id=m.new_id FROM verified_catalog_map m WHERE t.book_id=m.old_id;
-UPDATE reviews t SET book_id=m.new_id FROM verified_catalog_map m WHERE t.book_id=m.old_id;
-UPDATE wishlists t SET book_id=m.new_id::text FROM verified_catalog_map m WHERE t.book_id=m.old_id::text;
-UPDATE waitlists t SET book_id=m.new_id FROM verified_catalog_map m WHERE t.book_id=m.old_id;
-UPDATE loan_details t SET circulation_book_id=m.new_id FROM verified_catalog_map m WHERE t.circulation_book_id=m.old_id;
-UPDATE digital_documents t SET book_id=m.new_id FROM verified_catalog_map m WHERE t.book_id=m.old_id;
+CREATE TEMP TABLE copy_fingerprint ON COMMIT DROP AS
+SELECT
+    count(*) AS copies, md5(string_agg(concat_ws('|', barcode, status, shelf_id), E'\n' ORDER BY barcode)) AS fingerprint
+FROM
+    book_copies;
+
+UPDATE
+    book_copies t
+SET
+    book_id = m.new_id
+FROM
+    verified_catalog_map m
+WHERE
+    t.book_id = m.old_id;
+
+UPDATE
+    receipt_details t
+SET
+    book_id = m.new_id
+FROM
+    verified_catalog_map m
+WHERE
+    t.book_id = m.old_id;
+
+UPDATE
+    reviews t
+SET
+    book_id = m.new_id
+FROM
+    verified_catalog_map m
+WHERE
+    t.book_id = m.old_id;
+
+UPDATE
+    wishlists t
+SET
+    book_id = m.new_id::text
+FROM
+    verified_catalog_map m
+WHERE
+    t.book_id = m.old_id::text;
+
+UPDATE
+    waitlists t
+SET
+    book_id = m.new_id
+FROM
+    verified_catalog_map m
+WHERE
+    t.book_id = m.old_id;
+
+UPDATE
+    loan_details t
+SET
+    circulation_book_id = m.new_id
+FROM
+    verified_catalog_map m
+WHERE
+    t.circulation_book_id = m.old_id;
+
+UPDATE
+    digital_documents t
+SET
+    book_id = m.new_id
+FROM
+    verified_catalog_map m
+WHERE
+    t.book_id = m.old_id;
 
 DO $$
 BEGIN
@@ -64,10 +134,13 @@ BEGIN
     END IF;
 END $$;
 
-SELECT count(*) AS total_copies,
-       count(*) FILTER (WHERE c.shelf_id IS NULL) AS unplaced_copies,
-       count(*) FILTER (WHERE b.book_id IS NULL) AS unmatched_copies
-FROM book_copies c LEFT JOIN books b ON b.book_id=c.book_id;
+SELECT
+    count(*) AS total_copies,
+    count(*) FILTER (WHERE c.shelf_id IS NULL) AS unplaced_copies,
+    count(*) FILTER (WHERE b.book_id IS NULL) AS unmatched_copies
+FROM
+    book_copies c
+    LEFT JOIN books b ON b.book_id = c.book_id;
 
 \if :apply
 COMMIT;

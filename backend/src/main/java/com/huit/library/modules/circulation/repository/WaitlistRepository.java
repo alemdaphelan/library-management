@@ -14,10 +14,17 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface WaitlistRepository extends JpaRepository<WaitlistEntity, Long> {
     boolean existsByBookIdAndUserIdAndStatus(Long bookId, UUID userId, String status);
+
     List<WaitlistEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     List<WaitlistEntity> findByBookIdAndStatus(Long bookId, String status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<WaitlistEntity> findFirstByBookIdAndStatusOrderByCreatedAtAsc(Long bookId, String status);
-    Optional<WaitlistEntity> findFirstByBookIdAndUserIdAndStatus(Long bookId, UUID userId, String status);
+    Optional<WaitlistEntity> findFirstByBookIdAndStatusOrderByCreatedAtAsc(
+            Long bookId, String status);
+
+    Optional<WaitlistEntity> findFirstByBookIdAndUserIdAndStatus(
+            Long bookId, UUID userId, String status);
+
     List<WaitlistEntity> findByStatusAndExpiresAtBefore(String status, LocalDateTime expiresAt);
 }

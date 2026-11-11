@@ -9,6 +9,4 @@ public record RealHistoryAuditDTO(
         int testInteractions,
         boolean sufficientForPublication,
         String splitRule,
-        String note
-) {
-}
+        String note) {}

@@ -14,7 +14,7 @@ import { HomeService, RecommendationResponse } from '../../../services/home.serv
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './search.html',
-  styleUrls: ['./search.css']
+  styleUrls: ['./search.css'],
 })
 export class Search implements OnInit, OnDestroy {
   viewMode: 'grid' | 'list' = 'grid';
@@ -46,12 +46,12 @@ export class Search implements OnInit, OnDestroy {
   searchSubscription!: Subscription;
 
   constructor(
-    private bookService: BookService, 
+    private bookService: BookService,
     private categoryService: CategoryService,
     private cdr: ChangeDetectorRef,
     private router: Router,
     private route: ActivatedRoute,
-    private homeService: HomeService
+    private homeService: HomeService,
   ) {}
 
   ngOnInit() {
@@ -60,38 +60,34 @@ export class Search implements OnInit, OnDestroy {
     this.fetchDepartments();
     this.fetchBooks();
 
-    this.searchSubscription = this.searchSubject.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(query => {
-        if (!query.trim()) {
-          return of({ content: [] });
+    this.searchSubscription = this.searchSubject
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((query) => {
+          if (!query.trim()) {
+            return of({ content: [] });
+          }
+          return this.bookService
+            .getBooks(query, 0, 5, undefined, undefined, this.selectedDepartment || undefined)
+            .pipe(catchError(() => of({ content: [] })));
+        }),
+      )
+      .subscribe((data) => {
+        if (data && data.content && data.content.length > 0) {
+          this.quickSearchResults = data.content.map((b: any) => ({
+            id: b.bookId || b.id,
+            title: b.title,
+            author: b.author || 'Đang cập nhật',
+            cover:
+              b.imageUrlS || b.imageUrlM || b.imageUrlL || b.cover || '/assets/images/cover_1.jpg',
+          }));
+          this.showDropdown = true;
+        } else {
+          this.quickSearchResults = [];
         }
-        return this.bookService.getBooks(
-          query,
-          0,
-          5,
-          undefined,
-          undefined,
-          this.selectedDepartment || undefined
-        ).pipe(
-          catchError(() => of({ content: [] }))
-        );
-      })
-    ).subscribe(data => {
-      if (data && data.content && data.content.length > 0) {
-        this.quickSearchResults = data.content.map((b: any) => ({
-          id: b.bookId || b.id,
-          title: b.title,
-          author: b.author || 'Đang cập nhật',
-          cover: b.imageUrlS || b.imageUrlM || b.imageUrlL || b.cover || '/assets/images/cover_1.jpg'
-        }));
-        this.showDropdown = true;
-      } else {
-        this.quickSearchResults = [];
-      }
-      this.cdr.markForCheck();
-    });
+        this.cdr.markForCheck();
+      });
   }
 
   ngOnDestroy() {
@@ -137,28 +133,28 @@ export class Search implements OnInit, OnDestroy {
   fetchCategories() {
     this.categoryService.getCategories().subscribe({
       next: (cats: Category[]) => {
-        this.availableCategories = cats.map(c => c.name);
-        this.availableCategories.forEach(cat => this.selectedCategories[cat] = false);
+        this.availableCategories = cats.map((c) => c.name);
+        this.availableCategories.forEach((cat) => (this.selectedCategories[cat] = false));
         this.cdr.markForCheck();
       },
-      error: (err) => console.error('Error fetching categories', err)
+      error: (err) => console.error('Error fetching categories', err),
     });
   }
 
   fetchDepartments(): void {
     this.departmentsLoading = true;
     this.bookService.getDepartments().subscribe({
-      next: departments => {
+      next: (departments) => {
         this.departments = departments ?? [];
         this.departmentsLoading = false;
         this.cdr.markForCheck();
       },
-      error: err => {
+      error: (err) => {
         console.error('Error fetching departments', err);
         this.departments = [];
         this.departmentsLoading = false;
         this.cdr.markForCheck();
-      }
+      },
     });
   }
 
@@ -167,46 +163,56 @@ export class Search implements OnInit, OnDestroy {
       this.fetchRecommendations();
       return;
     }
-    const availability = this.filterStatus === 'available'
-      ? 'AVAILABLE'
-      : this.filterStatus === 'borrowed' ? 'UNAVAILABLE' : undefined;
-    this.bookService.getBooks(
-      this.searchQuery,
-      this.currentPage,
-      this.pageSize,
-      undefined,
-      availability,
-      this.selectedDepartment || undefined
-    ).subscribe({
-      next: (data) => {
-        if (data && data.content && data.content.length > 0) {
-          this.allBooks = data.content.map((b: any) => ({
-            id: b.bookId || b.id,
-            title: b.title,
-            author: b.author || 'Đang cập nhật',
-            cover: b.imageUrlL || b.imageUrlM || b.imageUrlS || b.cover || '/assets/images/cover_1.jpg',
-            category: b.category ? b.category.name : 'Khác',
-            status: b.status || 'out_of_stock',
-            availableCopies: Number(b.availableCopies || 0),
-            copies: Number(b.copies || 0)
-          }));
-          this.totalPages = data.totalPages;
-          this.totalElements = data.totalElements;
-        } else {
+    const availability =
+      this.filterStatus === 'available'
+        ? 'AVAILABLE'
+        : this.filterStatus === 'borrowed'
+          ? 'UNAVAILABLE'
+          : undefined;
+    this.bookService
+      .getBooks(
+        this.searchQuery,
+        this.currentPage,
+        this.pageSize,
+        undefined,
+        availability,
+        this.selectedDepartment || undefined,
+      )
+      .subscribe({
+        next: (data) => {
+          if (data && data.content && data.content.length > 0) {
+            this.allBooks = data.content.map((b: any) => ({
+              id: b.bookId || b.id,
+              title: b.title,
+              author: b.author || 'Đang cập nhật',
+              cover:
+                b.imageUrlL ||
+                b.imageUrlM ||
+                b.imageUrlS ||
+                b.cover ||
+                '/assets/images/cover_1.jpg',
+              category: b.category ? b.category.name : 'Khác',
+              status: b.status || 'out_of_stock',
+              availableCopies: Number(b.availableCopies || 0),
+              copies: Number(b.copies || 0),
+            }));
+            this.totalPages = data.totalPages;
+            this.totalElements = data.totalElements;
+          } else {
+            this.allBooks = [];
+            this.totalPages = 0;
+            this.totalElements = 0;
+          }
+          this.applyFilters();
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error fetching books', err);
           this.allBooks = [];
-          this.totalPages = 0;
-          this.totalElements = 0;
-        }
-        this.applyFilters();
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        console.error('Error fetching books', err);
-        this.allBooks = [];
-        this.applyFilters();
-        this.cdr.markForCheck();
-      }
-    });
+          this.applyFilters();
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   fetchRecommendations(): void {
@@ -223,7 +229,7 @@ export class Search implements OnInit, OnDestroy {
           availableCopies: Number(book.availableCopies || 0),
           copies: Number(book.copies || 0),
           reason: book.reason,
-          recommendationOrder: index
+          recommendationOrder: index,
         }));
         this.recommendationLoading = false;
         this.currentPage = 0;
@@ -235,7 +241,7 @@ export class Search implements OnInit, OnDestroy {
         this.recommendationLoading = false;
         this.applyFilters();
         this.cdr.markForCheck();
-      }
+      },
     });
   }
 
@@ -287,17 +293,26 @@ export class Search implements OnInit, OnDestroy {
     if (this.sourceMode === 'for-you') {
       const query = this.searchQuery.trim().toLocaleLowerCase('vi');
       if (query) {
-        filtered = filtered.filter(book => [book.title, book.author, book.category, book.reason]
-          .some(value => String(value || '').toLocaleLowerCase('vi').includes(query)));
+        filtered = filtered.filter((book) =>
+          [book.title, book.author, book.category, book.reason].some((value) =>
+            String(value || '')
+              .toLocaleLowerCase('vi')
+              .includes(query),
+          ),
+        );
       }
-      if (this.filterStatus === 'available') filtered = filtered.filter(book => book.status === 'available');
-      if (this.filterStatus === 'borrowed') filtered = filtered.filter(book => book.status !== 'available');
+      if (this.filterStatus === 'available')
+        filtered = filtered.filter((book) => book.status === 'available');
+      if (this.filterStatus === 'borrowed')
+        filtered = filtered.filter((book) => book.status !== 'available');
     }
 
     // Category filter
-    const activeCategories = Object.keys(this.selectedCategories).filter(c => this.selectedCategories[c]);
+    const activeCategories = Object.keys(this.selectedCategories).filter(
+      (c) => this.selectedCategories[c],
+    );
     if (activeCategories.length > 0) {
-      filtered = filtered.filter(b => activeCategories.includes(b.category));
+      filtered = filtered.filter((b) => activeCategories.includes(b.category));
     }
 
     // Sorting
@@ -323,14 +338,14 @@ export class Search implements OnInit, OnDestroy {
 
   clearFilters() {
     this.searchQuery = '';
-    this.filterStatus = 'all'; 
+    this.filterStatus = 'all';
     this.selectedDepartment = '';
-    
+
     // Re-assign object to trigger change detection for ngModel bindings
     const clearedCategories: { [key: string]: boolean } = {};
-    this.availableCategories.forEach(c => clearedCategories[c] = false);
+    this.availableCategories.forEach((c) => (clearedCategories[c] = false));
     this.selectedCategories = clearedCategories;
-    
+
     this.sortOption = 'newest';
     this.currentPage = 0;
     this.fetchBooks();
@@ -344,7 +359,7 @@ export class Search implements OnInit, OnDestroy {
   get visiblePages(): (number | string)[] {
     const total = this.totalPages;
     if (total === 0) return [];
-    
+
     const current = this.currentPage + 1;
     const delta = 2;
 
@@ -356,28 +371,28 @@ export class Search implements OnInit, OnDestroy {
       }
     } else {
       pages.push(1);
-      
+
       let left = Math.max(2, current - delta);
       let right = Math.min(total - 1, current + delta);
-      
+
       if (left > 2) {
         pages.push('...');
       }
-      
+
       for (let i = left; i <= right; i++) {
         pages.push(i);
       }
-      
+
       if (right < total - 1) {
         pages.push('...');
       }
-      
+
       pages.push(total);
     }
-    
+
     return pages;
   }
-  
+
   onPageClick(p: number | string) {
     if (typeof p === 'number') {
       this.goToPage(p - 1);

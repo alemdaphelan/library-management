@@ -1,5 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   InventoryAudit as InventoryAuditModel,
@@ -36,7 +44,8 @@ export class InventoryAudit implements OnInit, OnDestroy {
   disposalAuditId?: number;
   showDisposals(fromSelected = false): void {
     this.stopCamera();
-    this.disposalsLoaded = true; this.view = 'disposals';
+    this.disposalsLoaded = true;
+    this.view = 'disposals';
     if (fromSelected) this.disposalAuditId = this.selectedAudit?.auditId;
   }
   @ViewChild('barcodeInput') barcodeInput?: ElementRef<HTMLInputElement>;
@@ -58,37 +67,63 @@ export class InventoryAudit implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadAudits();
-    this.locations.getFloors().subscribe({ next: floors => this.floors = floors,
-      error: () => this.dialog.show({type:'error',message:'Không tải được vị trí thư viện. Tải lại trang để chọn ngăn kiểm kê.'}) });
+    this.locations.getFloors().subscribe({
+      next: (floors) => (this.floors = floors),
+      error: () =>
+        this.dialog.show({
+          type: 'error',
+          message: 'Không tải được vị trí thư viện. Tải lại trang để chọn ngăn kiểm kê.',
+        }),
+    });
   }
 
-  ngOnDestroy(): void { this.stopCamera(); }
+  ngOnDestroy(): void {
+    this.stopCamera();
+  }
 
   selectFloor(id?: number): void {
     this.floorId = id;
     this.bookshelves = [];
     this.selectBookshelf();
-    if (id) this.locations.getBookshelves(id).subscribe({
-      next: shelves => { if (this.floorId === id) this.bookshelves = shelves; },
-      error: () => this.dialog.show({type:'error',message:'Không tải được dãy kệ. Chọn lại tầng để thử lại.'}),
-    });
+    if (id)
+      this.locations.getBookshelves(id).subscribe({
+        next: (shelves) => {
+          if (this.floorId === id) this.bookshelves = shelves;
+        },
+        error: () =>
+          this.dialog.show({
+            type: 'error',
+            message: 'Không tải được dãy kệ. Chọn lại tầng để thử lại.',
+          }),
+      });
   }
 
   selectBookshelf(id?: number): void {
     this.bookshelfId = id;
     this.shelves = [];
     this.selectShelf();
-    if (id) this.locations.getShelves(id).subscribe({
-      next: shelves => { if (this.bookshelfId === id) this.shelves = shelves; },
-      error: () => this.dialog.show({type:'error',message:'Không tải được ngăn kệ. Chọn lại dãy kệ để thử lại.'}),
-    });
+    if (id)
+      this.locations.getShelves(id).subscribe({
+        next: (shelves) => {
+          if (this.bookshelfId === id) this.shelves = shelves;
+        },
+        error: () =>
+          this.dialog.show({
+            type: 'error',
+            message: 'Không tải được ngăn kệ. Chọn lại dãy kệ để thử lại.',
+          }),
+      });
   }
 
   selectShelf(id?: number): void {
     this.shelfId = id;
-    this.scannedLocation = [this.floors.find(n => n.id === this.floorId)?.name,
-      this.bookshelves.find(n => n.id === this.bookshelfId)?.name, this.shelves.find(n => n.id === id)?.name]
-      .filter(Boolean).join(' / ');
+    this.scannedLocation = [
+      this.floors.find((n) => n.id === this.floorId)?.name,
+      this.bookshelves.find((n) => n.id === this.bookshelfId)?.name,
+      this.shelves.find((n) => n.id === id)?.name,
+    ]
+      .filter(Boolean)
+      .join(' / ');
     this.lastCameraBarcode = '';
     if (!id) this.stopCamera();
   }
@@ -100,22 +135,42 @@ export class InventoryAudit implements OnInit, OnDestroy {
     this.lastCameraBarcode = '';
     this.cdr.detectChanges();
     const video = this.auditVideo?.nativeElement;
-    if (!video) { this.stopCamera(); return; }
+    if (!video) {
+      this.stopCamera();
+      return;
+    }
     try {
-      const reader = new BrowserMultiFormatReader(undefined, {delayBetweenScanAttempts: 120, delayBetweenScanSuccess: 350});
-      const controls = await reader.decodeFromConstraints({video:{facingMode:{ideal:'environment'}},audio:false}, video, result => {
-        const value = result?.getText().trim();
-        if (version !== this.cameraVersion || !value || this.isSubmitting || value === this.lastCameraBarcode
-            || this.selectedAudit?.details.some(scan => scan.barcode === value)) return;
-        this.lastCameraBarcode = value;
-        this.barcode = value;
-        this.submitScan();
+      const reader = new BrowserMultiFormatReader(undefined, {
+        delayBetweenScanAttempts: 120,
+        delayBetweenScanSuccess: 350,
       });
-      if (version !== this.cameraVersion) controls.stop(); else this.camera = controls;
+      const controls = await reader.decodeFromConstraints(
+        { video: { facingMode: { ideal: 'environment' } }, audio: false },
+        video,
+        (result) => {
+          const value = result?.getText().trim();
+          if (
+            version !== this.cameraVersion ||
+            !value ||
+            this.isSubmitting ||
+            value === this.lastCameraBarcode ||
+            this.selectedAudit?.details.some((scan) => scan.barcode === value)
+          )
+            return;
+          this.lastCameraBarcode = value;
+          this.barcode = value;
+          this.submitScan();
+        },
+      );
+      if (version !== this.cameraVersion) controls.stop();
+      else this.camera = controls;
     } catch {
       if (version !== this.cameraVersion) return;
       this.stopCamera();
-      this.dialog.show({type:'error',message:'Không mở được camera. Kiểm tra quyền camera hoặc dùng máy quét mã vạch.'});
+      this.dialog.show({
+        type: 'error',
+        message: 'Không mở được camera. Kiểm tra quyền camera hoặc dùng máy quét mã vạch.',
+      });
     }
   }
 
@@ -130,11 +185,12 @@ export class InventoryAudit implements OnInit, OnDestroy {
     this.isLoading = true;
     this.clearMessages();
     this.inventoryAuditService.getAudits().subscribe({
-      next: audits => {
+      next: (audits) => {
         this.audits = audits;
-        const selected = audits.find(audit => audit.auditId === preferredAuditId)
-          ?? audits.find(audit => audit.status === 'IN_PROGRESS')
-          ?? audits[0];
+        const selected =
+          audits.find((audit) => audit.auditId === preferredAuditId) ??
+          audits.find((audit) => audit.status === 'IN_PROGRESS') ??
+          audits[0];
         if (selected) {
           this.selectAudit(selected);
         } else {
@@ -143,7 +199,7 @@ export class InventoryAudit implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }
       },
-      error: error => this.handleError('Không thể tải lịch sử kiểm kê.', error),
+      error: (error) => this.handleError('Không thể tải lịch sử kiểm kê.', error),
     });
   }
 
@@ -152,14 +208,14 @@ export class InventoryAudit implements OnInit, OnDestroy {
     this.stopCamera();
     this.isLoading = true;
     this.inventoryAuditService.getAudit(audit.auditId).subscribe({
-      next: detail => {
+      next: (detail) => {
         this.selectedAudit = detail;
         this.replaceAudit(detail);
         this.isLoading = false;
         if (detail.status === 'IN_PROGRESS') this.focusBarcode();
         this.cdr.detectChanges();
       },
-      error: error => this.handleError('Không thể tải chi tiết phiên kiểm kê.', error),
+      error: (error) => this.handleError('Không thể tải chi tiết phiên kiểm kê.', error),
     });
   }
 
@@ -169,51 +225,58 @@ export class InventoryAudit implements OnInit, OnDestroy {
     this.isSubmitting = true;
     this.clearMessages();
     this.inventoryAuditService.createAudit().subscribe({
-      next: audit => {
+      next: (audit) => {
         this.audits = [audit, ...this.audits];
         this.selectedAudit = audit;
         this.isSubmitting = false;
         this.successMessage = `Đã bắt đầu phiên kiểm kê #${audit.auditId}.`;
         this.focusBarcode();
       },
-      error: error => this.handleError('Không thể bắt đầu phiên kiểm kê.', error),
+      error: (error) => this.handleError('Không thể bắt đầu phiên kiểm kê.', error),
     });
   }
 
   submitScan(): void {
     const cleanBarcode = this.barcode.trim();
-    if (this.isSubmitting || !this.selectedAudit || this.selectedAudit.status !== 'IN_PROGRESS' || !cleanBarcode || !this.shelfId) return;
+    if (
+      this.isSubmitting ||
+      !this.selectedAudit ||
+      this.selectedAudit.status !== 'IN_PROGRESS' ||
+      !cleanBarcode ||
+      !this.shelfId
+    )
+      return;
 
     this.isSubmitting = true;
     this.clearMessages();
-    this.inventoryAuditService.scan(
-      this.selectedAudit.auditId,
-      cleanBarcode,
-      this.scannedLocation.trim(),
-      this.shelfId,
-    ).subscribe({
-      next: scan => {
-        const auditId = this.selectedAudit!.auditId;
-        this.barcode = '';
-        const message = `${scan.barcode} · ${this.scanMessage(scan.scanStatus)}`;
-        if (scan.scanStatus === 'MISPLACED') this.errorMessage = `${message} Vị trí đúng: ${scan.expectedLocation || 'Chưa xác định'}.`;
-        else this.successMessage = message;
-        this.inventoryAuditService.getAudit(auditId).subscribe({
-          next: audit => {
-            this.selectedAudit = audit;
-            this.replaceAudit(audit);
-            this.isSubmitting = false;
-            this.focusBarcode();
-          },
-          error: error => this.handleError('Đã quét nhưng không thể làm mới kết quả.', error),
-        });
-      },
-      error: error => this.handleError(this.apiError(error, 'Không thể ghi nhận barcode.'), error),
-    });
+    this.inventoryAuditService
+      .scan(this.selectedAudit.auditId, cleanBarcode, this.scannedLocation.trim(), this.shelfId)
+      .subscribe({
+        next: (scan) => {
+          const auditId = this.selectedAudit!.auditId;
+          this.barcode = '';
+          const message = `${scan.barcode} · ${this.scanMessage(scan.scanStatus)}`;
+          if (scan.scanStatus === 'MISPLACED')
+            this.errorMessage = `${message} Vị trí đúng: ${scan.expectedLocation || 'Chưa xác định'}.`;
+          else this.successMessage = message;
+          this.inventoryAuditService.getAudit(auditId).subscribe({
+            next: (audit) => {
+              this.selectedAudit = audit;
+              this.replaceAudit(audit);
+              this.isSubmitting = false;
+              this.focusBarcode();
+            },
+            error: (error) => this.handleError('Đã quét nhưng không thể làm mới kết quả.', error),
+          });
+        },
+        error: (error) =>
+          this.handleError(this.apiError(error, 'Không thể ghi nhận barcode.'), error),
+      });
   }
 
   async completeAudit(): Promise<void> {
-    if (this.isSubmitting || !this.selectedAudit || this.selectedAudit.status !== 'IN_PROGRESS') return;
+    if (this.isSubmitting || !this.selectedAudit || this.selectedAudit.status !== 'IN_PROGRESS')
+      return;
     this.stopCamera();
     const confirmed = await this.dialog.confirm({
       title: 'Hoàn tất kiểm kê',
@@ -226,13 +289,13 @@ export class InventoryAudit implements OnInit, OnDestroy {
     this.isSubmitting = true;
     this.clearMessages();
     this.inventoryAuditService.complete(this.selectedAudit.auditId).subscribe({
-      next: audit => {
+      next: (audit) => {
         this.selectedAudit = audit;
         this.replaceAudit(audit);
         this.isSubmitting = false;
         this.successMessage = `Đã hoàn tất phiên kiểm kê #${audit.auditId}.`;
       },
-      error: error => this.handleError('Không thể hoàn tất phiên kiểm kê.', error),
+      error: (error) => this.handleError('Không thể hoàn tất phiên kiểm kê.', error),
     });
   }
 
@@ -250,15 +313,18 @@ export class InventoryAudit implements OnInit, OnDestroy {
   }
 
   private replaceAudit(updated: InventoryAuditModel): void {
-    const index = this.audits.findIndex(audit => audit.auditId === updated.auditId);
+    const index = this.audits.findIndex((audit) => audit.auditId === updated.auditId);
     if (index >= 0) this.audits[index] = { ...this.audits[index], ...updated };
   }
 
   private scanMessage(status: InventoryScanStatus): string {
-    return status === 'MATCHED' ? 'Barcode đúng vị trí.'
-      : status === 'MISPLACED' ? 'Đã ghi nhận bản sao đang sai vị trí.'
-      : status === 'UNKNOWN' ? 'Đã ghi nhận barcode không có trong hệ thống.'
-      : 'Đã ghi nhận barcode.';
+    return status === 'MATCHED'
+      ? 'Barcode đúng vị trí.'
+      : status === 'MISPLACED'
+        ? 'Đã ghi nhận bản sao đang sai vị trí.'
+        : status === 'UNKNOWN'
+          ? 'Đã ghi nhận barcode không có trong hệ thống.'
+          : 'Đã ghi nhận barcode.';
   }
 
   private focusBarcode(): void {

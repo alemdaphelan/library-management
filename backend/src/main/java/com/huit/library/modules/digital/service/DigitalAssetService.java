@@ -32,12 +32,13 @@ import java.util.UUID;
 
 @Service
 public class DigitalAssetService {
-    private static final Map<String, String> ALLOWED_TYPES = Map.of(
-            "pdf", "application/pdf",
-            "epub", "application/epub+zip",
-            "mp3", "audio/mpeg",
-            "pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    );
+    private static final Map<String, String> ALLOWED_TYPES =
+            Map.of(
+                    "pdf", "application/pdf",
+                    "epub", "application/epub+zip",
+                    "mp3", "audio/mpeg",
+                    "pptx",
+                            "application/vnd.openxmlformats-officedocument.presentationml.presentation");
     private static final Set<String> SAFE_ACCESS_LEVELS = Set.of("AUTHENTICATED", "STAFF_ONLY");
 
     private final DigitalDocumentRepository documentRepository;
@@ -86,28 +87,29 @@ public class DigitalAssetService {
 
     @Transactional
     public DigitalAssetResponseDTO upload(
-            MultipartFile file,
-            Long bookId,
-            String accessLevel,
-            UUID uploadedBy) {
+            MultipartFile file, Long bookId, String accessLevel, UUID uploadedBy) {
         if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn tệp cần tải lên");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Vui lòng chọn tệp cần tải lên");
         }
         if (file.getSize() > maxFileSize) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Tệp vượt quá giới hạn 50 MB");
+            throw new ResponseStatusException(
+                    HttpStatus.PAYLOAD_TOO_LARGE, "Tệp vượt quá giới hạn 50 MB");
         }
 
-        String originalName = StringUtils.cleanPath(file.getOriginalFilename() == null
-                ? "digital-document"
-                : file.getOriginalFilename());
+        String originalName =
+                StringUtils.cleanPath(
+                        file.getOriginalFilename() == null
+                                ? "digital-document"
+                                : file.getOriginalFilename());
         if (originalName.contains("..")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên tệp không hợp lệ");
         }
         String extension = extensionOf(originalName);
         String expectedContentType = ALLOWED_TYPES.get(extension);
         if (expectedContentType == null) {
-            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                    "Chỉ hỗ trợ PDF, EPUB, MP3 và PPTX");
+            throw new ResponseStatusException(
+                    HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Chỉ hỗ trợ PDF, EPUB, MP3 và PPTX");
         }
         validateBook(bookId);
 
@@ -138,8 +140,8 @@ public class DigitalAssetService {
             stored = true;
             return response;
         } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Không thể lưu tệp tài liệu số", exception);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu tệp tài liệu số", exception);
         } finally {
             if (!stored) {
                 deleteQuietly(destination);
@@ -161,10 +163,12 @@ public class DigitalAssetService {
     public DigitalDownload download(Long id, UUID userId, boolean staff) {
         DigitalDocumentEntity document = getDocument(id);
         if ("STAFF_ONLY".equals(normalizeAccess(document.getAccessLevel())) && !staff) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài liệu này chỉ dành cho nhân viên thư viện");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Tài liệu này chỉ dành cho nhân viên thư viện");
         }
         if (!StringUtils.hasText(document.getStorageKey())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tệp vật lý chưa được lưu trên hệ thống");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Tệp vật lý chưa được lưu trên hệ thống");
         }
         Path file = resolveStorageKey(document.getStorageKey());
         if (!Files.isRegularFile(file)) {
@@ -183,16 +187,18 @@ public class DigitalAssetService {
                     document.getContentType(),
                     document.getFileSize());
         } catch (IOException exception) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể đọc tệp", exception);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Không thể đọc tệp", exception);
         }
     }
 
     @Transactional
     public void delete(Long id) {
         DigitalDocumentEntity document = getDocument(id);
-        Path path = StringUtils.hasText(document.getStorageKey())
-                ? resolveStorageKey(document.getStorageKey())
-                : null;
+        Path path =
+                StringUtils.hasText(document.getStorageKey())
+                        ? resolveStorageKey(document.getStorageKey())
+                        : null;
         documentRepository.delete(document);
         documentRepository.flush();
         if (path != null) {
@@ -201,37 +207,54 @@ public class DigitalAssetService {
     }
 
     private DigitalDocumentEntity getDocument(Long id) {
-        return documentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Không tìm thấy tài liệu số"));
+        return documentRepository
+                .findById(id)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu số"));
     }
 
     private DigitalAssetResponseDTO toResponse(DigitalDocumentEntity document) {
-        String bookTitle = document.getBookId() == null ? null : bookRepository.findById(document.getBookId())
-                .map(book -> book.getTitle())
-                .orElse("Sách không còn tồn tại");
-        String name = StringUtils.hasText(document.getDisplayName())
-                ? document.getDisplayName()
-                : StringUtils.hasText(document.getOriginalFilename())
-                    ? document.getOriginalFilename()
-                    : "Tài liệu số #" + document.getDocumentId();
+        String bookTitle =
+                document.getBookId() == null
+                        ? null
+                        : bookRepository
+                                .findById(document.getBookId())
+                                .map(book -> book.getTitle())
+                                .orElse("Sách không còn tồn tại");
+        String name =
+                StringUtils.hasText(document.getDisplayName())
+                        ? document.getDisplayName()
+                        : StringUtils.hasText(document.getOriginalFilename())
+                                ? document.getOriginalFilename()
+                                : "Tài liệu số #" + document.getDocumentId();
         return new DigitalAssetResponseDTO(
-                document.getDocumentId(), document.getBookId(), bookTitle, name,
-                document.getFormat(), document.getContentType(), document.getFileSize(),
-                normalizeAccess(document.getAccessLevel()), document.getUploadedBy(),
-                document.getCreatedAt(), document.getUpdatedAt());
+                document.getDocumentId(),
+                document.getBookId(),
+                bookTitle,
+                name,
+                document.getFormat(),
+                document.getContentType(),
+                document.getFileSize(),
+                normalizeAccess(document.getAccessLevel()),
+                document.getUploadedBy(),
+                document.getCreatedAt(),
+                document.getUpdatedAt());
     }
 
     private void validateBook(Long bookId) {
         if (bookId != null && !bookRepository.existsById(bookId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không tìm thấy sách để liên kết");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Không tìm thấy sách để liên kết");
         }
     }
 
     private String normalizeAccess(String accessLevel) {
-        String normalized = StringUtils.hasText(accessLevel)
-                ? accessLevel.trim().toUpperCase(Locale.ROOT)
-                : "AUTHENTICATED";
+        String normalized =
+                StringUtils.hasText(accessLevel)
+                        ? accessLevel.trim().toUpperCase(Locale.ROOT)
+                        : "AUTHENTICATED";
         if (!SAFE_ACCESS_LEVELS.contains(normalized)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mức truy cập không hợp lệ");
         }
@@ -246,7 +269,8 @@ public class DigitalAssetService {
     private Path resolveStorageKey(String storageKey) {
         Path resolved = storageRoot.resolve(storageKey).normalize();
         if (!resolved.startsWith(storageRoot)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đường dẫn lưu trữ không hợp lệ");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Đường dẫn lưu trữ không hợp lệ");
         }
         return resolved;
     }
@@ -264,6 +288,6 @@ public class DigitalAssetService {
         }
     }
 
-    public record DigitalDownload(Resource resource, String filename, String contentType, Long fileSize) {
-    }
+    public record DigitalDownload(
+            Resource resource, String filename, String contentType, Long fileSize) {}
 }

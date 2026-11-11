@@ -82,12 +82,12 @@ export interface StudentUpsert {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class UserService {
   private apiUrl = `${environment.apiUrl}/users`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   getStudents(): Observable<Student[]> {
     return this.http.get<Student[]>(`${this.apiUrl}/students`);
@@ -99,7 +99,7 @@ export class UserService {
 
   getReaderProfile(mssv: string): Observable<ReaderProfile> {
     return this.http.get<ReaderProfile>(
-      `${this.apiUrl}/students/${encodeURIComponent(mssv)}/profile`
+      `${this.apiUrl}/students/${encodeURIComponent(mssv)}/profile`,
     );
   }
 

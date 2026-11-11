@@ -10,5 +10,4 @@ public record DashboardStatsDTO(
         long reservedCopies,
         long overdueBooks,
         BigDecimal fineCollected,
-        LocalDateTime asOf) {
-}
+        LocalDateTime asOf) {}

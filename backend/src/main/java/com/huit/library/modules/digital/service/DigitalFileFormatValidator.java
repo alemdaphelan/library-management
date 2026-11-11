@@ -34,28 +34,33 @@ import java.util.zip.ZipFile;
 final class DigitalFileFormatValidator {
     private static final int MAX_METADATA_BYTES = 2 * 1024 * 1024;
     private static final String EPUB_MEDIA_TYPE = "application/epub+zip";
-    private static final String EPUB_CONTAINER_NS = "urn:oasis:names:tc:opendocument:xmlns:container";
+    private static final String EPUB_CONTAINER_NS =
+            "urn:oasis:names:tc:opendocument:xmlns:container";
     private static final String EPUB_PACKAGE_NS = "http://www.idpf.org/2007/opf";
-    private static final String OFFICE_RELATIONSHIP_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
-    private static final String STRICT_OFFICE_RELATIONSHIP_NS = "http://purl.oclc.org/ooxml/officeDocument/relationships";
-    private static final String PRESENTATION_NS = "http://schemas.openxmlformats.org/presentationml/2006/main";
-    private static final String STRICT_PRESENTATION_NS = "http://purl.oclc.org/ooxml/presentationml/main";
+    private static final String OFFICE_RELATIONSHIP_NS =
+            "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+    private static final String STRICT_OFFICE_RELATIONSHIP_NS =
+            "http://purl.oclc.org/ooxml/officeDocument/relationships";
+    private static final String PRESENTATION_NS =
+            "http://schemas.openxmlformats.org/presentationml/2006/main";
+    private static final String STRICT_PRESENTATION_NS =
+            "http://purl.oclc.org/ooxml/presentationml/main";
     private static final String PRESENTATION_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml";
 
-    private DigitalFileFormatValidator() {
-    }
+    private DigitalFileFormatValidator() {}
 
     static void validate(Path file, String extension) {
         boolean valid;
         try {
-            valid = switch (extension) {
-                case "pdf" -> isPdf(file);
-                case "epub" -> isEpub(file);
-                case "pptx" -> isPptx(file);
-                case "mp3" -> isMp3(file);
-                default -> false;
-            };
+            valid =
+                    switch (extension) {
+                        case "pdf" -> isPdf(file);
+                        case "epub" -> isEpub(file);
+                        case "pptx" -> isPptx(file);
+                        case "mp3" -> isMp3(file);
+                        default -> false;
+                    };
         } catch (IOException | OpenXML4JException | SAXException | RuntimeException exception) {
             throw unsupported(extension, exception);
         }
@@ -67,13 +72,16 @@ final class DigitalFileFormatValidator {
     private static boolean isPdf(Path file) throws IOException {
         try (RandomAccessReadBufferedFile input = new RandomAccessReadBufferedFile(file.toFile())) {
             byte[] header = new byte[5];
-            if (input.read(header) != header.length || !"%PDF-".equals(new String(header, StandardCharsets.US_ASCII))) {
+            if (input.read(header) != header.length
+                    || !"%PDF-".equals(new String(header, StandardCharsets.US_ASCII))) {
                 return false;
             }
             input.seek(0);
-            PDFParser parser = new PDFParser(input, "", null, null, IOUtils.createTempFileOnlyStreamCache());
+            PDFParser parser =
+                    new PDFParser(input, "", null, null, IOUtils.createTempFileOnlyStreamCache());
             try (PDDocument document = parser.parse(false)) {
-                return document.getNumberOfPages() > 0 && document.getPage(0).getCOSObject() != null;
+                return document.getNumberOfPages() > 0
+                        && document.getPage(0).getCOSObject() != null;
             } catch (InvalidPasswordException lockedPdf) {
                 // The parser found an encrypted PDF that the reader can unlock with its password.
                 return true;
@@ -97,21 +105,32 @@ final class DigitalFileFormatValidator {
             if (!hasName(container, EPUB_CONTAINER_NS, "container")) {
                 return false;
             }
-            Element rootfile = child(child(container, EPUB_CONTAINER_NS, "rootfiles"), EPUB_CONTAINER_NS, "rootfile");
-            if (rootfile == null || !"application/oebps-package+xml".equals(rootfile.getAttribute("media-type"))) {
+            Element rootfile =
+                    child(
+                            child(container, EPUB_CONTAINER_NS, "rootfiles"),
+                            EPUB_CONTAINER_NS,
+                            "rootfile");
+            if (rootfile == null
+                    || !"application/oebps-package+xml"
+                            .equals(rootfile.getAttribute("media-type"))) {
                 return false;
             }
             Element publication = readEntry(archive, rootfile.getAttribute("full-path"));
             return hasName(publication, EPUB_PACKAGE_NS, "package")
                     && child(publication, EPUB_PACKAGE_NS, "manifest") != null
-                    && child(child(publication, EPUB_PACKAGE_NS, "spine"), EPUB_PACKAGE_NS, "itemref") != null;
+                    && child(
+                                    child(publication, EPUB_PACKAGE_NS, "spine"),
+                                    EPUB_PACKAGE_NS,
+                                    "itemref")
+                            != null;
         }
     }
 
     private static boolean isPptx(Path file) throws IOException, OpenXML4JException, SAXException {
         try (ZipSecureFile zip = new ZipSecureFile(file.toFile())) {
-            // OPCPackage parses these entries itself, so check their inflated sizes before opening it.
-            for (String name : new String[]{"[Content_Types].xml", "_rels/.rels"}) {
+            // OPCPackage parses these entries itself, so check their inflated sizes before opening
+            // it.
+            for (String name : new String[] {"[Content_Types].xml", "_rels/.rels"}) {
                 var entry = zip.getEntry(name);
                 if (entry == null || entry.isDirectory()) {
                     return false;
@@ -126,11 +145,13 @@ final class DigitalFileFormatValidator {
                 String type = relationship.getRelationshipType();
                 if (relationship.getTargetMode() != TargetMode.INTERNAL
                         || !(type.equals(OFFICE_RELATIONSHIP_NS + "/officeDocument")
-                        || type.equals(STRICT_OFFICE_RELATIONSHIP_NS + "/officeDocument"))) {
+                                || type.equals(
+                                        STRICT_OFFICE_RELATIONSHIP_NS + "/officeDocument"))) {
                     continue;
                 }
                 PackagePart presentation = archive.getPart(relationship);
-                if (presentation == null || !PRESENTATION_CONTENT_TYPE.equals(presentation.getContentType())) {
+                if (presentation == null
+                        || !PRESENTATION_CONTENT_TYPE.equals(presentation.getContentType())) {
                     return false;
                 }
                 try (InputStream input = presentation.getInputStream()) {
@@ -146,12 +167,14 @@ final class DigitalFileFormatValidator {
     private static boolean isMp3(Path file) throws IOException {
         try (InputStream input = Files.newInputStream(file)) {
             byte[] header = input.readNBytes(2);
-            return header.length == 2 && ((header[0] == 'I' && header[1] == 'D')
-                    || ((header[0] & 0xFF) == 0xFF && (header[1] & 0xE0) == 0xE0));
+            return header.length == 2
+                    && ((header[0] == 'I' && header[1] == 'D')
+                            || ((header[0] & 0xFF) == 0xFF && (header[1] & 0xE0) == 0xE0));
         }
     }
 
-    private static Element readEntry(ZipFile archive, String name) throws IOException, SAXException {
+    private static Element readEntry(ZipFile archive, String name)
+            throws IOException, SAXException {
         ZipEntry entry = archive.getEntry(name);
         if (entry == null || entry.isDirectory()) {
             return null;
@@ -197,11 +220,15 @@ final class DigitalFileFormatValidator {
     }
 
     private static boolean hasName(Element element, String namespace, String localName) {
-        return element != null && namespace.equals(element.getNamespaceURI()) && localName.equals(element.getLocalName());
+        return element != null
+                && namespace.equals(element.getNamespaceURI())
+                && localName.equals(element.getLocalName());
     }
 
     private static ResponseStatusException unsupported(String extension, Throwable cause) {
-        return new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                "Nội dung tệp không khớp với định dạng " + extension.toUpperCase(Locale.ROOT), cause);
+        return new ResponseStatusException(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Nội dung tệp không khớp với định dạng " + extension.toUpperCase(Locale.ROOT),
+                cause);
     }
 }

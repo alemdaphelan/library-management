@@ -47,9 +47,11 @@ class HybridRecommendationServiceTest {
         BookSubjectAssignmentEntity assignment = assignment(itBook, itSubject, "1.000");
 
         when(fixture.userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(fixture.loanRepository.findUserBookInteractions(any(), any(Pageable.class))).thenReturn(List.of());
+        when(fixture.loanRepository.findUserBookInteractions(any(), any(Pageable.class)))
+                .thenReturn(List.of());
         when(fixture.cacheService.get(any(), anyInt(), any())).thenReturn(Optional.empty());
-        when(fixture.departmentRepository.findByDepartmentKeyAndActiveTrueOrderByWeightDesc("cong nghe thong tin"))
+        when(fixture.departmentRepository.findByDepartmentKeyAndActiveTrueOrderByWeightDesc(
+                        "cong nghe thong tin"))
                 .thenReturn(List.of(affinity));
         when(fixture.subjectRepository.findCandidateBooksBySubjects(any(), any(Pageable.class)))
                 .thenReturn(List.of(itBook));
@@ -57,7 +59,8 @@ class HybridRecommendationServiceTest {
                 .thenReturn(List.of(literatureBook));
         when(fixture.subjectRepository.findByBook_BookIdIn(any())).thenReturn(List.of(assignment));
 
-        RecommendationResponseDTO response = fixture.service.getPersonalizedRecommendations(userId, 2);
+        RecommendationResponseDTO response =
+                fixture.service.getPersonalizedRecommendations(userId, 2);
 
         assertThat(response.method()).isEqualTo("HYBRID_COLD_START");
         assertThat(response.items()).hasSize(2);
@@ -81,16 +84,20 @@ class HybridRecommendationServiceTest {
         when(fixture.loanRepository.findUserBookInteractions(any(), any(Pageable.class)))
                 .thenReturn(List.of(interaction));
         when(fixture.cacheService.get(any(), anyInt(), any())).thenReturn(Optional.empty());
-        when(fixture.bookRepository.findAllById(any())).thenAnswer(invocation -> {
-            List<Long> ids = new ArrayList<>();
-            invocation.<Iterable<Long>>getArgument(0).forEach(ids::add);
-            return ids.contains(1L) ? List.of(borrowed) : List.of();
-        });
+        when(fixture.bookRepository.findAllById(any()))
+                .thenAnswer(
+                        invocation -> {
+                            List<Long> ids = new ArrayList<>();
+                            invocation.<Iterable<Long>>getArgument(0).forEach(ids::add);
+                            return ids.contains(1L) ? List.of(borrowed) : List.of();
+                        });
         when(fixture.subjectRepository.findByBook_BookIdIn(any())).thenReturn(List.of());
-        when(fixture.bookRepository.findByCategory_CategoryIdInOrderByBookIdAsc(any(), any(Pageable.class)))
+        when(fixture.bookRepository.findByCategory_CategoryIdInOrderByBookIdAsc(
+                        any(), any(Pageable.class)))
                 .thenReturn(List.of(borrowed, relevant, unrelated));
 
-        RecommendationResponseDTO response = fixture.service.getPersonalizedRecommendations(userId, 2);
+        RecommendationResponseDTO response =
+                fixture.service.getPersonalizedRecommendations(userId, 2);
 
         assertThat(response.method()).isEqualTo("HYBRID_PERSONALIZED");
         assertThat(response.items()).noneMatch(item -> item.bookId().equals(1L));
@@ -100,23 +107,29 @@ class HybridRecommendationServiceTest {
 
     private static class Fixture {
         private final BookRepository bookRepository = mock(BookRepository.class);
-        private final com.huit.library.modules.catalog.repository.BookCopyRepository bookCopyRepository = mock(com.huit.library.modules.catalog.repository.BookCopyRepository.class);
+        private final com.huit.library.modules.catalog.repository.BookCopyRepository
+                bookCopyRepository =
+                        mock(com.huit.library.modules.catalog.repository.BookCopyRepository.class);
         private final LoanDetailRepository loanRepository = mock(LoanDetailRepository.class);
         private final UserRepository userRepository = mock(UserRepository.class);
-        private final BookSubjectAssignmentRepository subjectRepository = mock(BookSubjectAssignmentRepository.class);
-        private final DepartmentSubjectAffinityRepository departmentRepository = mock(DepartmentSubjectAffinityRepository.class);
-        private final RecommendationCacheService cacheService = mock(RecommendationCacheService.class);
+        private final BookSubjectAssignmentRepository subjectRepository =
+                mock(BookSubjectAssignmentRepository.class);
+        private final DepartmentSubjectAffinityRepository departmentRepository =
+                mock(DepartmentSubjectAffinityRepository.class);
+        private final RecommendationCacheService cacheService =
+                mock(RecommendationCacheService.class);
         private final RecommendationProperties properties = new RecommendationProperties();
-        private final HybridRecommendationService service = new HybridRecommendationService(
-                bookRepository,
-                bookCopyRepository,
-                loanRepository,
-                userRepository,
-                subjectRepository,
-                departmentRepository,
-                new TfIdfSimilarityEngine(),
-                cacheService,
-                properties);
+        private final HybridRecommendationService service =
+                new HybridRecommendationService(
+                        bookRepository,
+                        bookCopyRepository,
+                        loanRepository,
+                        userRepository,
+                        subjectRepository,
+                        departmentRepository,
+                        new TfIdfSimilarityEngine(),
+                        cacheService,
+                        properties);
     }
 
     private UserEntity user(UUID id, String department) {
@@ -135,9 +148,7 @@ class HybridRecommendationServiceTest {
     }
 
     private BookSubjectAssignmentEntity assignment(
-            BookEntity book,
-            RecommendationSubjectEntity subject,
-            String confidence) {
+            BookEntity book, RecommendationSubjectEntity subject, String confidence) {
         BookSubjectAssignmentEntity assignment = new BookSubjectAssignmentEntity();
         assignment.setBook(book);
         assignment.setSubject(subject);
@@ -156,7 +167,8 @@ class HybridRecommendationServiceTest {
         return book;
     }
 
-    private UserBookInteractionProjection interaction(Long bookId, long borrowCount, long renewalCount) {
+    private UserBookInteractionProjection interaction(
+            Long bookId, long borrowCount, long renewalCount) {
         return new UserBookInteractionProjection() {
             @Override
             public Long getBookId() {

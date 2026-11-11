@@ -30,8 +30,9 @@ describe('LocationService', () => {
     service.getBookshelves(7).subscribe();
 
     const request = httpTesting.expectOne(
-      request => request.url === `${environment.apiUrl}/locations/bookshelves`
-        && request.params.get('floorId') === '7'
+      (request) =>
+        request.url === `${environment.apiUrl}/locations/bookshelves` &&
+        request.params.get('floorId') === '7',
     );
     expect(request.request.method).toBe('GET');
     request.flush([]);
@@ -41,8 +42,9 @@ describe('LocationService', () => {
     service.getShelves(9).subscribe();
 
     const request = httpTesting.expectOne(
-      request => request.url === `${environment.apiUrl}/locations/shelves`
-        && request.params.get('bookshelfId') === '9'
+      (request) =>
+        request.url === `${environment.apiUrl}/locations/shelves` &&
+        request.params.get('bookshelfId') === '9',
     );
     expect(request.request.method).toBe('GET');
     request.flush([]);
@@ -64,22 +66,45 @@ describe('LocationService', () => {
     subjectsRequest.flush([]);
 
     service.getShelfSubjects(9).subscribe();
-    const rulesRequest = httpTesting.expectOne(`${environment.apiUrl}/locations/shelves/9/subjects`);
+    const rulesRequest = httpTesting.expectOne(
+      `${environment.apiUrl}/locations/shelves/9/subjects`,
+    );
     expect(rulesRequest.request.method).toBe('GET');
     rulesRequest.flush([]);
 
     service.updateShelfSubjects(9, [2, 5]).subscribe();
-    const updateRequest = httpTesting.expectOne(`${environment.apiUrl}/locations/shelves/9/subjects`);
+    const updateRequest = httpTesting.expectOne(
+      `${environment.apiUrl}/locations/shelves/9/subjects`,
+    );
     expect(updateRequest.request.method).toBe('PUT');
     expect(updateRequest.request.body).toEqual({ subjectIds: [2, 5] });
     updateRequest.flush([]);
   });
-  it('uses the paged shelf and unplaced read contracts and preserves unmatched identifiers',()=>{
-    service.getShelfBooksPage(3,2).subscribe(page=>expect(page.items[0].bookId).toBeNull());
-    const page=httpTesting.expectOne(r=>r.url.endsWith('/shelves/3/books/page'));
-    expect(page.request.method).toBe('GET');expect(page.request.params.get('page')).toBe('2');expect(page.request.params.get('size')).toBe('50');
-    page.flush({items:[{barcode:'NO-ID',bookId:null,catalogMatched:false,title:'Chưa đối chiếu đầu sách',status:'AVAILABLE'}],total:101,page:2,size:50});
-    service.getUnplacedCopies(1).subscribe();const free=httpTesting.expectOne(r=>r.url.endsWith('/unplaced-copies'));
-    expect(free.request.method).toBe('GET');expect(free.request.params.get('page')).toBe('1');expect(free.request.params.get('size')).toBe('50');free.flush({items:[],total:0,page:1,size:50});
+  it('uses the paged shelf and unplaced read contracts and preserves unmatched identifiers', () => {
+    service.getShelfBooksPage(3, 2).subscribe((page) => expect(page.items[0].bookId).toBeNull());
+    const page = httpTesting.expectOne((r) => r.url.endsWith('/shelves/3/books/page'));
+    expect(page.request.method).toBe('GET');
+    expect(page.request.params.get('page')).toBe('2');
+    expect(page.request.params.get('size')).toBe('50');
+    page.flush({
+      items: [
+        {
+          barcode: 'NO-ID',
+          bookId: null,
+          catalogMatched: false,
+          title: 'Chưa đối chiếu đầu sách',
+          status: 'AVAILABLE',
+        },
+      ],
+      total: 101,
+      page: 2,
+      size: 50,
+    });
+    service.getUnplacedCopies(1).subscribe();
+    const free = httpTesting.expectOne((r) => r.url.endsWith('/unplaced-copies'));
+    expect(free.request.method).toBe('GET');
+    expect(free.request.params.get('page')).toBe('1');
+    expect(free.request.params.get('size')).toBe('50');
+    free.flush({ items: [], total: 0, page: 1, size: 50 });
   });
 });

@@ -8,5 +8,4 @@ public record RagKnowledgeSource(
         String sourceUri,
         String version,
         LocalDate effectiveDate,
-        String content) {
-}
+        String content) {}

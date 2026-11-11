@@ -23,37 +23,46 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class RecommendationExperimentExporter {
 
-    private static final String INTERACTION_HEADER = String.join(",",
-            "user_id",
-            "book_id",
-            "first_interaction_at",
-            "last_interaction_at",
-            "occurrence_count",
-            "renewal_count",
-            "preference_weight",
-            "split",
-            "user_cohort");
+    private static final String INTERACTION_HEADER =
+            String.join(
+                    ",",
+                    "user_id",
+                    "book_id",
+                    "first_interaction_at",
+                    "last_interaction_at",
+                    "occurrence_count",
+                    "renewal_count",
+                    "preference_weight",
+                    "split",
+                    "user_cohort");
 
     private final ObjectMapper objectMapper;
 
-    public Path export(RecommendationExperimentDataset dataset, Path outputDirectory) throws IOException {
+    public Path export(RecommendationExperimentDataset dataset, Path outputDirectory)
+            throws IOException {
         Path output = outputDirectory.toAbsolutePath().normalize();
         Files.createDirectories(output);
 
         writeJson(output.resolve("summary.json"), dataset.summary());
-        writeJson(output.resolve("config.json"), new ExportConfiguration(
-                dataset.datasetName(),
-                dataset.generatedAt(),
-                dataset.splitStrategy(),
-                "Positive interactions are checked-out/borrowing/overdue/returned/lost/damaged/settled loan details; "
-                        + "cancelled and rejected records are excluded.",
-                "Repeated user-book events are collapsed into one pair before chronological splitting.",
-                "1 + 0.15 * min(total renewals, 2) + 0.10 * min(repeated borrows, 2)"));
+        writeJson(
+                output.resolve("config.json"),
+                new ExportConfiguration(
+                        dataset.datasetName(),
+                        dataset.generatedAt(),
+                        dataset.splitStrategy(),
+                        "Positive interactions are checked-out/borrowing/overdue/returned/lost/damaged/settled loan details; "
+                                + "cancelled and rejected records are excluded.",
+                        "Repeated user-book events are collapsed into one pair before chronological splitting.",
+                        "1 + 0.15 * min(total renewals, 2) + 0.10 * min(repeated borrows, 2)"));
 
         writeInteractions(output.resolve("interactions_clean.csv"), dataset.interactions());
-        writeInteractions(output.resolve("train.csv"), filterBySplit(dataset.interactions(), Split.TRAIN));
-        writeInteractions(output.resolve("validation.csv"), filterBySplit(dataset.interactions(), Split.VALIDATION));
-        writeInteractions(output.resolve("test.csv"), filterBySplit(dataset.interactions(), Split.TEST));
+        writeInteractions(
+                output.resolve("train.csv"), filterBySplit(dataset.interactions(), Split.TRAIN));
+        writeInteractions(
+                output.resolve("validation.csv"),
+                filterBySplit(dataset.interactions(), Split.VALIDATION));
+        writeInteractions(
+                output.resolve("test.csv"), filterBySplit(dataset.interactions(), Split.TEST));
         writeIdentifiers(output.resolve("new_users.csv"), "user_id", dataset.newUserIds());
         writeIdentifiers(output.resolve("new_books.csv"), "book_id", dataset.newBookIds());
         writeText(output.resolve("data_dictionary.md"), dataDictionary());
@@ -62,9 +71,7 @@ public class RecommendationExperimentExporter {
     }
 
     private List<Interaction> filterBySplit(List<Interaction> interactions, Split split) {
-        return interactions.stream()
-                .filter(interaction -> interaction.split() == split)
-                .toList();
+        return interactions.stream().filter(interaction -> interaction.split() == split).toList();
     }
 
     private void writeJson(Path path, Object value) throws IOException {
@@ -76,16 +83,18 @@ public class RecommendationExperimentExporter {
             writer.write(INTERACTION_HEADER);
             writer.newLine();
             for (Interaction interaction : interactions) {
-                writer.write(String.join(",",
-                        csv(interaction.userId()),
-                        csv(interaction.bookId()),
-                        csv(interaction.firstInteractionAt()),
-                        csv(interaction.lastInteractionAt()),
-                        csv(interaction.occurrenceCount()),
-                        csv(interaction.renewalCount()),
-                        String.format(Locale.ROOT, "%.6f", interaction.preferenceWeight()),
-                        csv(interaction.split()),
-                        csv(interaction.cohort())));
+                writer.write(
+                        String.join(
+                                ",",
+                                csv(interaction.userId()),
+                                csv(interaction.bookId()),
+                                csv(interaction.firstInteractionAt()),
+                                csv(interaction.lastInteractionAt()),
+                                csv(interaction.occurrenceCount()),
+                                csv(interaction.renewalCount()),
+                                String.format(Locale.ROOT, "%.6f", interaction.preferenceWeight()),
+                                csv(interaction.split()),
+                                csv(interaction.cohort())));
                 writer.newLine();
             }
         }
@@ -126,7 +135,10 @@ public class RecommendationExperimentExporter {
             return "";
         }
         String text = value.toString();
-        if (text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
+        if (text.contains(",")
+                || text.contains("\"")
+                || text.contains("\n")
+                || text.contains("\r")) {
             return '"' + text.replace("\"", "\"\"") + '"';
         }
         return text;
@@ -167,14 +179,15 @@ public class RecommendationExperimentExporter {
 
                 Kết quả phụ thuộc vào trạng thái CSDL tại thời điểm xuất `%s`. Chạy lại cùng mã nguồn và cùng ảnh chụp
                 CSDL sẽ cho cùng phép làm sạch và chia tập; thời điểm tạo tệp có thể khác.
-                """.formatted(
-                dataset.splitStrategy(),
-                dataset.summary().totalStudents(),
-                dataset.summary().totalEligibleBooks(),
-                dataset.summary().validRawInteractions(),
-                dataset.summary().uniqueUserBookInteractions(),
-                dataset.summary().sparsity(),
-                dataset.generatedAt());
+                """
+                .formatted(
+                        dataset.splitStrategy(),
+                        dataset.summary().totalStudents(),
+                        dataset.summary().totalEligibleBooks(),
+                        dataset.summary().validRawInteractions(),
+                        dataset.summary().uniqueUserBookInteractions(),
+                        dataset.summary().sparsity(),
+                        dataset.generatedAt());
     }
 
     private String dataDictionary() {
@@ -204,6 +217,5 @@ public class RecommendationExperimentExporter {
             String splitStrategy,
             String positiveInteractionRule,
             String repeatedInteractionRule,
-            String preferenceWeightFormula) {
-    }
+            String preferenceWeightFormula) {}
 }

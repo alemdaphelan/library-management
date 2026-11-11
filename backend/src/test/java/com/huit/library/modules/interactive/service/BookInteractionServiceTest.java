@@ -49,9 +49,14 @@ class BookInteractionServiceTest {
         wishlistRepository = mock(WishlistRepository.class);
         userRepository = mock(UserRepository.class);
         loanDetailRepository = mock(LoanDetailRepository.class);
-        service = new BookInteractionService(
-                bookRepository, copyRepository, reviewRepository, wishlistRepository, userRepository,
-                loanDetailRepository);
+        service =
+                new BookInteractionService(
+                        bookRepository,
+                        copyRepository,
+                        reviewRepository,
+                        wishlistRepository,
+                        userRepository,
+                        loanDetailRepository);
     }
 
     @Test
@@ -71,12 +76,14 @@ class BookInteractionServiceTest {
         when(bookRepository.findById(7L)).thenReturn(Optional.of(book));
         when(reviewRepository.findByBookIdAndUserId(7L, userId)).thenReturn(Optional.empty());
         when(loanDetailRepository.countBorrowedItemsByUserIdAndBookId(userId, 7L)).thenReturn(1L);
-        when(reviewRepository.save(any())).thenAnswer(invocation -> {
-            ReviewEntity review = invocation.getArgument(0);
-            review.setReviewId(11L);
-            saved.set(review);
-            return review;
-        });
+        when(reviewRepository.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            ReviewEntity review = invocation.getArgument(0);
+                            review.setReviewId(11L);
+                            saved.set(review);
+                            return review;
+                        });
         when(reviewRepository.findByBookIdOrderByUpdatedAtDesc(7L))
                 .thenAnswer(invocation -> List.of(saved.get()));
         when(reviewRepository.averageRatingByBookId(7L)).thenReturn(5.0);
@@ -105,10 +112,13 @@ class BookInteractionServiceTest {
         when(loanDetailRepository.countBorrowedItemsByUserIdAndBookId(userId, 7L)).thenReturn(0L);
 
         assertThatThrownBy(() -> service.saveReview(7L, userId, request))
-                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
-                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-                    assertThat(exception.getReason()).contains("sau khi tài liệu đã được thủ thư giao mượn");
-                });
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception -> {
+                            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                            assertThat(exception.getReason())
+                                    .contains("sau khi tài liệu đã được thủ thư giao mượn");
+                        });
         verify(reviewRepository, never()).save(any());
     }
 
@@ -127,10 +137,12 @@ class BookInteractionServiceTest {
         when(reviewRepository.findByBookIdAndUserId(7L, userId)).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.saveReview(7L, userId, request))
-                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
-                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-                    assertThat(exception.getReason()).contains("đã đánh giá");
-                });
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception -> {
+                            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                            assertThat(exception.getReason()).contains("đã đánh giá");
+                        });
         verify(loanDetailRepository, never()).countBorrowedItemsByUserIdAndBookId(any(), any());
         verify(reviewRepository, never()).save(any());
     }
@@ -204,15 +216,19 @@ class BookInteractionServiceTest {
         copy2.setShelf(shelf);
 
         when(bookRepository.findById(15L)).thenReturn(Optional.of(book));
-        when(wishlistRepository.findAllByUserIdAndBookIdOrderByAddedAtDesc(userId, "15")).thenReturn(List.of());
+        when(wishlistRepository.findAllByUserIdAndBookIdOrderByAddedAtDesc(userId, "15"))
+                .thenReturn(List.of());
         when(wishlistRepository.findByUserIdAndBookId(userId, "15")).thenReturn(Optional.empty());
-        when(wishlistRepository.save(any())).thenAnswer(invocation -> {
-            WishlistEntity entity = invocation.getArgument(0);
-            entity.setWishlistId(UUID.randomUUID());
-            return entity;
-        });
+        when(wishlistRepository.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            WishlistEntity entity = invocation.getArgument(0);
+                            entity.setWishlistId(UUID.randomUUID());
+                            return entity;
+                        });
         when(copyRepository.findByBookId(15L)).thenReturn(List.of(copy1, copy2));
-        when(bookRepository.findDepartmentNamesByBookId(15L)).thenReturn(List.of("Công nghệ thông tin"));
+        when(bookRepository.findDepartmentNamesByBookId(15L))
+                .thenReturn(List.of("Công nghệ thông tin"));
 
         var savedDto = service.addToWishlist(userId, 15L);
 
@@ -265,8 +281,7 @@ class BookInteractionServiceTest {
         UUID userId = UUID.randomUUID();
         when(wishlistRepository.deleteByUserIdAndBookId(userId, "99")).thenReturn(0L);
 
-        assertThatCode(() -> service.removeFromWishlist(userId, 99L))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> service.removeFromWishlist(userId, 99L)).doesNotThrowAnyException();
 
         verify(wishlistRepository).deleteByUserIdAndBookId(userId, "99");
     }
@@ -277,10 +292,12 @@ class BookInteractionServiceTest {
         when(bookRepository.findById(4040L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.addToWishlist(userId, 4040L))
-                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
-                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-                    assertThat(ex.getReason()).contains("Không tìm thấy đầu sách #4040");
-                });
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        ex -> {
+                            assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                            assertThat(ex.getReason()).contains("Không tìm thấy đầu sách #4040");
+                        });
         verify(wishlistRepository, never()).save(any());
     }
 
@@ -332,7 +349,8 @@ class BookInteractionServiceTest {
         assertThat(service.isSaved(userB, 5L)).isFalse();
 
         assertThatThrownBy(() -> service.getWishlist(null))
-                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
-                        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
     }
 }

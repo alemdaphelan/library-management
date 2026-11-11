@@ -17,8 +17,10 @@ public class UniversitySyncLogEntity extends BaseEntity {
     private UUID logId;
 
     private String endpoint;
+
     @Column(columnDefinition = "json")
     private String payload;
+
     private String syncStatus;
     private LocalDateTime executedAt;
 }

@@ -20,20 +20,28 @@ public class OnlinePaymentSessionEntity extends BaseEntity {
 
     @Column(nullable = false, unique = true, length = 80)
     private String reference;
+
     @Column(nullable = false)
     private UUID userId;
+
     @Column(nullable = false, length = 30)
     private String provider;
+
     @Column(nullable = false, length = 30)
     private String purpose;
+
     @Column(nullable = false)
     private BigDecimal amount;
+
     @Column(nullable = false, length = 30)
     private String status;
+
     private String gatewayTransactionNo;
     private String responseCode;
     private Long paymentTransactionId;
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
+
     private LocalDateTime completedAt;
 }

@@ -18,14 +18,17 @@ import jakarta.persistence.LockModeType;
 
 @Repository
 public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Long> {
-    @Query("""
+    @Query(
+            """
             select distinct d.barcode from LoanDetailEntity d, LoanTicketEntity t
             where d.ticketId = t.ticketId and d.barcode in :barcodes and d.returnDate is null
               and d.returnStatus in ('PENDING', 'RESERVED', 'BORROWING', 'BORROWED', 'OVERDUE')
               and t.status in ('PENDING', 'RESERVED', 'BORROWING', 'BORROWED', 'OVERDUE')
             """)
     java.util.Set<String> findCommittedBarcodes(@Param("barcodes") Collection<String> barcodes);
-    @Query("""
+
+    @Query(
+            """
             select new com.huit.library.modules.circulation.dto.ReturnTarget(
                 detail.detailId, detail.ticketId, detail.barcode, ticket.userId)
             from LoanDetailEntity detail, LoanTicketEntity ticket
@@ -35,7 +38,8 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
     List<com.huit.library.modules.circulation.dto.ReturnTarget> findReturnTargets(
             @Param("detailIds") Collection<Long> detailIds);
 
-    @Query("""
+    @Query(
+            """
             select new com.huit.library.modules.circulation.dto.ReturnTarget(
                 detail.detailId, detail.ticketId, detail.barcode, ticket.userId)
             from LoanDetailEntity detail, LoanTicketEntity ticket
@@ -47,8 +51,11 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             @Param("barcodes") Collection<String> barcodes);
 
     List<LoanDetailEntity> findByTicketId(Long ticketId);
+
     Optional<LoanDetailEntity> findFirstByTicketId(Long ticketId);
+
     Optional<LoanDetailEntity> findFirstByBarcodeAndReturnDateIsNull(String barcode);
+
     long countByReturnDateIsNullAndDueDateBefore(java.time.LocalDateTime dueDate);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -56,11 +63,13 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
     Optional<LoanDetailEntity> findByIdForUpdate(@Param("detailId") Long detailId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select detail from LoanDetailEntity detail where detail.ticketId = :ticketId order by detail.detailId")
+    @Query(
+            "select detail from LoanDetailEntity detail where detail.ticketId = :ticketId order by detail.detailId")
     List<LoanDetailEntity> findByTicketIdForUpdate(@Param("ticketId") Long ticketId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select detail from LoanDetailEntity detail
             where detail.ticketId = :ticketId
               and detail.returnDate is null
@@ -69,10 +78,10 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             order by detail.detailId
             """)
     List<LoanDetailEntity> findOverdueByTicketIdForUpdate(
-            @Param("ticketId") Long ticketId,
-            @Param("now") LocalDateTime now);
+            @Param("ticketId") Long ticketId, @Param("now") LocalDateTime now);
 
-    @Query("""
+    @Query(
+            """
             select detail from LoanDetailEntity detail
             where detail.returnDate is null
               and detail.returnStatus = 'BORROWING'
@@ -81,20 +90,22 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             order by detail.dueDate, detail.detailId
             """)
     List<LoanDetailEntity> findDueSoon(
-            @Param("from") LocalDateTime from,
-            @Param("until") LocalDateTime until);
+            @Param("from") LocalDateTime from, @Param("until") LocalDateTime until);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
+    @Query(
+            """
             select detail from LoanDetailEntity detail
             where detail.barcode in :barcodes
               and detail.returnDate is null
               and detail.returnStatus in ('BORROWING', 'OVERDUE')
             order by detail.barcode
             """)
-    List<LoanDetailEntity> findActiveByBarcodesForUpdate(@Param("barcodes") Collection<String> barcodes);
+    List<LoanDetailEntity> findActiveByBarcodesForUpdate(
+            @Param("barcodes") Collection<String> barcodes);
 
-    @Query("""
+    @Query(
+            """
             select detail from LoanDetailEntity detail
             where detail.barcode = :barcode
               and detail.returnDate is null
@@ -102,7 +113,8 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             """)
     Optional<LoanDetailEntity> findActiveByBarcode(@Param("barcode") String barcode);
 
-    @Query("""
+    @Query(
+            """
             select count(detail) from LoanDetailEntity detail, LoanTicketEntity ticket
             where detail.ticketId = ticket.ticketId
               and ticket.userId = :userId
@@ -112,10 +124,11 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
               and detail.physicalReturnAt is null
             """)
     long countOpenItemsByUserId(
-            @Param("userId") UUID userId,
-            @Param("statuses") Collection<String> statuses);
+            @Param("userId") UUID userId, @Param("statuses") Collection<String> statuses);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT COALESCE(SUM(COALESCE(b.default_price, 0)), 0)
             FROM loan_details ld
             JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
@@ -126,10 +139,13 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
               AND ld.physical_return_at IS NULL
               AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
               AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     BigDecimal sumOpenBookValueByUserId(@Param("userId") UUID userId);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT b.book_id
             FROM loan_details ld
             JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
@@ -141,10 +157,13 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
               AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
               AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
             ORDER BY ld.detail_id
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<Long> findOpenBookIdsByUserId(@Param("userId") UUID userId);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT COUNT(ld.detail_id)
             FROM loan_details ld
             JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
@@ -155,12 +174,14 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
               AND ld.physical_return_at IS NULL
               AND COALESCE(ld.return_status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
               AND COALESCE(lt.status, '') IN ('PENDING', 'RESERVED', 'BORROWING', 'OVERDUE')
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     long countOpenItemsByUserIdAndBookId(
-            @Param("userId") UUID userId,
-            @Param("bookId") Long bookId);
+            @Param("userId") UUID userId, @Param("bookId") Long bookId);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT COUNT(ld.detail_id)
             FROM loan_details ld
             JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
@@ -172,12 +193,13 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
                     OR ld.return_date IS NOT NULL
                   )
               AND COALESCE(lt.status, '') NOT IN ('CANCELLED', 'REJECTED')
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     long countBorrowedItemsByUserIdAndBookId(
-            @Param("userId") UUID userId,
-            @Param("bookId") Long bookId);
+            @Param("userId") UUID userId, @Param("bookId") Long bookId);
 
-    @Query("""
+    @Query(
+            """
             select count(detail) from LoanDetailEntity detail, LoanTicketEntity ticket
             where detail.ticketId = ticket.ticketId
               and ticket.userId = :userId
@@ -187,7 +209,9 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             """)
     long countOverdueItemsByUserId(@Param("userId") UUID userId, @Param("now") LocalDateTime now);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT COUNT(ld.detail_id)
             FROM loan_details ld
             JOIN loan_tickets lt ON lt.ticket_id = ld.ticket_id
@@ -199,12 +223,14 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
                     OR ld.return_date IS NOT NULL
                   )
               AND COALESCE(lt.status, '') NOT IN ('CANCELLED', 'REJECTED')
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     long countBorrowedByBookIdSince(
-            @Param("bookId") Long bookId,
-            @Param("since") LocalDateTime since);
+            @Param("bookId") Long bookId, @Param("since") LocalDateTime since);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT b.book_id AS bookId, b.title AS title, b.author AS author,
                    COUNT(ld.detail_id) AS borrows
             FROM loan_details ld
@@ -213,10 +239,13 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
             WHERE ld.checkout_at IS NOT NULL OR ld.return_status IN ('BORROWING','BORROWED','OVERDUE','RETURNED','LOST','DAMAGED','SETTLED')
             GROUP BY b.book_id, b.title, b.author
             ORDER BY COUNT(ld.detail_id) DESC, b.title ASC, b.book_id ASC
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<TrendingBookProjection> findTrendingBooks(Pageable pageable);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT b.book_id AS bookId,
                    COUNT(ld.detail_id) AS borrowCount,
                    SUM(EXP(
@@ -237,14 +266,17 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
               AND COALESCE(lt.status, '') NOT IN ('CANCELLED', 'REJECTED')
             GROUP BY b.book_id
             ORDER BY weightedScore DESC, borrowCount DESC, b.book_id ASC
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<BookPopularityProjection> findPopularityScores(
             @Param("since") LocalDateTime since,
             @Param("asOf") LocalDateTime asOf,
             @Param("halfLifeDays") double halfLifeDays,
             Pageable pageable);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT b.book_id AS bookId,
                    COUNT(ld.detail_id) AS borrowCount,
                    COALESCE(SUM(ld.renewal_count), 0) AS renewalCount,
@@ -261,12 +293,14 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
               AND COALESCE(lt.status, '') NOT IN ('CANCELLED', 'REJECTED')
             GROUP BY b.book_id
             ORDER BY lastInteractedAt DESC, b.book_id ASC
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<UserBookInteractionProjection> findUserBookInteractions(
-            @Param("userId") UUID userId,
-            Pageable pageable);
+            @Param("userId") UUID userId, Pageable pageable);
 
-    @Query(value = """
+    @Query(
+            value =
+                    """
             SELECT ld.detail_id AS detailId,
                    lt.user_id AS userId,
                    COALESCE(ld.circulation_book_id, bc.book_id) AS bookId,
@@ -289,6 +323,7 @@ public interface LoanDetailRepository extends JpaRepository<LoanDetailEntity, Lo
               AND COALESCE(ld.checkout_at, ld.return_date, ld.updated_at, ld.created_at,
                            lt.updated_at, lt.created_at) IS NOT NULL
             ORDER BY lt.user_id, interactionAt, ld.detail_id
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     List<EvaluationInteractionProjection> findEvaluationInteractions();
 }

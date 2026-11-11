@@ -24,12 +24,16 @@ function Add-Pass([string]$message) {
 }
 
 function Get-SecretScanContent([string]$relativePath, [string]$content) {
-    if ($relativePath -ne 'mobile-app/android/app/google-services.json') { return $content }
+    if ($relativePath -ne 'mobile-app/android/app/google-services.json') {
+        return $content
+    }
     # Firebase's Android client key is shipped in the app, not a server credential.
     # Exclude only this structured field; scan every other field and every other file.
     # https://firebase.google.com/docs/projects/api-keys
     $firebaseClientConfig = $content | ConvertFrom-Json -AsHashtable
-    if (-not $firebaseClientConfig.ContainsKey('client')) { throw 'Missing Firebase client configuration' }
+    if (-not $firebaseClientConfig.ContainsKey('client')) {
+        throw 'Missing Firebase client configuration'
+    }
     foreach ($firebaseClient in $firebaseClientConfig['client']) {
         foreach ($firebaseClientKey in @($firebaseClient['api_key'])) {
             if ($null -ne $firebaseClientKey -and $firebaseClientKey.ContainsKey('current_key') -and
@@ -63,7 +67,8 @@ try {
     $missingFiles = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($missingFiles.Count -eq 0) {
         Add-Pass "Đủ các file cấu hình và bàn giao bắt buộc."
-    } else {
+    }
+    else {
         foreach ($file in $missingFiles) {
             Add-Failure "Thiếu file bắt buộc: $file"
         }
@@ -72,18 +77,20 @@ try {
     & git check-ignore --quiet -- .env
     if ($LASTEXITCODE -eq 0) {
         Add-Pass ".env được Git bỏ qua."
-    } else {
+    }
+    else {
         Add-Failure ".env chưa được Git bỏ qua."
     }
 
     $trackedPaths = @(& git ls-files)
     $forbiddenTracked = @($trackedPaths | Where-Object {
-        $_ -match '(^|/)(target|build|node_modules|\.codex-tmp|backups)/' -or
-        $_ -match '(^|/)\.env($|\.)' -and $_ -ne '.env.example'
-    })
+            $_ -match '(^|/)(target|build|node_modules|\.codex-tmp|backups)/' -or
+            $_ -match '(^|/)\.env($|\.)' -and $_ -ne '.env.example'
+        })
     if ($forbiddenTracked.Count -eq 0) {
         Add-Pass "Không theo dõi .env, thư mục build, backup hoặc file tạm."
-    } else {
+    }
+    else {
         foreach ($file in $forbiddenTracked) {
             Add-Failure "File không được phép đang được Git theo dõi: $file"
         }
@@ -121,9 +128,10 @@ try {
         $content = Get-Content -LiteralPath $relativePath -Raw -ErrorAction SilentlyContinue
         try {
             $content = Get-SecretScanContent $relativePath $content
-        } catch {
-                Add-Failure "Cấu hình Firebase Android không đọc được: $relativePath"
-                # Keep scanning the original content when parsing fails.
+        }
+        catch {
+            Add-Failure "Cấu hình Firebase Android không đọc được: $relativePath"
+            # Keep scanning the original content when parsing fails.
         }
         foreach ($pattern in $secretPatterns) {
             if ($content -match $pattern) {
@@ -134,7 +142,8 @@ try {
 
     if ($secretFiles.Count -eq 0) {
         Add-Pass "Không phát hiện mẫu API key, access token hoặc private key trong file sẽ bàn giao."
-    } else {
+    }
+    else {
         foreach ($file in $secretFiles) {
             Add-Failure "Phát hiện mẫu secret trong file: $file"
         }
@@ -156,7 +165,8 @@ try {
         & docker compose --env-file .env.example config --quiet
         if ($LASTEXITCODE -eq 0) {
             Add-Pass "docker-compose.yml hợp lệ với .env.example."
-        } else {
+        }
+        else {
             Add-Failure "docker compose config thất bại với .env.example."
         }
     }
@@ -166,6 +176,7 @@ try {
     if ($failures.Count -gt 0) {
         exit 1
     }
-} finally {
+}
+finally {
     Pop-Location
 }

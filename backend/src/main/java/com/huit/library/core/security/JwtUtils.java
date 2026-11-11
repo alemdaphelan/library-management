@@ -36,7 +36,9 @@ public class JwtUtils {
 
         return Jwts.builder()
                 .setSubject((userPrincipal.getUsername()))
-                .claim(SESSION_VERSION_CLAIM, tokenService.getSessionVersion(userPrincipal.getUsername()))
+                .claim(
+                        SESSION_VERSION_CLAIM,
+                        tokenService.getSessionVersion(userPrincipal.getUsername()))
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(key(), SignatureAlgorithm.HS256)
@@ -44,13 +46,22 @@ public class JwtUtils {
     }
 
     public String getUserNameFromJwtToken(String token) {
-        return Jwts.parserBuilder().setSigningKey(key()).build()
-                .parseClaimsJws(token).getBody().getSubject();
+        return Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
     }
 
     public long getSessionVersionFromJwtToken(String token) {
-        Object value = Jwts.parserBuilder().setSigningKey(key()).build()
-                .parseClaimsJws(token).getBody().get(SESSION_VERSION_CLAIM);
+        Object value =
+                Jwts.parserBuilder()
+                        .setSigningKey(key())
+                        .build()
+                        .parseClaimsJws(token)
+                        .getBody()
+                        .get(SESSION_VERSION_CLAIM);
         if (value instanceof Number number) {
             return number.longValue();
         }

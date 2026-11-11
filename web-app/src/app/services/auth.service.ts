@@ -36,7 +36,7 @@ export interface LibraryCard {
 import { environment } from '../../environments/environment';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
   private roleKey = 'huit_lib_role';
@@ -47,17 +47,20 @@ export class AuthService {
   private profileSubject = new BehaviorSubject<LoginResponse | null>(this.readStoredProfile());
   readonly profile$ = this.profileSubject.asObservable();
 
-  constructor(private http: HttpClient, private router: Router) { }
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+  ) {}
 
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
-      tap(response => {
+      tap((response) => {
         localStorage.setItem(this.roleKey, response.role);
         localStorage.setItem(this.userKey, response.fullName || response.email || email);
         localStorage.setItem(this.tokenKey, response.accessToken);
         localStorage.setItem(this.profileKey, JSON.stringify(response));
         this.profileSubject.next(response);
-      })
+      }),
     );
   }
 
@@ -66,12 +69,18 @@ export class AuthService {
     const refreshToken = this.getUserProfile()?.refreshToken;
     this.clearLocalData();
     if (token) {
-      this.http.post(`${this.apiUrl}/logout`, { refreshToken }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).subscribe({
-        next: () => {},
-        error: () => {}
-      });
+      this.http
+        .post(
+          `${this.apiUrl}/logout`,
+          { refreshToken },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        )
+        .subscribe({
+          next: () => {},
+          error: () => {},
+        });
     }
   }
 
@@ -113,9 +122,11 @@ export class AuthService {
 
   fetchMyProfile(): Observable<any> {
     const token = this.getToken();
-    return this.http.get(`${this.apiUrl}/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
+    return this.http
+      .get(`${this.apiUrl}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .pipe(tap((profile) => this.mergeStoredProfile(profile)));
   }
 
   fetchLibraryCard(): Observable<LibraryCard> {
@@ -124,18 +135,22 @@ export class AuthService {
 
   updateProfile(data: { fullName?: string; phone?: string; avatarUrl?: string }): Observable<any> {
     const token = this.getToken();
-    return this.http.put(`${this.apiUrl}/me`, data, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
+    return this.http
+      .put(`${this.apiUrl}/me`, data, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .pipe(tap((profile) => this.mergeStoredProfile(profile)));
   }
 
   uploadAvatar(file: File): Observable<any> {
     const token = this.getToken();
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post(`${this.apiUrl}/avatar`, formData, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    }).pipe(tap(profile => this.mergeStoredProfile(profile)));
+    return this.http
+      .post(`${this.apiUrl}/avatar`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .pipe(tap((profile) => this.mergeStoredProfile(profile)));
   }
 
   private mergeStoredProfile(profile: any): void {
@@ -147,12 +162,16 @@ export class AuthService {
   }
 
   changePassword(oldPassword: string, newPassword: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/change-password`, {
-      currentPassword: oldPassword,
-      newPassword
-    }, {
-      responseType: 'text'
-    });
+    return this.http.post(
+      `${this.apiUrl}/change-password`,
+      {
+        currentPassword: oldPassword,
+        newPassword,
+      },
+      {
+        responseType: 'text',
+      },
+    );
   }
 
   isLoggedIn(): boolean {
@@ -173,20 +192,32 @@ export class AuthService {
   }
 
   forgotPassword(email: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/forgot-password`, { email }, {
-      responseType: 'text'
-    });
+    return this.http.post(
+      `${this.apiUrl}/forgot-password`,
+      { email },
+      {
+        responseType: 'text',
+      },
+    );
   }
 
   verifyOtp(email: string, otp: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/verify-otp`, { email, otp }, {
-      responseType: 'text'
-    });
+    return this.http.post(
+      `${this.apiUrl}/verify-otp`,
+      { email, otp },
+      {
+        responseType: 'text',
+      },
+    );
   }
 
   resetPassword(email: string, otp: string, newPassword: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/reset-password`, { email, otp, newPassword }, {
-      responseType: 'text'
-    });
+    return this.http.post(
+      `${this.apiUrl}/reset-password`,
+      { email, otp, newPassword },
+      {
+        responseType: 'text',
+      },
+    );
   }
 }

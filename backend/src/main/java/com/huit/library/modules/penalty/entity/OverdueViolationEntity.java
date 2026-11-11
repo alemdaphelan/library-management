@@ -20,6 +20,7 @@ public class OverdueViolationEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long violationId;
+
     private UUID userId;
     private Long ticketId;
     private String academicYear;

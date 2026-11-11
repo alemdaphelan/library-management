@@ -16,11 +16,14 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     List<NotificationEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE NotificationEntity n SET n.isRead = true WHERE n.userId = :userId AND n.isRead = false")
+    @Query(
+            "UPDATE NotificationEntity n SET n.isRead = true WHERE n.userId = :userId AND n.isRead = false")
     int markAllAsReadByUserId(@Param("userId") UUID userId);
 
     @Modifying
-    @Query(value = """
+    @Query(
+            value =
+                    """
             INSERT INTO notifications (
                 notif_id, user_id, type, content, is_read, sent_at,
                 reference_type, reference_id, dedup_key, created_at, updated_at)
@@ -28,7 +31,8 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
                 :notificationId, :userId, :type, :content, false, :sentAt,
                 :referenceType, :referenceId, :dedupKey, :sentAt, :sentAt)
             ON CONFLICT (dedup_key) DO NOTHING
-            """, nativeQuery = true)
+            """,
+            nativeQuery = true)
     int insertIfAbsent(
             @Param("notificationId") UUID notificationId,
             @Param("userId") UUID userId,

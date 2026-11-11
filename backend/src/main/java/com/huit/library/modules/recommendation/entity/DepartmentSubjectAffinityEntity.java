@@ -12,11 +12,10 @@ import java.math.BigDecimal;
 @Entity
 @Table(
         name = "department_subject_affinities",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_department_subject",
-                columnNames = {"department_key", "subject_id"}
-        )
-)
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_department_subject",
+                        columnNames = {"department_key", "subject_id"}))
 public class DepartmentSubjectAffinityEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

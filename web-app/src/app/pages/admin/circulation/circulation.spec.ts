@@ -16,18 +16,20 @@ describe('Circulation counter', () => {
     readerName: 'Nguyễn Văn A',
     ticketType: 'BORROW',
     status: 'RESERVED',
-    items: [{
-      ticketId: 19,
-      detailId: 29,
-      bookId: 9,
-      bookTitle: 'Clean Code',
-      author: 'Robert C. Martin',
-      barcode: 'BC-019',
-      ticketType: 'BORROW',
-      status: 'RESERVED',
-      renewalCount: 0,
-      lateFineAccrued: 0,
-    }],
+    items: [
+      {
+        ticketId: 19,
+        detailId: 29,
+        bookId: 9,
+        bookTitle: 'Clean Code',
+        author: 'Robert C. Martin',
+        barcode: 'BC-019',
+        ticketType: 'BORROW',
+        status: 'RESERVED',
+        renewalCount: 0,
+        lateFineAccrued: 0,
+      },
+    ],
   };
   const operation = {
     operationId: 'operation-1',
@@ -44,12 +46,23 @@ describe('Circulation counter', () => {
     approveReservation: vi.fn(() => of({ ticketId: 1, status: 'RESERVED', message: 'Đã duyệt' })),
     rejectReservation: vi.fn(() => of({ ticketId: 1, status: 'REJECTED', message: 'Đã từ chối' })),
     getLoan: vi.fn(() => of(reservedTicket)),
-    getBookCopyByBarcode: vi.fn(() => of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' })),
+    getBookCopyByBarcode: vi.fn(() =>
+      of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' }),
+    ),
     getActiveLoanItemByBarcode: vi.fn(() => of(reservedTicket.items[0])),
     checkout: vi.fn(() => of(operation)),
     manualCheckout: vi.fn(() => of(operation)),
-    returnBooks: vi.fn(() => of({ ...operation, operationType: 'RETURN' as const, status: 'RETURNED', message: 'Trả thành công 1 tài liệu' })),
-    resolveQrPayload: vi.fn(() => of({ type: 'LOAN_TICKET', ticketId: 19, allowedActions: ['CHECKOUT'], items: [] })),
+    returnBooks: vi.fn(() =>
+      of({
+        ...operation,
+        operationType: 'RETURN' as const,
+        status: 'RETURNED',
+        message: 'Trả thành công 1 tài liệu',
+      }),
+    ),
+    resolveQrPayload: vi.fn(() =>
+      of({ type: 'LOAN_TICKET', ticketId: 19, allowedActions: ['CHECKOUT'], items: [] }),
+    ),
   };
   const policyService = {
     getPublicPolicy: vi.fn(() => of({ maximumOpenItems: 3, homeLoanDays: 10 })),
@@ -58,8 +71,12 @@ describe('Circulation counter', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     service.getLoan.mockReturnValue(of(reservedTicket));
-    service.approveReservation.mockReturnValue(of({ ticketId: 19, status: 'RESERVED', message: 'Đã giữ chỗ' }));
-    service.getBookCopyByBarcode.mockReturnValue(of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' }));
+    service.approveReservation.mockReturnValue(
+      of({ ticketId: 19, status: 'RESERVED', message: 'Đã giữ chỗ' }),
+    );
+    service.getBookCopyByBarcode.mockReturnValue(
+      of({ barcode: 'BC-019', bookId: 9, status: 'RESERVED', location: 'Tầng 2 / Kệ A' }),
+    );
     service.getActiveLoanItemByBarcode.mockReturnValue(of(reservedTicket.items[0]));
     await TestBed.configureTestingModule({
       imports: [Circulation],
@@ -87,7 +104,8 @@ describe('Circulation counter', () => {
     (component as any).route = {
       snapshot: {
         queryParamMap: {
-          get: (key: string) => key === 'referenceType' ? 'LOAN_TICKET' : key === 'referenceId' ? '19' : null,
+          get: (key: string) =>
+            key === 'referenceType' ? 'LOAN_TICKET' : key === 'referenceId' ? '19' : null,
         },
       },
     };
@@ -126,7 +144,9 @@ describe('Circulation counter', () => {
 
   it('stages a scanned return for inspection without mutating circulation', () => {
     component.switchTab('return');
-    service.getActiveLoanItemByBarcode.mockReturnValue(of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }));
+    service.getActiveLoanItemByBarcode.mockReturnValue(
+      of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }),
+    );
     component.barcodeInput = 'BC-019';
     component.scanBookBarcode();
     expect(component.returnDesk?.drafts).toHaveLength(1);
@@ -138,7 +158,9 @@ describe('Circulation counter', () => {
 
   it('forwards a camera return barcode to the inspection form', () => {
     component.switchTab('return');
-    service.getActiveLoanItemByBarcode.mockReturnValue(of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }));
+    service.getActiveLoanItemByBarcode.mockReturnValue(
+      of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }),
+    );
     (component as any).handleScannedValue('barcode', 'BC-019');
     expect(service.getActiveLoanItemByBarcode).toHaveBeenCalledWith('BC-019');
     expect(component.returnDesk?.drafts[0].loan.detailId).toBe(29);
@@ -147,7 +169,9 @@ describe('Circulation counter', () => {
 
   it('preserves an unsent inspection draft when switching tabs', () => {
     component.switchTab('return');
-    service.getActiveLoanItemByBarcode.mockReturnValue(of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }));
+    service.getActiveLoanItemByBarcode.mockReturnValue(
+      of({ ...reservedTicket.items[0], status: 'BORROWING', itemStatus: 'BORROWING' }),
+    );
     component.returnDesk?.addBarcode('BC-019');
     component.switchTab('borrow');
     component.switchTab('return');
@@ -159,7 +183,9 @@ describe('Circulation counter', () => {
     component.manualMssv = '2001190019';
     component.manualTicketType = 'ONSITE';
     component.manualNote = 'Sách nguyên vẹn';
-    service.getBookCopyByBarcode.mockReturnValue(of({ barcode: 'BC-019', bookId: 9, status: 'AVAILABLE', location: '' }));
+    service.getBookCopyByBarcode.mockReturnValue(
+      of({ barcode: 'BC-019', bookId: 9, status: 'AVAILABLE', location: '' }),
+    );
     component.barcodeInput = 'BC-019';
     component.scanBookBarcode();
 
@@ -205,7 +231,9 @@ describe('Circulation counter', () => {
 
   it('does not allow checkout when legacy validation fails', () => {
     service.getLoan.mockReturnValueOnce(of({ ...reservedTicket, status: 'PENDING' }));
-    service.approveReservation.mockReturnValueOnce(throwError(() => ({ error: { detail: 'Giữ chỗ đã hết hạn' } })));
+    service.approveReservation.mockReturnValueOnce(
+      throwError(() => ({ error: { detail: 'Giữ chỗ đã hết hạn' } })),
+    );
     component.ticketInput = '19';
     component.resolveTicket();
     expect(component.selectedTicket).toBeNull();

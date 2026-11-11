@@ -31,17 +31,18 @@ public class RecommendationCacheService {
     }
 
     public Optional<RecommendationResponseDTO> get(
-            UUID userId,
-            int limit,
-            String interactionFingerprint) {
+            UUID userId, int limit, String interactionFingerprint) {
         try {
-            String json = redisTemplate.opsForValue().get(key(userId, limit, interactionFingerprint));
+            String json =
+                    redisTemplate.opsForValue().get(key(userId, limit, interactionFingerprint));
             if (json == null || json.isBlank()) {
                 return Optional.empty();
             }
             return Optional.of(objectMapper.readValue(json, RecommendationResponseDTO.class));
         } catch (Exception exception) {
-            log.warn("Recommendation cache read failed; continuing without cache: {}", exception.getMessage());
+            log.warn(
+                    "Recommendation cache read failed; continuing without cache: {}",
+                    exception.getMessage());
             return Optional.empty();
         }
     }
@@ -53,12 +54,16 @@ public class RecommendationCacheService {
             RecommendationResponseDTO response) {
         try {
             String json = objectMapper.writeValueAsString(response);
-            redisTemplate.opsForValue().set(
-                    key(userId, limit, interactionFingerprint),
-                    json,
-                    Duration.ofMinutes(Math.max(1, properties.getCacheTtlMinutes())));
+            redisTemplate
+                    .opsForValue()
+                    .set(
+                            key(userId, limit, interactionFingerprint),
+                            json,
+                            Duration.ofMinutes(Math.max(1, properties.getCacheTtlMinutes())));
         } catch (Exception exception) {
-            log.warn("Recommendation cache write failed; response remains usable: {}", exception.getMessage());
+            log.warn(
+                    "Recommendation cache write failed; response remains usable: {}",
+                    exception.getMessage());
         }
     }
 

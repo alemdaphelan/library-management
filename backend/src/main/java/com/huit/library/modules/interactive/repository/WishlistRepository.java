@@ -11,8 +11,12 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface WishlistRepository extends JpaRepository<WishlistEntity, UUID> {
     List<WishlistEntity> findByUserIdOrderByAddedAtDesc(UUID userId);
+
     Optional<WishlistEntity> findByUserIdAndBookId(UUID userId, String bookId);
+
     List<WishlistEntity> findAllByUserIdAndBookIdOrderByAddedAtDesc(UUID userId, String bookId);
+
     boolean existsByUserIdAndBookId(UUID userId, String bookId);
+
     long deleteByUserIdAndBookId(UUID userId, String bookId);
 }

@@ -28,11 +28,13 @@ public class RagRetrievalService {
 
     public List<RagRetrievedContext> retrieve(String question) {
         int topK = Math.max(1, Math.min(properties.getTopK(), 10));
-        List<RagRetrievedContext> combined = new ArrayList<>(knowledgeStore.retrieve(
-                embeddingGateway.embedQuery(question),
-                embeddingGateway.providerKey(),
-                topK,
-                properties.getMinimumScore()));
+        List<RagRetrievedContext> combined =
+                new ArrayList<>(
+                        knowledgeStore.retrieve(
+                                embeddingGateway.embedQuery(question),
+                                embeddingGateway.providerKey(),
+                                topK,
+                                properties.getMinimumScore()));
         combined.addAll(catalogRetriever.retrieve(question, Math.min(3, topK)));
         return combined.stream()
                 .sorted(Comparator.comparingDouble(RagRetrievedContext::score).reversed())

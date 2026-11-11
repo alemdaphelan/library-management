@@ -15,7 +15,10 @@ export class SavedBooks implements OnInit {
   loading = true;
   errorMessage = '';
 
-  constructor(private bookService: BookService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private bookService: BookService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit(): void {
     this.loadBooks();
@@ -24,7 +27,7 @@ export class SavedBooks implements OnInit {
   remove(bookId: number): void {
     this.bookService.removeFromWishlist(bookId).subscribe({
       next: () => {
-        this.books = this.books.filter(book => book.bookId !== bookId);
+        this.books = this.books.filter((book) => book.bookId !== bookId);
         this.cdr.detectChanges();
       },
       error: () => {
@@ -36,7 +39,7 @@ export class SavedBooks implements OnInit {
 
   private loadBooks(): void {
     this.bookService.getWishlist().subscribe({
-      next: books => {
+      next: (books) => {
         this.books = books;
         this.loading = false;
         this.cdr.detectChanges();

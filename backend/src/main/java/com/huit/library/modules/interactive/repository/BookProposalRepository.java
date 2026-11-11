@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface BookProposalRepository extends JpaRepository<BookProposalEntity, Long> {
     List<BookProposalEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     List<BookProposalEntity> findAllByOrderByCreatedAtDesc();
 }

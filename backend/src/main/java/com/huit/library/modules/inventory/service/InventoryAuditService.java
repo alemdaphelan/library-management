@@ -38,10 +38,12 @@ public class InventoryAuditService {
     private final BookRepository bookRepository;
     private final ShelfRepository shelfRepository;
 
-    public InventoryAuditService(InventoryAuditRepository auditRepository,
-                                 InventoryDetailRepository detailRepository,
-                                 BookCopyRepository copyRepository,
-                                 BookRepository bookRepository, ShelfRepository shelfRepository) {
+    public InventoryAuditService(
+            InventoryAuditRepository auditRepository,
+            InventoryDetailRepository detailRepository,
+            BookCopyRepository copyRepository,
+            BookRepository bookRepository,
+            ShelfRepository shelfRepository) {
         this.auditRepository = auditRepository;
         this.detailRepository = detailRepository;
         this.copyRepository = copyRepository;
@@ -52,7 +54,8 @@ public class InventoryAuditService {
     @Transactional
     public InventoryAuditResponseDTO createAudit(UserEntity conductor) {
         if (conductor == null || conductor.getUserId() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không xác định được người kiểm kê");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "Không xác định được người kiểm kê");
         }
 
         InventoryAuditEntity audit = new InventoryAuditEntity();
@@ -85,15 +88,26 @@ public class InventoryAuditService {
         String barcode = request.getBarcode().trim();
         String storedAuditId = auditId.toString();
         if (detailRepository.findByAuditIdAndBarcode(storedAuditId, barcode).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Barcode đã được quét trong phiên kiểm kê này");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Barcode đã được quét trong phiên kiểm kê này");
         }
 
         Optional<BookCopyEntity> copy = copyRepository.findById(barcode);
         String scannedLocation = normalizeNullable(request.getScannedLocation());
-        ShelfEntity scannedShelf = request.getScannedShelfId() == null ? null : shelfRepository.findById(request.getScannedShelfId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngăn kiểm kê không tồn tại. Chọn lại vị trí."));
+        ShelfEntity scannedShelf =
+                request.getScannedShelfId() == null
+                        ? null
+                        : shelfRepository
+                                .findById(request.getScannedShelfId())
+                                .orElseThrow(
+                                        () ->
+                                                new ResponseStatusException(
+                                                        HttpStatus.BAD_REQUEST,
+                                                        "Ngăn kiểm kê không tồn tại. Chọn lại vị trí."));
         if (scannedShelf != null) scannedLocation = locationOfShelf(scannedShelf);
-        if (scannedLocation == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chọn vị trí đang kiểm kê trước khi quét");
+        if (scannedLocation == null)
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Chọn vị trí đang kiểm kê trước khi quét");
         String expectedLocation = copy.map(this::locationOf).orElse(null);
 
         InventoryDetailEntity detail = new InventoryDetailEntity();
@@ -102,7 +116,10 @@ public class InventoryAuditService {
         detail.setScannedLocation(scannedLocation);
         String status = resolveStatus(copy.isPresent(), scannedLocation, expectedLocation);
         if (scannedShelf != null && copy.isPresent() && copy.get().getShelf() != null) {
-            status = scannedShelf.getShelfId().equals(copy.get().getShelf().getShelfId()) ? "MATCHED" : "MISPLACED";
+            status =
+                    scannedShelf.getShelfId().equals(copy.get().getShelf().getShelfId())
+                            ? "MATCHED"
+                            : "MISPLACED";
         }
         detail.setScanStatus(status);
         detail = detailRepository.save(detail);
@@ -120,10 +137,13 @@ public class InventoryAuditService {
         InventoryAuditEntity audit = lockAudit(auditId);
         ensureInProgress(audit);
 
-        List<InventoryDetailEntity> details = detailRepository.findByAuditIdOrderByCreatedAtAsc(auditId.toString());
-        audit.setTotalActualBooks((int) details.stream()
-                .filter(detail -> !UNKNOWN.equals(detail.getScanStatus()))
-                .count());
+        List<InventoryDetailEntity> details =
+                detailRepository.findByAuditIdOrderByCreatedAtAsc(auditId.toString());
+        audit.setTotalActualBooks(
+                (int)
+                        details.stream()
+                                .filter(detail -> !UNKNOWN.equals(detail.getScanStatus()))
+                                .count());
         audit.setStatus(COMPLETED);
         audit = auditRepository.save(audit);
 
@@ -131,13 +151,21 @@ public class InventoryAuditService {
     }
 
     private InventoryAuditEntity findAudit(Long auditId) {
-        return auditRepository.findById(auditId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên kiểm kê"));
+        return auditRepository
+                .findById(auditId)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND, "Không tìm thấy phiên kiểm kê"));
     }
 
     private InventoryAuditEntity lockAudit(Long auditId) {
-        return auditRepository.findByIdForUpdate(auditId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên kiểm kê"));
+        return auditRepository
+                .findByIdForUpdate(auditId)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND, "Không tìm thấy phiên kiểm kê"));
     }
 
     private void ensureInProgress(InventoryAuditEntity audit) {
@@ -157,10 +185,10 @@ public class InventoryAuditService {
         return toScanResponse(detail, copy, copy == null ? null : locationOf(copy));
     }
 
-    private InventoryScanResponseDTO toScanResponse(InventoryDetailEntity detail,
-                                                     BookCopyEntity copy,
-                                                     String expectedLocation) {
-        BookEntity book = copy == null ? null : bookRepository.findById(copy.getBookId()).orElse(null);
+    private InventoryScanResponseDTO toScanResponse(
+            InventoryDetailEntity detail, BookCopyEntity copy, String expectedLocation) {
+        BookEntity book =
+                copy == null ? null : bookRepository.findById(copy.getBookId()).orElse(null);
         return InventoryScanResponseDTO.builder()
                 .detailId(detail.getDetailId())
                 .auditId(Long.valueOf(detail.getAuditId()))
@@ -175,8 +203,8 @@ public class InventoryAuditService {
                 .build();
     }
 
-    private InventoryAuditResponseDTO toAuditResponse(InventoryAuditEntity audit,
-                                                       List<InventoryScanResponseDTO> details) {
+    private InventoryAuditResponseDTO toAuditResponse(
+            InventoryAuditEntity audit, List<InventoryScanResponseDTO> details) {
         return InventoryAuditResponseDTO.builder()
                 .auditId(audit.getAuditId())
                 .conductedBy(audit.getConductedBy())
@@ -207,7 +235,8 @@ public class InventoryAuditService {
     private String locationOfShelf(ShelfEntity shelf) {
         BookshelfEntity bookshelf = shelf.getBookshelf();
         FloorEntity floor = bookshelf == null ? null : bookshelf.getFloor();
-        return String.join(" / ",
+        return String.join(
+                " / ",
                 floor == null ? "Chưa rõ tầng" : floor.getName(),
                 bookshelf == null ? "Chưa rõ dãy" : bookshelf.getName(),
                 shelf.getName());

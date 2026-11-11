@@ -34,25 +34,28 @@ class BookProposalServiceTest {
         proposalRepository = mock(BookProposalRepository.class);
         bookRepository = mock(BookRepository.class);
         majors = mock(com.huit.library.modules.reporting.repository.AcademicMajorRepository.class);
-        service = new BookProposalService(
-                proposalRepository,
-                mock(UserRepository.class),
-                mock(NotificationService.class),
-                bookRepository,
-                mock(CategoryRepository.class),
-                mock(StaffNotificationService.class),
-                majors);
+        service =
+                new BookProposalService(
+                        proposalRepository,
+                        mock(UserRepository.class),
+                        mock(NotificationService.class),
+                        bookRepository,
+                        mock(CategoryRepository.class),
+                        mock(StaffNotificationService.class),
+                        majors);
     }
 
     @Test
     void proposalKeepsOfficialMajorSnapshotAndRejectsUnknownIds() {
         var major = new com.huit.library.modules.reporting.entity.AcademicMajorEntity();
-        major.setMajorId("CNTT"); major.setMajorName("Công nghệ thông tin");
+        major.setMajorId("CNTT");
+        major.setMajorName("Công nghệ thông tin");
         major.setSourceReference("Danh mục đào tạo chính thức");
         when(majors.findById("CNTT")).thenReturn(Optional.of(major));
         when(proposalRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         var request = new com.huit.library.modules.interactive.dto.CreateProposalRequestDTO();
-        request.setTitle("Kiến trúc phần mềm"); request.setReason("Môn chuyên ngành");
+        request.setTitle("Kiến trúc phần mềm");
+        request.setReason("Môn chuyên ngành");
         request.setMajorId("CNTT");
         var result = service.createProposal(null, request);
         assertThat(result.getMajorId()).isEqualTo("CNTT");
@@ -74,11 +77,13 @@ class BookProposalServiceTest {
         proposal.setExternalUrl("https://example.com/book");
         when(proposalRepository.findById(7L)).thenReturn(Optional.of(proposal));
         when(bookRepository.findFirstByIsbn(proposal.getIsbn())).thenReturn(Optional.empty());
-        when(bookRepository.save(any(BookEntity.class))).thenAnswer(invocation -> {
-            BookEntity book = invocation.getArgument(0);
-            book.setBookId(99L);
-            return book;
-        });
+        when(bookRepository.save(any(BookEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            BookEntity book = invocation.getArgument(0);
+                            book.setBookId(99L);
+                            return book;
+                        });
         when(proposalRepository.save(any(BookProposalEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

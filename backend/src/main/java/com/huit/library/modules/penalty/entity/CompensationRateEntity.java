@@ -21,6 +21,7 @@ public class CompensationRateEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long rateId;
+
     private String materialType;
     private String languageCategory;
     private BigDecimal amount;

@@ -22,7 +22,7 @@ public class LoanDetailEntity extends BaseEntity {
     private String checkoutConditionNote;
     private String returnConditionNote;
     private String returnStatus;
-    
+
     private LocalDateTime dueDate;
     private LocalDateTime returnDate;
     private LocalDateTime checkoutAt;
@@ -37,18 +37,25 @@ public class LoanDetailEntity extends BaseEntity {
     private LocalDateTime originalDueDateBeforeRecall;
     private LocalDateTime recallRequestedAt;
     private java.util.UUID recallRequestedBy;
+
     @Column(length = 1000)
     private String recallReason;
+
     private LocalDateTime recallPreviousDueDate;
     private LocalDateTime recallDueDate;
     private BigDecimal lateFineAccrued = BigDecimal.ZERO;
     private LocalDateTime fineStoppedAt;
     private LocalDateTime lossReportedAt;
+
     @Column(length = 1000)
     private String lossReportDescription;
 
-    public void recordRecall(LocalDateTime at, java.util.UUID actor, String reason,
-            LocalDateTime previousDueDate, LocalDateTime effectiveDueDate) {
+    public void recordRecall(
+            LocalDateTime at,
+            java.util.UUID actor,
+            String reason,
+            LocalDateTime previousDueDate,
+            LocalDateTime effectiveDueDate) {
         isRecalled = true;
         recallRequestedAt = recalledAt = at;
         recallRequestedBy = actor;

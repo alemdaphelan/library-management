@@ -13,11 +13,10 @@ import java.math.BigDecimal;
 @Entity
 @Table(
         name = "book_subject_assignments",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_book_recommendation_subject",
-                columnNames = {"book_id", "subject_id"}
-        )
-)
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_book_recommendation_subject",
+                        columnNames = {"book_id", "subject_id"}))
 public class BookSubjectAssignmentEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

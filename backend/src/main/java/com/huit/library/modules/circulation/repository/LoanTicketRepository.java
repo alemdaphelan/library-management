@@ -15,16 +15,22 @@ import java.time.LocalDateTime;
 @Repository
 public interface LoanTicketRepository extends JpaRepository<LoanTicketEntity, Long> {
     List<LoanTicketEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     List<LoanTicketEntity> findByUserIdAndStatus(UUID userId, String status);
-    List<LoanTicketEntity> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime start, LocalDateTime end);
+
+    List<LoanTicketEntity> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            LocalDateTime start, LocalDateTime end);
+
     List<LoanTicketEntity> findTop10ByOrderByUpdatedAtDesc();
+
     List<LoanTicketEntity> findAllByOrderByCreatedAtDesc();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ticket from LoanTicketEntity ticket where ticket.ticketId = :ticketId")
     java.util.Optional<LoanTicketEntity> findByIdForUpdate(@Param("ticketId") Long ticketId);
 
-    @Query("""
+    @Query(
+            """
             select distinct ticket.ticketId
             from LoanTicketEntity ticket, LoanDetailEntity detail, BookCopyEntity copy
             where detail.ticketId = ticket.ticketId
@@ -38,7 +44,8 @@ public interface LoanTicketRepository extends JpaRepository<LoanTicketEntity, Lo
             """)
     List<Long> findExpiredReservationIds(@Param("now") LocalDateTime now);
 
-    @Query("""
+    @Query(
+            """
             select distinct ticket.ticketId
             from LoanTicketEntity ticket, LoanDetailEntity detail
             where detail.ticketId = ticket.ticketId

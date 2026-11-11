@@ -18,14 +18,19 @@ class OrientationAuthorizationContractTest {
 
     @Test
     void administrationOperationsRemainAdminOnly() throws Exception {
-        assertAdminOnly("create",
+        assertAdminOnly(
+                "create",
                 com.huit.library.modules.orientation.dto.OrientationDtos.ClassRequest.class,
                 com.huit.library.core.security.CustomUserDetails.class);
-        assertAdminOnly("update", Long.class,
+        assertAdminOnly(
+                "update",
+                Long.class,
                 com.huit.library.modules.orientation.dto.OrientationDtos.ClassRequest.class);
         assertAdminOnly("delete", Long.class);
         assertAdminOnly("students", Long.class);
-        assertAdminOnly("assign", Long.class,
+        assertAdminOnly(
+                "assign",
+                Long.class,
                 com.huit.library.modules.orientation.dto.OrientationDtos.AssignmentRequest.class);
         assertAdminOnly("unassign", Long.class, Long.class);
     }

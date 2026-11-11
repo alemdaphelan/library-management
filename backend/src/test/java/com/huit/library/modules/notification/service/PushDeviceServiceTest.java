@@ -18,8 +18,7 @@ import static org.mockito.Mockito.when;
 class PushDeviceServiceTest {
     @Test
     void reassignsExistingTokenAndActivatesIt() {
-        PushDeviceRegistrationRepository repository =
-                mock(PushDeviceRegistrationRepository.class);
+        PushDeviceRegistrationRepository repository = mock(PushDeviceRegistrationRepository.class);
         PushDeviceRegistrationEntity existing = new PushDeviceRegistrationEntity();
         existing.setRegistrationId(UUID.randomUUID());
         existing.setToken("token-1");
@@ -29,8 +28,10 @@ class PushDeviceServiceTest {
         PushDeviceService service = new PushDeviceService(repository);
         UUID userId = UUID.randomUUID();
 
-        var response = service.register(userId,
-                new RegisterPushDeviceRequestDTO(" token-1 ", "ANDROID", "phone-a"));
+        var response =
+                service.register(
+                        userId,
+                        new RegisterPushDeviceRequestDTO(" token-1 ", "ANDROID", "phone-a"));
 
         assertThat(existing.getUserId()).isEqualTo(userId);
         assertThat(existing.getActive()).isTrue();
@@ -41,8 +42,7 @@ class PushDeviceServiceTest {
 
     @Test
     void updatesTokenInPlaceWhenFirebaseRefreshesTokenForSameUserAndDevice() {
-        PushDeviceRegistrationRepository repository =
-                mock(PushDeviceRegistrationRepository.class);
+        PushDeviceRegistrationRepository repository = mock(PushDeviceRegistrationRepository.class);
         UUID userId = UUID.randomUUID();
         PushDeviceRegistrationEntity existingDevice = new PushDeviceRegistrationEntity();
         existingDevice.setRegistrationId(UUID.randomUUID());
@@ -52,12 +52,16 @@ class PushDeviceServiceTest {
         existingDevice.setActive(true);
 
         when(repository.findByToken("new-token")).thenReturn(Optional.empty());
-        when(repository.findByDeviceIdAndActiveTrue("device-01")).thenReturn(List.of(existingDevice));
+        when(repository.findByDeviceIdAndActiveTrue("device-01"))
+                .thenReturn(List.of(existingDevice));
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         PushDeviceService service = new PushDeviceService(repository);
-        var response = service.register(userId,
-                new RegisterPushDeviceRequestDTO("new-token", "ANDROID", "device-01", "FID"));
+        var response =
+                service.register(
+                        userId,
+                        new RegisterPushDeviceRequestDTO(
+                                "new-token", "ANDROID", "device-01", "FID"));
 
         assertThat(existingDevice.getToken()).isEqualTo("new-token");
         assertThat(existingDevice.getIdentifierType()).isEqualTo("FID");
@@ -68,8 +72,7 @@ class PushDeviceServiceTest {
 
     @Test
     void deactivatesOldAccountRegistrationWhenAnotherAccountLogsInOnSameDevice() {
-        PushDeviceRegistrationRepository repository =
-                mock(PushDeviceRegistrationRepository.class);
+        PushDeviceRegistrationRepository repository = mock(PushDeviceRegistrationRepository.class);
         UUID previousUserId = UUID.randomUUID();
         UUID newUserId = UUID.randomUUID();
         PushDeviceRegistrationEntity oldAccountDevice = new PushDeviceRegistrationEntity();
@@ -85,7 +88,8 @@ class PushDeviceServiceTest {
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         PushDeviceService service = new PushDeviceService(repository);
-        service.register(newUserId,
+        service.register(
+                newUserId,
                 new RegisterPushDeviceRequestDTO("new-user-token", "ANDROID", "shared-emulator"));
 
         assertThat(oldAccountDevice.getActive()).isFalse();
@@ -93,14 +97,12 @@ class PushDeviceServiceTest {
 
     @Test
     void unregisterOnlyDeactivatesTokenOwnedByCurrentUser() {
-        PushDeviceRegistrationRepository repository =
-                mock(PushDeviceRegistrationRepository.class);
+        PushDeviceRegistrationRepository repository = mock(PushDeviceRegistrationRepository.class);
         PushDeviceRegistrationEntity existing = new PushDeviceRegistrationEntity();
         existing.setToken("token-1");
         existing.setActive(true);
         UUID userId = UUID.randomUUID();
-        when(repository.findByUserIdAndToken(userId, "token-1"))
-                .thenReturn(Optional.of(existing));
+        when(repository.findByUserIdAndToken(userId, "token-1")).thenReturn(Optional.of(existing));
         PushDeviceService service = new PushDeviceService(repository);
 
         service.unregister(userId, " token-1 ");

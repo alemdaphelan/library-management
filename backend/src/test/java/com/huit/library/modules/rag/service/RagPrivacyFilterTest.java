@@ -9,7 +9,8 @@ class RagPrivacyFilterTest {
     void redactsPersonalIdentifiersBeforeSendingQuestionToGemini() {
         RagPrivacyFilter filter = new RagPrivacyFilter();
 
-        String safe = filter.redact("Email sv@example.com, số 0912345678, MSSV 2020123456 bị khóa thẻ");
+        String safe =
+                filter.redact("Email sv@example.com, số 0912345678, MSSV 2020123456 bị khóa thẻ");
 
         assertThat(safe)
                 .doesNotContain("sv@example.com", "0912345678", "2020123456")

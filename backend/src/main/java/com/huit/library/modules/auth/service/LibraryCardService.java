@@ -25,12 +25,17 @@ public class LibraryCardService {
 
     @Transactional(readOnly = true)
     public LibraryCardResponseDTO get(UUID userId) {
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
+        UserEntity user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy tài khoản"));
         WalletEntity wallet = walletRepository.findByUserId(userId).orElse(null);
         boolean issued = user.hasLibraryCard();
-        var issuedAt = user.getCardIssuedAt() == null ? user.getCreatedAt() : user.getCardIssuedAt();
+        var issuedAt =
+                user.getCardIssuedAt() == null ? user.getCreatedAt() : user.getCardIssuedAt();
         return new LibraryCardResponseDTO(
                 issued,
                 issued ? user.getMssv() : null,
@@ -40,9 +45,11 @@ public class LibraryCardService {
                 issued ? issuedAt : null,
                 issued ? user.getCardExpiryDate() : null,
                 wallet == null || wallet.getDepositBalance() == null
-                        ? BigDecimal.ZERO : wallet.getDepositBalance(),
+                        ? BigDecimal.ZERO
+                        : wallet.getDepositBalance(),
                 wallet == null || wallet.getTotalDebt() == null
-                        ? BigDecimal.ZERO : wallet.getTotalDebt(),
+                        ? BigDecimal.ZERO
+                        : wallet.getTotalDebt(),
                 user.getCirculationLockedUntil(),
                 user.getCirculationLockReason());
     }

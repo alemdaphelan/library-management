@@ -24,7 +24,9 @@ describe('LibraryPolicyService', () => {
   };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(LibraryPolicyService);
     http = TestBed.inject(HttpTestingController);
   });
@@ -32,21 +34,21 @@ describe('LibraryPolicyService', () => {
   afterEach(() => http.verify());
 
   it('loads the active policy', () => {
-    service.getPolicy().subscribe(value => expect(value.maximumOpenItems).toBe(3));
+    service.getPolicy().subscribe((value) => expect(value.maximumOpenItems).toBe(3));
     const request = http.expectOne(`${environment.apiUrl}/admin/library-policy`);
     expect(request.request.method).toBe('GET');
     request.flush(policy);
   });
 
   it('loads the public policy without an admin endpoint', () => {
-    service.getPublicPolicy().subscribe(value => expect(value.maximumRenewalCount).toBe(1));
+    service.getPublicPolicy().subscribe((value) => expect(value.maximumRenewalCount).toBe(1));
     const request = http.expectOne(`${environment.apiUrl}/library-policy`);
     expect(request.request.method).toBe('GET');
     request.flush(policy);
   });
 
   it('updates the active policy', () => {
-    service.updatePolicy(policy).subscribe(value => expect(value.homeLoanDays).toBe(10));
+    service.updatePolicy(policy).subscribe((value) => expect(value.homeLoanDays).toBe(10));
     const request = http.expectOne(`${environment.apiUrl}/admin/library-policy`);
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual(policy);
@@ -54,9 +56,18 @@ describe('LibraryPolicyService', () => {
   });
 
   it('loads policy change history from the admin endpoint', () => {
-    service.getHistory().subscribe(value => expect(value[0].changedByName).toBe('Admin Thư viện'));
+    service
+      .getHistory()
+      .subscribe((value) => expect(value[0].changedByName).toBe('Admin Thư viện'));
     const request = http.expectOne(`${environment.apiUrl}/admin/library-policy/history`);
     expect(request.request.method).toBe('GET');
-    request.flush([{ ...policy, historyId: 1, changedByName: 'Admin Thư viện', changedAt: '2026-10-29T08:00:00' }]);
+    request.flush([
+      {
+        ...policy,
+        historyId: 1,
+        changedByName: 'Admin Thư viện',
+        changedAt: '2026-10-29T08:00:00',
+      },
+    ]);
   });
 });

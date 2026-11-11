@@ -7,7 +7,9 @@ import { AuthService } from '../../../services/auth.service';
 
 describe('Digital portal', () => {
   let fixture: ComponentFixture<Digital>;
-  const assets = [{ id: 1, name: 'Tài liệu.pdf', type: 'PDF', size: 2048, accessLevel: 'AUTHENTICATED' }];
+  const assets = [
+    { id: 1, name: 'Tài liệu.pdf', type: 'PDF', size: 2048, accessLevel: 'AUTHENTICATED' },
+  ];
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -15,8 +17,8 @@ describe('Digital portal', () => {
       providers: [
         provideRouter([]),
         { provide: DigitalAssetsService, useValue: { getAssets: () => of(assets) } },
-        { provide: AuthService, useValue: { isLoggedIn: () => true } }
-      ]
+        { provide: AuthService, useValue: { isLoggedIn: () => true } },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(Digital);
     fixture.detectChanges();

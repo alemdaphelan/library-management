@@ -12,8 +12,8 @@ public record StudentUpsertRequestDTO(
         @NotBlank @Size(max = 255) String fullName,
         @NotBlank @Email @Size(max = 255) String email,
         @Size(max = 255) String department,
-        @Pattern(regexp = "^$|^[0-9+() .-]{8,20}$", message = "Số điện thoại không hợp lệ") String phone,
-        @Pattern(regexp = "ACTIVE|LOCKED|EXPIRED", message = "Trạng thái thẻ không hợp lệ") String cardStatus,
-        LocalDateTime cardExpiryDate
-) {
-}
+        @Pattern(regexp = "^$|^[0-9+() .-]{8,20}$", message = "Số điện thoại không hợp lệ")
+                String phone,
+        @Pattern(regexp = "ACTIVE|LOCKED|EXPIRED", message = "Trạng thái thẻ không hợp lệ")
+                String cardStatus,
+        LocalDateTime cardExpiryDate) {}

@@ -11,7 +11,7 @@ import { DialogService } from '../../../services/dialog.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './accounts.html',
-  styleUrls: ['./accounts.css']
+  styleUrls: ['./accounts.css'],
 })
 export class Accounts implements OnInit {
   students: Student[] = [];
@@ -50,7 +50,9 @@ export class Accounts implements OnInit {
         this.students = data;
         this.loading = false;
         if (this.requestedUserId) {
-          const requested = this.students.find(student => student.userId === this.requestedUserId);
+          const requested = this.students.find(
+            (student) => student.userId === this.requestedUserId,
+          );
           if (requested) this.openProfile(requested);
           this.requestedUserId = undefined;
         }
@@ -60,7 +62,7 @@ export class Accounts implements OnInit {
         this.loading = false;
         this.errorMessage = this.errorText(err, 'Không thể tải danh sách sinh viên.');
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -70,12 +72,12 @@ export class Accounts implements OnInit {
     this.selectedProfile = null;
     this.clearMessages();
     this.userService.getReaderProfile(student.mssv).subscribe({
-      next: profile => {
+      next: (profile) => {
         this.selectedProfile = profile;
         this.profileLoading = false;
         this.cdr.detectChanges();
       },
-      error: err => {
+      error: (err) => {
         this.profileLoading = false;
         this.showProfile = false;
         this.errorMessage = this.errorText(err, 'Không thể tải hồ sơ nghiệp vụ của bạn đọc.');
@@ -90,17 +92,27 @@ export class Accounts implements OnInit {
   }
 
   get activeLoanCount(): number {
-    return this.selectedProfile?.loans.filter(loan => ['PENDING', 'RESERVED', 'BORROWING', 'OVERDUE'].includes(loan.status)).length || 0;
+    return (
+      this.selectedProfile?.loans.filter((loan) =>
+        ['PENDING', 'RESERVED', 'BORROWING', 'OVERDUE'].includes(loan.status),
+      ).length || 0
+    );
   }
 
   get overdueLoanCount(): number {
-    return this.selectedProfile?.loans.filter(loan => loan.status === 'OVERDUE' || loan.overdueItemCount > 0).length || 0;
+    return (
+      this.selectedProfile?.loans.filter(
+        (loan) => loan.status === 'OVERDUE' || loan.overdueItemCount > 0,
+      ).length || 0
+    );
   }
 
   get outstandingLedgerCount(): number {
-    return this.selectedProfile?.ledger.filter(entry =>
-      Number(entry.amount) > 0 && Number(entry.paidAmount || 0) < Number(entry.amount)
-    ).length || 0;
+    return (
+      this.selectedProfile?.ledger.filter(
+        (entry) => Number(entry.amount) > 0 && Number(entry.paidAmount || 0) < Number(entry.amount),
+      ).length || 0
+    );
   }
 
   openWorkflow(path: string, referenceType: string, referenceId: string | number) {
@@ -109,11 +121,27 @@ export class Accounts implements OnInit {
   }
 
   cardStatusLabel(status?: string): string {
-    return ({ ACTIVE: 'Hoạt động', LOCKED: 'Bị khóa', EXPIRED: 'Hết hạn' } as Record<string, string>)[status || ''] || 'Chưa cấp thẻ';
+    return (
+      ({ ACTIVE: 'Hoạt động', LOCKED: 'Bị khóa', EXPIRED: 'Hết hạn' } as Record<string, string>)[
+        status || ''
+      ] || 'Chưa cấp thẻ'
+    );
   }
 
   loanStatusLabel(status: string): string {
-    return ({ PENDING: 'Chờ duyệt', RESERVED: 'Chờ nhận', BORROWING: 'Đang mượn', OVERDUE: 'Quá hạn', RETURNED: 'Đã trả', CANCELLED: 'Đã hủy', REJECTED: 'Từ chối' } as Record<string, string>)[status] || status;
+    return (
+      (
+        {
+          PENDING: 'Chờ duyệt',
+          RESERVED: 'Chờ nhận',
+          BORROWING: 'Đang mượn',
+          OVERDUE: 'Quá hạn',
+          RETURNED: 'Đã trả',
+          CANCELLED: 'Đã hủy',
+          REJECTED: 'Từ chối',
+        } as Record<string, string>
+      )[status] || status
+    );
   }
 
   get isReadOnly(): boolean {
@@ -122,10 +150,16 @@ export class Accounts implements OnInit {
 
   get filteredStudents(): Student[] {
     const keyword = this.searchTerm.trim().toLocaleLowerCase('vi');
-    return this.students.filter(student => {
-      const matchesStatus = !this.statusFilter
-        || (this.statusFilter === 'UNISSUED' ? !student.cardStatus?.trim() : student.cardStatus === this.statusFilter);
-      const text = `${student.fullName} ${student.mssv} ${student.email} ${student.department || ''}`.toLocaleLowerCase('vi');
+    return this.students.filter((student) => {
+      const matchesStatus =
+        !this.statusFilter ||
+        (this.statusFilter === 'UNISSUED'
+          ? !student.cardStatus?.trim()
+          : student.cardStatus === this.statusFilter);
+      const text =
+        `${student.fullName} ${student.mssv} ${student.email} ${student.department || ''}`.toLocaleLowerCase(
+          'vi',
+        );
       return matchesStatus && (!keyword || text.includes(keyword));
     });
   }
@@ -148,14 +182,23 @@ export class Accounts implements OnInit {
       department: student.department || '',
       phone: student.phone || '',
       cardStatus: (student.cardStatus?.trim() as StudentUpsert['cardStatus']) || null,
-      cardExpiryDate: student.cardStatus?.trim() && student.cardExpiryDate ? student.cardExpiryDate.slice(0, 16) : null
+      cardExpiryDate:
+        student.cardStatus?.trim() && student.cardExpiryDate
+          ? student.cardExpiryDate.slice(0, 16)
+          : null,
     };
     this.showForm = true;
     this.clearMessages();
   }
 
   saveStudent() {
-    if (this.isReadOnly || !this.form.mssv.trim() || !this.form.fullName.trim() || !this.form.email.trim()) return;
+    if (
+      this.isReadOnly ||
+      !this.form.mssv.trim() ||
+      !this.form.fullName.trim() ||
+      !this.form.email.trim()
+    )
+      return;
     this.saving = true;
     this.clearMessages();
     const request = { ...this.form, cardExpiryDate: this.form.cardExpiryDate || null };
@@ -166,13 +209,15 @@ export class Accounts implements OnInit {
       next: () => {
         this.saving = false;
         this.showForm = false;
-        this.successMessage = this.editingMssv ? 'Đã cập nhật hồ sơ bạn đọc.' : 'Đã tạo tài khoản. Sinh viên sẽ được cấp thẻ sau khi tham dự lớp hướng dẫn.';
+        this.successMessage = this.editingMssv
+          ? 'Đã cập nhật hồ sơ bạn đọc.'
+          : 'Đã tạo tài khoản. Sinh viên sẽ được cấp thẻ sau khi tham dự lớp hướng dẫn.';
         this.loadStudents();
       },
-      error: err => {
+      error: (err) => {
         this.saving = false;
         this.errorMessage = this.errorText(err, 'Không thể lưu hồ sơ bạn đọc.');
-      }
+      },
     });
   }
 
@@ -191,13 +236,24 @@ export class Accounts implements OnInit {
         this.successMessage = 'Đã xóa tài khoản sinh viên.';
         this.loadStudents();
       },
-      error: err => this.errorMessage = this.errorText(err,
-        'Không thể xóa tài khoản đã có lịch sử; hãy chuyển trạng thái thẻ sang Bị khóa.')
+      error: (err) =>
+        (this.errorMessage = this.errorText(
+          err,
+          'Không thể xóa tài khoản đã có lịch sử; hãy chuyển trạng thái thẻ sang Bị khóa.',
+        )),
     });
   }
 
   private emptyForm(): StudentUpsert {
-    return { mssv: '', fullName: '', email: '', department: '', phone: '', cardStatus: null, cardExpiryDate: null };
+    return {
+      mssv: '',
+      fullName: '',
+      email: '',
+      department: '',
+      phone: '',
+      cardStatus: null,
+      cardExpiryDate: null,
+    };
   }
 
   private clearMessages() {
@@ -206,6 +262,10 @@ export class Accounts implements OnInit {
   }
 
   private errorText(error: any, fallback: string): string {
-    return error?.error?.detail || error?.error?.message || (typeof error?.error === 'string' ? error.error : fallback);
+    return (
+      error?.error?.detail ||
+      error?.error?.message ||
+      (typeof error?.error === 'string' ? error.error : fallback)
+    );
   }
 }

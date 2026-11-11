@@ -3,30 +3,78 @@ import { provideRouter } from '@angular/router';
 import { NgModel } from '@angular/forms';
 import { By } from '@angular/platform-browser';
 import { Subject, of, throwError } from 'rxjs';
-import { CirculationService, LoanItem, LoanTicketDetail, LoanTicketSummary } from '../../../services/circulation.service';
-import { ReturnInspectionReceipt, ReturnInspectionRequest } from '../../../services/return-inspection.models';
+import {
+  CirculationService,
+  LoanItem,
+  LoanTicketDetail,
+  LoanTicketSummary,
+} from '../../../services/circulation.service';
+import {
+  ReturnInspectionReceipt,
+  ReturnInspectionRequest,
+} from '../../../services/return-inspection.models';
 import { ReturnInspection } from './return-inspection';
 
-const loan: LoanItem = { ticketId: 19, detailId: 29, bookId: 9, bookTitle: 'Clean Code', barcode: 'BC-019',
-  ticketType: 'BORROW', status: 'BORROWING', itemStatus: 'BORROWING', renewalCount: 0, lateFineAccrued: 8000 };
-const ticket: LoanTicketDetail = { ticketId: 19, userId: 'reader-19', mssv: '2001190019',
-  readerName: 'Nguyễn Văn A', status: 'BORROWING', ticketType: 'BORROW', items: [loan] };
-const summary: LoanTicketSummary = { ...ticket, itemCount: 1, overdueItemCount: 0, totalLateFine: 8000 };
+const loan: LoanItem = {
+  ticketId: 19,
+  detailId: 29,
+  bookId: 9,
+  bookTitle: 'Clean Code',
+  barcode: 'BC-019',
+  ticketType: 'BORROW',
+  status: 'BORROWING',
+  itemStatus: 'BORROWING',
+  renewalCount: 0,
+  lateFineAccrued: 8000,
+};
+const ticket: LoanTicketDetail = {
+  ticketId: 19,
+  userId: 'reader-19',
+  mssv: '2001190019',
+  readerName: 'Nguyễn Văn A',
+  status: 'BORROWING',
+  ticketType: 'BORROW',
+  items: [loan],
+};
+const summary: LoanTicketSummary = {
+  ...ticket,
+  itemCount: 1,
+  overdueItemCount: 0,
+  totalLateFine: 8000,
+};
 
 function receipt(condition: 'NORMAL' | 'DAMAGED' | 'LOST' = 'NORMAL'): ReturnInspectionReceipt {
   return {
-    operationId: 'inspection-1', operationType: 'RETURN_INSPECT', processedAt: '2026-10-29T09:00:00', replayed: false,
-    items: [{ loanDetailId: 29, ticketId: 19, userId: 'reader-19', barcode: 'BC-019', condition,
-      detailStatus: condition === 'NORMAL' ? 'RETURNED' : condition,
-      copyStatus: condition === 'NORMAL' ? 'AVAILABLE' : condition === 'LOST' ? 'LOST' : 'MAINTENANCE',
-      penaltyCaseId: condition === 'NORMAL' ? null : 77, penaltyStatus: condition === 'NORMAL' ? null : 'OUTSTANDING',
-      lateFineAdded: 1000, lateFineTotal: 9000, penaltyAmount: condition === 'NORMAL' ? 0 : 200000,
-      depositApplied: condition === 'NORMAL' ? 1000 : 50000, debtAdded: condition === 'NORMAL' ? 0 : 151000,
-      penaltyOutstanding: condition === 'NORMAL' ? 0 : 151000,
-      returnDate: condition === 'NORMAL' ? '2026-10-29T09:00:00' : null,
-      fineStoppedAt: condition === 'NORMAL' ? null : '2026-10-29T09:00:00' }],
+    operationId: 'inspection-1',
+    operationType: 'RETURN_INSPECT',
+    processedAt: '2026-10-29T09:00:00',
+    replayed: false,
+    items: [
+      {
+        loanDetailId: 29,
+        ticketId: 19,
+        userId: 'reader-19',
+        barcode: 'BC-019',
+        condition,
+        detailStatus: condition === 'NORMAL' ? 'RETURNED' : condition,
+        copyStatus:
+          condition === 'NORMAL' ? 'AVAILABLE' : condition === 'LOST' ? 'LOST' : 'MAINTENANCE',
+        penaltyCaseId: condition === 'NORMAL' ? null : 77,
+        penaltyStatus: condition === 'NORMAL' ? null : 'OUTSTANDING',
+        lateFineAdded: 1000,
+        lateFineTotal: 9000,
+        penaltyAmount: condition === 'NORMAL' ? 0 : 200000,
+        depositApplied: condition === 'NORMAL' ? 1000 : 50000,
+        debtAdded: condition === 'NORMAL' ? 0 : 151000,
+        penaltyOutstanding: condition === 'NORMAL' ? 0 : 151000,
+        returnDate: condition === 'NORMAL' ? '2026-10-29T09:00:00' : null,
+        fineStoppedAt: condition === 'NORMAL' ? null : '2026-10-29T09:00:00',
+      },
+    ],
     tickets: [{ ticketId: 19, status: condition === 'NORMAL' ? 'RETURNED' : 'BORROWING' }],
-    balances: [{ userId: 'reader-19', depositBalance: 0, totalDebt: condition === 'NORMAL' ? 0 : 161000 }],
+    balances: [
+      { userId: 'reader-19', depositBalance: 0, totalDebt: condition === 'NORMAL' ? 0 : 161000 },
+    ],
   };
 }
 
@@ -51,7 +99,8 @@ describe('Return inspection desk', () => {
     sessionStorage.removeItem(storageKey);
     service = stubService();
     await TestBed.configureTestingModule({
-      imports: [ReturnInspection], providers: [provideRouter([]), { provide: CirculationService, useValue: service }],
+      imports: [ReturnInspection],
+      providers: [provideRouter([]), { provide: CirculationService, useValue: service }],
     }).compileComponents();
     fixture = TestBed.createComponent(ReturnInspection);
     component = fixture.componentInstance;
@@ -106,17 +155,28 @@ describe('Return inspection desk', () => {
     expect(service.getLoan).toHaveBeenCalledWith(19);
     expect(service.getActiveLoanItemByBarcode).not.toHaveBeenCalled();
     expect(service.inspectReturn).toHaveBeenCalledTimes(1);
-    expect(service.inspectReturn.mock.calls[0][0].items[0]).toMatchObject({ loanDetailId: 29, condition: 'LOST',
-      penalty: { loanDetailId: 29, incidentType: 'LOST', stillInMarket: false, settlementMethod: 'CASH', coverPrice: 30000 } });
+    expect(service.inspectReturn.mock.calls[0][0].items[0]).toMatchObject({
+      loanDetailId: 29,
+      condition: 'LOST',
+      penalty: {
+        loanDetailId: 29,
+        incidentType: 'LOST',
+        stillInMarket: false,
+        settlementMethod: 'CASH',
+        coverPrice: 30000,
+      },
+    });
     expect(service.returnBooks).not.toHaveBeenCalled();
   });
 
   it('searches a reader and lets staff pick the correct active ticket', () => {
-    service.getStaffLoans.mockReturnValueOnce(of([summary, { ...summary, ticketId: 20, status: 'RETURNED' }]));
+    service.getStaffLoans.mockReturnValueOnce(
+      of([summary, { ...summary, ticketId: 20, status: 'RETURNED' }]),
+    );
     component.lookupMode = 'reader';
     component.lookupInput = '2001190019';
     component.lookup();
-    expect(component.matchingLoans.map(item => item.ticketId)).toEqual([19]);
+    expect(component.matchingLoans.map((item) => item.ticketId)).toEqual([19]);
     component.loadTicket(19);
     expect(component.selectedTicket?.readerName).toBe('Nguyễn Văn A');
     expect(service.inspectReturn).not.toHaveBeenCalled();
@@ -235,7 +295,9 @@ describe('Return inspection desk', () => {
   });
 
   it('allows an explicitly rejected request to be corrected with a new key', () => {
-    service.inspectReturn.mockReturnValueOnce(throwError(() => ({ status: 409, error: { detail: 'Thiếu biểu phí hiệu lực' } })));
+    service.inspectReturn.mockReturnValueOnce(
+      throwError(() => ({ status: 409, error: { detail: 'Thiếu biểu phí hiệu lực' } })),
+    );
     component.addItem({ ...loan });
     component.submitInspection();
     const oldKey = service.inspectReturn.mock.calls[0][0].idempotencyKey;
@@ -288,7 +350,9 @@ describe('Return inspection desk', () => {
     component.submitInspection();
     expect(service.inspectReturn).not.toHaveBeenCalled();
     component.cancelDraft();
-    service.getActiveLoanItemByBarcode.mockReturnValueOnce(throwError(() => ({ error: { detail: 'Không có lượt mượn' } })));
+    service.getActiveLoanItemByBarcode.mockReturnValueOnce(
+      throwError(() => ({ error: { detail: 'Không có lượt mượn' } })),
+    );
     component.addBarcode('INVALID');
     expect(component.drafts).toHaveLength(0);
     expect(component.loading).toBe(false);
@@ -296,8 +360,11 @@ describe('Return inspection desk', () => {
   });
 
   function control(name: string): any {
-    return fixture.debugElement.queryAll(By.directive(NgModel))
-      .find(element => element.injector.get(NgModel).name === name)?.nativeElement ?? null;
+    return (
+      fixture.debugElement
+        .queryAll(By.directive(NgModel))
+        .find((element) => element.injector.get(NgModel).name === name)?.nativeElement ?? null
+    );
   }
 
   async function changeSelect(name: string, value: string): Promise<void> {

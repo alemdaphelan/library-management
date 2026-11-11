@@ -21,5 +21,4 @@ public record RagEvaluationCaseResultDTO(
         String model,
         long latencyMs,
         String status,
-        String answer) {
-}
+        String answer) {}

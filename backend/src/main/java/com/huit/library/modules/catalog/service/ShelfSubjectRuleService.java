@@ -42,7 +42,8 @@ public class ShelfSubjectRuleService {
     @Transactional(readOnly = true)
     public List<ShelfSubjectDTO> getShelfSubjects(Long shelfId) {
         requireShelf(shelfId);
-        return ruleRepository.findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(shelfId)
+        return ruleRepository
+                .findByShelf_ShelfIdAndActiveTrueOrderBySubject_NameAsc(shelfId)
                 .stream()
                 .filter(rule -> Boolean.TRUE.equals(rule.getSubject().getActive()))
                 .map(rule -> toDto(rule.getSubject()))
@@ -50,20 +51,26 @@ public class ShelfSubjectRuleService {
     }
 
     @Transactional
-    public List<ShelfSubjectDTO> replaceShelfSubjects(Long shelfId, ShelfSubjectRuleRequestDTO request) {
-        ShelfEntity shelf = shelfRepository.findByIdForUpdate(shelfId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy ngăn kệ"));
+    public List<ShelfSubjectDTO> replaceShelfSubjects(
+            Long shelfId, ShelfSubjectRuleRequestDTO request) {
+        ShelfEntity shelf =
+                shelfRepository
+                        .findByIdForUpdate(shelfId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy ngăn kệ"));
         Set<Long> requestedIds = new LinkedHashSet<>(request.subjectIds());
         if (requestedIds.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chọn ít nhất một chủ đề cho ngăn");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Chọn ít nhất một chủ đề cho ngăn");
         }
-        List<RecommendationSubjectEntity> subjects = subjectRepository.findBySubjectIdInAndActiveTrue(requestedIds);
+        List<RecommendationSubjectEntity> subjects =
+                subjectRepository.findBySubjectIdInAndActiveTrue(requestedIds);
 
         if (subjects.size() != requestedIds.size()) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Có chủ đề không tồn tại hoặc đã ngừng sử dụng"
-            );
+                    HttpStatus.BAD_REQUEST, "Có chủ đề không tồn tại hoặc đã ngừng sử dụng");
         }
 
         ruleRepository.deleteByShelf_ShelfId(shelfId);
@@ -71,13 +78,17 @@ public class ShelfSubjectRuleService {
         // otherwise insert first and violate the (shelf_id, subject_id) key
         // when an existing subject remains selected.
         ruleRepository.flush();
-        List<ShelfSubjectRuleEntity> rules = subjects.stream().map(subject -> {
-            ShelfSubjectRuleEntity rule = new ShelfSubjectRuleEntity();
-            rule.setShelf(shelf);
-            rule.setSubject(subject);
-            rule.setActive(true);
-            return rule;
-        }).toList();
+        List<ShelfSubjectRuleEntity> rules =
+                subjects.stream()
+                        .map(
+                                subject -> {
+                                    ShelfSubjectRuleEntity rule = new ShelfSubjectRuleEntity();
+                                    rule.setShelf(shelf);
+                                    rule.setSubject(subject);
+                                    rule.setActive(true);
+                                    return rule;
+                                })
+                        .toList();
         ruleRepository.saveAll(rules);
 
         return subjects.stream()
@@ -87,12 +98,19 @@ public class ShelfSubjectRuleService {
     }
 
     private ShelfEntity requireShelf(Long shelfId) {
-        return shelfRepository.findById(shelfId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy ngăn kệ"));
+        return shelfRepository
+                .findById(shelfId)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND, "Không tìm thấy ngăn kệ"));
     }
 
     private ShelfSubjectDTO toDto(RecommendationSubjectEntity subject) {
         return new ShelfSubjectDTO(
-                subject.getSubjectId(), subject.getCode(), subject.getName(), subject.getDescription());
+                subject.getSubjectId(),
+                subject.getCode(),
+                subject.getName(),
+                subject.getDescription());
     }
 }

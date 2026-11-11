@@ -20,11 +20,13 @@
   <section class="saved-grid" *ngIf="books.length > 0">
     <article class="saved-card" *ngFor="let book of books">
       <a [routerLink]="['/book', book.bookId]" class="cover-link">
-        <img [src]="book.cover || '/assets/images/cover_1.jpg'" [alt]="book.title">
+        <img [src]="book.cover || '/assets/images/cover_1.jpg'" [alt]="book.title" />
       </a>
       <div class="saved-copy">
         <span class="category">{{ book.category || 'Tài liệu chung' }}</span>
-        <h2><a [routerLink]="['/book', book.bookId]">{{ book.title }}</a></h2>
+        <h2>
+          <a [routerLink]="['/book', book.bookId]">{{ book.title }}</a>
+        </h2>
         <p>{{ book.author || 'Đang cập nhật tác giả' }}</p>
         <strong [class.unavailable]="book.availableCopies === 0">
           {{ book.availableCopies > 0 ? (book.availableCopies + ' bản sẵn sàng') : 'Hiện đã hết bản' }}

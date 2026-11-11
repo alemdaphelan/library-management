@@ -16,9 +16,9 @@ describe('Search', () => {
     getBooks.mockReset();
     getDepartments.mockReset();
     getBooks.mockReturnValue(of({ content: [], totalPages: 0, totalElements: 0 }));
-    getDepartments.mockReturnValue(of([
-      { key: 'cong nghe thong tin', displayName: 'Công nghệ thông tin' },
-    ]));
+    getDepartments.mockReturnValue(
+      of([{ key: 'cong nghe thong tin', displayName: 'Công nghệ thông tin' }]),
+    );
     await TestBed.configureTestingModule({
       imports: [Search],
       providers: [
@@ -67,8 +67,6 @@ describe('Search', () => {
     component.onDepartmentChange();
 
     expect(component.currentPage).toBe(0);
-    expect(getBooks).toHaveBeenCalledWith(
-      '', 0, 12, undefined, undefined, 'cong nghe thong tin'
-    );
+    expect(getBooks).toHaveBeenCalledWith('', 0, 12, undefined, undefined, 'cong nghe thong tin');
   });
 });

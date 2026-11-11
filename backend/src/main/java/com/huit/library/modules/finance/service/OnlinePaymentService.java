@@ -30,7 +30,8 @@ import java.util.*;
 @Service
 public class OnlinePaymentService {
     private static final ZoneId VNPAY_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-    private static final DateTimeFormatter VNPAY_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final DateTimeFormatter VNPAY_TIME =
+            DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final OnlinePaymentSessionRepository sessionRepository;
     private final WalletRepository walletRepository;
@@ -49,11 +50,17 @@ public class OnlinePaymentService {
             WalletRepository walletRepository,
             DebtLedgerService debtLedgerService,
             @Value("${library.payment.vnpay.enabled:false}") boolean enabled,
-            @Value("${library.payment.vnpay.payment-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}") String paymentUrl,
+            @Value(
+                            "${library.payment.vnpay.payment-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
+                    String paymentUrl,
             @Value("${library.payment.vnpay.tmn-code:}") String tmnCode,
             @Value("${library.payment.vnpay.hash-secret:}") String hashSecret,
-            @Value("${library.payment.vnpay.return-url:http://localhost:8080/api/v1/online-payments/vnpay-return}") String returnUrl,
-            @Value("${library.payment.vnpay.frontend-result-url:http://localhost:4200/my-penalties}") String frontendResultUrl,
+            @Value(
+                            "${library.payment.vnpay.return-url:http://localhost:8080/api/v1/online-payments/vnpay-return}")
+                    String returnUrl,
+            @Value(
+                            "${library.payment.vnpay.frontend-result-url:http://localhost:4200/my-penalties}")
+                    String frontendResultUrl,
             @Value("${library.payment.vnpay.expire-minutes:15}") int expireMinutes,
             LibraryHoursService libraryHoursService) {
         this.sessionRepository = sessionRepository;
@@ -76,24 +83,35 @@ public class OnlinePaymentService {
         requireConfigured();
         String purpose = request.getPurpose().trim().toUpperCase(Locale.ROOT);
         if (!List.of("DEBT", "DEPOSIT").contains(purpose)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mục đích thanh toán phải là DEBT hoặc DEPOSIT");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Mục đích thanh toán phải là DEBT hoặc DEPOSIT");
         }
         BigDecimal amount = request.getAmount().setScale(0, RoundingMode.UNNECESSARY);
         if ("DEBT".equals(purpose)) {
-            WalletEntity wallet = walletRepository.findByUserId(userId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đọc chưa có công nợ"));
+            WalletEntity wallet =
+                    walletRepository
+                            .findByUserId(userId)
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.CONFLICT,
+                                                    "Bạn đọc chưa có công nợ"));
             BigDecimal debt = zero(wallet.getTotalDebt());
             if (debt.signum() <= 0) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn hiện không còn công nợ cần thanh toán");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Bạn hiện không còn công nợ cần thanh toán");
             }
             if (amount.compareTo(debt) > 0) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Số tiền thanh toán vượt quá công nợ hiện tại");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Số tiền thanh toán vượt quá công nợ hiện tại");
             }
         }
 
         LocalDateTime now = LocalDateTime.now(VNPAY_ZONE);
-        String reference = "UL" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                + UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
+        String reference =
+                "UL"
+                        + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                        + UUID.randomUUID().toString().substring(0, 6).toUpperCase(Locale.ROOT);
         OnlinePaymentSessionEntity session = new OnlinePaymentSessionEntity();
         session.setReference(reference);
         session.setUserId(userId);
@@ -108,10 +126,15 @@ public class OnlinePaymentService {
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
         params.put("vnp_TmnCode", tmnCode);
-        params.put("vnp_Amount", amount.multiply(BigDecimal.valueOf(100)).toBigIntegerExact().toString());
+        params.put(
+                "vnp_Amount",
+                amount.multiply(BigDecimal.valueOf(100)).toBigIntegerExact().toString());
         params.put("vnp_CurrCode", "VND");
         params.put("vnp_TxnRef", reference);
-        params.put("vnp_OrderInfo", ("DEBT".equals(purpose) ? "Thanh toan cong no " : "Nap tien the chan ") + reference);
+        params.put(
+                "vnp_OrderInfo",
+                ("DEBT".equals(purpose) ? "Thanh toan cong no " : "Nap tien the chan ")
+                        + reference);
         params.put("vnp_OrderType", "other");
         params.put("vnp_Locale", "vn");
         params.put("vnp_ReturnUrl", returnUrl);
@@ -119,15 +142,25 @@ public class OnlinePaymentService {
         params.put("vnp_CreateDate", now.format(VNPAY_TIME));
         params.put("vnp_ExpireDate", session.getExpiresAt().format(VNPAY_TIME));
         String query = queryString(params);
-        String gatewayUrl = paymentUrl + (paymentUrl.contains("?") ? "&" : "?")
-                + query + "&vnp_SecureHash=" + hmacSha512(hashSecret, query);
+        String gatewayUrl =
+                paymentUrl
+                        + (paymentUrl.contains("?") ? "&" : "?")
+                        + query
+                        + "&vnp_SecureHash="
+                        + hmacSha512(hashSecret, query);
         return toDto(session, gatewayUrl);
     }
 
     @Transactional(readOnly = true)
     public OnlinePaymentSessionDTO get(UUID userId, String reference) {
-        OnlinePaymentSessionEntity session = sessionRepository.findByReferenceAndUserId(reference, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên thanh toán"));
+        OnlinePaymentSessionEntity session =
+                sessionRepository
+                        .findByReferenceAndUserId(reference, userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiên thanh toán"));
         return toDto(session, null);
     }
 
@@ -135,36 +168,50 @@ public class OnlinePaymentService {
     public OnlinePaymentSessionDTO processCallback(Map<String, String> callbackParams) {
         requireConfigured();
         if (!isValidSignature(callbackParams)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chữ ký phản hồi VNPAY không hợp lệ");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Chữ ký phản hồi VNPAY không hợp lệ");
         }
         String reference = callbackParams.get("vnp_TxnRef");
-        OnlinePaymentSessionEntity session = sessionRepository.findByReferenceForUpdate(reference)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên thanh toán"));
+        OnlinePaymentSessionEntity session =
+                sessionRepository
+                        .findByReferenceForUpdate(reference)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiên thanh toán"));
         if (!"VNPAY".equals(session.getProvider())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phiên thanh toán không thuộc VNPAY");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Phiên thanh toán không thuộc VNPAY");
         }
         if (!tmnCode.equals(callbackParams.get("vnp_TmnCode"))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã website thanh toán không hợp lệ");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Mã website thanh toán không hợp lệ");
         }
         BigDecimal callbackAmount;
         try {
-            callbackAmount = new BigDecimal(callbackParams.getOrDefault("vnp_Amount", "0"))
-                    .divide(BigDecimal.valueOf(100), 0, RoundingMode.UNNECESSARY);
+            callbackAmount =
+                    new BigDecimal(callbackParams.getOrDefault("vnp_Amount", "0"))
+                            .divide(BigDecimal.valueOf(100), 0, RoundingMode.UNNECESSARY);
         } catch (ArithmeticException | NumberFormatException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền phản hồi không hợp lệ");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Số tiền phản hồi không hợp lệ");
         }
         if (callbackAmount.compareTo(session.getAmount()) != 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền phản hồi không khớp phiên thanh toán");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Số tiền phản hồi không khớp phiên thanh toán");
         }
         if ("COMPLETED".equals(session.getStatus())) {
             return toDto(session, null);
         }
         if (!"PENDING".equals(session.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phiên thanh toán không còn hiệu lực");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Phiên thanh toán không còn hiệu lực");
         }
 
         String responseCode = callbackParams.getOrDefault("vnp_ResponseCode", "99");
-        String transactionStatus = callbackParams.getOrDefault("vnp_TransactionStatus", responseCode);
+        String transactionStatus =
+                callbackParams.getOrDefault("vnp_TransactionStatus", responseCode);
         session.setResponseCode(responseCode);
         session.setGatewayTransactionNo(callbackParams.get("vnp_TransactionNo"));
         if (!"00".equals(responseCode) || !"00".equals(transactionStatus)) {
@@ -182,8 +229,9 @@ public class OnlinePaymentService {
             payment.setNote("Thanh toán công nợ trực tuyến qua VNPAY - " + session.getReference());
             receipt = debtLedgerService.recordPayment(payment, session.getUserId());
         } else {
-            receipt = debtLedgerService.recordDepositTopUp(
-                    session.getUserId(), session.getAmount(), session.getReference());
+            receipt =
+                    debtLedgerService.recordDepositTopUp(
+                            session.getUserId(), session.getAmount(), session.getReference());
         }
         session.setPaymentTransactionId(receipt.getPaymentTransactionId());
         session.setStatus("COMPLETED");
@@ -193,9 +241,12 @@ public class OnlinePaymentService {
 
     public String frontendRedirect(OnlinePaymentSessionDTO session) {
         String separator = frontendResultUrl.contains("?") ? "&" : "?";
-        return frontendResultUrl + separator + "payment="
+        return frontendResultUrl
+                + separator
+                + "payment="
                 + ("COMPLETED".equals(session.getStatus()) ? "success" : "failed")
-                + "&reference=" + encode(session.getReference());
+                + "&reference="
+                + encode(session.getReference());
     }
 
     boolean isValidSignature(Map<String, String> params) {
@@ -204,12 +255,16 @@ public class OnlinePaymentService {
             return false;
         }
         SortedMap<String, String> signed = new TreeMap<>();
-        params.forEach((key, value) -> {
-            if (key.startsWith("vnp_") && !"vnp_SecureHash".equals(key)
-                    && !"vnp_SecureHashType".equals(key) && value != null && !value.isBlank()) {
-                signed.put(key, value);
-            }
-        });
+        params.forEach(
+                (key, value) -> {
+                    if (key.startsWith("vnp_")
+                            && !"vnp_SecureHash".equals(key)
+                            && !"vnp_SecureHashType".equals(key)
+                            && value != null
+                            && !value.isBlank()) {
+                        signed.put(key, value);
+                    }
+                });
         String expected = hmacSha512(hashSecret, queryString(signed));
         return MessageDigest.isEqual(
                 expected.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8),

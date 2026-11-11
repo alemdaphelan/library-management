@@ -55,9 +55,14 @@ class OnlinePaymentServiceTest {
         request.setPurpose("DEPOSIT");
         request.setAmount(new BigDecimal("50000"));
 
-        assertThatThrownBy(() -> service(
-                mock(OnlinePaymentSessionRepository.class), mock(WalletRepository.class),
-                mock(DebtLedgerService.class), false).create(UUID.randomUUID(), request, "127.0.0.1"))
+        assertThatThrownBy(
+                        () ->
+                                service(
+                                                mock(OnlinePaymentSessionRepository.class),
+                                                mock(WalletRepository.class),
+                                                mock(DebtLedgerService.class),
+                                                false)
+                                        .create(UUID.randomUUID(), request, "127.0.0.1"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("chưa được cấu hình");
     }
@@ -89,7 +94,8 @@ class OnlinePaymentServiceTest {
         params.put("vnp_TransactionNo", "VNP123");
         params.put("vnp_SecureHash", hmac(query(params)));
 
-        OnlinePaymentSessionDTO result = service(sessions, wallets, ledger, true).processCallback(params);
+        OnlinePaymentSessionDTO result =
+                service(sessions, wallets, ledger, true).processCallback(params);
 
         assertThat(result.getStatus()).isEqualTo("COMPLETED");
         assertThat(result.getPaymentTransactionId()).isEqualTo(901L);
@@ -106,8 +112,10 @@ class OnlinePaymentServiceTest {
         params.put("vnp_Amount", "5000000");
         params.put("vnp_SecureHash", "invalid-signature");
 
-        assertThatThrownBy(() -> service(
-                sessions, mock(WalletRepository.class), ledger, true).processCallback(params))
+        assertThatThrownBy(
+                        () ->
+                                service(sessions, mock(WalletRepository.class), ledger, true)
+                                        .processCallback(params))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Chữ ký phản hồi VNPAY không hợp lệ");
         verifyNoInteractions(sessions, ledger);
@@ -135,8 +143,9 @@ class OnlinePaymentServiceTest {
         params.put("vnp_TransactionStatus", "00");
         params.put("vnp_SecureHash", hmac(query(params)));
 
-        OnlinePaymentSessionDTO result = service(
-                sessions, mock(WalletRepository.class), ledger, true).processCallback(params);
+        OnlinePaymentSessionDTO result =
+                service(sessions, mock(WalletRepository.class), ledger, true)
+                        .processCallback(params);
 
         assertThat(result.getStatus()).isEqualTo("COMPLETED");
         assertThat(result.getPaymentTransactionId()).isEqualTo(902L);
@@ -150,11 +159,16 @@ class OnlinePaymentServiceTest {
             DebtLedgerService ledger,
             boolean enabled) {
         return new OnlinePaymentService(
-                sessions, wallets, ledger, enabled,
+                sessions,
+                wallets,
+                ledger,
+                enabled,
                 "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
-                "TESTCODE", SECRET,
+                "TESTCODE",
+                SECRET,
                 "http://localhost:8080/api/v1/online-payments/vnpay-return",
-                "http://localhost:4200/my-penalties", 15,
+                "http://localhost:4200/my-penalties",
+                15,
                 mock(com.huit.library.modules.circulation.service.LibraryHoursService.class));
     }
 
@@ -162,13 +176,19 @@ class OnlinePaymentServiceTest {
     void signedVnpayCallbackCannotCompleteAMockSession() throws Exception {
         var sessions = mock(OnlinePaymentSessionRepository.class);
         var ledger = mock(DebtLedgerService.class);
-        var session = new OnlinePaymentSessionEntity(); session.setProvider("MOCK");
+        var session = new OnlinePaymentSessionEntity();
+        session.setProvider("MOCK");
         when(sessions.findByReferenceForUpdate("MOCK-TEST")).thenReturn(Optional.of(session));
         SortedMap<String, String> params = new TreeMap<>();
-        params.put("vnp_TxnRef", "MOCK-TEST"); params.put("vnp_TmnCode", "TESTCODE");
-        params.put("vnp_Amount", "5000000"); params.put("vnp_ResponseCode", "00");
+        params.put("vnp_TxnRef", "MOCK-TEST");
+        params.put("vnp_TmnCode", "TESTCODE");
+        params.put("vnp_Amount", "5000000");
+        params.put("vnp_ResponseCode", "00");
         params.put("vnp_SecureHash", hmac(query(params)));
-        assertThatThrownBy(() -> service(sessions, mock(WalletRepository.class), ledger, true).processCallback(params))
+        assertThatThrownBy(
+                        () ->
+                                service(sessions, mock(WalletRepository.class), ledger, true)
+                                        .processCallback(params))
                 .hasMessageContaining("không thuộc VNPAY");
         verifyNoInteractions(ledger);
     }
@@ -177,7 +197,8 @@ class OnlinePaymentServiceTest {
         return params.entrySet().stream()
                 .filter(entry -> !"vnp_SecureHash".equals(entry.getKey()))
                 .map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue()))
-                .reduce((left, right) -> left + "&" + right).orElse("");
+                .reduce((left, right) -> left + "&" + right)
+                .orElse("");
     }
 
     private String hmac(String value) throws Exception {

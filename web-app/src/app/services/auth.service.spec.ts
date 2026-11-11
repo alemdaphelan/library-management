@@ -58,7 +58,7 @@ describe('AuthService session handling', () => {
     expect(localStorage.getItem('huit_lib_token')).toBeNull();
     expect(localStorage.getItem('huit_lib_role')).toBeNull();
     expect(navigate).toHaveBeenCalledWith(['/login'], { replaceUrl: true });
-    const request = http.expectOne(req => req.url.endsWith('/api/v1/auth/logout'));
+    const request = http.expectOne((req) => req.url.endsWith('/api/v1/auth/logout'));
     expect(request.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
     expect(request.request.body).toEqual({ refreshToken: 'refresh-1' });
     request.flush('ok');

@@ -41,19 +41,28 @@ class InventoryAuditServiceTest {
         detailRepository = mock(InventoryDetailRepository.class);
         copyRepository = mock(BookCopyRepository.class);
         bookRepository = mock(BookRepository.class);
-        service = new InventoryAuditService(auditRepository, detailRepository, copyRepository, bookRepository,
-                mock(com.huit.library.modules.catalog.repository.ShelfRepository.class));
+        service =
+                new InventoryAuditService(
+                        auditRepository,
+                        detailRepository,
+                        copyRepository,
+                        bookRepository,
+                        mock(com.huit.library.modules.catalog.repository.ShelfRepository.class));
 
-        when(auditRepository.save(any())).thenAnswer(invocation -> {
-            InventoryAuditEntity audit = invocation.getArgument(0);
-            if (audit.getAuditId() == null) audit.setAuditId(9L);
-            return audit;
-        });
-        when(detailRepository.save(any())).thenAnswer(invocation -> {
-            InventoryDetailEntity detail = invocation.getArgument(0);
-            detail.setDetailId("detail-1");
-            return detail;
-        });
+        when(auditRepository.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            InventoryAuditEntity audit = invocation.getArgument(0);
+                            if (audit.getAuditId() == null) audit.setAuditId(9L);
+                            return audit;
+                        });
+        when(detailRepository.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            InventoryDetailEntity detail = invocation.getArgument(0);
+                            detail.setDetailId("detail-1");
+                            return detail;
+                        });
     }
 
     @Test

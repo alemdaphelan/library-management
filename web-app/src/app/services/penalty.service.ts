@@ -130,35 +130,62 @@ export class PenaltyService {
     return this.http.get<DebtEntry[]>(`${this.transactionUrl}/my-ledger`);
   }
 
-  createOnlinePayment(amount: number, purpose: 'DEBT' | 'DEPOSIT'): Observable<OnlinePaymentSession> {
-    return this.http.post<OnlinePaymentSession>(`${this.onlinePaymentUrl}/sessions`, { amount, purpose });
+  createOnlinePayment(
+    amount: number,
+    purpose: 'DEBT' | 'DEPOSIT',
+  ): Observable<OnlinePaymentSession> {
+    return this.http.post<OnlinePaymentSession>(`${this.onlinePaymentUrl}/sessions`, {
+      amount,
+      purpose,
+    });
   }
 
   getOnlinePayment(reference: string): Observable<OnlinePaymentSession> {
-    return this.http.get<OnlinePaymentSession>(`${this.onlinePaymentUrl}/sessions/${encodeURIComponent(reference)}`);
+    return this.http.get<OnlinePaymentSession>(
+      `${this.onlinePaymentUrl}/sessions/${encodeURIComponent(reference)}`,
+    );
   }
 
   getPaymentCapabilities(): Observable<{ mockEnabled: boolean }> {
     return this.http.get<{ mockEnabled: boolean }>(`${this.onlinePaymentUrl}/capabilities`);
   }
 
-  createMockPayment(payload: { amount: number; purpose: 'DEBT' | 'DEPOSIT'; idempotencyKey: string }): Observable<OnlinePaymentSession> {
-    return this.http.post<OnlinePaymentSession>(`${environment.apiUrl}/api/v1/mock-payments/sessions`, payload);
+  createMockPayment(payload: {
+    amount: number;
+    purpose: 'DEBT' | 'DEPOSIT';
+    idempotencyKey: string;
+  }): Observable<OnlinePaymentSession> {
+    return this.http.post<OnlinePaymentSession>(
+      `${environment.apiUrl}/api/v1/mock-payments/sessions`,
+      payload,
+    );
   }
 
   getMockPayment(reference: string): Observable<OnlinePaymentSession> {
-    return this.http.get<OnlinePaymentSession>(`${environment.apiUrl}/api/v1/mock-payments/sessions/${encodeURIComponent(reference)}`);
+    return this.http.get<OnlinePaymentSession>(
+      `${environment.apiUrl}/api/v1/mock-payments/sessions/${encodeURIComponent(reference)}`,
+    );
   }
 
-  finishMockPayment(reference: string, outcome: 'SUCCESS' | 'CANCEL' | 'FAIL'): Observable<OnlinePaymentSession> {
-    return this.http.post<OnlinePaymentSession>(`${environment.apiUrl}/api/v1/mock-payments/sessions/${encodeURIComponent(reference)}/finish`, { outcome });
+  finishMockPayment(
+    reference: string,
+    outcome: 'SUCCESS' | 'CANCEL' | 'FAIL',
+  ): Observable<OnlinePaymentSession> {
+    return this.http.post<OnlinePaymentSession>(
+      `${environment.apiUrl}/api/v1/mock-payments/sessions/${encodeURIComponent(reference)}/finish`,
+      { outcome },
+    );
   }
 
   createCase(payload: PenaltyCaseRequest): Observable<PenaltyCase> {
     return this.http.post<PenaltyCase>(this.penaltyUrl, payload);
   }
 
-  acceptReplacement(caseId: number, replacementBarcode: string, verificationNote: string): Observable<PenaltyCase> {
+  acceptReplacement(
+    caseId: number,
+    replacementBarcode: string,
+    verificationNote: string,
+  ): Observable<PenaltyCase> {
     return this.http.patch<PenaltyCase>(`${this.penaltyUrl}/${caseId}/replacement-acceptance`, {
       replacementBarcode,
       verificationNote,
@@ -193,7 +220,14 @@ export class PenaltyService {
     return this.http.get<any[]>(`${this.transactionUrl}/adjustments`);
   }
 
-  reviewAdjustment(adjustmentId: number, action: 'APPROVE' | 'REJECT', note?: string): Observable<object> {
-    return this.http.patch<object>(`${this.transactionUrl}/adjustments/${adjustmentId}`, { action, note });
+  reviewAdjustment(
+    adjustmentId: number,
+    action: 'APPROVE' | 'REJECT',
+    note?: string,
+  ): Observable<object> {
+    return this.http.patch<object>(`${this.transactionUrl}/adjustments/${adjustmentId}`, {
+      action,
+      note,
+    });
   }
 }

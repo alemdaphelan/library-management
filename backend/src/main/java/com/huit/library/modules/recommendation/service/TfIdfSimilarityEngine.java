@@ -15,19 +15,17 @@ import java.util.Set;
 
 @Component
 public class TfIdfSimilarityEngine {
-    private static final Set<String> STOP_WORDS = Set.of(
-            "a", "an", "and", "the", "of", "for", "to", "in", "on", "with",
-            "va", "voi", "cua", "cho", "trong", "mot", "nhung", "cac", "ve"
-    );
+    private static final Set<String> STOP_WORDS =
+            Set.of(
+                    "a", "an", "and", "the", "of", "for", "to", "in", "on", "with", "va", "voi",
+                    "cua", "cho", "trong", "mot", "nhung", "cac", "ve");
 
     public Map<Long, Double> score(
             BookEntity source,
             List<BookEntity> candidates,
             Map<Long, List<String>> subjectTermsByBookId) {
         return scoreProfile(
-                List.of(new WeightedBook(source, 1.0)),
-                candidates,
-                subjectTermsByBookId);
+                List.of(new WeightedBook(source, 1.0)), candidates, subjectTermsByBookId);
     }
 
     public Map<Long, Double> scoreProfile(
@@ -44,9 +42,10 @@ public class TfIdfSimilarityEngine {
         Map<Long, Map<String, Double>> termFrequencies = new HashMap<>();
         Map<String, Integer> documentFrequencies = new HashMap<>();
         for (BookEntity document : documents) {
-            Map<String, Double> terms = weightedTerms(
-                    document,
-                    subjectTermsByBookId.getOrDefault(document.getBookId(), List.of()));
+            Map<String, Double> terms =
+                    weightedTerms(
+                            document,
+                            subjectTermsByBookId.getOrDefault(document.getBookId(), List.of()));
             termFrequencies.put(document.getBookId(), terms);
             for (String term : terms.keySet()) {
                 documentFrequencies.merge(term, 1, Integer::sum);
@@ -54,19 +53,20 @@ public class TfIdfSimilarityEngine {
         }
 
         Map<String, Double> profileVector = new HashMap<>();
-        double totalProfileWeight = profileBooks.stream()
-                .mapToDouble(profile -> Math.max(profile.weight(), 0.0))
-                .sum();
+        double totalProfileWeight =
+                profileBooks.stream().mapToDouble(profile -> Math.max(profile.weight(), 0.0)).sum();
         if (totalProfileWeight == 0) {
             return Map.of();
         }
         for (WeightedBook profileBook : profileBooks) {
             double weight = Math.max(profileBook.weight(), 0.0) / totalProfileWeight;
-            Map<String, Double> bookVector = tfIdf(
-                    termFrequencies.getOrDefault(profileBook.book().getBookId(), Map.of()),
-                    documentFrequencies,
-                    documents.size());
-            bookVector.forEach((term, value) -> profileVector.merge(term, value * weight, Double::sum));
+            Map<String, Double> bookVector =
+                    tfIdf(
+                            termFrequencies.getOrDefault(profileBook.book().getBookId(), Map.of()),
+                            documentFrequencies,
+                            documents.size());
+            bookVector.forEach(
+                    (term, value) -> profileVector.merge(term, value * weight, Double::sum));
         }
 
         double profileNorm = norm(profileVector.values());
@@ -76,17 +76,23 @@ public class TfIdfSimilarityEngine {
         }
 
         for (BookEntity candidate : candidates) {
-            Map<String, Double> candidateVector = tfIdf(
-                    termFrequencies.getOrDefault(candidate.getBookId(), Map.of()),
-                    documentFrequencies,
-                    documents.size());
+            Map<String, Double> candidateVector =
+                    tfIdf(
+                            termFrequencies.getOrDefault(candidate.getBookId(), Map.of()),
+                            documentFrequencies,
+                            documents.size());
             double denominator = profileNorm * norm(candidateVector.values());
             if (denominator == 0) {
                 continue;
             }
-            double dotProduct = profileVector.entrySet().stream()
-                    .mapToDouble(entry -> entry.getValue() * candidateVector.getOrDefault(entry.getKey(), 0.0))
-                    .sum();
+            double dotProduct =
+                    profileVector.entrySet().stream()
+                            .mapToDouble(
+                                    entry ->
+                                            entry.getValue()
+                                                    * candidateVector.getOrDefault(
+                                                            entry.getKey(), 0.0))
+                            .sum();
             double similarity = dotProduct / denominator;
             if (similarity > 0) {
                 scores.put(candidate.getBookId(), similarity);
@@ -95,8 +101,7 @@ public class TfIdfSimilarityEngine {
         return scores;
     }
 
-    public record WeightedBook(BookEntity book, double weight) {
-    }
+    public record WeightedBook(BookEntity book, double weight) {}
 
     private Map<String, Double> weightedTerms(BookEntity book, List<String> subjects) {
         Map<String, Double> terms = new HashMap<>();
@@ -124,11 +129,14 @@ public class TfIdfSimilarityEngine {
         if (value == null || value.isBlank()) {
             return List.of();
         }
-        String normalized = Normalizer.normalize(value.toLowerCase(Locale.ROOT).replace("c++", "cpp"), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "")
-                .replace('đ', 'd')
-                .replaceAll("[^a-z0-9]+", " ")
-                .trim();
+        String normalized =
+                Normalizer.normalize(
+                                value.toLowerCase(Locale.ROOT).replace("c++", "cpp"),
+                                Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}+", "")
+                        .replace('đ', 'd')
+                        .replaceAll("[^a-z0-9]+", " ")
+                        .trim();
         if (normalized.isEmpty()) {
             return List.of();
         }
@@ -146,11 +154,17 @@ public class TfIdfSimilarityEngine {
             Map<String, Integer> documentFrequency,
             int documentCount) {
         Map<String, Double> vector = new HashMap<>();
-        termFrequency.forEach((term, frequency) -> {
-            double tf = 1.0 + Math.log(frequency);
-            double idf = Math.log((documentCount + 1.0) / (documentFrequency.getOrDefault(term, 0) + 1.0)) + 1.0;
-            vector.put(term, tf * idf);
-        });
+        termFrequency.forEach(
+                (term, frequency) -> {
+                    double tf = 1.0 + Math.log(frequency);
+                    double idf =
+                            Math.log(
+                                            (documentCount + 1.0)
+                                                    / (documentFrequency.getOrDefault(term, 0)
+                                                            + 1.0))
+                                    + 1.0;
+                    vector.put(term, tf * idf);
+                });
         return vector;
     }
 

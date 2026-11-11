@@ -5,7 +5,13 @@ from datetime import datetime
 import math
 import unittest
 
-from benchmark_recommendations import DEFAULT, benchmark, metrics, phase, temporal_cutoffs
+from benchmark_recommendations import (
+    DEFAULT,
+    benchmark,
+    metrics,
+    phase,
+    temporal_cutoffs,
+)
 
 
 def at(day):
@@ -14,20 +20,30 @@ def at(day):
 
 class RecommendationBenchmarkTest(unittest.TestCase):
     def test_split_keeps_simultaneous_checkouts_in_one_period(self):
-        events = [("u", book, at(day), "CHECKOUT") for book, day in enumerate((1, 1, 2, 3))]
+        events = [
+            ("u", book, at(day), "CHECKOUT") for book, day in enumerate((1, 1, 2, 3))
+        ]
         self.assertEqual(temporal_cutoffs(events), (at(2), at(3)))
         self.assertIsNone(temporal_cutoffs(events[:3]))
 
     def test_future_checkouts_do_not_enter_scores_or_inject_candidates(self):
-        rows = defaultdict(list, book=[
-            [1, "Already read", "", "", "A", 2020, at(1).isoformat()],
-            [2, "Future favorite", "", "", "B", 2020, at(1).isoformat()],
-            [3, "Future catalog entry", "", "", "B", 2020, at(4).isoformat()],
-            [4, "Popular", "", "", "B", 2025, at(1).isoformat()],
-        ])
-        events = [("u", 1, at(1), "CHECKOUT"), ("another", 4, at(1), "CHECKOUT"),
-                  ("u", 1, at(3), "CHECKOUT"), ("u", 2, at(3), "CHECKOUT"),
-                  ("u", 3, at(4), "CHECKOUT"), ("someone", 2, at(5), "CHECKOUT")]
+        rows = defaultdict(
+            list,
+            book=[
+                [1, "Already read", "", "", "A", 2020, at(1).isoformat()],
+                [2, "Future favorite", "", "", "B", 2020, at(1).isoformat()],
+                [3, "Future catalog entry", "", "", "B", 2020, at(4).isoformat()],
+                [4, "Popular", "", "", "B", 2025, at(1).isoformat()],
+            ],
+        )
+        events = [
+            ("u", 1, at(1), "CHECKOUT"),
+            ("another", 4, at(1), "CHECKOUT"),
+            ("u", 1, at(3), "CHECKOUT"),
+            ("u", 2, at(3), "CHECKOUT"),
+            ("u", 3, at(4), "CHECKOUT"),
+            ("someone", 2, at(5), "CHECKOUT"),
+        ]
         cases, stats = phase(rows, events, at(3), None, 1)
         _, relevant, scores, _ = cases[0]
         self.assertEqual(relevant, {2})
@@ -61,17 +77,30 @@ class RecommendationBenchmarkTest(unittest.TestCase):
 
     def test_weight_selection_uses_validation_and_is_independent_of_test_targets(self):
         creation = at(1).isoformat()
-        titles = ("apple pear", "volcano handbook", "ocean guide", "apple pear",
-                  "mountain trails", "city roads")
-        rows = defaultdict(list, book=[
-            [index, title, "", "", None, 2020, creation]
-            for index, title in enumerate(titles, 1)
-        ], reader=[["u", "Địa lý", creation]],
+        titles = (
+            "apple pear",
+            "volcano handbook",
+            "ocean guide",
+            "apple pear",
+            "mountain trails",
+            "city roads",
+        )
+        rows = defaultdict(
+            list,
+            book=[
+                [index, title, "", "", None, 2020, creation]
+                for index, title in enumerate(titles, 1)
+            ],
+            reader=[["u", "Địa lý", creation]],
             subject=[[2, 1, "geology", 1.0, creation]],
             affinity=[["dia ly", 1, 1.0, creation]],
-            loan=[["u", 1, creation, "CHECKOUT"], ["v", 3, creation, "CHECKOUT"],
-                  ["u", 2, at(2).isoformat(), "CHECKOUT"],
-                  ["u", 5, at(3).isoformat(), "CHECKOUT"]])
+            loan=[
+                ["u", 1, creation, "CHECKOUT"],
+                ["v", 3, creation, "CHECKOUT"],
+                ["u", 2, at(2).isoformat(), "CHECKOUT"],
+                ["u", 5, at(3).isoformat(), "CHECKOUT"],
+            ],
+        )
         first = benchmark(rows, (at(2), at(3)), 1, 10)
         self.assertEqual(first["status"], "evaluated")
         self.assertNotEqual(first["weights"]["HYBRID_TUNED"], DEFAULT)

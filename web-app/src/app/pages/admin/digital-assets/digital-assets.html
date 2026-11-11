@@ -11,8 +11,14 @@
 
   <div class="upload-options">
     <label>Sách liên kết theo ISBN (không bắt buộc)
-      <input type="text" [(ngModel)]="uploadBookIsbn" (ngModelChange)="onUploadIsbnChange()"
-             (blur)="resolveBook()" (keyup.enter)="resolveBook()" placeholder="Nhập hoặc quét ISBN trên sách">
+      <input
+        type="text"
+        [(ngModel)]="uploadBookIsbn"
+        (ngModelChange)="onUploadIsbnChange()"
+        (blur)="resolveBook()"
+        (keyup.enter)="resolveBook()"
+        placeholder="Nhập hoặc quét ISBN trên sách"
+      />
       <small *ngIf="isResolvingBook">Đang tra cứu sách…</small>
       <small class="message success" *ngIf="linkedBookLabel">Đã chọn: {{ linkedBookLabel }}</small>
     </label>
@@ -25,42 +31,84 @@
   </div>
 
   <div class="upload-zone" [class.drag-active]="isDragging" (click)="fileInput.click()">
-    <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept=".pdf,.epub,.pptx,.mp3">
+    <input
+      type="file"
+      #fileInput
+      (change)="onFileSelected($event)"
+      hidden
+      accept=".pdf,.epub,.pptx,.mp3"
+    />
     <div class="upload-content" *ngIf="!isUploading">
       <div class="upload-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
       </div>
       <h3 class="upload-title">Kéo thả tệp vào đây để tải lên</h3>
       <p class="upload-hint">PDF, EPUB, MP3 hoặc PPTX · tối đa 50 MB.</p>
     </div>
     <div class="upload-progress-container" *ngIf="isUploading" (click)="$event.stopPropagation()">
-      <div class="progress-bar"><div class="progress-fill" [style.width.%]="uploadProgress"></div></div>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="uploadProgress"></div>
+      </div>
       <p class="progress-text">Đang tải lên… {{ uploadProgress }}%</p>
     </div>
   </div>
 
   <div class="toolbar-section">
     <div class="search-wrap">
-      <svg class="icon-search" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="search" class="search-input" [(ngModel)]="searchTerm" placeholder="Tìm theo tên tài liệu hoặc sách…">
+      <svg
+        class="icon-search"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input
+        type="search"
+        class="search-input"
+        [(ngModel)]="searchTerm"
+        placeholder="Tìm theo tên tài liệu hoặc sách…"
+      />
     </div>
     <select class="filter-select" [(ngModel)]="typeFilter">
       <option value="">Tất cả định dạng</option>
-      <option value="PDF">PDF</option><option value="EPUB">EPUB</option>
-      <option value="MP3">Audio</option><option value="PPTX">PowerPoint</option>
+      <option value="PDF">PDF</option>
+      <option value="EPUB">EPUB</option>
+      <option value="MP3">Audio</option>
+      <option value="PPTX">PowerPoint</option>
     </select>
   </div>
 
   <div class="assets-grid" *ngIf="filteredAssets.length; else emptyAssets">
     <article class="asset-card" *ngFor="let asset of filteredAssets">
-      <div class="asset-thumb"><div class="file-extension">{{ asset.type }}</div></div>
+      <div class="asset-thumb">
+        <div class="file-extension">{{ asset.type }}</div>
+      </div>
       <div class="asset-info">
         <div class="asset-name" [title]="asset.name">{{ asset.name }}</div>
         <div class="asset-meta">{{ formatSize(asset.size) }} · {{ asset.createdAt | date:'dd/MM/yyyy HH:mm' }}</div>
         <div class="book-link" [class.unlinked]="!asset.bookId">
           {{ asset.bookId ? ('Đã liên kết: ' + (asset.bookTitle || 'sách trong danh mục')) : 'Chưa liên kết sách' }}
         </div>
-        <span class="access-badge">{{ asset.accessLevel === 'STAFF_ONLY' ? 'Chỉ nhân viên' : 'Bạn đọc đã đăng nhập' }}</span>
+        <span
+          class="access-badge"
+          >{{ asset.accessLevel === 'STAFF_ONLY' ? 'Chỉ nhân viên' : 'Bạn đọc đã đăng nhập' }}</span
+        >
       </div>
       <div class="asset-actions">
         <button class="btn-action" type="button" (click)="download(asset)">Tải xuống</button>
@@ -74,17 +122,36 @@
   <div class="modal-overlay" *ngIf="editingAsset" (click)="editingAsset = null">
     <form class="edit-dialog" (ngSubmit)="saveEdit()" (click)="$event.stopPropagation()">
       <h2>Chỉnh sửa tài liệu</h2>
-      <label>Tên hiển thị<input name="displayName" [(ngModel)]="editForm.displayName" maxlength="255" required></label>
+      <label>Tên hiển thị<input
+          name="displayName"
+          [(ngModel)]="editForm.displayName"
+          maxlength="255"
+          required
+      /></label>
       <label>Sách liên kết theo ISBN
-        <input name="bookIsbn" [(ngModel)]="editForm.bookIsbn" (ngModelChange)="onEditIsbnChange()"
-               (blur)="resolveEditBook()" (keyup.enter)="resolveEditBook()"
-               placeholder="Nhập hoặc quét ISBN để thay đổi liên kết">
+        <input
+          name="bookIsbn"
+          [(ngModel)]="editForm.bookIsbn"
+          (ngModelChange)="onEditIsbnChange()"
+          (blur)="resolveEditBook()"
+          (keyup.enter)="resolveEditBook()"
+          placeholder="Nhập hoặc quét ISBN để thay đổi liên kết"
+        />
         <small *ngIf="isResolvingEditBook">Đang tra cứu sách…</small>
         <small class="message success" *ngIf="editForm.bookLabel">{{ editForm.bookLabel }}</small>
-        <small *ngIf="editForm.bookId && !editForm.bookIsbn">Giữ nguyên sách đang liên kết nếu để trống.</small>
+        <small *ngIf="editForm.bookId && !editForm.bookIsbn"
+          >Giữ nguyên sách đang liên kết nếu để trống.</small
+        >
       </label>
-      <label>Quyền truy cập<select name="accessLevel" [(ngModel)]="editForm.accessLevel" required><option value="AUTHENTICATED">Bạn đọc đã đăng nhập</option><option value="STAFF_ONLY">Chỉ nhân viên thư viện</option></select></label>
-      <div class="dialog-actions"><button type="button" (click)="editingAsset = null">Hủy</button><button class="primary" type="submit">Lưu thay đổi</button></div>
+      <label>Quyền truy cập<select name="accessLevel" [(ngModel)]="editForm.accessLevel" required>
+          <option value="AUTHENTICATED">Bạn đọc đã đăng nhập</option>
+          <option value="STAFF_ONLY">Chỉ nhân viên thư viện</option>
+        </select></label
+      >
+      <div class="dialog-actions">
+        <button type="button" (click)="editingAsset = null">Hủy</button>
+        <button class="primary" type="submit">Lưu thay đổi</button>
+      </div>
     </form>
   </div>
 </div>

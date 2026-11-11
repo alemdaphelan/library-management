@@ -21,7 +21,8 @@ import java.util.Map;
 
 @Service
 public class FirebasePushNotificationService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(FirebasePushNotificationService.class);
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(FirebasePushNotificationService.class);
 
     private final ObjectProvider<FirebaseMessaging> messagingProvider;
     private final PushDeviceRegistrationRepository deviceRepository;
@@ -58,12 +59,14 @@ public class FirebasePushNotificationService {
                 data.put("referenceType", nullToEmpty(event.referenceType()));
                 data.put("referenceId", nullToEmpty(event.referenceId()));
 
-                Message.Builder builder = Message.builder()
-                        .setNotification(com.google.firebase.messaging.Notification.builder()
-                                .setTitle(titleFor(event.type()))
-                                .setBody(event.content())
-                                .build())
-                        .putAllData(data);
+                Message.Builder builder =
+                        Message.builder()
+                                .setNotification(
+                                        com.google.firebase.messaging.Notification.builder()
+                                                .setTitle(titleFor(event.type()))
+                                                .setBody(event.content())
+                                                .build())
+                                .putAllData(data);
                 if ("FID".equals(device.getIdentifierType())) builder.setFid(device.getToken());
                 else builder.setToken(device.getToken());
                 Message message = builder.build();
@@ -73,10 +76,12 @@ public class FirebasePushNotificationService {
                     device.setActive(false);
                     deviceRepository.save(device);
                 }
-                LOGGER.warn("Could not send Firebase notification to a registered device: {}",
+                LOGGER.warn(
+                        "Could not send Firebase notification to a registered device: {}",
                         exception.getMessage());
             } catch (RuntimeException exception) {
-                LOGGER.warn("Unexpected error sending Firebase notification to registered device: {}",
+                LOGGER.warn(
+                        "Unexpected error sending Firebase notification to registered device: {}",
                         exception.getMessage());
             }
         }
@@ -103,7 +108,8 @@ public class FirebasePushNotificationService {
             case "WAITLIST_READY", "WAITLIST_AVAILABLE" -> "Sách đặt giữ đã sẵn sàng";
             case "RESERVATION_EXPIRED" -> "Phiếu đặt giữ đã hết hạn";
             case "RESERVATION_NO_SHOW" -> "Cảnh báo không đến nhận tài liệu";
-            case "PENALTY", "FINE", "PENALTY_CASE_CREATED", "PENALTY_CASE_DUE" -> "Phát sinh khoản phí / đền bù";
+            case "PENALTY", "FINE", "PENALTY_CASE_CREATED", "PENALTY_CASE_DUE" ->
+                    "Phát sinh khoản phí / đền bù";
             case "WAIVER_DECISION" -> "Kết quả xét miễn giảm khoản phạt";
             case "ACCOUNT_LOCKED", "CIRCULATION_LOCKED" -> "Tài khoản bị khóa";
             case "ACCOUNT_UNLOCKED", "CIRCULATION_UNLOCKED" -> "Tài khoản đã mở lại";

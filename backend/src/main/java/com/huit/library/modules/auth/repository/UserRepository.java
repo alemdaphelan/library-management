@@ -14,14 +14,22 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     java.util.Optional<UserEntity> findByEmail(String email);
+
     java.util.Optional<UserEntity> findByMssv(String mssv);
+
     @Query("select user.userId from UserEntity user where user.mssv = :mssv")
     java.util.Optional<UUID> findUserIdByMssv(@Param("mssv") String mssv);
+
     java.util.Optional<UserEntity> findFirstByEmailOrMssv(String email, String mssv);
+
     java.util.List<UserEntity> findByUserTypeOrderByFullNameAsc(String userType);
+
     @Query("select user from UserEntity user where upper(user.roleId) in :roleIds")
-    java.util.List<UserEntity> findStaffByRoleIds(@Param("roleIds") java.util.Collection<String> roleIds);
+    java.util.List<UserEntity> findStaffByRoleIds(
+            @Param("roleIds") java.util.Collection<String> roleIds);
+
     boolean existsByEmailIgnoreCase(String email);
+
     boolean existsByMssvIgnoreCase(String mssv);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

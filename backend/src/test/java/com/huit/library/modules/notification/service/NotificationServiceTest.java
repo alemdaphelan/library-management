@@ -26,9 +26,15 @@ class NotificationServiceTest {
         when(repository.insertIfAbsent(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(1);
 
-        boolean created = service.createOnce(
-                userId, "DUE_SOON", "Sắp đến hạn", "LOAN", "12",
-                "due:12", LocalDateTime.now());
+        boolean created =
+                service.createOnce(
+                        userId,
+                        "DUE_SOON",
+                        "Sắp đến hạn",
+                        "LOAN",
+                        "12",
+                        "due:12",
+                        LocalDateTime.now());
 
         assertThat(created).isTrue();
         verify(publisher).publishEvent(any(PushNotificationEvent.class));
@@ -42,9 +48,15 @@ class NotificationServiceTest {
         when(repository.insertIfAbsent(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(0);
 
-        boolean created = service.createOnce(
-                UUID.randomUUID(), "DUE_SOON", "Sắp đến hạn", "LOAN", "12",
-                "due:12", LocalDateTime.now());
+        boolean created =
+                service.createOnce(
+                        UUID.randomUUID(),
+                        "DUE_SOON",
+                        "Sắp đến hạn",
+                        "LOAN",
+                        "12",
+                        "due:12",
+                        LocalDateTime.now());
 
         assertThat(created).isFalse();
         verify(publisher, never()).publishEvent(any());

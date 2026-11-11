@@ -27,14 +27,19 @@ public class NotificationDeliveryConfig implements AsyncConfigurer {
         executor.setAwaitTerminationSeconds(10);
         // Neither CallerRunsPolicy (blocking SMTP) nor AbortPolicy (HTTP error after commit)
         // is suitable here. The already-persisted in-app message remains available.
-        executor.setRejectedExecutionHandler((task, pool) ->
-                LOGGER.warn("External notification delivery queue unavailable; in-app notification is retained"));
+        executor.setRejectedExecutionHandler(
+                (task, pool) ->
+                        LOGGER.warn(
+                                "External notification delivery queue unavailable; in-app notification is retained"));
         return executor;
     }
 
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-        return (error, method, arguments) -> LOGGER.warn("External notification delivery failed in {}: {}",
-                method.getName(), error.getClass().getSimpleName());
+        return (error, method, arguments) ->
+                LOGGER.warn(
+                        "External notification delivery failed in {}: {}",
+                        method.getName(),
+                        error.getClass().getSimpleName());
     }
 }

@@ -28,7 +28,9 @@ class _SavedBooksScreenState extends State<SavedBooksScreen> {
   @override
   void initState() {
     super.initState();
-    WishlistService.wishlistRevision.addListener(_handleWishlistRevisionChanged);
+    WishlistService.wishlistRevision.addListener(
+      _handleWishlistRevisionChanged,
+    );
     _load();
   }
 
@@ -140,10 +142,7 @@ class _SavedBooksScreenState extends State<SavedBooksScreen> {
     try {
       final data = await ApiService.get('/books/$bookId');
       if (data is Map) {
-        detailPayload = {
-          ...detailPayload,
-          ...Map<String, dynamic>.from(data),
-        };
+        detailPayload = {...detailPayload, ...Map<String, dynamic>.from(data)};
       }
     } on ApiException catch (error) {
       if (error.statusCode == 404) {
@@ -165,9 +164,7 @@ class _SavedBooksScreenState extends State<SavedBooksScreen> {
     if (!mounted) return;
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailScreen(book: detailPayload),
-      ),
+      MaterialPageRoute(builder: (_) => DetailScreen(book: detailPayload)),
     );
     if (mounted) {
       await _load();

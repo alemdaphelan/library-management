@@ -38,22 +38,35 @@ class OrientationServiceTest {
         enrollmentRepository = mock(OrientationEnrollmentRepository.class);
         userRepository = mock(UserRepository.class);
         notificationService = mock(NotificationService.class);
-        service = new OrientationService(classRepository, enrollmentRepository, userRepository, notificationService);
+        service =
+                new OrientationService(
+                        classRepository, enrollmentRepository, userRepository, notificationService);
     }
 
     @Test
     void createsAClassWithThirtyStudentCapacityAndWeeklyCalendarData() {
         UUID actorId = UUID.randomUUID();
-        LocalDateTime start = LocalDateTime.now().plusDays(7).withHour(8).withMinute(0).withSecond(0).withNano(0);
-        when(classRepository.save(any())).thenAnswer(invocation -> {
-            OrientationClassEntity entity = invocation.getArgument(0);
-            entity.setClassId(11L);
-            return entity;
-        });
+        LocalDateTime start =
+                LocalDateTime.now().plusDays(7).withHour(8).withMinute(0).withSecond(0).withNano(0);
+        when(classRepository.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            OrientationClassEntity entity = invocation.getArgument(0);
+                            entity.setClassId(11L);
+                            return entity;
+                        });
         when(enrollmentRepository.findByClassIdOrderByEnrollmentIdAsc(11L)).thenReturn(List.of());
 
-        var result = service.create(new OrientationDtos.ClassRequest(
-                "Hướng dẫn sử dụng thư viện", "Phòng A1", start, start.plusHours(2), 30, null), actorId);
+        var result =
+                service.create(
+                        new OrientationDtos.ClassRequest(
+                                "Hướng dẫn sử dụng thư viện",
+                                "Phòng A1",
+                                start,
+                                start.plusHours(2),
+                                30,
+                                null),
+                        actorId);
 
         assertThat(result.classId()).isEqualTo(11L);
         assertThat(result.capacity()).isEqualTo(30);
@@ -72,18 +85,30 @@ class OrientationServiceTest {
         student.setFullName("Nguyễn Văn Sinh Viên");
         when(classRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(orientationClass));
         when(enrollmentRepository.countByClassId(1L)).thenReturn(0L);
-        when(enrollmentRepository.findByClassIdAndUserId(1L, studentId)).thenReturn(Optional.empty());
+        when(enrollmentRepository.findByClassIdAndUserId(1L, studentId))
+                .thenReturn(Optional.empty());
         when(enrollmentRepository.findByClassIdOrderByEnrollmentIdAsc(1L)).thenReturn(List.of());
-        when(enrollmentRepository.existsByUserIdAndAttendanceStatus(studentId, "ABSENT")).thenReturn(false);
+        when(enrollmentRepository.existsByUserIdAndAttendanceStatus(studentId, "ABSENT"))
+                .thenReturn(false);
         when(userRepository.findByIdForUpdate(studentId)).thenReturn(Optional.of(student));
 
         service.assign(1L, new OrientationDtos.AssignmentRequest(List.of(studentId), 0));
 
-        verify(enrollmentRepository).save(argThat(item -> studentId.equals(item.getUserId())
-                && "ASSIGNED".equals(item.getAttendanceStatus())));
-        verify(notificationService).createOnce(eq(studentId), eq("ORIENTATION_ASSIGNED"),
-                contains("HD-TEST"), eq("ORIENTATION_CLASS"), eq("1"),
-                eq("ORIENTATION_ASSIGNED:1:" + studentId), any(LocalDateTime.class));
+        verify(enrollmentRepository)
+                .save(
+                        argThat(
+                                item ->
+                                        studentId.equals(item.getUserId())
+                                                && "ASSIGNED".equals(item.getAttendanceStatus())));
+        verify(notificationService)
+                .createOnce(
+                        eq(studentId),
+                        eq("ORIENTATION_ASSIGNED"),
+                        contains("HD-TEST"),
+                        eq("ORIENTATION_CLASS"),
+                        eq("1"),
+                        eq("ORIENTATION_ASSIGNED:1:" + studentId),
+                        any(LocalDateTime.class));
     }
 
     @Test
@@ -94,11 +119,16 @@ class OrientationServiceTest {
         student.setUserType("STUDENT");
         student.setCardStatus("ACTIVE");
         when(classRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(scheduledClass()));
-        when(enrollmentRepository.findByClassIdAndUserId(1L, studentId)).thenReturn(Optional.empty());
+        when(enrollmentRepository.findByClassIdAndUserId(1L, studentId))
+                .thenReturn(Optional.empty());
         when(userRepository.findByIdForUpdate(studentId)).thenReturn(Optional.of(student));
 
-        assertThatThrownBy(() -> service.assign(1L,
-                new OrientationDtos.AssignmentRequest(List.of(studentId), 0)))
+        assertThatThrownBy(
+                        () ->
+                                service.assign(
+                                        1L,
+                                        new OrientationDtos.AssignmentRequest(
+                                                List.of(studentId), 0)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("chưa được cấp thẻ");
     }
@@ -110,7 +140,8 @@ class OrientationServiceTest {
         enrollment.setEnrollmentId(15L);
         enrollment.setClassId(1L);
         when(classRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(orientationClass));
-        when(enrollmentRepository.findByEnrollmentIdAndClassId(15L, 1L)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.findByEnrollmentIdAndClassId(15L, 1L))
+                .thenReturn(Optional.of(enrollment));
 
         service.unassign(1L, 15L);
 
@@ -147,8 +178,15 @@ class OrientationServiceTest {
         assertThat(student.getCardStatus()).isEqualTo("LOCKED");
         assertThat(student.getCardIssuedAt()).isEqualTo(issuedAt);
         assertThat(student.getCardExpiryDate()).isEqualTo(issuedAt.plusYears(1));
-        verify(notificationService).createOnce(eq(student.getUserId()), eq("ORIENTATION_CARD_ACTIVATED"),
-                contains("HD-TEST"), eq("ORIENTATION_CLASS"), eq("1"), anyString(), eq(issuedAt));
+        verify(notificationService)
+                .createOnce(
+                        eq(student.getUserId()),
+                        eq("ORIENTATION_CARD_ACTIVATED"),
+                        contains("HD-TEST"),
+                        eq("ORIENTATION_CLASS"),
+                        eq("1"),
+                        anyString(),
+                        eq(issuedAt));
     }
 
     @Test
@@ -162,7 +200,12 @@ class OrientationServiceTest {
 
         scheduled.setStartAt(LocalDateTime.now().minusHours(2));
         var item = attendance(student, "ATTENDED").items().get(0);
-        assertThatThrownBy(() -> service.markAttendance(1L, new OrientationDtos.AttendanceRequest(List.of(item, item)), actor))
+        assertThatThrownBy(
+                        () ->
+                                service.markAttendance(
+                                        1L,
+                                        new OrientationDtos.AttendanceRequest(List.of(item, item)),
+                                        actor))
                 .hasMessageContaining("chỉ xuất hiện một lần");
         service.markAttendance(1L, attendance(student, "EXCUSED"), actor);
         service.markAttendance(1L, attendance(student, "ABSENT"), actor);
@@ -174,10 +217,14 @@ class OrientationServiceTest {
     @Test
     void excelOnlyIssuesForAnExplicitPresenceMark() throws Exception {
         var student = enrolledStudentInStartedClass();
-        when(userRepository.findUserIdByMssv(student.getMssv())).thenReturn(Optional.of(student.getUserId()));
+        when(userRepository.findUserIdByMssv(student.getMssv()))
+                .thenReturn(Optional.of(student.getUserId()));
         UUID actor = UUID.randomUUID();
 
-        assertThatThrownBy(() -> service.importAttendance(1L, excel(student.getMssv(), "Không"), actor))
+        assertThatThrownBy(
+                        () ->
+                                service.importAttendance(
+                                        1L, excel(student.getMssv(), "Không"), actor))
                 .hasMessageContaining("đánh dấu x");
         assertThat(student.hasLibraryCard()).isFalse();
 
@@ -196,25 +243,30 @@ class OrientationServiceTest {
         var enrollment = new OrientationEnrollmentEntity();
         enrollment.setUserId(student.getUserId());
         enrollment.setAttendanceStatus("ASSIGNED");
-        when(enrollmentRepository.findByClassIdAndUserId(1L, student.getUserId())).thenReturn(Optional.of(enrollment));
-        when(enrollmentRepository.findByClassIdOrderByEnrollmentIdAsc(1L)).thenReturn(List.of(enrollment));
-        when(userRepository.findByIdForUpdate(student.getUserId())).thenReturn(Optional.of(student));
+        when(enrollmentRepository.findByClassIdAndUserId(1L, student.getUserId()))
+                .thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.findByClassIdOrderByEnrollmentIdAsc(1L))
+                .thenReturn(List.of(enrollment));
+        when(userRepository.findByIdForUpdate(student.getUserId()))
+                .thenReturn(Optional.of(student));
         when(userRepository.findById(student.getUserId())).thenReturn(Optional.of(student));
         return student;
     }
 
     private OrientationDtos.AttendanceRequest attendance(UserEntity student, String status) {
-        return new OrientationDtos.AttendanceRequest(List.of(
-                new OrientationDtos.AttendanceItem(student.getUserId(), status, null)));
+        return new OrientationDtos.AttendanceRequest(
+                List.of(new OrientationDtos.AttendanceItem(student.getUserId(), status, null)));
     }
 
     private MockMultipartFile excel(String mssv, String mark) throws Exception {
-        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+        try (var workbook = new XSSFWorkbook();
+                var output = new ByteArrayOutputStream()) {
             var row = workbook.createSheet().createRow(3);
             row.createCell(0).setCellValue(mssv);
             row.createCell(2).setCellValue(mark);
             workbook.write(output);
-            return new MockMultipartFile("file", "attendance.xlsx", "application/octet-stream", output.toByteArray());
+            return new MockMultipartFile(
+                    "file", "attendance.xlsx", "application/octet-stream", output.toByteArray());
         }
     }
 
@@ -224,7 +276,13 @@ class OrientationServiceTest {
         entity.setClassCode("HD-TEST");
         entity.setTitle("Hướng dẫn sử dụng thư viện");
         entity.setLocation("Phòng A1");
-        entity.setStartAt(LocalDateTime.now().plusDays(7).withHour(8).withMinute(0).withSecond(0).withNano(0));
+        entity.setStartAt(
+                LocalDateTime.now()
+                        .plusDays(7)
+                        .withHour(8)
+                        .withMinute(0)
+                        .withSecond(0)
+                        .withNano(0));
         entity.setEndAt(entity.getStartAt().plusHours(2));
         entity.setCapacity(30);
         entity.setStatus("SCHEDULED");

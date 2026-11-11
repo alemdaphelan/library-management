@@ -14,154 +14,219 @@
     <button (click)="view = 'audit'" [attr.aria-pressed]="view === 'audit'">Kiểm kê</button>
     <button (click)="showDisposals()" [attr.aria-pressed]="view === 'disposals'">Hồ sơ xử lý sách cũ</button>
   </div>
-  <app-disposal-workspace *ngIf="disposalsLoaded" [hidden]="view !== 'disposals'" [auditId]="disposalAuditId"></app-disposal-workspace>
+  <app-disposal-workspace
+    *ngIf="disposalsLoaded"
+    [hidden]="view !== 'disposals'"
+    [auditId]="disposalAuditId"
+  ></app-disposal-workspace>
   <div [hidden]="view !== 'audit'">
-  <div *ngIf="successMessage" class="message success">{{ successMessage }}</div>
-  <div *ngIf="errorMessage" class="message error">{{ errorMessage }}</div>
+    <div *ngIf="successMessage" class="message success">{{ successMessage }}</div>
+    <div *ngIf="errorMessage" class="message error">{{ errorMessage }}</div>
 
-  <div class="audit-layout">
-    <aside class="history-panel">
-      <div class="panel-title">
-        <h2>Lịch sử phiên</h2>
-        <span>{{ audits.length }}</span>
-      </div>
-      <div *ngIf="!audits.length && !isLoading" class="empty-state compact">
-        Chưa có phiên kiểm kê nào.
-      </div>
-      <button
-        *ngFor="let audit of audits"
-        class="audit-card"
-        [class.selected]="selectedAudit?.auditId === audit.auditId"
-        type="button"
-        (click)="selectAudit(audit)"
-      >
-        <div class="audit-card-head">
-          <strong>Phiên #{{ audit.auditId }}</strong>
-          <span class="session-status" [class.done]="audit.status === 'COMPLETED'">
-            {{ audit.status === 'IN_PROGRESS' ? 'Đang kiểm kê' : 'Đã hoàn tất' }}
-          </span>
+    <div class="audit-layout">
+      <aside class="history-panel">
+        <div class="panel-title">
+          <h2>Lịch sử phiên</h2>
+          <span>{{ audits.length }}</span>
         </div>
-        <small>{{ audit.createdAt | date:'dd/MM/yyyy HH:mm' }}</small>
-        <div class="audit-progress">
-          <span [style.width.%]="audit.totalSystemBooks ? (audit.totalActualBooks / audit.totalSystemBooks * 100) : 0"></span>
+        <div *ngIf="!audits.length && !isLoading" class="empty-state compact">
+          Chưa có phiên kiểm kê nào.
         </div>
-        <div class="audit-count">{{ audit.totalActualBooks }} / {{ audit.totalSystemBooks }} bản sao</div>
-      </button>
-    </aside>
+        <button
+          *ngFor="let audit of audits"
+          class="audit-card"
+          [class.selected]="selectedAudit?.auditId === audit.auditId"
+          type="button"
+          (click)="selectAudit(audit)"
+        >
+          <div class="audit-card-head">
+            <strong>Phiên #{{ audit.auditId }}</strong>
+            <span class="session-status" [class.done]="audit.status === 'COMPLETED'">
+              {{ audit.status === 'IN_PROGRESS' ? 'Đang kiểm kê' : 'Đã hoàn tất' }}
+            </span>
+          </div>
+          <small>{{ audit.createdAt | date:'dd/MM/yyyy HH:mm' }}</small>
+          <div class="audit-progress">
+            <span
+              [style.width.%]="audit.totalSystemBooks ? (audit.totalActualBooks / audit.totalSystemBooks * 100) : 0"
+            ></span>
+          </div>
+          <div class="audit-count">{{ audit.totalActualBooks }} / {{ audit.totalSystemBooks }} bản sao</div>
+        </button>
+      </aside>
 
-    <main class="workspace-panel">
-      <div *ngIf="isLoading" class="loading">Đang tải dữ liệu kiểm kê…</div>
+      <main class="workspace-panel">
+        <div *ngIf="isLoading" class="loading">Đang tải dữ liệu kiểm kê…</div>
 
-      <ng-container *ngIf="selectedAudit as audit; else noAudit">
-        <div class="summary-grid">
-          <article>
-            <span>Tổng trên hệ thống</span>
-            <strong>{{ audit.totalSystemBooks }}</strong>
-          </article>
-          <article class="found">
-            <span>Đã tìm thấy</span>
-            <strong>{{ audit.totalActualBooks }}</strong>
-          </article>
-          <article class="missing">
-            <span>Chưa quét</span>
-            <strong>{{ missingCount(audit) }}</strong>
-          </article>
-          <article>
-            <span>Kết quả quét</span>
-            <strong>{{ audit.details.length }}</strong>
-          </article>
-        </div>
+        <ng-container *ngIf="selectedAudit as audit; else noAudit">
+          <div class="summary-grid">
+            <article>
+              <span>Tổng trên hệ thống</span>
+              <strong>{{ audit.totalSystemBooks }}</strong>
+            </article>
+            <article class="found">
+              <span>Đã tìm thấy</span>
+              <strong>{{ audit.totalActualBooks }}</strong>
+            </article>
+            <article class="missing">
+              <span>Chưa quét</span>
+              <strong>{{ missingCount(audit) }}</strong>
+            </article>
+            <article>
+              <span>Kết quả quét</span>
+              <strong>{{ audit.details.length }}</strong>
+            </article>
+          </div>
 
-        <form *ngIf="audit.status === 'IN_PROGRESS'" class="scanner" (ngSubmit)="submitScan()">
-          <div class="scanner-heading">
-            <div>
-              <h2>Quét bản sao</h2>
-              <p>Máy quét barcode có thể nhập trực tiếp vào ô barcode rồi gửi bằng phím Enter.</p>
+          <form *ngIf="audit.status === 'IN_PROGRESS'" class="scanner" (ngSubmit)="submitScan()">
+            <div class="scanner-heading">
+              <div>
+                <h2>Quét bản sao</h2>
+                <p>Máy quét barcode có thể nhập trực tiếp vào ô barcode rồi gửi bằng phím Enter.</p>
+              </div>
+              <button
+                class="finish-button"
+                type="button"
+                (click)="completeAudit()"
+                [disabled]="isSubmitting"
+              >
+                Hoàn tất phiên
+              </button>
             </div>
-            <button class="finish-button" type="button" (click)="completeAudit()" [disabled]="isSubmitting">
-              Hoàn tất phiên
-            </button>
-          </div>
-          <div class="scan-fields">
-            <label>Tầng đang kiểm kê
-              <select name="auditFloor" required [ngModel]="floorId" (ngModelChange)="selectFloor($event)" [disabled]="isSubmitting || cameraOpen">
-                <option [ngValue]="undefined">Chọn tầng</option><option *ngFor="let node of floors" [ngValue]="node.id">{{node.name}}</option>
-              </select>
-            </label>
-            <label>Dãy kệ
-              <select name="auditBookshelf" required [ngModel]="bookshelfId" (ngModelChange)="selectBookshelf($event)" [disabled]="!floorId || isSubmitting || cameraOpen">
-                <option [ngValue]="undefined">Chọn dãy kệ</option><option *ngFor="let node of bookshelves" [ngValue]="node.id">{{node.name}}</option>
-              </select>
-            </label>
-            <label>Ngăn đang quét
-              <select name="auditShelf" required [ngModel]="shelfId" (ngModelChange)="selectShelf($event)" [disabled]="!bookshelfId || isSubmitting || cameraOpen">
-                <option [ngValue]="undefined">Chọn ngăn</option><option *ngFor="let node of shelves" [ngValue]="node.id">{{node.name}}</option>
-              </select>
-            </label>
-          </div>
-          <div class="scan-fields">
-            <label>Barcode bản sao
-              <input #barcodeInput name="barcode" [(ngModel)]="barcode" autocomplete="off" placeholder="Ví dụ: BC-001" [disabled]="isSubmitting" required />
-            </label>
-            <button class="scan-button" type="submit" [disabled]="isSubmitting || !barcode.trim() || !shelfId">
-              {{ isSubmitting ? 'Đang lưu…' : 'Ghi nhận' }}
-            </button>
-            <button type="button" class="scan-button" *ngIf="!cameraOpen" (click)="startCamera()" [disabled]="!shelfId || isSubmitting">Mở camera quét liên tục</button>
-          </div>
-          <div class="audit-camera" *ngIf="cameraOpen">
-            <video #auditVideo autoplay muted playsinline aria-label="Camera kiểm kê"></video>
-            <p role="status">{{isSubmitting ? 'Đang ghi nhận mã vạch…' : (errorMessage || successMessage || 'Đưa mã vạch vào khung để ghi nhận.')}}</p>
-            <button type="button" (click)="stopCamera()">Tắt camera</button>
-          </div>
-        </form>
+            <div class="scan-fields">
+              <label>Tầng đang kiểm kê
+                <select
+                  name="auditFloor"
+                  required
+                  [ngModel]="floorId"
+                  (ngModelChange)="selectFloor($event)"
+                  [disabled]="isSubmitting || cameraOpen"
+                >
+                  <option [ngValue]="undefined">Chọn tầng</option>
+                  <option *ngFor="let node of floors" [ngValue]="node.id">{{node.name}}</option>
+                </select>
+              </label>
+              <label>Dãy kệ
+                <select
+                  name="auditBookshelf"
+                  required
+                  [ngModel]="bookshelfId"
+                  (ngModelChange)="selectBookshelf($event)"
+                  [disabled]="!floorId || isSubmitting || cameraOpen"
+                >
+                  <option [ngValue]="undefined">Chọn dãy kệ</option>
+                  <option *ngFor="let node of bookshelves" [ngValue]="node.id">{{node.name}}</option>
+                </select>
+              </label>
+              <label>Ngăn đang quét
+                <select
+                  name="auditShelf"
+                  required
+                  [ngModel]="shelfId"
+                  (ngModelChange)="selectShelf($event)"
+                  [disabled]="!bookshelfId || isSubmitting || cameraOpen"
+                >
+                  <option [ngValue]="undefined">Chọn ngăn</option>
+                  <option *ngFor="let node of shelves" [ngValue]="node.id">{{node.name}}</option>
+                </select>
+              </label>
+            </div>
+            <div class="scan-fields">
+              <label>Barcode bản sao
+                <input
+                  #barcodeInput
+                  name="barcode"
+                  [(ngModel)]="barcode"
+                  autocomplete="off"
+                  placeholder="Ví dụ: BC-001"
+                  [disabled]="isSubmitting"
+                  required
+                />
+              </label>
+              <button
+                class="scan-button"
+                type="submit"
+                [disabled]="isSubmitting || !barcode.trim() || !shelfId"
+              >
+                {{ isSubmitting ? 'Đang lưu…' : 'Ghi nhận' }}
+              </button>
+              <button
+                type="button"
+                class="scan-button"
+                *ngIf="!cameraOpen"
+                (click)="startCamera()"
+                [disabled]="!shelfId || isSubmitting"
+              >Mở camera quét liên tục</button>
+            </div>
+            <div class="audit-camera" *ngIf="cameraOpen">
+              <video #auditVideo autoplay muted playsinline aria-label="Camera kiểm kê"></video>
+              <p role="status">{{isSubmitting ? 'Đang ghi nhận mã vạch…' : (errorMessage || successMessage || 'Đưa mã vạch vào khung để ghi nhận.')}}</p>
+              <button type="button" (click)="stopCamera()">Tắt camera</button>
+            </div>
+          </form>
 
-        <div *ngIf="audit.status === 'COMPLETED'" class="completed-banner">
-          Phiên đã hoàn tất lúc {{ audit.updatedAt | date:'dd/MM/yyyy HH:mm' }} — kết quả được khóa để bảo toàn lịch sử.
-        </div>
-
-        <section class="results-panel">
-          <div class="disposal-entry"><button (click)="showDisposals(true)" [disabled]="isLoading || isSubmitting || audit.status !== 'COMPLETED'">Lập đề xuất xử lý từ phiên này</button><small *ngIf="audit.status !== 'COMPLETED'">Hoàn tất phiên kiểm kê để khóa nguồn trước khi lập đề xuất.</small></div>
-          <div class="panel-title">
-            <h2>Chi tiết đã quét</h2>
-            <span>{{ audit.details.length }}</span>
+          <div *ngIf="audit.status === 'COMPLETED'" class="completed-banner">
+            Phiên đã hoàn tất lúc {{ audit.updatedAt | date:'dd/MM/yyyy HH:mm' }} — kết quả được
+            khóa để bảo toàn lịch sử.
           </div>
-          <div *ngIf="!audit.details.length" class="empty-state">Chưa có barcode nào được quét trong phiên này.</div>
-          <div *ngIf="audit.details.length" class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Barcode / Sách</th>
-                  <th>Kết quả</th>
-                  <th>Vị trí hệ thống</th>
-                  <th>Vị trí quét</th>
-                  <th>Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let detail of audit.details">
-                  <td>
-                    <strong>{{ detail.barcode }}</strong>
-                    <small>{{ detail.bookTitle || 'Không nhận diện được bản sao' }}</small>
-                  </td>
-                  <td><span class="scan-status" [attr.data-status]="detail.scanStatus">{{ statusLabel(detail.scanStatus) }}</span></td>
-                  <td>{{ detail.expectedLocation || 'Chưa xếp vị trí' }}</td>
-                  <td>{{ detail.scannedLocation || 'Không nhập' }}</td>
-                  <td>{{ detail.scannedAt | date:'HH:mm:ss dd/MM/yyyy' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </ng-container>
 
-      <ng-template #noAudit>
-        <div *ngIf="!isLoading" class="empty-state hero">
-          <div class="empty-icon">▦</div>
-          <h2>Bắt đầu một phiên kiểm kê</h2>
-          <p>Hệ thống sẽ chụp tổng số bản sao hiện có và theo dõi kết quả quét theo từng barcode.</p>
-        </div>
-      </ng-template>
-    </main>
-  </div>
+          <section class="results-panel">
+            <div class="disposal-entry">
+              <button
+                (click)="showDisposals(true)"
+                [disabled]="isLoading || isSubmitting || audit.status !== 'COMPLETED'"
+              >Lập đề xuất xử lý từ phiên này</button>
+              <small *ngIf="audit.status !== 'COMPLETED'"
+                >Hoàn tất phiên kiểm kê để khóa nguồn trước khi lập đề xuất.</small
+              >
+            </div>
+            <div class="panel-title">
+              <h2>Chi tiết đã quét</h2>
+              <span>{{ audit.details.length }}</span>
+            </div>
+            <div *ngIf="!audit.details.length" class="empty-state">Chưa có barcode nào được quét trong phiên này.</div>
+            <div *ngIf="audit.details.length" class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Barcode / Sách</th>
+                    <th>Kết quả</th>
+                    <th>Vị trí hệ thống</th>
+                    <th>Vị trí quét</th>
+                    <th>Thời gian</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let detail of audit.details">
+                    <td>
+                      <strong>{{ detail.barcode }}</strong>
+                      <small>{{ detail.bookTitle || 'Không nhận diện được bản sao' }}</small>
+                    </td>
+                    <td>
+                      <span
+                        class="scan-status"
+                        [attr.data-status]="detail.scanStatus"
+                        >{{ statusLabel(detail.scanStatus) }}</span
+                      >
+                    </td>
+                    <td>{{ detail.expectedLocation || 'Chưa xếp vị trí' }}</td>
+                    <td>{{ detail.scannedLocation || 'Không nhập' }}</td>
+                    <td>{{ detail.scannedAt | date:'HH:mm:ss dd/MM/yyyy' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </ng-container>
+
+        <ng-template #noAudit>
+          <div *ngIf="!isLoading" class="empty-state hero">
+            <div class="empty-icon">▦</div>
+            <h2>Bắt đầu một phiên kiểm kê</h2>
+            <p>Hệ thống sẽ chụp tổng số bản sao hiện có và theo dõi kết quả quét theo từng barcode.</p>
+          </div>
+        </ng-template>
+      </main>
+    </div>
   </div>
 </section>

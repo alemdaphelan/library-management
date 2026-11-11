@@ -70,24 +70,42 @@ public class PenaltyCaseService {
 
     @Transactional
     public PenaltyCaseEntity createCase(PenaltyCaseRequestDTO request, UUID operatorId) {
-        LoanDetailEntity detail = detailRepository.findByIdForUpdate(request.getLoanDetailId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy chi tiết mượn"));
+        LoanDetailEntity detail =
+                detailRepository
+                        .findByIdForUpdate(request.getLoanDetailId())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy chi tiết mượn"));
         if (caseRepository.existsByLoanDetailIdAndStatusNotIn(
                 detail.getDetailId(), List.of("CANCELLED", "REJECTED"))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã có hồ sơ mất/hỏng đang xử lý");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Tài liệu đã có hồ sơ mất/hỏng đang xử lý");
         }
-        LoanTicketEntity ticket = ticketRepository.findById(detail.getTicketId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn"));
+        LoanTicketEntity ticket =
+                ticketRepository
+                        .findById(detail.getTicketId())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn"));
         if (detail.getReturnDate() != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã hoàn tất trả");
         }
-        BookCopyEntity copy = copyRepository.findById(detail.getBarcode())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bản sao"));
+        BookCopyEntity copy =
+                copyRepository
+                        .findById(detail.getBarcode())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy bản sao"));
 
         LocalDateTime reportedAt = LocalDateTime.now();
         lateFineService.accrueLateFine(ticket, detail, reportedAt);
         String incident = normalize(request.getIncidentType());
-        String severity = request.getDamageSeverity() == null ? null : normalize(request.getDamageSeverity());
+        String severity =
+                request.getDamageSeverity() == null ? null : normalize(request.getDamageSeverity());
         validateDamage(incident, severity, request.getPagesAffected());
         boolean treatedAsLoss = "LOST".equals(incident) || "HEAVY".equals(severity);
         String settlement = normalize(request.getSettlementMethod());
@@ -98,37 +116,57 @@ public class PenaltyCaseService {
         BigDecimal multiplier = BigDecimal.ONE;
         if (!treatedAsLoss) {
             if (!"REPAIR".equals(settlement)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hư hỏng nhẹ phải xử lý theo phương thức REPAIR");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Hư hỏng nhẹ phải xử lý theo phương thức REPAIR");
             }
-            repair = positiveRequired(request.getRepairFee(), "Phải nhập chi phí sửa chữa hư hỏng nhẹ");
+            repair =
+                    positiveRequired(
+                            request.getRepairFee(), "Phải nhập chi phí sửa chữa hư hỏng nhẹ");
         } else {
             processing = policyService.technicalProcessingFee();
-            if (Boolean.TRUE.equals(request.getStillInMarket()) && !"REPLACEMENT".equals(settlement)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tài liệu còn lưu hành phải được thay thế đúng quy định");
+            if (Boolean.TRUE.equals(request.getStillInMarket())
+                    && !"REPLACEMENT".equals(settlement)) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Tài liệu còn lưu hành phải được thay thế đúng quy định");
             }
             if (!List.of("REPLACEMENT", "CASH").contains(settlement)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phương thức đền bù phải là REPLACEMENT hoặc CASH");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Phương thức đền bù phải là REPLACEMENT hoặc CASH");
             }
             if ("CASH".equals(settlement)) {
                 if (request.getCoverPrice() != null && request.getCoverPrice().signum() > 0) {
-                    multiplier = "FOREIGN".equals(normalize(request.getLanguageCategory()))
-                            ? BigDecimal.valueOf(3) : BigDecimal.valueOf(5);
+                    multiplier =
+                            "FOREIGN".equals(normalize(request.getLanguageCategory()))
+                                    ? BigDecimal.valueOf(3)
+                                    : BigDecimal.valueOf(5);
                     BigDecimal convertedPrice = request.getCoverPrice();
                     if ("FOREIGN".equals(normalize(request.getLanguageCategory()))) {
-                        convertedPrice = convertedPrice.multiply(positiveRequired(
-                                request.getFxRate(), "Tài liệu ngoại văn cần tỷ giá tại thời điểm nộp"));
+                        convertedPrice =
+                                convertedPrice.multiply(
+                                        positiveRequired(
+                                                request.getFxRate(),
+                                                "Tài liệu ngoại văn cần tỷ giá tại thời điểm nộp"));
                         if (request.getFxSource() == null || request.getFxSource().isBlank()) {
-                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phải ghi nguồn tỷ giá ngoại tệ");
+                            throw new ResponseStatusException(
+                                    HttpStatus.BAD_REQUEST, "Phải ghi nguồn tỷ giá ngoại tệ");
                         }
                     }
-                    compensation = convertedPrice.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+                    compensation =
+                            convertedPrice.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
                 } else {
-                    compensation = rateRepository.findCurrent(
-                                    normalize(request.getMaterialType()),
-                                    normalize(request.getLanguageCategory()), reportedAt.toLocalDate())
-                            .map(CompensationRateEntity::getAmount)
-                            .orElseThrow(() -> new ResponseStatusException(
-                                    HttpStatus.CONFLICT, "Chưa có biểu phí hiệu lực cho tài liệu không có giá bìa"));
+                    compensation =
+                            rateRepository
+                                    .findCurrent(
+                                            normalize(request.getMaterialType()),
+                                            normalize(request.getLanguageCategory()),
+                                            reportedAt.toLocalDate())
+                                    .map(CompensationRateEntity::getAmount)
+                                    .orElseThrow(
+                                            () ->
+                                                    new ResponseStatusException(
+                                                            HttpStatus.CONFLICT,
+                                                            "Chưa có biểu phí hiệu lực cho tài liệu không có giá bìa"));
                 }
             }
         }
@@ -167,31 +205,54 @@ public class PenaltyCaseService {
         penaltyCase.setPaidAmount(BigDecimal.ZERO);
         penaltyCase.setStatus("OUTSTANDING");
         penaltyCase.setReportedAt(reportedAt);
-        penaltyCase.setSettlementDueAt(reportedAt.plusDays(policyService.compensationSettlementDays()));
+        penaltyCase.setSettlementDueAt(
+                reportedAt.plusDays(policyService.compensationSettlementDays()));
         penaltyCase.setCreatedBy(operatorId);
         penaltyCase = caseRepository.save(penaltyCase);
 
-        createDebtLine(penaltyCase, "REPAIR_FEE", repair, "Chi phí sửa chữa: " + penaltyCase.getDescription());
-        createDebtLine(penaltyCase, "COMPENSATION", compensation, "Đền bù tài liệu " + detail.getBarcode());
-        createDebtLine(penaltyCase, "TECHNICAL_FEE", processing, "Phí xử lý kỹ thuật tài liệu " + detail.getBarcode());
+        createDebtLine(
+                penaltyCase,
+                "REPAIR_FEE",
+                repair,
+                "Chi phí sửa chữa: " + penaltyCase.getDescription());
+        createDebtLine(
+                penaltyCase,
+                "COMPENSATION",
+                compensation,
+                "Đền bù tài liệu " + detail.getBarcode());
+        createDebtLine(
+                penaltyCase,
+                "TECHNICAL_FEE",
+                processing,
+                "Phí xử lý kỹ thuật tài liệu " + detail.getBarcode());
         if (zero(penaltyCase.getPaidAmount()).compareTo(penaltyCase.getTotalAmount()) >= 0) {
-            penaltyCase.setStatus("REPLACEMENT".equals(penaltyCase.getSettlementMethod())
-                    ? "WAITING_REPLACEMENT" : "PAID");
+            penaltyCase.setStatus(
+                    "REPLACEMENT".equals(penaltyCase.getSettlementMethod())
+                            ? "WAITING_REPLACEMENT"
+                            : "PAID");
             penaltyCase = caseRepository.save(penaltyCase);
         }
         notificationService.createOnce(
-                ticket.getUserId(), "PENALTY_CASE_CREATED",
-                "Hồ sơ #" + penaltyCase.getCaseId() + " đã được lập; hạn xử lý "
-                        + penaltyCase.getSettlementDueAt().toLocalDate() + ".",
-                "PENALTY_CASE", penaltyCase.getCaseId().toString(),
-                "PENALTY_CASE_CREATED:" + penaltyCase.getCaseId(), reportedAt);
+                ticket.getUserId(),
+                "PENALTY_CASE_CREATED",
+                "Hồ sơ #"
+                        + penaltyCase.getCaseId()
+                        + " đã được lập; hạn xử lý "
+                        + penaltyCase.getSettlementDueAt().toLocalDate()
+                        + ".",
+                "PENALTY_CASE",
+                penaltyCase.getCaseId().toString(),
+                "PENALTY_CASE_CREATED:" + penaltyCase.getCaseId(),
+                reportedAt);
         return penaltyCase;
     }
 
     @Transactional
     public CompensationRateEntity createRate(CompensationRateRequestDTO request, UUID adminId) {
-        if (request.getValidUntil() != null && request.getValidUntil().isBefore(request.getValidFrom())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày hết hiệu lực không được trước ngày bắt đầu");
+        if (request.getValidUntil() != null
+                && request.getValidUntil().isBefore(request.getValidFrom())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Ngày hết hiệu lực không được trước ngày bắt đầu");
         }
         CompensationRateEntity rate = new CompensationRateEntity();
         rate.setMaterialType(normalize(request.getMaterialType()));
@@ -207,10 +268,16 @@ public class PenaltyCaseService {
 
     @Transactional
     public PenaltyCaseEntity submitForReview(Long caseId, UUID operatorId) {
-        PenaltyCaseEntity penaltyCase = caseRepository.findByIdForUpdate(caseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
+        PenaltyCaseEntity penaltyCase =
+                caseRepository
+                        .findByIdForUpdate(caseId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
         if (!"OUTSTANDING".equals(penaltyCase.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ hồ sơ còn nợ mới có thể xin miễn giảm");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Chỉ hồ sơ còn nợ mới có thể xin miễn giảm");
         }
         penaltyCase.setStatus("PENDING_REVIEW");
         penaltyCase.setDecisionReason("Thủ thư tiếp nhận hồ sơ miễn giảm: " + operatorId);
@@ -218,11 +285,18 @@ public class PenaltyCaseService {
     }
 
     @Transactional
-    public PenaltyCaseEntity reviewWaiver(Long caseId, WaiverReviewRequestDTO request, UUID adminId) {
-        PenaltyCaseEntity penaltyCase = caseRepository.findByIdForUpdate(caseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
+    public PenaltyCaseEntity reviewWaiver(
+            Long caseId, WaiverReviewRequestDTO request, UUID adminId) {
+        PenaltyCaseEntity penaltyCase =
+                caseRepository
+                        .findByIdForUpdate(caseId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
         if (!"PENDING_REVIEW".equals(penaltyCase.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Hồ sơ không ở trạng thái chờ xét miễn giảm");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Hồ sơ không ở trạng thái chờ xét miễn giảm");
         }
         String action = normalize(request.getAction());
         penaltyCase.setDecisionBy(adminId);
@@ -235,12 +309,16 @@ public class PenaltyCaseService {
             return caseRepository.save(penaltyCase);
         }
         if (!"APPROVE".equals(action)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Action phải là APPROVE hoặc REJECT");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Action phải là APPROVE hoặc REJECT");
         }
-        BigDecimal remaining = penaltyCase.getTotalAmount().subtract(zero(penaltyCase.getPaidAmount()));
-        BigDecimal waiver = request.getWaiverAmount() == null ? remaining : request.getWaiverAmount();
+        BigDecimal remaining =
+                penaltyCase.getTotalAmount().subtract(zero(penaltyCase.getPaidAmount()));
+        BigDecimal waiver =
+                request.getWaiverAmount() == null ? remaining : request.getWaiverAmount();
         if (waiver.signum() <= 0 || waiver.compareTo(remaining) > 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Số tiền miễn giảm không hợp lệ");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Số tiền miễn giảm không hợp lệ");
         }
         applyWaiverToDebtLines(penaltyCase, waiver, adminId);
         penaltyCase.setWaiverAmount(zero(penaltyCase.getWaiverAmount()).add(waiver));
@@ -256,47 +334,74 @@ public class PenaltyCaseService {
             penaltyCase.setStatus("OUTSTANDING");
         }
         notificationService.createOnce(
-                penaltyCase.getUserId(), "WAIVER_DECISION",
+                penaltyCase.getUserId(),
+                "WAIVER_DECISION",
                 "Hồ sơ #" + caseId + " được miễn/giảm " + waiver.toPlainString() + " đồng.",
-                "PENALTY_CASE", caseId.toString(), "WAIVER_DECISION:" + caseId, LocalDateTime.now());
+                "PENALTY_CASE",
+                caseId.toString(),
+                "WAIVER_DECISION:" + caseId,
+                LocalDateTime.now());
         return caseRepository.save(penaltyCase);
     }
 
     @Transactional
     public PenaltyCaseEntity acceptReplacement(
             Long caseId, ReplacementAcceptanceRequestDTO request, UUID operatorId) {
-        PenaltyCaseEntity penaltyCase = caseRepository.findByIdForUpdate(caseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
+        PenaltyCaseEntity penaltyCase =
+                caseRepository
+                        .findByIdForUpdate(caseId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
         if (!"REPLACEMENT".equals(penaltyCase.getSettlementMethod())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Hồ sơ này không xử lý bằng sách thay thế");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Hồ sơ này không xử lý bằng sách thay thế");
         }
         if (penaltyCase.getReplacementAcceptedAt() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Sách thay thế đã được xác nhận trước đó");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Sách thay thế đã được xác nhận trước đó");
         }
         String replacementBarcode = request.getReplacementBarcode().trim();
         boolean reuseBarcode = replacementBarcode.equals(penaltyCase.getBarcode());
         BookCopyEntity replacementCopy;
         if (reuseBarcode) {
-            replacementCopy = copyRepository.findAllByBarcodeInForUpdate(List.of(replacementBarcode)).stream().findFirst()
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bản sao gốc"));
-            if (!"LOST".equals(replacementCopy.getStatus()) || detailRepository.findActiveByBarcode(replacementBarcode).isPresent()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã vạch cũ đang được sử dụng; hãy đối chiếu bản sao trước khi tiếp nhận");
+            replacementCopy =
+                    copyRepository.findAllByBarcodeInForUpdate(List.of(replacementBarcode)).stream()
+                            .findFirst()
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.NOT_FOUND,
+                                                    "Không tìm thấy bản sao gốc"));
+            if (!"LOST".equals(replacementCopy.getStatus())
+                    || detailRepository.findActiveByBarcode(replacementBarcode).isPresent()) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Mã vạch cũ đang được sử dụng; hãy đối chiếu bản sao trước khi tiếp nhận");
             }
             replacementCopy.setLockedByUser(null);
             replacementCopy.setLockedUntil(null);
         } else {
             if (copyRepository.existsById(replacementBarcode)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Barcode sách thay thế đã tồn tại");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Barcode sách thay thế đã tồn tại");
             }
-            BookCopyEntity originalCopy = copyRepository.findById(penaltyCase.getBarcode())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bản sao gốc"));
+            BookCopyEntity originalCopy =
+                    copyRepository
+                            .findById(penaltyCase.getBarcode())
+                            .orElseThrow(
+                                    () ->
+                                            new ResponseStatusException(
+                                                    HttpStatus.NOT_FOUND,
+                                                    "Không tìm thấy bản sao gốc"));
             replacementCopy = new BookCopyEntity();
             replacementCopy.setBarcode(replacementBarcode);
             replacementCopy.setBookId(originalCopy.getBookId());
         }
         replacementCopy.setStatus("AVAILABLE");
-        replacementCopy.setConditionNote("Sách đền bù đã được thủ thư kiểm tra: "
-                + request.getVerificationNote().trim());
+        replacementCopy.setConditionNote(
+                "Sách đền bù đã được thủ thư kiểm tra: " + request.getVerificationNote().trim());
         copyRepository.save(replacementCopy);
 
         penaltyCase.setReplacementBarcode(replacementBarcode);
@@ -322,7 +427,8 @@ public class PenaltyCaseService {
         return caseRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
-    private void createDebtLine(PenaltyCaseEntity penaltyCase, String type, BigDecimal amount, String reason) {
+    private void createDebtLine(
+            PenaltyCaseEntity penaltyCase, String type, BigDecimal amount, String reason) {
         if (amount == null || amount.signum() <= 0) {
             return;
         }
@@ -332,8 +438,10 @@ public class PenaltyCaseService {
         transaction.setLoanDetailId(penaltyCase.getLoanDetailId());
         transaction.setPenaltyCaseId(penaltyCase.getCaseId());
         transaction.setAmount(amount);
-        WalletEntity wallet = walletRepository.findByUserIdForUpdate(penaltyCase.getUserId())
-                .orElseGet(() -> newWallet(penaltyCase.getUserId()));
+        WalletEntity wallet =
+                walletRepository
+                        .findByUserIdForUpdate(penaltyCase.getUserId())
+                        .orElseGet(() -> newWallet(penaltyCase.getUserId()));
         BigDecimal availableDeposit = zero(wallet.getDepositBalance());
         BigDecimal depositApplied = availableDeposit.min(amount);
         BigDecimal debtAdded = amount.subtract(depositApplied);
@@ -342,8 +450,10 @@ public class PenaltyCaseService {
         transaction.setDepositAppliedAt(depositApplied.signum() > 0 ? LocalDateTime.now() : null);
         transaction.setType(type);
         transaction.setReason(reason);
-        transaction.setStatus(debtAdded.signum() == 0 ? "PAID" :
-                (depositApplied.signum() > 0 ? "PARTIALLY_PAID" : "OUTSTANDING"));
+        transaction.setStatus(
+                debtAdded.signum() == 0
+                        ? "PAID"
+                        : (depositApplied.signum() > 0 ? "PARTIALLY_PAID" : "OUTSTANDING"));
         if (depositApplied.signum() > 0) {
             transaction.setPaymentMethod("SECURITY_DEPOSIT");
             transaction.setPaidAt(LocalDateTime.now());
@@ -358,21 +468,34 @@ public class PenaltyCaseService {
         caseRepository.save(penaltyCase);
     }
 
-    private void applyWaiverToDebtLines(PenaltyCaseEntity penaltyCase, BigDecimal waiver, UUID adminId) {
+    private void applyWaiverToDebtLines(
+            PenaltyCaseEntity penaltyCase, BigDecimal waiver, UUID adminId) {
         BigDecimal remaining = waiver;
-        for (TransactionEntity entry : transactionRepository.findByPenaltyCaseIdOrderByCreatedAtAsc(penaltyCase.getCaseId())) {
-            if (remaining.signum() == 0 || entry.getAmount() == null || entry.getAmount().signum() <= 0) {
+        for (TransactionEntity entry :
+                transactionRepository.findByPenaltyCaseIdOrderByCreatedAtAsc(
+                        penaltyCase.getCaseId())) {
+            if (remaining.signum() == 0
+                    || entry.getAmount() == null
+                    || entry.getAmount().signum() <= 0) {
                 continue;
             }
             BigDecimal outstanding = entry.getAmount().subtract(zero(entry.getPaidAmount()));
             BigDecimal applied = outstanding.min(remaining);
             entry.setPaidAmount(zero(entry.getPaidAmount()).add(applied));
-            entry.setStatus(entry.getPaidAmount().compareTo(entry.getAmount()) >= 0 ? "WAIVED" : "PARTIALLY_WAIVED");
+            entry.setStatus(
+                    entry.getPaidAmount().compareTo(entry.getAmount()) >= 0
+                            ? "WAIVED"
+                            : "PARTIALLY_WAIVED");
             transactionRepository.save(entry);
             remaining = remaining.subtract(applied);
         }
-        WalletEntity wallet = walletRepository.findByUserIdForUpdate(penaltyCase.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Không tìm thấy công nợ"));
+        WalletEntity wallet =
+                walletRepository
+                        .findByUserIdForUpdate(penaltyCase.getUserId())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.CONFLICT, "Không tìm thấy công nợ"));
         wallet.setTotalDebt(zero(wallet.getTotalDebt()).subtract(waiver).max(BigDecimal.ZERO));
         walletRepository.save(wallet);
 
@@ -396,7 +519,8 @@ public class PenaltyCaseService {
     }
 
     private void closeResolvedLoanDetail(PenaltyCaseEntity penaltyCase) {
-        LoanDetailEntity detail = detailRepository.findById(penaltyCase.getLoanDetailId()).orElse(null);
+        LoanDetailEntity detail =
+                detailRepository.findById(penaltyCase.getLoanDetailId()).orElse(null);
         if (detail == null) {
             return;
         }
@@ -409,8 +533,12 @@ public class PenaltyCaseService {
         }
         detailRepository.save(detail);
         LoanTicketEntity ticket = ticketRepository.findById(penaltyCase.getTicketId()).orElse(null);
-        if (ticket != null && detailRepository.findByTicketId(ticket.getTicketId()).stream()
-                .allMatch(item -> item.getReturnDate() != null || "CANCELLED".equals(item.getReturnStatus()))) {
+        if (ticket != null
+                && detailRepository.findByTicketId(ticket.getTicketId()).stream()
+                        .allMatch(
+                                item ->
+                                        item.getReturnDate() != null
+                                                || "CANCELLED".equals(item.getReturnStatus()))) {
             ticket.setStatus("RETURNED");
             ticketRepository.save(ticket);
         }
@@ -418,19 +546,23 @@ public class PenaltyCaseService {
 
     private void validateDamage(String incident, String severity, Integer pagesAffected) {
         if (!List.of("LOST", "DAMAGED").contains(incident)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Incident type phải là LOST hoặc DAMAGED");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Incident type phải là LOST hoặc DAMAGED");
         }
         if ("LOST".equals(incident)) {
             return;
         }
         if (severity == null || !List.of("LIGHT", "HEAVY").contains(severity)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hư hỏng phải được phân loại LIGHT hoặc HEAVY");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Hư hỏng phải được phân loại LIGHT hoặc HEAVY");
         }
         if (pagesAffected != null && pagesAffected < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số trang ảnh hưởng không hợp lệ");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Số trang ảnh hưởng không hợp lệ");
         }
         if (pagesAffected != null && pagesAffected > 10 && "LIGHT".equals(severity)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trên 10 trang phải được phân loại hư hỏng nặng");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Trên 10 trang phải được phân loại hư hỏng nặng");
         }
     }
 

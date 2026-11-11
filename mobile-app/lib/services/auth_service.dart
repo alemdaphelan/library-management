@@ -204,14 +204,19 @@ class AuthService {
     }
     final token = await getToken();
     if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
-    final response = await http.put(
-      Uri.parse('$baseUrl/me'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'fullName': normalizedName, 'phone': normalizedPhone}),
-      ).timeout(const Duration(seconds: 20));
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl/me'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'fullName': normalizedName,
+            'phone': normalizedPhone,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_extractErrorMessage(response));
     }

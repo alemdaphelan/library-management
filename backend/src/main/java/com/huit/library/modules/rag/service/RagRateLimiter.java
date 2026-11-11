@@ -37,17 +37,21 @@ public class RagRateLimiter {
                 window.removeFirst();
             }
             if (window.size() >= limit) {
-                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                throw new ResponseStatusException(
+                        HttpStatus.TOO_MANY_REQUESTS,
                         "Bạn đã gửi quá nhiều câu hỏi. Vui lòng thử lại sau một phút.");
             }
             window.addLast(clock.instant());
         }
         if (requests.size() > 10_000) {
-            requests.entrySet().removeIf(entry -> {
-                synchronized (entry.getValue()) {
-                    return entry.getValue().isEmpty() || entry.getValue().peekLast().isBefore(cutoff);
-                }
-            });
+            requests.entrySet()
+                    .removeIf(
+                            entry -> {
+                                synchronized (entry.getValue()) {
+                                    return entry.getValue().isEmpty()
+                                            || entry.getValue().peekLast().isBefore(cutoff);
+                                }
+                            });
         }
     }
 }

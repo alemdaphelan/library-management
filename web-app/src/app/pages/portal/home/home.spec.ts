@@ -10,18 +10,20 @@ const recommendationResponse = {
   dataSufficient: true,
   candidateCount: 20,
   generatedAt: '2026-10-19T10:00:00',
-  items: [{
-    bookId: 12,
-    title: 'Lập trình Java',
-    author: 'Nguyễn Văn A',
-    imageUrl: null,
-    score: 0.72,
-    contentScore: 0.8,
-    departmentScore: 0.9,
-    popularityScore: 0.4,
-    borrowCount: 10,
-    reason: 'Phù hợp với chuyên ngành Công nghệ thông tin'
-  }]
+  items: [
+    {
+      bookId: 12,
+      title: 'Lập trình Java',
+      author: 'Nguyễn Văn A',
+      imageUrl: null,
+      score: 0.72,
+      contentScore: 0.8,
+      departmentScore: 0.9,
+      popularityScore: 0.4,
+      borrowCount: 10,
+      reason: 'Phù hợp với chuyên ngành Công nghệ thông tin',
+    },
+  ],
 };
 
 describe('Home', () => {
@@ -36,9 +38,9 @@ describe('Home', () => {
         {
           provide: HomeService,
           useValue: {
-            getRecommendedBooks: () => of(recommendationResponse)
-          }
-        }
+            getRecommendedBooks: () => of(recommendationResponse),
+          },
+        },
       ],
     }).compileComponents();
 

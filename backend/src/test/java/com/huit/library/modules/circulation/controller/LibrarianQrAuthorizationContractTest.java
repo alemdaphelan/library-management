@@ -12,15 +12,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LibrarianQrAuthorizationContractTest {
     @Test
     void issuingReaderQrRequiresStudentRole() throws Exception {
-        Method ticket = LibrarianQrController.class.getMethod(
-                "issueTicketQr", Long.class, CustomUserDetails.class);
-        Method card = LibrarianQrController.class.getMethod(
-                "issueMyCardQr", CustomUserDetails.class);
+        Method ticket =
+                LibrarianQrController.class.getMethod(
+                        "issueTicketQr", Long.class, CustomUserDetails.class);
+        Method card =
+                LibrarianQrController.class.getMethod("issueMyCardQr", CustomUserDetails.class);
 
         assertThat(ticket.getAnnotation(PreAuthorize.class).value())
                 .isEqualTo("hasRole('STUDENT')");
-        assertThat(card.getAnnotation(PreAuthorize.class).value())
-                .isEqualTo("hasRole('STUDENT')");
+        assertThat(card.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
     }
 
     @Test

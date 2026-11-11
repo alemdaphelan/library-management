@@ -15,11 +15,27 @@ describe('Accounts', () => {
     createStudent: vi.fn(() => of({})),
     updateStudent: vi.fn(() => of({})),
     deleteStudent: vi.fn(() => of(void 0)),
-    getReaderProfile: vi.fn(() => of({
-      student: { userId: 'user-1', fullName: 'Nguyễn Văn A', mssv: '20012345', email: 'a@huit.edu.vn' },
-      card: { issued: true, cardNumber: '20012345', ownerName: 'Nguyễn Văn A', cardStatus: 'ACTIVE', depositBalance: 50000, totalDebt: 0 },
-      loans: [], ledger: [], penaltyCases: [],
-    })),
+    getReaderProfile: vi.fn(() =>
+      of({
+        student: {
+          userId: 'user-1',
+          fullName: 'Nguyễn Văn A',
+          mssv: '20012345',
+          email: 'a@huit.edu.vn',
+        },
+        card: {
+          issued: true,
+          cardNumber: '20012345',
+          ownerName: 'Nguyễn Văn A',
+          cardStatus: 'ACTIVE',
+          depositBalance: 50000,
+          totalDebt: 0,
+        },
+        loans: [],
+        ledger: [],
+        penaltyCases: [],
+      }),
+    ),
   };
 
   beforeEach(async () => {
@@ -66,19 +82,31 @@ describe('Accounts', () => {
     component.openCreate();
     component.form = {
       ...component.form,
-      mssv: '20012345', fullName: 'Nguyễn Văn A', email: 'a@huit.edu.vn',
-      department: 'CNTT', phone: '',
+      mssv: '20012345',
+      fullName: 'Nguyễn Văn A',
+      email: 'a@huit.edu.vn',
+      department: 'CNTT',
+      phone: '',
     };
 
     component.saveStudent();
 
-    expect(userService.createStudent).toHaveBeenCalledWith(expect.objectContaining({
-      mssv: '20012345', cardStatus: null, cardExpiryDate: null
-    }));
+    expect(userService.createStudent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mssv: '20012345',
+        cardStatus: null,
+        cardExpiryDate: null,
+      }),
+    );
   });
 
   it('loads a complete operational profile for both admin and librarian review', () => {
-    const student = { userId: 'user-1', fullName: 'Nguyễn Văn A', mssv: '20012345', email: 'a@huit.edu.vn' };
+    const student = {
+      userId: 'user-1',
+      fullName: 'Nguyễn Văn A',
+      mssv: '20012345',
+      email: 'a@huit.edu.vn',
+    };
 
     component.openProfile(student);
     fixture.detectChanges();

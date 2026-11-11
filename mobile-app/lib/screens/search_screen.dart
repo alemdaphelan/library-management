@@ -30,7 +30,9 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     LoanService.loanRevision.addListener(_handleLoanRevisionChanged);
-    WishlistService.wishlistRevision.addListener(_handleWishlistRevisionChanged);
+    WishlistService.wishlistRevision.addListener(
+      _handleWishlistRevisionChanged,
+    );
     if (!WishlistService.hasLoadedSnapshot) {
       WishlistService.getMine().catchError((_) => <Map<String, dynamic>>[]);
     }
@@ -50,7 +52,9 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void dispose() {
     LoanService.loanRevision.removeListener(_handleLoanRevisionChanged);
-    WishlistService.wishlistRevision.removeListener(_handleWishlistRevisionChanged);
+    WishlistService.wishlistRevision.removeListener(
+      _handleWishlistRevisionChanged,
+    );
     _scrollController.dispose();
     super.dispose();
   }

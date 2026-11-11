@@ -4,12 +4,12 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class DigitalAssetsService {
   private apiUrl = `${environment.apiUrl}/digital-assets`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   getAssets(): Observable<DigitalAsset[]> {
     return this.http.get<DigitalAsset[]>(this.apiUrl);
@@ -23,14 +23,18 @@ export class DigitalAssetsService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-  uploadAsset(file: File, bookId?: number | null, accessLevel = 'AUTHENTICATED'): Observable<HttpEvent<DigitalAsset>> {
+  uploadAsset(
+    file: File,
+    bookId?: number | null,
+    accessLevel = 'AUTHENTICATED',
+  ): Observable<HttpEvent<DigitalAsset>> {
     const formData = new FormData();
     formData.append('file', file);
     if (bookId) formData.append('bookId', String(bookId));
     formData.append('accessLevel', accessLevel);
     return this.http.post<DigitalAsset>(`${this.apiUrl}/upload`, formData, {
       reportProgress: true,
-      observe: 'events'
+      observe: 'events',
     });
   }
 
@@ -41,14 +45,14 @@ export class DigitalAssetsService {
   downloadAsset(id: number): Observable<HttpResponse<Blob>> {
     return this.http.get(`${this.apiUrl}/${id}/download`, {
       observe: 'response',
-      responseType: 'blob'
+      responseType: 'blob',
     });
   }
 
   previewAsset(id: number): Observable<HttpResponse<Blob>> {
     return this.http.get(`${this.apiUrl}/${id}/preview`, {
       observe: 'response',
-      responseType: 'blob'
+      responseType: 'blob',
     });
   }
 }

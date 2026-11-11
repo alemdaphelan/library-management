@@ -10,8 +10,7 @@ import lombok.EqualsAndHashCode;
 @Entity
 @Table(name = "holiday_calendar")
 public class HolidayCalendarEntity extends BaseEntity {
-    @Id
-    private String dateId;
+    @Id private String dateId;
 
     private String holidayName;
     private Boolean isClosed;

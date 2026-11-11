@@ -42,12 +42,14 @@ public class UserService {
             WalletRepository walletRepository,
             NotificationService notificationService,
             @org.springframework.beans.factory.annotation.Value(
-                    "${library.circulation.default-security-deposit:0}") BigDecimal defaultDeposit) {
+                            "${library.circulation.default-security-deposit:0}")
+                    BigDecimal defaultDeposit) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.walletRepository = walletRepository;
         this.notificationService = notificationService;
-        this.defaultDeposit = defaultDeposit == null ? BigDecimal.ZERO : defaultDeposit.max(BigDecimal.ZERO);
+        this.defaultDeposit =
+                defaultDeposit == null ? BigDecimal.ZERO : defaultDeposit.max(BigDecimal.ZERO);
     }
 
     public List<UserEntity> getAllStudents() {
@@ -55,7 +57,9 @@ public class UserService {
     }
 
     public UserEntity getStudentByMssv(String mssv) {
-        return userRepository.findByMssv(mssv).orElseThrow(() -> new RuntimeException("Student not found"));
+        return userRepository
+                .findByMssv(mssv)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
     }
 
     @Transactional
@@ -76,8 +80,13 @@ public class UserService {
 
     @Transactional
     public UserEntity updateStudent(String mssv, StudentUpsertRequestDTO request) {
-        UserEntity existing = userRepository.findByMssvAndUserType(mssv, "STUDENT")
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên"));
+        UserEntity existing =
+                userRepository
+                        .findByMssvAndUserType(mssv, "STUDENT")
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy sinh viên"));
         String previousCardStatus = existing.getCardStatus();
         if (!existing.hasLibraryCard()) {
             requireNoCardChangesBeforeOrientation(request);
@@ -99,10 +108,14 @@ public class UserService {
         if (notificationService == null || saved == null || saved.getUserId() == null) {
             return;
         }
-        String prev = previousCardStatus == null || previousCardStatus.isBlank()
-                ? "ACTIVE" : previousCardStatus.trim().toUpperCase();
-        String current = saved.getCardStatus() == null || saved.getCardStatus().isBlank()
-                ? "ACTIVE" : saved.getCardStatus().trim().toUpperCase();
+        String prev =
+                previousCardStatus == null || previousCardStatus.isBlank()
+                        ? "ACTIVE"
+                        : previousCardStatus.trim().toUpperCase();
+        String current =
+                saved.getCardStatus() == null || saved.getCardStatus().isBlank()
+                        ? "ACTIVE"
+                        : saved.getCardStatus().trim().toUpperCase();
         if (prev.equals(current)) {
             return;
         }
@@ -135,18 +148,20 @@ public class UserService {
             userRepository.delete(existing);
             userRepository.flush();
         } catch (DataIntegrityViolationException exception) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Không thể xóa bạn đọc đã có lịch sử nghiệp vụ; hãy khóa thẻ thay vì xóa", exception);
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Không thể xóa bạn đọc đã có lịch sử nghiệp vụ; hãy khóa thẻ thay vì xóa",
+                    exception);
         }
     }
-
 
     @Transactional
     public void syncWithUniversity(List<UserEntity> universityData) {
         for (UserEntity uniUser : universityData) {
             if (uniUser.getMssv() == null || uniUser.getMssv().isEmpty()) continue;
-            
-            java.util.Optional<UserEntity> existingOpt = userRepository.findByMssv(uniUser.getMssv());
+
+            java.util.Optional<UserEntity> existingOpt =
+                    userRepository.findByMssv(uniUser.getMssv());
             if (existingOpt.isPresent()) {
                 // Update existing
                 UserEntity existing = existingOpt.get();
@@ -157,14 +172,22 @@ public class UserService {
                 userRepository.save(existing);
                 ensureWallet(existing);
             } else {
-                createStudent(new StudentUpsertRequestDTO(uniUser.getMssv(), uniUser.getFullName(),
-                        uniUser.getEmail(), uniUser.getDepartment(), uniUser.getPhone(), null, null));
+                createStudent(
+                        new StudentUpsertRequestDTO(
+                                uniUser.getMssv(),
+                                uniUser.getFullName(),
+                                uniUser.getEmail(),
+                                uniUser.getDepartment(),
+                                uniUser.getPhone(),
+                                null,
+                                null));
             }
         }
     }
 
     private void ensureWallet(UserEntity student) {
-        if (student.getUserId() == null || walletRepository.findByUserId(student.getUserId()).isPresent()) {
+        if (student.getUserId() == null
+                || walletRepository.findByUserId(student.getUserId()).isPresent()) {
             return;
         }
         WalletEntity wallet = new WalletEntity();
@@ -184,22 +207,29 @@ public class UserService {
 
     private void requireNoCardChangesBeforeOrientation(StudentUpsertRequestDTO request) {
         if (request.cardStatus() != null || request.cardExpiryDate() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
                     "Thẻ chỉ được cấp khi sinh viên được điểm danh Có mặt tại lớp hướng dẫn thư viện");
         }
     }
 
     private void ensureUnique(String mssv, String email, UserEntity current) {
-        userRepository.findByMssv(mssv.trim())
+        userRepository
+                .findByMssv(mssv.trim())
                 .filter(user -> current == null || !user.getUserId().equals(current.getUserId()))
-                .ifPresent(user -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "MSSV đã tồn tại");
-                });
-        userRepository.findByEmail(email.trim().toLowerCase())
+                .ifPresent(
+                        user -> {
+                            throw new ResponseStatusException(
+                                    HttpStatus.CONFLICT, "MSSV đã tồn tại");
+                        });
+        userRepository
+                .findByEmail(email.trim().toLowerCase())
                 .filter(user -> current == null || !user.getUserId().equals(current.getUserId()))
-                .ifPresent(user -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
-                });
+                .ifPresent(
+                        user -> {
+                            throw new ResponseStatusException(
+                                    HttpStatus.CONFLICT, "Email đã tồn tại");
+                        });
     }
 
     private String trimToNull(String value) {

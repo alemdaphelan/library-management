@@ -20,6 +20,7 @@ public class LibraryViolationEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long violationId;
+
     private UUID userId;
     private Long ticketId;
     private String barcode;

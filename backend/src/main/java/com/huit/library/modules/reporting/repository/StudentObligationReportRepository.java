@@ -17,30 +17,44 @@ import java.util.UUID;
 public class StudentObligationReportRepository {
     private final NamedParameterJdbcTemplate jdbc;
     private static final String CHARGES = "'FINE', 'REPAIR_FEE', 'COMPENSATION', 'TECHNICAL_FEE'";
-    private static final String OPEN = "'OUTSTANDING', 'PARTIALLY_PAID', 'PARTIALLY_ADJUSTED', 'PARTIALLY_WAIVED'";
-    // Same deterministic key as migration 30's unique index: NFC/NFD, case, accents and punctuation.
+    private static final String OPEN =
+            "'OUTSTANDING', 'PARTIALLY_PAID', 'PARTIALLY_ADJUSTED', 'PARTIALLY_WAIVED'";
+
+    // Same deterministic key as migration 30's unique index: NFC/NFD, case, accents and
+    // punctuation.
     // Only explicit catalog aliases are matched; no substring/subject-affinity guesses.
     static String departmentKey(String column) {
-        return "btrim(regexp_replace(translate(lower(regexp_replace(normalize(" + column + ", NFD), "
+        return "btrim(regexp_replace(translate(lower(regexp_replace(normalize("
+                + column
+                + ", NFD), "
                 + "U&'[\\0300-\\036f]', '', 'g')), 'đ', 'd'), '[^a-z0-9]+', ' ', 'g'))";
     }
-    private static final String OVERDUE = """
+
+    private static final String OVERDUE =
+            """
             FROM loan_details d JOIN loan_tickets t ON t.ticket_id = d.ticket_id
             WHERE d.return_date IS NULL AND d.return_status IN ('BORROWING', 'OVERDUE')
               AND t.status IN ('BORROWING', 'OVERDUE') AND d.fine_stopped_at IS NULL
               AND d.due_date < :snapshot
             """;
     // Each source is reduced to one row per user BEFORE joining; never join raw debts to raw loans.
-    private static final String BASE = """
+    private static final String BASE =
+            """
             WITH overdue AS (
               SELECT t.user_id, count(*) AS item_count, min(d.due_date) AS earliest_due
-            """ + OVERDUE + """
+            """
+                    + OVERDUE
+                    + """
               GROUP BY t.user_id
             ), charges AS (
               SELECT user_id, sum(amount) AS charged, sum(coalesce(paid_amount, 0)) AS satisfied,
-                sum(CASE WHEN status IN (""" + OPEN + """
+                sum(CASE WHEN status IN ("""
+                    + OPEN
+                    + """
                   ) THEN greatest(amount - coalesce(paid_amount, 0), 0) ELSE 0 END) AS outstanding
-              FROM transactions WHERE amount > 0 AND type IN (""" + CHARGES + """
+              FROM transactions WHERE amount > 0 AND type IN ("""
+                    + CHARGES
+                    + """
               ) GROUP BY user_id
             ), reductions AS (
               SELECT user_id,
@@ -61,7 +75,11 @@ public class StudentObligationReportRepository {
                 coalesce(c.outstanding, 0) AS outstanding, w.wallet_debt
               FROM users u
               LEFT JOIN academic_department_mappings m ON
-            """ + departmentKey("m.department_value") + " = " + departmentKey("u.department") + """
+            """
+                    + departmentKey("m.department_value")
+                    + " = "
+                    + departmentKey("u.department")
+                    + """
 
               LEFT JOIN academic_faculties f ON f.faculty_id = m.faculty_id
               LEFT JOIN overdue o ON o.user_id = u.user_id
@@ -72,18 +90,30 @@ public class StudentObligationReportRepository {
             )
             """;
 
-    public StudentObligationReportRepository(NamedParameterJdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public StudentObligationReportRepository(NamedParameterJdbcTemplate jdbc) {
+        this.jdbc = jdbc;
+    }
 
     public List<Faculty> faculties() {
-        return jdbc.query("SELECT faculty_id, faculty_name FROM academic_faculties ORDER BY faculty_name, faculty_id",
+        return jdbc.query(
+                "SELECT faculty_id, faculty_name FROM academic_faculties ORDER BY faculty_name, faculty_id",
                 (rs, row) -> new Faculty(rs.getString(1), rs.getString(2)));
     }
 
     public ClassificationCoverage classificationCoverage() {
-        var groups = jdbc.query("SELECT u.department, m.faculty_id, count(*) AS student_count FROM users u "
-                        + "LEFT JOIN academic_department_mappings m ON " + departmentKey("m.department_value") + " = " + departmentKey("u.department")
-                        + " WHERE u.user_type = 'STUDENT' GROUP BY u.department, m.faculty_id ORDER BY u.department NULLS FIRST",
-                (rs, row) -> new CoverageGroup(rs.getString("department"), rs.getString("faculty_id"), rs.getLong("student_count")));
+        var groups =
+                jdbc.query(
+                        "SELECT u.department, m.faculty_id, count(*) AS student_count FROM users u "
+                                + "LEFT JOIN academic_department_mappings m ON "
+                                + departmentKey("m.department_value")
+                                + " = "
+                                + departmentKey("u.department")
+                                + " WHERE u.user_type = 'STUDENT' GROUP BY u.department, m.faculty_id ORDER BY u.department NULLS FIRST",
+                        (rs, row) ->
+                                new CoverageGroup(
+                                        rs.getString("department"),
+                                        rs.getString("faculty_id"),
+                                        rs.getLong("student_count")));
         long total = 0, classified = 0;
         var unmapped = new java.util.ArrayList<UnmappedDepartment>();
         for (var group : groups) {
@@ -91,86 +121,149 @@ public class StudentObligationReportRepository {
             if (group.facultyId() != null) classified += group.count();
             else unmapped.add(new UnmappedDepartment(group.department(), group.count()));
         }
-        return new ClassificationCoverage(total, classified, total - classified, total == classified, List.copyOf(unmapped));
+        return new ClassificationCoverage(
+                total, classified, total - classified, total == classified, List.copyOf(unmapped));
     }
 
     private record CoverageGroup(String department, String facultyId, long count) {}
 
     public long count(Filter filter, LocalDateTime snapshot) {
-        return jdbc.queryForObject(BASE + "SELECT count(*) FROM students " + where(filter), params(filter, snapshot), Long.class);
+        return jdbc.queryForObject(
+                BASE + "SELECT count(*) FROM students " + where(filter),
+                params(filter, snapshot),
+                Long.class);
     }
 
     public List<Student> students(Filter filter, LocalDateTime snapshot, Integer page, int size) {
-        String sql = BASE + "SELECT * FROM students " + where(filter)
-                + " ORDER BY mssv NULLS LAST, full_name NULLS LAST, user_id";
+        String sql =
+                BASE
+                        + "SELECT * FROM students "
+                        + where(filter)
+                        + " ORDER BY mssv NULLS LAST, full_name NULLS LAST, user_id";
         var parameters = params(filter, snapshot);
         if (page != null) {
             sql += " LIMIT :limit OFFSET :offset";
             parameters.addValue("limit", size).addValue("offset", (long) page * size);
         }
-        return jdbc.query(sql, parameters, (rs, row) -> {
-            BigDecimal charged = rs.getBigDecimal("charged"), satisfied = rs.getBigDecimal("satisfied");
-            BigDecimal waived = rs.getBigDecimal("waived"), adjusted = rs.getBigDecimal("adjusted");
-            BigDecimal outstanding = rs.getBigDecimal("outstanding"), wallet = rs.getBigDecimal("wallet_debt");
-            LocalDateTime due = time(rs, "earliest_due");
-            return new Student(rs.getObject("user_id", UUID.class), rs.getString("mssv"), rs.getString("full_name"),
-                    rs.getString("raw_department"), rs.getString("faculty_id"), rs.getString("faculty_name"),
-                    rs.getString("major_name"), rs.getString("mapping_status"), rs.getLong("overdue_count"), due,
-                    days(due, snapshot), charged, satisfied.subtract(waived).subtract(adjusted), waived, adjusted,
-                    outstanding, wallet, wallet == null ? null : wallet.subtract(outstanding),
-                    charged.subtract(satisfied).subtract(outstanding));
-        });
+        return jdbc.query(
+                sql,
+                parameters,
+                (rs, row) -> {
+                    BigDecimal charged = rs.getBigDecimal("charged"),
+                            satisfied = rs.getBigDecimal("satisfied");
+                    BigDecimal waived = rs.getBigDecimal("waived"),
+                            adjusted = rs.getBigDecimal("adjusted");
+                    BigDecimal outstanding = rs.getBigDecimal("outstanding"),
+                            wallet = rs.getBigDecimal("wallet_debt");
+                    LocalDateTime due = time(rs, "earliest_due");
+                    return new Student(
+                            rs.getObject("user_id", UUID.class),
+                            rs.getString("mssv"),
+                            rs.getString("full_name"),
+                            rs.getString("raw_department"),
+                            rs.getString("faculty_id"),
+                            rs.getString("faculty_name"),
+                            rs.getString("major_name"),
+                            rs.getString("mapping_status"),
+                            rs.getLong("overdue_count"),
+                            due,
+                            days(due, snapshot),
+                            charged,
+                            satisfied.subtract(waived).subtract(adjusted),
+                            waived,
+                            adjusted,
+                            outstanding,
+                            wallet,
+                            wallet == null ? null : wallet.subtract(outstanding),
+                            charged.subtract(satisfied).subtract(outstanding));
+                });
     }
 
     public List<OverdueItem> overdueItems(List<UUID> users, LocalDateTime snapshot) {
         if (users.isEmpty()) return List.of();
-        return jdbc.query("SELECT t.user_id, t.ticket_id, t.ticket_type, d.detail_id, d.barcode, d.due_date, "
+        return jdbc.query(
+                "SELECT t.user_id, t.ticket_id, t.ticket_type, d.detail_id, d.barcode, d.due_date, "
                         + "(SELECT b.title FROM book_copies bc JOIN books b ON b.book_id = bc.book_id WHERE bc.barcode = d.barcode) AS title "
-                        + OVERDUE + " AND t.user_id IN (:users) ORDER BY t.user_id, d.due_date, d.detail_id",
+                        + OVERDUE
+                        + " AND t.user_id IN (:users) ORDER BY t.user_id, d.due_date, d.detail_id",
                 new MapSqlParameterSource("users", users).addValue("snapshot", snapshot),
-                (rs, row) -> new OverdueItem(rs.getObject("user_id", UUID.class), rs.getLong("ticket_id"),
-                        rs.getLong("detail_id"), rs.getString("barcode"), rs.getString("title"), rs.getString("ticket_type"),
-                        time(rs, "due_date"), days(time(rs, "due_date"), snapshot)));
+                (rs, row) ->
+                        new OverdueItem(
+                                rs.getObject("user_id", UUID.class),
+                                rs.getLong("ticket_id"),
+                                rs.getLong("detail_id"),
+                                rs.getString("barcode"),
+                                rs.getString("title"),
+                                rs.getString("ticket_type"),
+                                time(rs, "due_date"),
+                                days(time(rs, "due_date"), snapshot)));
     }
 
     public List<LedgerEntry> ledgerEntries(List<UUID> users) {
         if (users.isEmpty()) return List.of();
-        return jdbc.query("SELECT *, CASE WHEN amount > 0 AND status IN (" + OPEN + ") "
+        return jdbc.query(
+                "SELECT *, CASE WHEN amount > 0 AND status IN ("
+                        + OPEN
+                        + ") "
                         + "THEN greatest(amount - coalesce(paid_amount, 0), 0) ELSE 0 END AS outstanding "
-                        + "FROM transactions WHERE user_id IN (:users) AND ((amount > 0 AND type IN (" + CHARGES + ")) "
+                        + "FROM transactions WHERE user_id IN (:users) AND ((amount > 0 AND type IN ("
+                        + CHARGES
+                        + ")) "
                         + "OR (amount < 0 AND status = 'COMPLETED' AND type IN ('PAYMENT', 'ADJUSTMENT', 'WAIVER_ADJUSTMENT'))) "
                         + "ORDER BY user_id, created_at NULLS LAST, transaction_id",
-                new MapSqlParameterSource("users", users), ledgerMapper());
+                new MapSqlParameterSource("users", users),
+                ledgerMapper());
     }
 
     private RowMapper<LedgerEntry> ledgerMapper() {
-        return (rs, row) -> new LedgerEntry(rs.getObject("user_id", UUID.class), rs.getLong("transaction_id"),
-                rs.getObject("ticket_id", Long.class), rs.getObject("loan_detail_id", Long.class),
-                rs.getObject("penalty_case_id", Long.class), rs.getString("type"), rs.getString("reason"),
-                rs.getString("status"), rs.getBigDecimal("amount"), rs.getBigDecimal("paid_amount"),
-                rs.getBigDecimal("outstanding"), rs.getString("payment_method"), rs.getString("receipt_number"), time(rs, "created_at"));
+        return (rs, row) ->
+                new LedgerEntry(
+                        rs.getObject("user_id", UUID.class),
+                        rs.getLong("transaction_id"),
+                        rs.getObject("ticket_id", Long.class),
+                        rs.getObject("loan_detail_id", Long.class),
+                        rs.getObject("penalty_case_id", Long.class),
+                        rs.getString("type"),
+                        rs.getString("reason"),
+                        rs.getString("status"),
+                        rs.getBigDecimal("amount"),
+                        rs.getBigDecimal("paid_amount"),
+                        rs.getBigDecimal("outstanding"),
+                        rs.getString("payment_method"),
+                        rs.getString("receipt_number"),
+                        time(rs, "created_at"));
     }
 
     private String where(Filter filter) {
-        String condition = switch (filter.mode()) {
-            case OVERDUE -> "overdue_count > 0";
-            case DEBT -> "(outstanding > 0 OR coalesce(wallet_debt, 0) > 0)";
-            case EITHER -> "(overdue_count > 0 OR outstanding > 0 OR coalesce(wallet_debt, 0) > 0)";
-        };
+        String condition =
+                switch (filter.mode()) {
+                    case OVERDUE -> "overdue_count > 0";
+                    case DEBT -> "(outstanding > 0 OR coalesce(wallet_debt, 0) > 0)";
+                    case EITHER ->
+                            "(overdue_count > 0 OR outstanding > 0 OR coalesce(wallet_debt, 0) > 0)";
+                };
         if (filter.facultyId() != null) condition += " AND faculty_id = :faculty";
-        if (!filter.query().isEmpty()) condition += " AND (strpos(lower(coalesce(mssv, '')), lower(:query)) > 0 "
-                + "OR strpos(lower(coalesce(full_name, '')), lower(:query)) > 0)";
+        if (!filter.query().isEmpty())
+            condition +=
+                    " AND (strpos(lower(coalesce(mssv, '')), lower(:query)) > 0 "
+                            + "OR strpos(lower(coalesce(full_name, '')), lower(:query)) > 0)";
         return "WHERE " + condition;
     }
 
     private MapSqlParameterSource params(Filter filter, LocalDateTime snapshot) {
-        return new MapSqlParameterSource("snapshot", snapshot).addValue("faculty", filter.facultyId()).addValue("query", filter.query());
+        return new MapSqlParameterSource("snapshot", snapshot)
+                .addValue("faculty", filter.facultyId())
+                .addValue("query", filter.query());
     }
 
     private static LocalDateTime time(ResultSet rs, String column) throws SQLException {
         return rs.getObject(column, LocalDateTime.class);
     }
+
     private static long days(LocalDateTime due, LocalDateTime snapshot) {
-        return due == null ? 0 : java.time.temporal.ChronoUnit.DAYS.between(due.toLocalDate(), snapshot.toLocalDate());
+        return due == null
+                ? 0
+                : java.time.temporal.ChronoUnit.DAYS.between(
+                        due.toLocalDate(), snapshot.toLocalDate());
     }
 }

@@ -13,6 +13,5 @@ public interface LoanStatusHistoryRepository extends JpaRepository<LoanStatusHis
     List<LoanStatusHistoryEntity> findByTicketIdOrderByCreatedAtAsc(Long ticketId);
 
     Optional<LoanStatusHistoryEntity> findFirstByTicketIdAndToStatusOrderByCreatedAtAsc(
-            Long ticketId,
-            LoanTicketStatus toStatus);
+            Long ticketId, LoanTicketStatus toStatus);
 }

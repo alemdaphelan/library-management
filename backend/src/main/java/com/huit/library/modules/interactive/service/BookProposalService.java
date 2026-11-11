@@ -30,15 +30,17 @@ public class BookProposalService {
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
     private final StaffNotificationService staffNotificationService;
-    private final com.huit.library.modules.reporting.repository.AcademicMajorRepository majorRepository;
+    private final com.huit.library.modules.reporting.repository.AcademicMajorRepository
+            majorRepository;
 
-    public BookProposalService(BookProposalRepository proposalRepository,
-                               UserRepository userRepository,
-                               NotificationService notificationService,
-                               BookRepository bookRepository,
-                               CategoryRepository categoryRepository,
-                               StaffNotificationService staffNotificationService,
-                               com.huit.library.modules.reporting.repository.AcademicMajorRepository majorRepository) {
+    public BookProposalService(
+            BookProposalRepository proposalRepository,
+            UserRepository userRepository,
+            NotificationService notificationService,
+            BookRepository bookRepository,
+            CategoryRepository categoryRepository,
+            StaffNotificationService staffNotificationService,
+            com.huit.library.modules.reporting.repository.AcademicMajorRepository majorRepository) {
         this.proposalRepository = proposalRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
@@ -51,8 +53,14 @@ public class BookProposalService {
     @Transactional(readOnly = true)
     public List<com.huit.library.modules.interactive.dto.ProposalMajorDTO> getMajors() {
         return majorRepository.findAllByOrderByMajorNameAscMajorIdAsc().stream()
-                .map(m -> new com.huit.library.modules.interactive.dto.ProposalMajorDTO(
-                        m.getMajorId(), m.getMajorName(), m.getMajorCode(), m.getFacultyId(), m.getSourceReference()))
+                .map(
+                        m ->
+                                new com.huit.library.modules.interactive.dto.ProposalMajorDTO(
+                                        m.getMajorId(),
+                                        m.getMajorName(),
+                                        m.getMajorCode(),
+                                        m.getFacultyId(),
+                                        m.getSourceReference()))
                 .toList();
     }
 
@@ -74,15 +82,23 @@ public class BookProposalService {
         entity.setExternalUrl(normalize(req.getExternalUrl()));
         entity.setGenre(normalize(req.getGenre()));
         if (req.getMajorId() != null && !req.getMajorId().isBlank()) {
-            var major = majorRepository.findById(req.getMajorId().trim())
-                    .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                            org.springframework.http.HttpStatus.BAD_REQUEST, "Ngành học không có trong danh mục chính thức"));
+            var major =
+                    majorRepository
+                            .findById(req.getMajorId().trim())
+                            .orElseThrow(
+                                    () ->
+                                            new org.springframework.web.server
+                                                    .ResponseStatusException(
+                                                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                                                    "Ngành học không có trong danh mục chính thức"));
             entity.setMajorId(major.getMajorId());
             entity.setMajorName(major.getMajorName());
             entity.setMajorSourceReference(major.getSourceReference());
         }
-        entity.setUrgencyLevel(req.getUrgencyLevel() == null || req.getUrgencyLevel().isBlank()
-                ? "NORMAL" : req.getUrgencyLevel().trim().toUpperCase());
+        entity.setUrgencyLevel(
+                req.getUrgencyLevel() == null || req.getUrgencyLevel().isBlank()
+                        ? "NORMAL"
+                        : req.getUrgencyLevel().trim().toUpperCase());
         entity.setReason(req.getReason() != null ? req.getReason().trim() : null);
         entity.setNote(req.getNote() != null ? req.getNote().trim() : null);
         entity.setStatus("PENDING");
@@ -91,9 +107,13 @@ public class BookProposalService {
 
         staffNotificationService.notifyAll(
                 "BOOK_PROPOSAL_PENDING",
-                "Có đề xuất mua sách mới: ‘" + saved.getTitle() + "’. Vui lòng kiểm tra và phản hồi.",
-                "BOOK_PROPOSAL", String.valueOf(saved.getProposalId()),
-                "BOOK_PROPOSAL_PENDING:" + saved.getProposalId(), java.time.LocalDateTime.now());
+                "Có đề xuất mua sách mới: ‘"
+                        + saved.getTitle()
+                        + "’. Vui lòng kiểm tra và phản hồi.",
+                "BOOK_PROPOSAL",
+                String.valueOf(saved.getProposalId()),
+                "BOOK_PROPOSAL_PENDING:" + saved.getProposalId(),
+                java.time.LocalDateTime.now());
 
         UserEntity user = null;
         if (userId != null) {
@@ -109,45 +129,60 @@ public class BookProposalService {
         }
         UserEntity user = userRepository.findById(userId).orElse(null);
         List<BookProposalEntity> list = proposalRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        return list.stream()
-                .map(entity -> mapToDTO(entity, user))
-                .collect(Collectors.toList());
+        return list.stream().map(entity -> mapToDTO(entity, user)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<ProposalResponseDTO> getAllProposals() {
         List<BookProposalEntity> list = proposalRepository.findAllByOrderByCreatedAtDesc();
-        
-        Set<UUID> userIds = list.stream()
-                .map(BookProposalEntity::getUserId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
 
-        Map<UUID, UserEntity> userMap = userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(UserEntity::getUserId, u -> u));
+        Set<UUID> userIds =
+                list.stream()
+                        .map(BookProposalEntity::getUserId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
+        Map<UUID, UserEntity> userMap =
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(UserEntity::getUserId, u -> u));
 
         return list.stream()
-                .map(entity -> mapToDTO(entity, entity.getUserId() != null ? userMap.get(entity.getUserId()) : null))
+                .map(
+                        entity ->
+                                mapToDTO(
+                                        entity,
+                                        entity.getUserId() != null
+                                                ? userMap.get(entity.getUserId())
+                                                : null))
                 .collect(Collectors.toList());
     }
 
     @Transactional
     public ProposalResponseDTO updateStatus(Long proposalId, UpdateProposalStatusDTO req) {
-        BookProposalEntity entity = proposalRepository.findById(proposalId)
-                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy đề xuất mã #" + proposalId));
+        BookProposalEntity entity =
+                proposalRepository
+                        .findById(proposalId)
+                        .orElseThrow(
+                                () ->
+                                        new NoSuchElementException(
+                                                "Không tìm thấy đề xuất mã #" + proposalId));
 
         if (req.getStatus() == null || req.getStatus().isBlank()) {
             throw new IllegalArgumentException("Trạng thái xử lý không được để trống");
         }
         String statusUpper = req.getStatus().trim().toUpperCase();
         if (!"APPROVED".equals(statusUpper) && !"REJECTED".equals(statusUpper)) {
-            throw new IllegalArgumentException("Trạng thái đề xuất chỉ có thể là APPROVED hoặc REJECTED");
+            throw new IllegalArgumentException(
+                    "Trạng thái đề xuất chỉ có thể là APPROVED hoặc REJECTED");
         }
-        String currentStatus = entity.getStatus() == null ? "PENDING" : entity.getStatus().toUpperCase();
+        String currentStatus =
+                entity.getStatus() == null ? "PENDING" : entity.getStatus().toUpperCase();
         if (!"PENDING".equals(currentStatus)) {
             if (currentStatus.equals(statusUpper)) {
-                UserEntity existingUser = entity.getUserId() == null
-                        ? null : userRepository.findById(entity.getUserId()).orElse(null);
+                UserEntity existingUser =
+                        entity.getUserId() == null
+                                ? null
+                                : userRepository.findById(entity.getUserId()).orElse(null);
                 return mapToDTO(entity, existingUser);
             }
             throw new IllegalStateException("Đề xuất đã được xử lý và không thể đổi kết quả");
@@ -168,22 +203,32 @@ public class BookProposalService {
         }
 
         BookProposalEntity updated = proposalRepository.save(entity);
-        if (entity.getUserId() != null && ("APPROVED".equals(entity.getStatus())
-                || "REJECTED".equals(entity.getStatus()))) {
-            String type = "APPROVED".equals(entity.getStatus())
-                    ? "PROPOSAL_APPROVED" : "PROPOSAL_REJECTED";
-            String result = "APPROVED".equals(entity.getStatus())
-                    ? "đã được chấp nhận" : "đã bị từ chối";
-            String note = entity.getAdminNote() == null || entity.getAdminNote().isBlank()
-                    ? "" : " Lý do/ghi chú: " + entity.getAdminNote().trim();
+        if (entity.getUserId() != null
+                && ("APPROVED".equals(entity.getStatus())
+                        || "REJECTED".equals(entity.getStatus()))) {
+            String type =
+                    "APPROVED".equals(entity.getStatus())
+                            ? "PROPOSAL_APPROVED"
+                            : "PROPOSAL_REJECTED";
+            String result =
+                    "APPROVED".equals(entity.getStatus()) ? "đã được chấp nhận" : "đã bị từ chối";
+            String note =
+                    entity.getAdminNote() == null || entity.getAdminNote().isBlank()
+                            ? ""
+                            : " Lý do/ghi chú: " + entity.getAdminNote().trim();
             notificationService.createOnce(
-                    entity.getUserId(), type,
+                    entity.getUserId(),
+                    type,
                     "Đề xuất tài liệu ‘" + entity.getTitle() + "’ " + result + "." + note,
-                    "BOOK_PROPOSAL", String.valueOf(entity.getProposalId()),
+                    "BOOK_PROPOSAL",
+                    String.valueOf(entity.getProposalId()),
                     "proposal:" + entity.getProposalId() + ":" + entity.getStatus(),
                     java.time.LocalDateTime.now());
         }
-        UserEntity user = entity.getUserId() != null ? userRepository.findById(entity.getUserId()).orElse(null) : null;
+        UserEntity user =
+                entity.getUserId() != null
+                        ? userRepository.findById(entity.getUserId()).orElse(null)
+                        : null;
         return mapToDTO(updated, user);
     }
 
@@ -222,8 +267,10 @@ public class BookProposalService {
 
     private BookEntity createCatalogEntry(BookProposalEntity proposal) {
         if (proposal.getApprovedBookId() != null) {
-            return bookRepository.findById(proposal.getApprovedBookId())
-                    .orElseThrow(() -> new IllegalStateException("Đầu sách đã duyệt không còn tồn tại"));
+            return bookRepository
+                    .findById(proposal.getApprovedBookId())
+                    .orElseThrow(
+                            () -> new IllegalStateException("Đầu sách đã duyệt không còn tồn tại"));
         }
         if (proposal.getIsbn() != null) {
             Optional<BookEntity> existing = bookRepository.findFirstByIsbn(proposal.getIsbn());
@@ -240,7 +287,8 @@ public class BookProposalService {
         book.setPublishYear(proposal.getPublicationYear());
         book.setDefaultPrice(proposal.getEstimatedPrice());
         book.setPriceCurrency("VND");
-        if (proposal.getEstimatedPrice() != null && proposal.getEstimatedPrice().compareTo(BigDecimal.ZERO) > 0) {
+        if (proposal.getEstimatedPrice() != null
+                && proposal.getEstimatedPrice().compareTo(BigDecimal.ZERO) > 0) {
             book.setPriceStatus("ESTIMATED");
             book.setPriceSource("PROPOSAL");
             book.setPriceUpdatedAt(LocalDateTime.now());
@@ -259,19 +307,24 @@ public class BookProposalService {
         if (genre == null || genre.isBlank()) {
             return null;
         }
-        return categoryRepository.findFirstByNameIgnoreCase(genre.trim())
-                .orElseGet(() -> {
-                    CategoryEntity category = new CategoryEntity();
-                    category.setName(genre.trim());
-                    category.setDescription("Thể loại được bổ sung từ đề xuất tài liệu đã duyệt");
-                    return categoryRepository.save(category);
-                });
+        return categoryRepository
+                .findFirstByNameIgnoreCase(genre.trim())
+                .orElseGet(
+                        () -> {
+                            CategoryEntity category = new CategoryEntity();
+                            category.setName(genre.trim());
+                            category.setDescription(
+                                    "Thể loại được bổ sung từ đề xuất tài liệu đã duyệt");
+                            return categoryRepository.save(category);
+                        });
     }
 
     private String catalogDescription(BookProposalEntity proposal) {
         List<String> details = new ArrayList<>();
-        details.add("Đầu sách được tạo từ đề xuất #" + proposal.getProposalId()
-                + "; chưa có bản sao và cần nhập kho bằng phiếu nhập.");
+        details.add(
+                "Đầu sách được tạo từ đề xuất #"
+                        + proposal.getProposalId()
+                        + "; chưa có bản sao và cần nhập kho bằng phiếu nhập.");
         if (proposal.getEdition() != null) {
             details.add("Phiên bản: " + proposal.getEdition() + ".");
         }

@@ -33,6 +33,5 @@ public class LoanStatusHistoryEntity {
     private UUID changedBy;
     private String reason;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+    @CreationTimestamp private LocalDateTime createdAt;
 }

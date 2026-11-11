@@ -34,7 +34,10 @@ public class RagEmbeddingGateway {
 
     public String providerKey() {
         if (useGemini()) {
-            return "gemini:" + properties.getEmbeddingModel() + ":" + properties.getEmbeddingDimension();
+            return "gemini:"
+                    + properties.getEmbeddingModel()
+                    + ":"
+                    + properties.getEmbeddingDimension();
         }
         return localEmbeddingService.providerKey();
     }

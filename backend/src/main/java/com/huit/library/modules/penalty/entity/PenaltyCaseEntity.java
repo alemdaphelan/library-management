@@ -22,6 +22,7 @@ public class PenaltyCaseEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long caseId;
+
     private UUID userId;
     private Long ticketId;
     private Long loanDetailId;

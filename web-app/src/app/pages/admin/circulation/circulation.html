@@ -1,10 +1,22 @@
 <div class="circulation-page">
   <div class="pos-header">
     <div class="pos-tabs">
-      <button class="pos-tab" [class.active]="activeTab === 'borrow'" (click)="switchTab('borrow')" [disabled]="isSubmitting || returnLocked">MƯỢN SÁCH</button>
-      <button class="pos-tab" [class.active]="activeTab === 'return'" (click)="switchTab('return')" [disabled]="isSubmitting || returnLocked">TRẢ SÁCH</button>
+      <button
+        class="pos-tab"
+        [class.active]="activeTab === 'borrow'"
+        (click)="switchTab('borrow')"
+        [disabled]="isSubmitting || returnLocked"
+      >MƯỢN SÁCH</button>
+      <button
+        class="pos-tab"
+        [class.active]="activeTab === 'return'"
+        (click)="switchTab('return')"
+        [disabled]="isSubmitting || returnLocked"
+      >TRẢ SÁCH</button>
     </div>
-    <div class="pos-status" [class.closed]="!isCounterOpen"><span class="status-indicator"></span> {{ isCounterOpen ? 'Quầy đang hoạt động' : 'Quầy đã đóng cửa' }}</div>
+    <div class="pos-status" [class.closed]="!isCounterOpen">
+      <span class="status-indicator"></span>
+      {{ isCounterOpen ? 'Quầy đang hoạt động' : 'Quầy đã đóng cửa' }}</div>
   </div>
 
   <div class="message error-banner" *ngIf="errorMessage">{{ errorMessage }}</div>
@@ -17,59 +29,108 @@
     <div class="pos-panel student-panel" *ngIf="activeTab === 'borrow'">
       <div class="panel-title">1. Chọn cách tiếp nhận bạn đọc</div>
       <div class="borrow-mode-tabs">
-        <button type="button" [class.active]="borrowMode === 'approved'" (click)="switchBorrowMode('approved')">Phiếu trực tuyến đã giữ chỗ</button>
-        <button type="button" [class.active]="borrowMode === 'manual'" (click)="switchBorrowMode('manual')">Lập phiếu trực tiếp tại quầy</button>
+        <button
+          type="button"
+          [class.active]="borrowMode === 'approved'"
+          (click)="switchBorrowMode('approved')"
+        >Phiếu trực tuyến đã giữ chỗ</button>
+        <button
+          type="button"
+          [class.active]="borrowMode === 'manual'"
+          (click)="switchBorrowMode('manual')"
+        >Lập phiếu trực tiếp tại quầy</button>
       </div>
 
       <ng-container *ngIf="borrowMode === 'approved'">
-      <p class="manual-hint">Phiếu mới được hệ thống tự động giữ chỗ. Phiếu cũ được kiểm tra lại điều kiện khi tải; thủ thư chỉ thực hiện giao sách.</p>
-      <div class="scanner-input-wrapper scanner-with-camera">
-        <input
-          type="text"
-          class="scanner-input no-icon"
-          [(ngModel)]="ticketInput"
-          (keydown.enter)="resolveTicket()"
-          placeholder="Nhập số phiếu hoặc HUIT-PM-123">
-        <button class="btn-scan" type="button" (click)="resolveTicket()" [disabled]="isResolvingTicket">
-          {{ isResolvingTicket ? 'Đang tải...' : 'Tải phiếu' }}
-        </button>
-        <button class="btn-camera" type="button" (click)="startCamera('ticket')" title="Quét QR phiếu mượn">Quét QR</button>
-      </div>
+        <p class="manual-hint">Phiếu mới được hệ thống tự động giữ chỗ. Phiếu cũ được kiểm tra lại điều kiện khi tải; thủ
+          thư chỉ thực hiện giao sách.</p>
+        <div class="scanner-input-wrapper scanner-with-camera">
+          <input
+            type="text"
+            class="scanner-input no-icon"
+            [(ngModel)]="ticketInput"
+            (keydown.enter)="resolveTicket()"
+            placeholder="Nhập số phiếu hoặc HUIT-PM-123"
+          />
+          <button
+            class="btn-scan"
+            type="button"
+            (click)="resolveTicket()"
+            [disabled]="isResolvingTicket"
+          >
+            {{ isResolvingTicket ? 'Đang tải...' : 'Tải phiếu' }}
+          </button>
+          <button
+            class="btn-camera"
+            type="button"
+            (click)="startCamera('ticket')"
+            title="Quét QR phiếu mượn"
+          >Quét QR</button>
+        </div>
 
-      <div class="empty-state" *ngIf="!selectedTicket">
-        <p>Nhập hoặc quét mã phiếu. Hệ thống chỉ cho phép giao sách đối với phiếu đã được giữ chỗ và đang chờ nhận.</p>
-      </div>
+        <div class="empty-state" *ngIf="!selectedTicket">
+          <p>Nhập hoặc quét mã phiếu. Hệ thống chỉ cho phép giao sách đối với phiếu đã được giữ chỗ
+            và đang chờ nhận.</p>
+        </div>
 
-      <div class="student-card" *ngIf="selectedTicket">
-        <div class="student-header">
-          <div class="student-ava">{{ (selectedTicket.readerName || '?').charAt(0) }}</div>
-          <div class="student-info">
-            <h3>{{ selectedTicket.readerName || 'Chưa có tên bạn đọc' }}</h3>
-            <p>{{ selectedTicket.mssv || selectedTicket.userId }} · Phiếu #{{ selectedTicket.ticketId }}</p>
+        <div class="student-card" *ngIf="selectedTicket">
+          <div class="student-header">
+            <div class="student-ava">{{ (selectedTicket.readerName || '?').charAt(0) }}</div>
+            <div class="student-info">
+              <h3>{{ selectedTicket.readerName || 'Chưa có tên bạn đọc' }}</h3>
+              <p>{{ selectedTicket.mssv || selectedTicket.userId }} · Phiếu #{{ selectedTicket.ticketId }}</p>
+            </div>
+          </div>
+          <div class="student-stats">
+            <div class="stat-item">
+              <span class="stat-label">Trạng thái phiếu</span>
+              <span class="badge badge-available">Đang giữ chỗ</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Loại phiếu</span>
+              <span
+                class="stat-val"
+                >{{ selectedTicket.ticketType === 'ONSITE' ? 'Đọc tại chỗ' : 'Mượn về' }}</span
+              >
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Cần giao đủ</span>
+              <span class="stat-val">{{ selectedTicket.items.length }} cuốn</span>
+            </div>
+          </div>
+          <div class="expected-list">
+            <div class="expected-item" *ngFor="let item of selectedTicket.items">
+              <div>
+                <strong>{{ item.bookTitle }}</strong>
+                <small>{{ item.author || 'Chưa có tác giả' }}</small>
+              </div>
+              <code>{{ item.barcode }}</code>
+            </div>
           </div>
         </div>
-        <div class="student-stats">
-          <div class="stat-item"><span class="stat-label">Trạng thái phiếu</span><span class="badge badge-available">Đang giữ chỗ</span></div>
-          <div class="stat-item"><span class="stat-label">Loại phiếu</span><span class="stat-val">{{ selectedTicket.ticketType === 'ONSITE' ? 'Đọc tại chỗ' : 'Mượn về' }}</span></div>
-          <div class="stat-item"><span class="stat-label">Cần giao đủ</span><span class="stat-val">{{ selectedTicket.items.length }} cuốn</span></div>
-        </div>
-        <div class="expected-list">
-          <div class="expected-item" *ngFor="let item of selectedTicket.items">
-            <div><strong>{{ item.bookTitle }}</strong><small>{{ item.author || 'Chưa có tác giả' }}</small></div>
-            <code>{{ item.barcode }}</code>
-          </div>
-        </div>
-      </div>
       </ng-container>
 
       <div class="manual-reader-form" *ngIf="borrowMode === 'manual'">
         <div class="manual-hint">
-          Dùng cho sinh viên đến mượn trực tiếp tại quầy. Hệ thống kiểm tra trạng thái thẻ, công nợ, quá hạn và giới hạn ba tài liệu trước khi lập phiếu.
+          Dùng cho sinh viên đến mượn trực tiếp tại quầy. Hệ thống kiểm tra trạng thái thẻ, công nợ,
+          quá hạn và giới hạn ba tài liệu trước khi lập phiếu.
         </div>
         <label for="manual-mssv">MSSV / Mã bạn đọc</label>
         <div class="scanner-input-wrapper scanner-with-camera">
-          <input id="manual-mssv" type="text" class="scanner-input no-icon" maxlength="30" [(ngModel)]="manualMssv" placeholder="Ví dụ: 2001234567">
-          <button class="btn-camera" type="button" (click)="startCamera('ticket')" title="Quét QR thẻ thư viện">Quét thẻ QR</button>
+          <input
+            id="manual-mssv"
+            type="text"
+            class="scanner-input no-icon"
+            maxlength="30"
+            [(ngModel)]="manualMssv"
+            placeholder="Ví dụ: 2001234567"
+          />
+          <button
+            class="btn-camera"
+            type="button"
+            (click)="startCamera('ticket')"
+            title="Quét QR thẻ thư viện"
+          >Quét thẻ QR</button>
         </div>
         <label for="manual-ticket-type">Hình thức mượn</label>
         <select id="manual-ticket-type" [(ngModel)]="manualTicketType">
@@ -77,10 +138,13 @@
           <option value="ONSITE">Đọc tại chỗ — trả trong ngày</option>
         </select>
         <label for="manual-note">Tình trạng khi giao sách</label>
-        <textarea id="manual-note" maxlength="500" [(ngModel)]="manualNote" placeholder="Ví dụ: Bìa và trang sách nguyên vẹn"></textarea>
+        <textarea
+          id="manual-note"
+          maxlength="500"
+          [(ngModel)]="manualNote"
+          placeholder="Ví dụ: Bìa và trang sách nguyên vẹn"
+        ></textarea>
       </div>
-
-
     </div>
 
     <div class="pos-panel cart-panel">
@@ -92,11 +156,23 @@
           [(ngModel)]="barcodeInput"
           (keydown.enter)="scanBookBarcode()"
           [disabled]="isScanningBook || isSubmitting"
-          placeholder="Quét hoặc nhập barcode bản sao">
-        <button class="btn-scan" type="button" (click)="scanBookBarcode()" [disabled]="isScanningBook || isSubmitting">
+          placeholder="Quét hoặc nhập barcode bản sao"
+        />
+        <button
+          class="btn-scan"
+          type="button"
+          (click)="scanBookBarcode()"
+          [disabled]="isScanningBook || isSubmitting"
+        >
           {{ isScanningBook ? 'Đang kiểm tra...' : 'Thêm' }}
         </button>
-        <button class="btn-camera" type="button" (click)="startCamera('barcode')" [disabled]="isSubmitting" title="Quét barcode bằng camera">Camera</button>
+        <button
+          class="btn-camera"
+          type="button"
+          (click)="startCamera('barcode')"
+          [disabled]="isSubmitting"
+          title="Quét barcode bằng camera"
+        >Camera</button>
       </div>
 
       <div class="cart-container">
@@ -116,10 +192,19 @@
       </div>
 
       <div class="pos-footer">
-        <div class="pos-summary" *ngIf="activeTab === 'borrow'"><span>Tổng số lượng tài liệu:</span><span class="summary-total">{{ scannedBooks.length }} cuốn</span></div>
+        <div class="pos-summary" *ngIf="activeTab === 'borrow'">
+          <span>Tổng số lượng tài liệu:</span>
+          <span class="summary-total">{{ scannedBooks.length }} cuốn</span>
+        </div>
         <div class="pos-actions">
           <button class="btn-cancel" type="button" (click)="resetForm()" [disabled]="isSubmitting">Hủy bỏ</button>
-          <button class="btn-checkout" type="button" *ngIf="activeTab === 'borrow'" [disabled]="!canSubmit || !isCounterOpen" (click)="completeTransaction()">
+          <button
+            class="btn-checkout"
+            type="button"
+            *ngIf="activeTab === 'borrow'"
+            [disabled]="!canSubmit || !isCounterOpen"
+            (click)="completeTransaction()"
+          >
             {{ isSubmitting ? 'ĐANG XỬ LÝ...' : (borrowMode === 'manual' ? 'LẬP PHIẾU & CHO MƯỢN' : 'HOÀN TẤT MƯỢN SÁCH') }}
           </button>
         </div>
@@ -127,12 +212,21 @@
     </div>
   </div>
 
-  <app-return-inspection [hidden]="activeTab !== 'return'" [counterOpen]="isCounterOpen" [initialTicketId]="returnInitialTicketId" (scanRequested)="startCamera('barcode')" (lockChanged)="returnLocked = $event"></app-return-inspection>
+  <app-return-inspection
+    [hidden]="activeTab !== 'return'"
+    [counterOpen]="isCounterOpen"
+    [initialTicketId]="returnInitialTicketId"
+    (scanRequested)="startCamera('barcode')"
+    (lockChanged)="returnLocked = $event"
+  ></app-return-inspection>
 
   <div class="camera-backdrop" *ngIf="showCamera" (click)="stopCamera()">
     <section class="camera-dialog" (click)="$event.stopPropagation()">
       <div class="camera-heading">
-        <div><h3>{{ cameraTarget === 'ticket' ? 'Quét QR HUIT' : 'Quét barcode bản sao' }}</h3><p>Đưa mã vào giữa khung hình và giữ thiết bị ổn định.</p></div>
+        <div>
+          <h3>{{ cameraTarget === 'ticket' ? 'Quét QR HUIT' : 'Quét barcode bản sao' }}</h3>
+          <p>Đưa mã vào giữa khung hình và giữ thiết bị ổn định.</p>
+        </div>
         <button type="button" (click)="stopCamera()" aria-label="Đóng camera">×</button>
       </div>
       <div class="camera-error" *ngIf="cameraError">{{ cameraError }}</div>
@@ -140,7 +234,8 @@
         <video #cameraVideo playsinline muted></video>
         <span class="scan-line"></span>
       </div>
-      <p class="camera-fallback">Nếu camera không nhận diện được, hãy đóng cửa sổ này và dùng máy quét USB hoặc nhập mã bằng bàn phím.</p>
+      <p class="camera-fallback">Nếu camera không nhận diện được, hãy đóng cửa sổ này và dùng máy quét USB hoặc nhập mã bằng
+        bàn phím.</p>
     </section>
   </div>
 </div>

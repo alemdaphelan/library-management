@@ -52,7 +52,7 @@ export class DialogService {
 
   confirm(options: DialogOptions): Promise<boolean> {
     this.prepare(options, 'confirm');
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       this.resolveConfirm = resolve;
     });
   }
@@ -61,7 +61,7 @@ export class DialogService {
     this.prepare(options, 'prompt');
     this.inputLabel.set(options.inputLabel || 'Nội dung');
     this.promptValue.set(options.inputValue || '');
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       this.resolvePrompt = resolve;
     });
   }
@@ -127,8 +127,15 @@ export class DialogService {
   private detectType(message: string): DialogType {
     const lower = message.toLowerCase();
     if (lower.includes('thành công') || lower.includes('success')) return 'success';
-    if (lower.includes('lỗi') || lower.includes('thất bại') || lower.includes('không thể') || lower.includes('từ chối')) return 'error';
-    if (lower.includes('cảnh báo') || lower.includes('quá hạn') || lower.includes('hạn chế')) return 'warning';
+    if (
+      lower.includes('lỗi') ||
+      lower.includes('thất bại') ||
+      lower.includes('không thể') ||
+      lower.includes('từ chối')
+    )
+      return 'error';
+    if (lower.includes('cảnh báo') || lower.includes('quá hạn') || lower.includes('hạn chế'))
+      return 'warning';
     return 'info';
   }
 }

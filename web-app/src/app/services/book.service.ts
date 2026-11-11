@@ -41,12 +41,12 @@ export interface DepartmentOption {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class BookService {
   private apiUrl = `${environment.apiUrl}/books`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   getBooks(
     query?: string,
@@ -55,11 +55,11 @@ export class BookService {
     categoryId?: number,
     availability?: 'AVAILABLE' | 'UNAVAILABLE',
     department?: string,
-    facultyId?: string
+    facultyId?: string,
   ): Observable<any> {
     const params: Record<string, string> = {
       page: page.toString(),
-      size: size.toString()
+      size: size.toString(),
     };
     if (query?.trim()) params['query'] = query.trim();
     if (categoryId) params['categoryId'] = categoryId.toString();
@@ -110,7 +110,9 @@ export class BookService {
   }
 
   getWishlistStatus(bookId: number): Observable<{ saved: boolean }> {
-    return this.http.get<{ saved: boolean }>(`${environment.apiUrl}/users/wishlist/${bookId}/status`);
+    return this.http.get<{ saved: boolean }>(
+      `${environment.apiUrl}/users/wishlist/${bookId}/status`,
+    );
   }
 
   addToWishlist(bookId: number): Observable<WishlistItem> {

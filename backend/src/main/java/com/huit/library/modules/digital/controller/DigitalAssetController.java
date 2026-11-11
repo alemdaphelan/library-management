@@ -44,46 +44,55 @@ public class DigitalAssetController {
             @RequestParam(value = "bookId", required = false) Long bookId,
             @RequestParam(value = "accessLevel", defaultValue = "AUTHENTICATED") String accessLevel,
             Authentication authentication) {
-        return ResponseEntity.ok(digitalAssetService.upload(
-                file, bookId, accessLevel, currentUserId(authentication)));
+        return ResponseEntity.ok(
+                digitalAssetService.upload(
+                        file, bookId, accessLevel, currentUserId(authentication)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<?> update(
-            @PathVariable Long id,
-            @Valid @RequestBody DigitalAssetUpdateDTO request) {
+            @PathVariable Long id, @Valid @RequestBody DigitalAssetUpdateDTO request) {
         return ResponseEntity.ok(digitalAssetService.update(id, request));
     }
 
     @GetMapping("/{id}/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> download(@PathVariable Long id, Authentication authentication) {
-        DigitalAssetService.DigitalDownload download = digitalAssetService.download(
-                id, currentUserId(authentication), isStaff(authentication));
+        DigitalAssetService.DigitalDownload download =
+                digitalAssetService.download(
+                        id, currentUserId(authentication), isStaff(authentication));
         return resourceResponse(download, false);
     }
 
     @GetMapping("/{id}/preview")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> preview(@PathVariable Long id, Authentication authentication) {
-        DigitalAssetService.DigitalDownload download = digitalAssetService.download(
-                id, currentUserId(authentication), isStaff(authentication));
+        DigitalAssetService.DigitalDownload download =
+                digitalAssetService.download(
+                        id, currentUserId(authentication), isStaff(authentication));
         return resourceResponse(download, true);
     }
 
-    private ResponseEntity<?> resourceResponse(DigitalAssetService.DigitalDownload download, boolean inline) {
+    private ResponseEntity<?> resourceResponse(
+            DigitalAssetService.DigitalDownload download, boolean inline) {
         MediaType contentType;
         try {
             contentType = MediaType.parseMediaType(download.contentType());
         } catch (Exception ignored) {
             contentType = MediaType.APPLICATION_OCTET_STREAM;
         }
-        ResponseEntity.BodyBuilder response = ResponseEntity.ok()
-                .contentType(contentType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, (inline ? ContentDisposition.inline() : ContentDisposition.attachment())
-                        .filename(download.filename(), StandardCharsets.UTF_8)
-                        .build().toString());
+        ResponseEntity.BodyBuilder response =
+                ResponseEntity.ok()
+                        .contentType(contentType)
+                        .header(
+                                HttpHeaders.CONTENT_DISPOSITION,
+                                (inline
+                                                ? ContentDisposition.inline()
+                                                : ContentDisposition.attachment())
+                                        .filename(download.filename(), StandardCharsets.UTF_8)
+                                        .build()
+                                        .toString());
         if (download.fileSize() != null) {
             response.contentLength(download.fileSize());
         }
@@ -98,15 +107,20 @@ public class DigitalAssetController {
     }
 
     private UUID currentUserId(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails details) {
+        if (authentication != null
+                && authentication.getPrincipal() instanceof CustomUserDetails details) {
             return details.getUser().getUserId();
         }
         return null;
     }
 
     private boolean isStaff(Authentication authentication) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())
-                        || "ROLE_LIBRARIAN".equals(authority.getAuthority()));
+        return authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(
+                                authority ->
+                                        "ROLE_ADMIN".equals(authority.getAuthority())
+                                                || "ROLE_LIBRARIAN"
+                                                        .equals(authority.getAuthority()));
     }
 }

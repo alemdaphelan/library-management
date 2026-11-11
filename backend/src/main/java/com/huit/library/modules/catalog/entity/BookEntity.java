@@ -44,17 +44,17 @@ public class BookEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Long viewCount = 0L;
-    
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id")
     private CategoryEntity category;
 
     @Column(name = "image_url_s")
     private String imageUrlS;
-    
+
     @Column(name = "image_url_m")
     private String imageUrlM;
-    
+
     @Column(name = "image_url_l")
     private String imageUrlL;
 

@@ -48,7 +48,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CirculationStateService {
-    private static final String ORIENTATION_REQUIRED = "Thẻ thư viện chưa được cấp. Vui lòng hoàn thành lớp hướng dẫn thư viện";
+    private static final String ORIENTATION_REQUIRED =
+            "Thẻ thư viện chưa được cấp. Vui lòng hoàn thành lớp hướng dẫn thư viện";
     private final LoanTicketRepository loanTicketRepository;
     private final LoanDetailRepository loanDetailRepository;
     private final LoanStatusHistoryRepository historyRepository;
@@ -101,92 +102,149 @@ public class CirculationStateService {
         // the authenticated caller triggers validation, not a discretionary staff decision.
         LoanTicketEntity ticket = findTicket(ticketId);
         LoanTicketStatus currentStatus = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
-        if (currentStatus != LoanTicketStatus.PENDING && currentStatus != LoanTicketStatus.RESERVED) {
+        if (currentStatus != LoanTicketStatus.PENDING
+                && currentStatus != LoanTicketStatus.RESERVED) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Không thể chuyển phiếu mượn từ " + currentStatus + " sang " + LoanTicketStatus.RESERVED);
+                    "Không thể chuyển phiếu mượn từ "
+                            + currentStatus
+                            + " sang "
+                            + LoanTicketStatus.RESERVED);
         }
         ensureNoDebtOrOverdue(ticket.getUserId());
         borrowingValuePolicyService.ensureCurrentWithinLimit(ticket.getUserId());
         ensureCurrentOpenItemsWithinLimit(ticket.getUserId());
         List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticketId);
-        if (details.isEmpty() || details.size() > policyService.maximumOpenItems()
-                || details.stream().anyMatch(detail -> detail.getBarcode() == null
-                    || detail.getReturnDate() != null
-                    || LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus()) != LoanDetailStatus.PENDING)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phiếu cũ không còn đủ tài liệu hợp lệ để giữ chỗ");
+        if (details.isEmpty()
+                || details.size() > policyService.maximumOpenItems()
+                || details.stream()
+                        .anyMatch(
+                                detail ->
+                                        detail.getBarcode() == null
+                                                || detail.getReturnDate() != null
+                                                || LoanDetailStatus.fromDatabaseValue(
+                                                                detail.getReturnStatus())
+                                                        != LoanDetailStatus.PENDING)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Phiếu cũ không còn đủ tài liệu hợp lệ để giữ chỗ");
         }
-        List<String> barcodes = details.stream().map(LoanDetailEntity::getBarcode).sorted().toList();
+        List<String> barcodes =
+                details.stream().map(LoanDetailEntity::getBarcode).sorted().toList();
         var copies = bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
         LocalDateTime now = LocalDateTime.now();
-        if (new LinkedHashSet<>(barcodes).size() != details.size() || copies.size() != details.size()
-                || copies.stream().anyMatch(copy -> !"RESERVED".equalsIgnoreCase(copy.getStatus())
-                    || !Objects.equals(copy.getLockedByUser(), ticket.getUserId())
-                    || copy.getLockedUntil() == null || !copy.getLockedUntil().isAfter(now))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Giữ chỗ đã hết hạn hoặc bản sao không còn được giữ cho phiếu");
+        if (new LinkedHashSet<>(barcodes).size() != details.size()
+                || copies.size() != details.size()
+                || copies.stream()
+                        .anyMatch(
+                                copy ->
+                                        !"RESERVED".equalsIgnoreCase(copy.getStatus())
+                                                || !Objects.equals(
+                                                        copy.getLockedByUser(), ticket.getUserId())
+                                                || copy.getLockedUntil() == null
+                                                || !copy.getLockedUntil().isAfter(now))) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Giữ chỗ đã hết hạn hoặc bản sao không còn được giữ cho phiếu");
         }
         if (currentStatus == LoanTicketStatus.RESERVED) {
             return LoanStateResponseDTO.builder()
-                    .ticketId(ticketId).previousStatus(currentStatus).status(currentStatus)
+                    .ticketId(ticketId)
+                    .previousStatus(currentStatus)
+                    .status(currentStatus)
                     .message("Phiếu đã được hệ thống giữ chỗ; có thể giao sách tại quầy.")
-                    .changedAt(now).build();
+                    .changedAt(now)
+                    .build();
         }
         return autoApproveReservation(ticket);
     }
 
     @Transactional
     public RecallResponseDTO recallBook(Long detailId, UUID operatorId) {
-        LoanDetailEntity snapshot = loanDetailRepository.findById(detailId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu đang mượn"));
+        LoanDetailEntity snapshot =
+                loanDetailRepository
+                        .findById(detailId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy tài liệu đang mượn"));
         LoanTicketEntity ticket = findTicket(snapshot.getTicketId());
-        LoanDetailEntity detail = loanDetailRepository.findByIdForUpdate(detailId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy tài liệu đang mượn"));
+        LoanDetailEntity detail =
+                loanDetailRepository
+                        .findByIdForUpdate(detailId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy tài liệu đang mượn"));
         if (!ticket.getTicketId().equals(detail.getTicketId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã thay đổi; tải lại phiếu mượn");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Tài liệu đã thay đổi; tải lại phiếu mượn");
         }
         LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
-        LocalDateTime existingRecallDue = detail.getRecallDueAt() != null
-                ? detail.getRecallDueAt() : detail.getRecallDueDate();
+        LocalDateTime existingRecallDue =
+                detail.getRecallDueAt() != null
+                        ? detail.getRecallDueAt()
+                        : detail.getRecallDueDate();
         if (Boolean.TRUE.equals(detail.getIsRecalled()) && existingRecallDue != null) {
             return toRecallResponse(detail, status);
         }
-        if (detail.getReturnDate() != null || detail.getPhysicalReturnAt() != null
-                || detail.getFineStoppedAt() != null || detail.getLossReportedAt() != null
-                || !("BORROWING".equals(detail.getReturnStatus()) || "OVERDUE".equals(detail.getReturnStatus()))
-                || Boolean.TRUE.equals(detail.getIsRecalled()) || detail.getDueDate() == null
+        if (detail.getReturnDate() != null
+                || detail.getPhysicalReturnAt() != null
+                || detail.getFineStoppedAt() != null
+                || detail.getLossReportedAt() != null
+                || !("BORROWING".equals(detail.getReturnStatus())
+                        || "OVERDUE".equals(detail.getReturnStatus()))
+                || Boolean.TRUE.equals(detail.getIsRecalled())
+                || detail.getDueDate() == null
                 || (status != LoanTicketStatus.BORROWING && status != LoanTicketStatus.OVERDUE)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Chỉ có thể thu hồi tài liệu đang được mượn");
         }
 
-        LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
-                .truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        LocalDateTime now =
+                LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         LocalDateTime recallDeadline = now.plusDays(policyService.recallReturnDays());
-        LocalDateTime effectiveDueDate = detail.getDueDate() == null
-                || recallDeadline.isBefore(detail.getDueDate())
-                ? recallDeadline : detail.getDueDate();
-        detail.recordRecall(now, operatorId, "Thư viện yêu cầu thu hồi tài liệu",
-                detail.getDueDate(), effectiveDueDate);
+        LocalDateTime effectiveDueDate =
+                detail.getDueDate() == null || recallDeadline.isBefore(detail.getDueDate())
+                        ? recallDeadline
+                        : detail.getDueDate();
+        detail.recordRecall(
+                now,
+                operatorId,
+                "Thư viện yêu cầu thu hồi tài liệu",
+                detail.getDueDate(),
+                effectiveDueDate);
         loanDetailRepository.save(detail);
 
         notificationService.createOnce(
-                ticket.getUserId(), "LOAN_RECALL",
-                "Thư viện yêu cầu thu hồi tài liệu " + detail.getBarcode()
-                        + ". Vui lòng hoàn trả chậm nhất vào " + effectiveDueDate + ".",
-                "LOAN_DETAIL", detailId.toString(),
-                "LOAN_RECALL:" + detailId, now);
+                ticket.getUserId(),
+                "LOAN_RECALL",
+                "Thư viện yêu cầu thu hồi tài liệu "
+                        + detail.getBarcode()
+                        + ". Vui lòng hoàn trả chậm nhất vào "
+                        + effectiveDueDate
+                        + ".",
+                "LOAN_DETAIL",
+                detailId.toString(),
+                "LOAN_RECALL:" + detailId,
+                now);
         return toRecallResponse(detail, status);
     }
 
-    private RecallResponseDTO toRecallResponse(
-            LoanDetailEntity detail, LoanTicketStatus status) {
+    private RecallResponseDTO toRecallResponse(LoanDetailEntity detail, LoanTicketStatus status) {
         return RecallResponseDTO.builder()
                 .detailId(detail.getDetailId())
                 .ticketId(detail.getTicketId())
-                .recalledAt(detail.getRecalledAt() != null ? detail.getRecalledAt() : detail.getRecallRequestedAt())
-                .recallDueAt(detail.getRecallDueAt() != null ? detail.getRecallDueAt() : detail.getRecallDueDate())
+                .recalledAt(
+                        detail.getRecalledAt() != null
+                                ? detail.getRecalledAt()
+                                : detail.getRecallRequestedAt())
+                .recallDueAt(
+                        detail.getRecallDueAt() != null
+                                ? detail.getRecallDueAt()
+                                : detail.getRecallDueDate())
                 .dueDate(detail.getDueDate())
                 .status(status.name())
                 .build();
@@ -195,12 +253,17 @@ public class CirculationStateService {
     /** Called inside the reservation transaction after eligibility and copy locks are established. */
     @Transactional
     public LoanStateResponseDTO autoApproveReservation(LoanTicketEntity ticket) {
-        LoanStateResponseDTO response = transition(
-                ticket, LoanTicketStatus.RESERVED, null, "Hệ thống tự động duyệt và giữ chỗ");
+        LoanStateResponseDTO response =
+                transition(
+                        ticket,
+                        LoanTicketStatus.RESERVED,
+                        null,
+                        "Hệ thống tự động duyệt và giữ chỗ");
         notificationService.createOnce(
                 ticket.getUserId(),
                 "LOAN_APPROVED",
-                "Yêu cầu mượn #" + ticket.getTicketId()
+                "Yêu cầu mượn #"
+                        + ticket.getTicketId()
                         + " đã được hệ thống tự động giữ chỗ. Vui lòng đến quầy nhận tài liệu trong thời hạn giữ chỗ.",
                 "LOAN_TICKET",
                 ticket.getTicketId().toString(),
@@ -212,7 +275,8 @@ public class CirculationStateService {
     @Transactional
     public LoanStateResponseDTO rejectReservation(Long ticketId, UUID operatorId, String reason) {
         LoanTicketEntity ticket = findTicket(ticketId);
-        LoanStateResponseDTO response = transition(ticket, LoanTicketStatus.REJECTED, operatorId, reason.trim());
+        LoanStateResponseDTO response =
+                transition(ticket, LoanTicketStatus.REJECTED, operatorId, reason.trim());
         releaseReservedCopies(ticket, LoanDetailStatus.CANCELLED);
         notificationService.createOnce(
                 ticket.getUserId(),
@@ -227,8 +291,9 @@ public class CirculationStateService {
 
     @Transactional
     public LoanStateResponseDTO cancelReservation(LoanTicketEntity ticket, UUID actorId) {
-        LoanStateResponseDTO response = transition(
-                ticket, LoanTicketStatus.CANCELLED, actorId, "Độc giả hủy yêu cầu đặt giữ");
+        LoanStateResponseDTO response =
+                transition(
+                        ticket, LoanTicketStatus.CANCELLED, actorId, "Độc giả hủy yêu cầu đặt giữ");
         releaseReservedCopies(ticket, LoanDetailStatus.CANCELLED);
         return response;
     }
@@ -245,15 +310,19 @@ public class CirculationStateService {
                     "Mỗi phiếu phải có từ 1 đến " + maximumOpenItems + " tài liệu");
         }
         ensureNoDebtOrOverdue(userId);
-        long openItems = loanDetailRepository.countOpenItemsByUserId(
-                userId,
-                List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
+        long openItems =
+                loanDetailRepository.countOpenItemsByUserId(
+                        userId, List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
         if (openItems + requestedItems > maximumOpenItems) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Yêu cầu có " + requestedItems + " tài liệu nhưng bạn đọc hiện đã có "
-                            + openItems + "; mỗi bạn đọc được đặt giữ hoặc mượn tối đa "
-                            + maximumOpenItems + " tài liệu");
+                    "Yêu cầu có "
+                            + requestedItems
+                            + " tài liệu nhưng bạn đọc hiện đã có "
+                            + openItems
+                            + "; mỗi bạn đọc được đặt giữ hoặc mượn tối đa "
+                            + maximumOpenItems
+                            + " tài liệu");
         }
     }
 
@@ -267,18 +336,28 @@ public class CirculationStateService {
         int maximumOpenItems = policyService.maximumOpenItems();
         long openItems = countOpenItems(userId);
         long remainingSlots = Math.max(0, maximumOpenItems - openItems);
-        BorrowingValuePolicyService.BorrowingValueSnapshot valueSnapshot = borrowingValuePolicyService.getSnapshot(
-                userId,
-                requestedBookId == null ? List.of() : List.of(requestedBookId));
-        var user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
+        BorrowingValuePolicyService.BorrowingValueSnapshot valueSnapshot =
+                borrowingValuePolicyService.getSnapshot(
+                        userId, requestedBookId == null ? List.of() : List.of(requestedBookId));
+        var user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
         String cardBlock = cardBlockReason(user, LocalDateTime.now());
-        String itemMessage = remainingSlots > 0
-                ? "Bạn còn có thể đăng ký " + remainingSlots + " tài liệu."
-                : "Bạn đã đủ " + maximumOpenItems
-                        + " tài liệu đang chờ duyệt, chờ nhận hoặc đang mượn. "
-                        + "Hãy trả hoặc hủy một tài liệu trước khi đăng ký tiếp.";
-        String message = cardBlock != null ? cardBlock : (remainingSlots <= 0 ? itemMessage : valueSnapshot.message());
+        String itemMessage =
+                remainingSlots > 0
+                        ? "Bạn còn có thể đăng ký " + remainingSlots + " tài liệu."
+                        : "Bạn đã đủ "
+                                + maximumOpenItems
+                                + " tài liệu đang chờ duyệt, chờ nhận hoặc đang mượn. "
+                                + "Hãy trả hoặc hủy một tài liệu trước khi đăng ký tiếp.";
+        String message =
+                cardBlock != null
+                        ? cardBlock
+                        : (remainingSlots <= 0 ? itemMessage : valueSnapshot.message());
         return BorrowEligibilityDTO.builder()
                 .maximumItems(maximumOpenItems)
                 .openItems(openItems)
@@ -302,16 +381,17 @@ public class CirculationStateService {
         if (openItems > maximumOpenItems) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Bạn đọc hiện có " + openItems
+                    "Bạn đọc hiện có "
+                            + openItems
                             + " tài liệu trong các phiếu đang hoạt động, vượt giới hạn "
-                            + maximumOpenItems + " tài liệu; không thể duyệt thêm");
+                            + maximumOpenItems
+                            + " tài liệu; không thể duyệt thêm");
         }
     }
 
     private long countOpenItems(UUID userId) {
         return loanDetailRepository.countOpenItemsByUserId(
-                userId,
-                List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
+                userId, List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"));
     }
 
     public void ensureEligibleForRenewal(UUID userId) {
@@ -322,14 +402,22 @@ public class CirculationStateService {
     public CirculationOperationResponseDTO checkout(CheckoutRequestDTO request, UUID operatorId) {
         libraryHoursService.requireCounterOpen("giao sách");
         List<String> barcodes = normalizeBarcodes(request.getBarcodes());
-        String requestHash = requestHash(
-                "CHECKOUT", request.getTicketId().toString(), String.join(",", barcodes));
+        String requestHash =
+                requestHash(
+                        "CHECKOUT", request.getTicketId().toString(), String.join(",", barcodes));
 
-        LoanTicketEntity ticket = loanTicketRepository.findByIdForUpdate(request.getTicketId())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + request.getTicketId()));
+        LoanTicketEntity ticket =
+                loanTicketRepository
+                        .findByIdForUpdate(request.getTicketId())
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiếu mượn #"
+                                                        + request.getTicketId()));
 
-        CirculationOperationResponseDTO replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
+        CirculationOperationResponseDTO replay =
+                replayIfPresent(request.getIdempotencyKey(), requestHash);
         if (replay != null) {
             return replay;
         }
@@ -337,15 +425,21 @@ public class CirculationStateService {
         LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
         if (status != LoanTicketStatus.RESERVED) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Chỉ phiếu RESERVED đã được duyệt mới có thể giao sách");
+                    HttpStatus.CONFLICT, "Chỉ phiếu RESERVED đã được duyệt mới có thể giao sách");
         }
 
-        List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId());
-        Map<String, LoanDetailEntity> detailsByBarcode = details.stream()
-                .filter(detail -> detail.getBarcode() != null)
-                .filter(detail -> LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus()) == LoanDetailStatus.PENDING)
-                .collect(Collectors.toMap(LoanDetailEntity::getBarcode, Function.identity()));
+        List<LoanDetailEntity> details =
+                loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId());
+        Map<String, LoanDetailEntity> detailsByBarcode =
+                details.stream()
+                        .filter(detail -> detail.getBarcode() != null)
+                        .filter(
+                                detail ->
+                                        LoanDetailStatus.fromDatabaseValue(detail.getReturnStatus())
+                                                == LoanDetailStatus.PENDING)
+                        .collect(
+                                Collectors.toMap(
+                                        LoanDetailEntity::getBarcode, Function.identity()));
         if (!detailsByBarcode.keySet().equals(new LinkedHashSet<>(barcodes))) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -354,8 +448,9 @@ public class CirculationStateService {
 
         ensureNoDebtOrOverdue(ticket.getUserId());
         borrowingValuePolicyService.ensureCurrentWithinLimit(ticket.getUserId());
-        long borrowedItems = loanDetailRepository.countOpenItemsByUserId(
-                ticket.getUserId(), List.of("BORROWING", "OVERDUE"));
+        long borrowedItems =
+                loanDetailRepository.countOpenItemsByUserId(
+                        ticket.getUserId(), List.of("BORROWING", "OVERDUE"));
         int maximumOpenItems = policyService.maximumOpenItems();
         if (borrowedItems + barcodes.size() > maximumOpenItems) {
             throw new ResponseStatusException(
@@ -366,7 +461,8 @@ public class CirculationStateService {
         List<com.huit.library.modules.catalog.entity.BookCopyEntity> copies =
                 bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
         if (copies.size() != barcodes.size()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ bản sao cần checkout");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ bản sao cần checkout");
         }
         for (var copy : copies) {
             if (!"RESERVED".equalsIgnoreCase(copy.getStatus())
@@ -378,9 +474,12 @@ public class CirculationStateService {
         }
 
         LocalDateTime checkoutAt = LocalDateTime.now();
-        LocalDateTime dueAt = LoanTicketType.fromDatabaseValue(ticket.getTicketType()) == LoanTicketType.ONSITE
-                ? checkoutAt.toLocalDate().atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
-                : checkoutAt.plusDays(policyService.homeLoanDays());
+        LocalDateTime dueAt =
+                LoanTicketType.fromDatabaseValue(ticket.getTicketType()) == LoanTicketType.ONSITE
+                        ? checkoutAt
+                                .toLocalDate()
+                                .atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
+                        : checkoutAt.plusDays(policyService.homeLoanDays());
         if (dueAt.isBefore(checkoutAt)) {
             dueAt = checkoutAt.plusHours(1);
         }
@@ -389,7 +488,12 @@ public class CirculationStateService {
         for (LoanDetailEntity detail : detailsByBarcode.values()) {
             detail.setCheckoutAt(checkoutAt);
             detail.setCheckoutTimeSource("LIVE_CHECKOUT");
-            detail.setCirculationBookId(copies.stream().filter(c -> c.getBarcode().equals(detail.getBarcode())).findFirst().orElseThrow().getBookId());
+            detail.setCirculationBookId(
+                    copies.stream()
+                            .filter(c -> c.getBarcode().equals(detail.getBarcode()))
+                            .findFirst()
+                            .orElseThrow()
+                            .getBookId());
             detail.setReturnStatus(LoanDetailStatus.BORROWING.name());
             detail.setDueDate(dueAt);
             loanDetailRepository.save(detail);
@@ -402,13 +506,21 @@ public class CirculationStateService {
         }
 
         return recordOperation(
-                request.getIdempotencyKey(), requestHash, "CHECKOUT",
-                List.of(ticket.getTicketId()), barcodes, "BORROWING",
-                "Checkout thành công " + barcodes.size() + " tài liệu; hạn trả " + dueAt.toLocalDate());
+                request.getIdempotencyKey(),
+                requestHash,
+                "CHECKOUT",
+                List.of(ticket.getTicketId()),
+                barcodes,
+                "BORROWING",
+                "Checkout thành công "
+                        + barcodes.size()
+                        + " tài liệu; hạn trả "
+                        + dueAt.toLocalDate());
     }
 
     @Transactional
-    public CirculationOperationResponseDTO manualCheckout(ManualCheckoutRequestDTO request, UUID operatorId) {
+    public CirculationOperationResponseDTO manualCheckout(
+            ManualCheckoutRequestDTO request, UUID operatorId) {
         libraryHoursService.requireCounterOpen("lập phiếu mượn tại quầy");
         List<String> barcodes = normalizeBarcodes(request.getBarcodes());
         LoanTicketType ticketType;
@@ -418,22 +530,29 @@ public class CirculationStateService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loại phiếu không hợp lệ");
         }
         String mssv = request.getMssv().trim();
-        String requestHash = requestHash(
-                "MANUAL_CHECKOUT", mssv, ticketType.name(), String.join(",", barcodes));
-        CirculationOperationResponseDTO replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
+        String requestHash =
+                requestHash("MANUAL_CHECKOUT", mssv, ticketType.name(), String.join(",", barcodes));
+        CirculationOperationResponseDTO replay =
+                replayIfPresent(request.getIdempotencyKey(), requestHash);
         if (replay != null) {
             return replay;
         }
 
-        var reader = userRepository.findByMssv(mssv)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc có MSSV " + mssv));
+        var reader =
+                userRepository
+                        .findByMssv(mssv)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy bạn đọc có MSSV " + mssv));
         ensureEligibleForReservation(reader.getUserId(), barcodes.size());
 
         List<com.huit.library.modules.catalog.entity.BookCopyEntity> copies =
                 bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
         if (copies.size() != barcodes.size()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ bản sao cần mượn");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Không tìm thấy đầy đủ bản sao cần mượn");
         }
         for (var copy : copies) {
             if (!"AVAILABLE".equalsIgnoreCase(copy.getStatus())) {
@@ -441,20 +560,30 @@ public class CirculationStateService {
                         HttpStatus.CONFLICT,
                         "Bản sao " + copy.getBarcode() + " hiện không sẵn sàng để mượn");
             }
-            if (loanDetailRepository.countOpenItemsByUserIdAndBookId(reader.getUserId(), copy.getBookId()) > 0) {
+            if (loanDetailRepository.countOpenItemsByUserIdAndBookId(
+                            reader.getUserId(), copy.getBookId())
+                    > 0) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
-                        "Bạn đọc đã có đầu sách của bản sao " + copy.getBarcode() + " trong phiếu đang hoạt động");
+                        "Bạn đọc đã có đầu sách của bản sao "
+                                + copy.getBarcode()
+                                + " trong phiếu đang hoạt động");
             }
         }
-        if (copies.stream().map(com.huit.library.modules.catalog.entity.BookCopyEntity::getBookId).distinct().count()
+        if (copies.stream()
+                        .map(com.huit.library.modules.catalog.entity.BookCopyEntity::getBookId)
+                        .distinct()
+                        .count()
                 != copies.size()) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Một phiếu không được mượn nhiều bản sao của cùng một đầu sách");
+                    HttpStatus.CONFLICT,
+                    "Một phiếu không được mượn nhiều bản sao của cùng một đầu sách");
         }
         borrowingValuePolicyService.ensureCanAddBooks(
                 reader.getUserId(),
-                copies.stream().map(com.huit.library.modules.catalog.entity.BookCopyEntity::getBookId).toList());
+                copies.stream()
+                        .map(com.huit.library.modules.catalog.entity.BookCopyEntity::getBookId)
+                        .toList());
 
         LoanTicketEntity ticket = new LoanTicketEntity();
         ticket.setUserId(reader.getUserId());
@@ -465,15 +594,19 @@ public class CirculationStateService {
         ticket = loanTicketRepository.save(ticket);
 
         LocalDateTime checkoutAt = LocalDateTime.now();
-        LocalDateTime dueAt = ticketType == LoanTicketType.ONSITE
-                ? checkoutAt.toLocalDate().atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
-                : checkoutAt.plusDays(policyService.homeLoanDays());
+        LocalDateTime dueAt =
+                ticketType == LoanTicketType.ONSITE
+                        ? checkoutAt
+                                .toLocalDate()
+                                .atTime(libraryHoursService.closingTime(checkoutAt.toLocalDate()))
+                        : checkoutAt.plusDays(policyService.homeLoanDays());
         if (dueAt.isBefore(checkoutAt)) {
             dueAt = checkoutAt.plusHours(1);
         }
-        String conditionNote = request.getNote() == null || request.getNote().isBlank()
-                ? "Mượn trực tiếp tại quầy"
-                : request.getNote().trim();
+        String conditionNote =
+                request.getNote() == null || request.getNote().isBlank()
+                        ? "Mượn trực tiếp tại quầy"
+                        : request.getNote().trim();
         for (var copy : copies) {
             LoanDetailEntity detail = new LoanDetailEntity();
             detail.setTicketId(ticket.getTicketId());
@@ -491,23 +624,39 @@ public class CirculationStateService {
             copy.setLockedUntil(null);
             bookCopyRepository.save(copy);
         }
-        transition(ticket, LoanTicketStatus.BORROWING, operatorId, "Đã lập phiếu và giao sách tại quầy");
+        transition(
+                ticket,
+                LoanTicketStatus.BORROWING,
+                operatorId,
+                "Đã lập phiếu và giao sách tại quầy");
 
         return recordOperation(
-                request.getIdempotencyKey(), requestHash, "CHECKOUT",
-                List.of(ticket.getTicketId()), barcodes, "BORROWING",
-                "Đã lập phiếu #" + ticket.getTicketId() + " và cho mượn " + barcodes.size()
-                        + " tài liệu; hạn trả " + dueAt);
+                request.getIdempotencyKey(),
+                requestHash,
+                "CHECKOUT",
+                List.of(ticket.getTicketId()),
+                barcodes,
+                "BORROWING",
+                "Đã lập phiếu #"
+                        + ticket.getTicketId()
+                        + " và cho mượn "
+                        + barcodes.size()
+                        + " tài liệu; hạn trả "
+                        + dueAt);
     }
 
     @Transactional
     public CirculationOperationResponseDTO returnBooks(ReturnRequestDTO request, UUID operatorId) {
         libraryHoursService.requireCounterOpen("nhận trả sách");
         List<String> barcodes = normalizeBarcodes(request.getBarcodes());
-        String note = request.getReturnConditionNote() == null ? "" : request.getReturnConditionNote().trim();
+        String note =
+                request.getReturnConditionNote() == null
+                        ? ""
+                        : request.getReturnConditionNote().trim();
         String requestHash = requestHash("RETURN", String.join(",", barcodes), note);
 
-        CirculationOperationResponseDTO replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
+        CirculationOperationResponseDTO replay =
+                replayIfPresent(request.getIdempotencyKey(), requestHash);
         if (replay != null) {
             return replay;
         }
@@ -517,11 +666,16 @@ public class CirculationStateService {
         if (targets.size() != barcodes.size()) {
             replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
             if (replay != null) return replay;
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
                     "Một hoặc nhiều barcode không có lượt mượn đang hoạt động");
         }
-        List<Long> ticketIds = targets.stream().map(com.huit.library.modules.circulation.dto.ReturnTarget::ticketId)
-                .distinct().sorted().toList();
+        List<Long> ticketIds =
+                targets.stream()
+                        .map(com.huit.library.modules.circulation.dto.ReturnTarget::ticketId)
+                        .distinct()
+                        .sorted()
+                        .toList();
         Map<Long, LoanTicketEntity> tickets = new java.util.LinkedHashMap<>();
         for (Long ticketId : ticketIds) tickets.put(ticketId, findTicket(ticketId));
         replay = replayIfPresent(request.getIdempotencyKey(), requestHash);
@@ -530,55 +684,94 @@ public class CirculationStateService {
         List<LoanDetailEntity> activeDetails = new java.util.ArrayList<>();
         for (Long ticketId : ticketIds) {
             if (!List.of("BORROWING", "OVERDUE").contains(tickets.get(ticketId).getStatus())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phiếu không ở trạng thái đang mượn");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Phiếu không ở trạng thái đang mượn");
             }
             loanDetailRepository.findByTicketIdForUpdate(ticketId).stream()
-                    .filter(detail -> barcodes.contains(detail.getBarcode()) && detail.getReturnDate() == null
-                            && List.of("BORROWING", "OVERDUE").contains(detail.getReturnStatus()))
+                    .filter(
+                            detail ->
+                                    barcodes.contains(detail.getBarcode())
+                                            && detail.getReturnDate() == null
+                                            && List.of("BORROWING", "OVERDUE")
+                                                    .contains(detail.getReturnStatus()))
                     .forEach(activeDetails::add);
         }
         if (activeDetails.size() != barcodes.size()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đã được xử lý bởi giao dịch khác");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Tài liệu đã được xử lý bởi giao dịch khác");
         }
-        Map<String, LoanDetailEntity> detailsByBarcode = activeDetails.stream()
-                .collect(Collectors.toMap(LoanDetailEntity::getBarcode, Function.identity()));
+        Map<String, LoanDetailEntity> detailsByBarcode =
+                activeDetails.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        LoanDetailEntity::getBarcode, Function.identity()));
         List<BookCopyEntity> copies = bookCopyRepository.findAllByBarcodeInForUpdate(barcodes);
-        if (copies.size() != barcodes.size() || copies.stream().anyMatch(copy ->
-                !detailsByBarcode.containsKey(copy.getBarcode())
-                || !List.of("BORROWING", "OVERDUE").contains(copy.getStatus()))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bản sao không ở trạng thái đang mượn");
+        if (copies.size() != barcodes.size()
+                || copies.stream()
+                        .anyMatch(
+                                copy ->
+                                        !detailsByBarcode.containsKey(copy.getBarcode())
+                                                || !List.of("BORROWING", "OVERDUE")
+                                                        .contains(copy.getStatus()))) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Bản sao không ở trạng thái đang mượn");
         }
 
         LocalDateTime returnedAt = LocalDateTime.now();
         BigDecimal totalAdditionalFine = BigDecimal.ZERO;
         for (BookCopyEntity copy : copies) {
             LoanDetailEntity detail = detailsByBarcode.get(copy.getBarcode());
-            totalAdditionalFine = totalAdditionalFine.add(receiveNormalReturn(
-                    tickets.get(detail.getTicketId()), detail, copy, note, returnedAt));
+            totalAdditionalFine =
+                    totalAdditionalFine.add(
+                            receiveNormalReturn(
+                                    tickets.get(detail.getTicketId()),
+                                    detail,
+                                    copy,
+                                    note,
+                                    returnedAt));
         }
         completeReturnedTickets(tickets.values().stream().toList(), operatorId);
 
         return recordOperation(
-                request.getIdempotencyKey(), requestHash, "RETURN",
-                ticketIds, barcodes, "RETURNED",
-                "Trả thành công " + barcodes.size() + " tài liệu"
+                request.getIdempotencyKey(),
+                requestHash,
+                "RETURN",
+                ticketIds,
+                barcodes,
+                "RETURNED",
+                "Trả thành công "
+                        + barcodes.size()
+                        + " tài liệu"
                         + (totalAdditionalFine.signum() > 0
-                        ? "; phát sinh phí trễ " + totalAdditionalFine.toPlainString() + " đồng"
-                        : ""));
+                                ? "; phát sinh phí trễ "
+                                        + totalAdditionalFine.toPlainString()
+                                        + " đồng"
+                                : ""));
     }
 
     /** Caller has locked the ticket, details and copy in that order inside a transaction. */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
-    public BigDecimal receiveNormalReturn(LoanTicketEntity ticket, LoanDetailEntity detail,
-            BookCopyEntity copy, String note, LocalDateTime returnedAt) {
+    public BigDecimal receiveNormalReturn(
+            LoanTicketEntity ticket,
+            LoanDetailEntity detail,
+            BookCopyEntity copy,
+            String note,
+            LocalDateTime returnedAt) {
         BigDecimal additionalFine = lateFineService.accrueLateFine(ticket, detail, returnedAt);
-        if (additionalFine != null && additionalFine.signum() > 0
-                && ticket.getUserId() != null && detail.getDetailId() != null) {
+        if (additionalFine != null
+                && additionalFine.signum() > 0
+                && ticket.getUserId() != null
+                && detail.getDetailId() != null) {
             notificationService.createOnce(
                     ticket.getUserId(),
                     "FINE",
-                    "Tài liệu " + detail.getBarcode() + " của phiếu #" + ticket.getTicketId()
-                            + " phát sinh phí trả trễ " + additionalFine.toPlainString() + " đồng.",
+                    "Tài liệu "
+                            + detail.getBarcode()
+                            + " của phiếu #"
+                            + ticket.getTicketId()
+                            + " phát sinh phí trả trễ "
+                            + additionalFine.toPlainString()
+                            + " đồng.",
                     "LOAN_DETAIL",
                     detail.getDetailId().toString(),
                     "FINE:" + detail.getDetailId() + ":" + returnedAt.toLocalDate(),
@@ -602,20 +795,25 @@ public class CirculationStateService {
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void completeReturnedTickets(List<LoanTicketEntity> tickets, UUID operatorId) {
         for (LoanTicketEntity ticket : tickets) {
-            boolean completed = loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId()).stream()
-                    .allMatch(detail -> detail.getPhysicalReturnAt() != null
-                            || List.of("RETURNED", "CANCELLED", "SETTLED").contains(detail.getReturnStatus()));
+            boolean completed =
+                    loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId()).stream()
+                            .allMatch(
+                                    detail ->
+                                            detail.getPhysicalReturnAt() != null
+                                                    || List.of("RETURNED", "CANCELLED", "SETTLED")
+                                                            .contains(detail.getReturnStatus()));
             if (completed && !"RETURNED".equals(ticket.getStatus())) {
-                transition(ticket, LoanTicketStatus.RETURNED, operatorId, "Đã nhận đủ sách trả tại quầy");
+                transition(
+                        ticket,
+                        LoanTicketStatus.RETURNED,
+                        operatorId,
+                        "Đã nhận đủ sách trả tại quầy");
             }
         }
     }
 
     private LoanStateResponseDTO transition(
-            LoanTicketEntity ticket,
-            LoanTicketStatus target,
-            UUID actorId,
-            String reason) {
+            LoanTicketEntity ticket, LoanTicketStatus target, UUID actorId, String reason) {
         LoanTicketStatus previous = stateMachine.transition(ticket, target);
         ticket.setProcessedBy(actorId);
         ticket.setDecisionNote(reason);
@@ -639,23 +837,36 @@ public class CirculationStateService {
     }
 
     private LoanTicketEntity findTicket(Long ticketId) {
-        return loanTicketRepository.findByIdForUpdate(ticketId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + ticketId));
+        return loanTicketRepository
+                .findByIdForUpdate(ticketId)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND,
+                                        "Không tìm thấy phiếu mượn #" + ticketId));
     }
 
     private void ensureNoDebtOrOverdue(UUID userId) {
-        var user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
+        var user =
+                userRepository
+                        .findByIdForUpdate(userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
         LocalDateTime now = LocalDateTime.now();
         String cardBlock = cardBlockReason(user, now);
         if (cardBlock != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, cardBlock);
         }
-        boolean hasDebt = walletRepository.findByUserId(userId)
-                .map(wallet -> wallet.getTotalDebt() != null && wallet.getTotalDebt().signum() > 0)
-                .orElse(false);
+        boolean hasDebt =
+                walletRepository
+                        .findByUserId(userId)
+                        .map(
+                                wallet ->
+                                        wallet.getTotalDebt() != null
+                                                && wallet.getTotalDebt().signum() > 0)
+                        .orElse(false);
         long overdueItems = loanDetailRepository.countOverdueItemsByUserId(userId, now);
         if (user.getCirculationLockedUntil() != null) {
             if (user.getCirculationLockedUntil().isAfter(now)) {
@@ -663,8 +874,9 @@ public class CirculationStateService {
                         HttpStatus.CONFLICT,
                         "Quyền mượn đang bị khóa đến " + user.getCirculationLockedUntil());
             }
-            long openBorrowedItems = loanDetailRepository.countOpenItemsByUserId(
-                    userId, List.of("BORROWING", "OVERDUE"));
+            long openBorrowedItems =
+                    loanDetailRepository.countOpenItemsByUserId(
+                            userId, List.of("BORROWING", "OVERDUE"));
             if (hasDebt || openBorrowedItems > 0) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
@@ -674,10 +886,13 @@ public class CirculationStateService {
             user.setCirculationLockReason(null);
             userRepository.save(user);
             notificationService.createOnce(
-                    userId, "CIRCULATION_UNLOCKED",
+                    userId,
+                    "CIRCULATION_UNLOCKED",
                     "Quyền mượn, đặt giữ và gia hạn đã được khôi phục.",
-                    "USER", userId.toString(),
-                    "CIRCULATION_UNLOCKED:" + now.toLocalDate(), now);
+                    "USER",
+                    userId.toString(),
+                    "CIRCULATION_UNLOCKED:" + now.toLocalDate(),
+                    now);
         }
         if (hasDebt) {
             throw new ResponseStatusException(
@@ -685,7 +900,8 @@ public class CirculationStateService {
         }
         if (overdueItems > 0) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "Bạn đọc đang có tài liệu quá hạn nên không thể mượn thêm");
+                    HttpStatus.CONFLICT,
+                    "Bạn đọc đang có tài liệu quá hạn nên không thể mượn thêm");
         }
     }
 
@@ -693,37 +909,41 @@ public class CirculationStateService {
         if (!user.hasLibraryCard()) {
             return ORIENTATION_REQUIRED;
         }
-        if (Boolean.TRUE.equals(user.getDisciplineFlag()) || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
+        if (Boolean.TRUE.equals(user.getDisciplineFlag())
+                || "LOCKED".equalsIgnoreCase(user.getCardStatus())) {
             return "Thẻ thư viện đang bị khóa";
         }
         if ("EXPIRED".equalsIgnoreCase(user.getCardStatus())
                 || (user.getCardExpiryDate() != null && user.getCardExpiryDate().isBefore(now))) {
             return "Thẻ thư viện đã hết hạn";
         }
-        return "ACTIVE".equalsIgnoreCase(user.getCardStatus()) ? null : "Thẻ thư viện không ở trạng thái hoạt động";
+        return "ACTIVE".equalsIgnoreCase(user.getCardStatus())
+                ? null
+                : "Thẻ thư viện không ở trạng thái hoạt động";
     }
 
     private List<String> normalizeBarcodes(List<String> rawBarcodes) {
-        List<String> normalized = rawBarcodes.stream()
-                .map(String::trim)
-                .sorted(Comparator.naturalOrder())
-                .toList();
+        List<String> normalized =
+                rawBarcodes.stream().map(String::trim).sorted(Comparator.naturalOrder()).toList();
         if (new LinkedHashSet<>(normalized).size() != normalized.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách barcode bị trùng");
         }
         return normalized;
     }
 
-    private CirculationOperationResponseDTO replayIfPresent(String idempotencyKey, String requestHash) {
-        return operationRepository.findByIdempotencyKey(idempotencyKey.trim())
-                .map(operation -> {
-                    if (!operation.getRequestHash().equals(requestHash)) {
-                        throw new ResponseStatusException(
-                                HttpStatus.CONFLICT,
-                                "Idempotency key đã được dùng cho một yêu cầu khác");
-                    }
-                    return toOperationResponse(operation, true);
-                })
+    private CirculationOperationResponseDTO replayIfPresent(
+            String idempotencyKey, String requestHash) {
+        return operationRepository
+                .findByIdempotencyKey(idempotencyKey.trim())
+                .map(
+                        operation -> {
+                            if (!operation.getRequestHash().equals(requestHash)) {
+                                throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Idempotency key đã được dùng cho một yêu cầu khác");
+                            }
+                            return toOperationResponse(operation, true);
+                        })
                 .orElse(null);
     }
 
@@ -740,7 +960,8 @@ public class CirculationStateService {
         operation.setIdempotencyKey(idempotencyKey.trim());
         operation.setOperationType(operationType);
         operation.setRequestHash(requestHash);
-        operation.setTicketIds(ticketIds.stream().map(String::valueOf).collect(Collectors.joining(",")));
+        operation.setTicketIds(
+                ticketIds.stream().map(String::valueOf).collect(Collectors.joining(",")));
         operation.setBarcodes(String.join(",", barcodes));
         operation.setResultStatus(status);
         operation.setMessage(message);
@@ -748,16 +969,17 @@ public class CirculationStateService {
     }
 
     private CirculationOperationResponseDTO toOperationResponse(
-            CirculationOperationEntity operation,
-            boolean replayed) {
-        List<Long> ticketIds = operation.getTicketIds().isBlank()
-                ? List.of()
-                : java.util.Arrays.stream(operation.getTicketIds().split(","))
-                        .map(Long::valueOf)
-                        .toList();
-        List<String> barcodes = operation.getBarcodes().isBlank()
-                ? List.of()
-                : List.of(operation.getBarcodes().split(","));
+            CirculationOperationEntity operation, boolean replayed) {
+        List<Long> ticketIds =
+                operation.getTicketIds().isBlank()
+                        ? List.of()
+                        : java.util.Arrays.stream(operation.getTicketIds().split(","))
+                                .map(Long::valueOf)
+                                .toList();
+        List<String> barcodes =
+                operation.getBarcodes().isBlank()
+                        ? List.of()
+                        : List.of(operation.getBarcodes().split(","));
         return CirculationOperationResponseDTO.builder()
                 .operationId(operation.getOperationId())
                 .operationType(operation.getOperationType())
@@ -784,18 +1006,24 @@ public class CirculationStateService {
     }
 
     private void releaseReservedCopies(LoanTicketEntity ticket, LoanDetailStatus detailStatus) {
-        List<LoanDetailEntity> details = loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId());
-        List<String> barcodes = details.stream()
-                .map(LoanDetailEntity::getBarcode)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-        Map<String, com.huit.library.modules.catalog.entity.BookCopyEntity> copies = barcodes.isEmpty()
-                ? Map.of()
-                : bookCopyRepository.findAllByBarcodeInForUpdate(barcodes).stream()
-                        .collect(Collectors.toMap(
-                                com.huit.library.modules.catalog.entity.BookCopyEntity::getBarcode,
-                                Function.identity()));
+        List<LoanDetailEntity> details =
+                loanDetailRepository.findByTicketIdForUpdate(ticket.getTicketId());
+        List<String> barcodes =
+                details.stream()
+                        .map(LoanDetailEntity::getBarcode)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        Map<String, com.huit.library.modules.catalog.entity.BookCopyEntity> copies =
+                barcodes.isEmpty()
+                        ? Map.of()
+                        : bookCopyRepository.findAllByBarcodeInForUpdate(barcodes).stream()
+                                .collect(
+                                        Collectors.toMap(
+                                                com.huit.library.modules.catalog.entity
+                                                                .BookCopyEntity
+                                                        ::getBarcode,
+                                                Function.identity()));
         for (LoanDetailEntity detail : details) {
             detail.setReturnStatus(detailStatus.name());
             loanDetailRepository.save(detail);

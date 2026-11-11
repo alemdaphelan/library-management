@@ -43,8 +43,8 @@ public class LibraryViolationService {
         violation.setDescription(request.getDescription().trim());
         violation.setActionTaken(request.getActionTaken());
         violation.setRecordedBy(operatorId);
-        violation.setOccurredAt(request.getOccurredAt() == null
-                ? LocalDateTime.now() : request.getOccurredAt());
+        violation.setOccurredAt(
+                request.getOccurredAt() == null ? LocalDateTime.now() : request.getOccurredAt());
         return violationRepository.save(violation);
     }
 

@@ -14,7 +14,8 @@ public class StaffNotificationService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
-    public StaffNotificationService(UserRepository userRepository, NotificationService notificationService) {
+    public StaffNotificationService(
+            UserRepository userRepository, NotificationService notificationService) {
         this.userRepository = userRepository;
         this.notificationService = notificationService;
     }
@@ -30,8 +31,13 @@ public class StaffNotificationService {
         int created = 0;
         for (var staff : userRepository.findStaffByRoleIds(STAFF_ROLES)) {
             if (notificationService.createOnce(
-                    staff.getUserId(), type, content, referenceType, referenceId,
-                    eventKey + ":" + staff.getUserId(), sentAt)) {
+                    staff.getUserId(),
+                    type,
+                    content,
+                    referenceType,
+                    referenceId,
+                    eventKey + ":" + staff.getUserId(),
+                    sentAt)) {
                 created++;
             }
         }

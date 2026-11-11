@@ -18,6 +18,7 @@ public class AuditLogEntity extends BaseEntity {
     private String adminId;
     private String action;
     private String tableName;
+
     @Column(columnDefinition = "json")
     private String changes;
 }

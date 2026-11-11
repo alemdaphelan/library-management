@@ -22,8 +22,8 @@ class OverdueViolationServiceTest {
         OverdueViolationRepository violations = mock(OverdueViolationRepository.class);
         UserRepository users = mock(UserRepository.class);
         NotificationService notifications = mock(NotificationService.class);
-        OverdueViolationService service = new OverdueViolationService(
-                violations, users, notifications, 8, 1);
+        OverdueViolationService service =
+                new OverdueViolationService(violations, users, notifications, 8, 1);
         UUID userId = UUID.randomUUID();
         UserEntity user = new UserEntity();
         user.setUserId(userId);
@@ -39,16 +39,26 @@ class OverdueViolationServiceTest {
         assertThat(service.recordFirstOverdue(ticket, occurredAt)).isTrue();
         assertThat(user.getOverdueViolationCount()).isEqualTo(3);
         assertThat(user.getCirculationLockedUntil()).isEqualTo(occurredAt.plusMonths(3));
-        verify(notifications).createOnce(
-                eq(userId), eq("CIRCULATION_LOCKED"), anyString(),
-                eq("USER"), eq(userId.toString()), eq("CIRCULATION_LOCKED:2026-2027"), eq(occurredAt));
+        verify(notifications)
+                .createOnce(
+                        eq(userId),
+                        eq("CIRCULATION_LOCKED"),
+                        anyString(),
+                        eq("USER"),
+                        eq(userId.toString()),
+                        eq("CIRCULATION_LOCKED:2026-2027"),
+                        eq(occurredAt));
     }
 
     @Test
     void academicYearStartsOnFirstOfAugust() {
-        OverdueViolationService service = new OverdueViolationService(
-                mock(OverdueViolationRepository.class), mock(UserRepository.class),
-                mock(NotificationService.class), 8, 1);
+        OverdueViolationService service =
+                new OverdueViolationService(
+                        mock(OverdueViolationRepository.class),
+                        mock(UserRepository.class),
+                        mock(NotificationService.class),
+                        8,
+                        1);
 
         assertThat(service.academicYear(LocalDate.of(2026, 7, 31))).isEqualTo("2025-2026");
         assertThat(service.academicYear(LocalDate.of(2026, 8, 1))).isEqualTo("2026-2027");

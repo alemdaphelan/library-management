@@ -16,4 +16,3 @@ public class BookReviewRequestDTO {
     @Size(max = 1000, message = "Nhận xét không được vượt quá 1000 ký tự")
     private String comment;
 }
-

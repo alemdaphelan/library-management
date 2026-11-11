@@ -4,5 +4,4 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.Set;
 
-public record ShelfSubjectRuleRequestDTO(@NotNull Set<Long> subjectIds) {
-}
+public record ShelfSubjectRuleRequestDTO(@NotNull Set<Long> subjectIds) {}

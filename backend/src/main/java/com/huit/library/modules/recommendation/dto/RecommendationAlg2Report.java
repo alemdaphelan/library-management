@@ -14,11 +14,7 @@ public record RecommendationAlg2Report(
         Diagnostics diagnostics) {
 
     public record DatasetWarning(
-            int evaluationUsers,
-            long trainInteractions,
-            long testInteractions,
-            String message) {
-    }
+            int evaluationUsers, long trainInteractions, long testInteractions, String message) {}
 
     public record MethodMetrics(
             String method,
@@ -28,8 +24,7 @@ public record RecommendationAlg2Report(
             double catalogCoverage,
             double averageLatencyMs,
             double p95LatencyMs,
-            int evaluatedUsers) {
-    }
+            int evaluatedUsers) {}
 
     public record SampleRecommendation(
             String sampleLabel,
@@ -37,11 +32,9 @@ public record RecommendationAlg2Report(
             String method,
             boolean fallback,
             String fallbackReason,
-            List<Item> items) {
-    }
+            List<Item> items) {}
 
-    public record Item(int rank, Long bookId, String title, double score) {
-    }
+    public record Item(int rank, Long bookId, String title, double score) {}
 
     public record Diagnostics(
             long catalogBooks,
@@ -51,6 +44,5 @@ public record RecommendationAlg2Report(
             long trainBooks,
             long newBooks,
             long newBooksWithText,
-            boolean trainingUsesOnlyTrainSplit) {
-    }
+            boolean trainingUsesOnlyTrainSplit) {}
 }

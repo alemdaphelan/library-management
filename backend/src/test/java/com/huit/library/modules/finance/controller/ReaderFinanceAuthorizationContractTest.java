@@ -13,21 +13,25 @@ class ReaderFinanceAuthorizationContractTest {
     void personalLedgerRequiresStudentRole() throws Exception {
         var method = PaymentController.class.getMethod("getMyLedger", CustomUserDetails.class);
 
-        assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
+        assertThat(method.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasRole('STUDENT')");
     }
 
     @Test
     void personalPenaltyCasesRequireStudentRole() throws Exception {
         var method = PenaltyCaseController.class.getMethod("listMyCases", CustomUserDetails.class);
 
-        assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
+        assertThat(method.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasRole('STUDENT')");
     }
 
     @Test
     void personalOnlinePaymentSessionRequiresStudentRole() throws Exception {
-        var method = OnlinePaymentController.class.getMethod(
-                "get", String.class, CustomUserDetails.class);
+        var method =
+                OnlinePaymentController.class.getMethod(
+                        "get", String.class, CustomUserDetails.class);
 
-        assertThat(method.getAnnotation(PreAuthorize.class).value()).isEqualTo("hasRole('STUDENT')");
+        assertThat(method.getAnnotation(PreAuthorize.class).value())
+                .isEqualTo("hasRole('STUDENT')");
     }
 }

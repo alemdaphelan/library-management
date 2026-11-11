@@ -15,6 +15,5 @@ public class OnlinePaymentCreateRequestDTO {
     @DecimalMax("100000000")
     private BigDecimal amount;
 
-    @NotBlank
-    private String purpose;
+    @NotBlank private String purpose;
 }

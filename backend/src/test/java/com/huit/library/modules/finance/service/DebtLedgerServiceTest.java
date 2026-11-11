@@ -42,16 +42,28 @@ class DebtLedgerServiceTest {
         adjustments = mock(TransactionAdjustmentRepository.class);
         wallets = mock(WalletRepository.class);
         AtomicLong ids = new AtomicLong(100);
-        when(transactions.save(any())).thenAnswer(invocation -> {
-            TransactionEntity value = invocation.getArgument(0);
-            if (value.getTransactionId() == null) value.setTransactionId(ids.getAndIncrement());
-            return value;
-        });
+        when(transactions.save(any()))
+                .thenAnswer(
+                        invocation -> {
+                            TransactionEntity value = invocation.getArgument(0);
+                            if (value.getTransactionId() == null)
+                                value.setTransactionId(ids.getAndIncrement());
+                            return value;
+                        });
         when(adjustments.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        service = new DebtLedgerService(transactions, adjustments, mock(PaymentAllocationRepository.class), wallets,
-                mock(PenaltyCaseRepository.class), mock(LoanDetailRepository.class),
-                mock(LoanTicketRepository.class), mock(UserRepository.class),
-                mock(NotificationService.class), mock(LibraryHoursService.class), mock(org.springframework.jdbc.core.JdbcTemplate.class));
+        service =
+                new DebtLedgerService(
+                        transactions,
+                        adjustments,
+                        mock(PaymentAllocationRepository.class),
+                        wallets,
+                        mock(PenaltyCaseRepository.class),
+                        mock(LoanDetailRepository.class),
+                        mock(LoanTicketRepository.class),
+                        mock(UserRepository.class),
+                        mock(NotificationService.class),
+                        mock(LibraryHoursService.class),
+                        mock(org.springframework.jdbc.core.JdbcTemplate.class));
     }
 
     @Test
@@ -77,15 +89,19 @@ class DebtLedgerServiceTest {
         assertThat(payment.getTotalAmount()).isEqualByComparingTo("300");
         assertThat(payment.getPaymentMethod()).isEqualTo("CASH");
         assertThat(payment.getReceiptNumber()).startsWith("RCPT-");
-        assertThat(payment.getAllocations()).singleElement().satisfies(line -> {
-            assertThat(line.getFeeType()).isEqualTo("FINE");
-            assertThat(line.getAmount()).isEqualByComparingTo("300");
-        });
+        assertThat(payment.getAllocations())
+                .singleElement()
+                .satisfies(
+                        line -> {
+                            assertThat(line.getFeeType()).isEqualTo("FINE");
+                            assertThat(line.getAmount()).isEqualByComparingTo("300");
+                        });
     }
 
     @Test
     void ordinaryPaymentEntryPointDoesNotAcceptMockAsARealPaymentMethod() {
-        var request = new DebtPaymentRequestDTO(); request.setMethod("MOCK");
+        var request = new DebtPaymentRequestDTO();
+        request.setMethod("MOCK");
         assertThatThrownBy(() -> service.recordPayment(request, UUID.randomUUID()))
                 .hasMessageContaining("không được hỗ trợ");
         verifyNoInteractions(transactions, wallets);
@@ -116,9 +132,15 @@ class DebtLedgerServiceTest {
         assertThat(original.getPaidAmount()).isEqualByComparingTo("500");
         assertThat(original.getStatus()).isEqualTo("PARTIALLY_ADJUSTED");
         assertThat(wallet.getTotalDebt()).isEqualByComparingTo("500");
-        verify(transactions).save(argThat(value -> "ADJUSTMENT".equals(value.getType())
-                && value.getAmount().compareTo(new BigDecimal("-400")) == 0
-                && value.getParentTransactionId().equals(20L)));
+        verify(transactions)
+                .save(
+                        argThat(
+                                value ->
+                                        "ADJUSTMENT".equals(value.getType())
+                                                && value.getAmount()
+                                                                .compareTo(new BigDecimal("-400"))
+                                                        == 0
+                                                && value.getParentTransactionId().equals(20L)));
         verify(transactions, never()).delete(any());
     }
 

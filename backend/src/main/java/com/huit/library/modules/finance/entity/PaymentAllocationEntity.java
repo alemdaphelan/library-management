@@ -19,6 +19,7 @@ public class PaymentAllocationEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long allocationId;
+
     private Long paymentTransactionId;
     private Long debtTransactionId;
     private BigDecimal amount;

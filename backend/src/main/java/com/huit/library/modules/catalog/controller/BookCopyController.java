@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/book-copies")
-@Tag(name = "4. Book Copies (Location & Status)", description = "Endpoints for managing specific physical copies and their locations")
+@Tag(
+        name = "4. Book Copies (Location & Status)",
+        description = "Endpoints for managing specific physical copies and their locations")
 public class BookCopyController {
 
     private final BookCopyService bookCopyService;
@@ -20,28 +22,38 @@ public class BookCopyController {
     }
 
     @GetMapping("/book/{bookId}")
-    @Operation(summary = "Get copies by Book ID", description = "View all physical copies of a book, including their shelf location.")
+    @Operation(
+            summary = "Get copies by Book ID",
+            description = "View all physical copies of a book, including their shelf location.")
     public ResponseEntity<?> getCopiesByBookId(@PathVariable Long bookId) {
         return ResponseEntity.ok(bookCopyService.getCopiesByBookId(bookId));
     }
 
     @GetMapping("/{barcode}")
-    @Operation(summary = "Get copy by barcode", description = "Look up a physical copy and its full shelf location.")
+    @Operation(
+            summary = "Get copy by barcode",
+            description = "Look up a physical copy and its full shelf location.")
     public ResponseEntity<?> getByBarcode(@PathVariable String barcode) {
         return ResponseEntity.ok(bookCopyService.getByBarcode(barcode));
     }
 
     @PutMapping("/{barcode}/location")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Update copy location", description = "Update the physical shelf/room location of a book copy.")
-    public ResponseEntity<?> updateLocation(@PathVariable String barcode, @RequestParam Long shelfId) {
+    @Operation(
+            summary = "Update copy location",
+            description = "Update the physical shelf/room location of a book copy.")
+    public ResponseEntity<?> updateLocation(
+            @PathVariable String barcode, @RequestParam Long shelfId) {
         return ResponseEntity.ok(bookCopyService.updateLocation(barcode, shelfId));
     }
 
     @PutMapping("/{barcode}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
-    @Operation(summary = "Update copy status", description = "Update the status (e.g. AVAILABLE, LOST, DAMAGED).")
-    public ResponseEntity<?> updateStatus(@PathVariable String barcode, @RequestParam String status) {
+    @Operation(
+            summary = "Update copy status",
+            description = "Update the status (e.g. AVAILABLE, LOST, DAMAGED).")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable String barcode, @RequestParam String status) {
         return ResponseEntity.ok(bookCopyService.updateStatus(barcode, status));
     }
 }

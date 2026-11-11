@@ -11,16 +11,16 @@ import java.time.LocalDate;
 
 @Data
 public class CompensationRateRequestDTO {
-    @NotBlank
-    private String materialType;
-    @NotBlank
-    private String languageCategory;
+    @NotBlank private String materialType;
+    @NotBlank private String languageCategory;
+
     @NotNull
     @DecimalMin(value = "0.01")
     private BigDecimal amount;
-    @NotNull
-    private LocalDate validFrom;
+
+    @NotNull private LocalDate validFrom;
     private LocalDate validUntil;
+
     @Size(max = 500)
     private String note;
 }

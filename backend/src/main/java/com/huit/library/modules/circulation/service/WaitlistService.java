@@ -67,22 +67,31 @@ public class WaitlistService {
     @Transactional
     public WaitlistEntity join(Long bookId, UUID userId) {
         if (copyRepository.countByBookIdAndStatus(bookId, "AVAILABLE") > 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài liệu đang có bản sẵn sàng, không cần vào hàng đợi");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Tài liệu đang có bản sẵn sàng, không cần vào hàng đợi");
         }
-        boolean hasCirculatingCopy = copyRepository.findByBookId(bookId).stream()
-                .anyMatch(c -> c.getStatus() == null
-                        || !List.of("LOST", "DAMAGED").contains(c.getStatus().toUpperCase()));
+        boolean hasCirculatingCopy =
+                copyRepository.findByBookId(bookId).stream()
+                        .anyMatch(
+                                c ->
+                                        c.getStatus() == null
+                                                || !List.of("LOST", "DAMAGED")
+                                                        .contains(c.getStatus().toUpperCase()));
         if (!hasCirculatingCopy) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Đầu sách hiện không có bản sao vật lý lưu thông nên không hỗ trợ hàng đợi");
         }
         if (waitlistRepository.existsByBookIdAndUserIdAndStatus(bookId, userId, "WAITING")
-                || waitlistRepository.findFirstByBookIdAndUserIdAndStatus(bookId, userId, "NOTIFIED").isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đã có lượt hoạt động cho đầu sách này");
+                || waitlistRepository
+                        .findFirstByBookIdAndUserIdAndStatus(bookId, userId, "NOTIFIED")
+                        .isPresent()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Bạn đã có lượt hoạt động cho đầu sách này");
         }
         if (!isEligible(userId, LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn đọc hiện không đủ điều kiện tham gia hàng đợi");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Bạn đọc hiện không đủ điều kiện tham gia hàng đợi");
         }
         WaitlistEntity entry = new WaitlistEntity();
         entry.setBookId(bookId);
@@ -97,7 +106,8 @@ public class WaitlistService {
     }
 
     @Transactional(readOnly = true)
-    public LocalDateTime calculateDirectReservationDeadline(LocalDate pickupDate, LocalDateTime now) {
+    public LocalDateTime calculateDirectReservationDeadline(
+            LocalDate pickupDate, LocalDateTime now) {
         LocalDate selectedDate = pickupDate != null ? pickupDate : now.toLocalDate();
         if (!selectedDate.equals(now.toLocalDate())) {
             throw new ResponseStatusException(
@@ -118,8 +128,9 @@ public class WaitlistService {
     @Transactional
     public Optional<WaitlistEntity> promoteNext(BookCopyEntity copy, LocalDateTime now) {
         while (true) {
-            Optional<WaitlistEntity> next = waitlistRepository
-                    .findFirstByBookIdAndStatusOrderByCreatedAtAsc(copy.getBookId(), "WAITING");
+            Optional<WaitlistEntity> next =
+                    waitlistRepository.findFirstByBookIdAndStatusOrderByCreatedAtAsc(
+                            copy.getBookId(), "WAITING");
             if (next.isEmpty()) {
                 return Optional.empty();
             }
@@ -129,7 +140,8 @@ public class WaitlistService {
                 waitlistRepository.save(entry);
                 continue;
             }
-            LocalDateTime expiresAt = adjustToOpening(now.plusHours(policyService.waitlistHoldHours()));
+            LocalDateTime expiresAt =
+                    adjustToOpening(now.plusHours(policyService.waitlistHoldHours()));
             entry.setStatus("NOTIFIED");
             entry.setNotifiedAt(now);
             entry.setExpiresAt(expiresAt);
@@ -141,10 +153,13 @@ public class WaitlistService {
             copy.setLockedUntil(expiresAt);
             copyRepository.save(copy);
             notificationService.createOnce(
-                    entry.getUserId(), "WAITLIST_AVAILABLE",
+                    entry.getUserId(),
+                    "WAITLIST_AVAILABLE",
                     "Tài liệu trong hàng đợi đã sẵn sàng. Vui lòng nhận trước " + expiresAt + ".",
-                    "WAITLIST", entry.getWaitlistId().toString(),
-                    "WAITLIST_AVAILABLE:" + entry.getWaitlistId(), now);
+                    "WAITLIST",
+                    entry.getWaitlistId().toString(),
+                    "WAITLIST_AVAILABLE:" + entry.getWaitlistId(),
+                    now);
             return Optional.of(entry);
         }
     }
@@ -152,12 +167,13 @@ public class WaitlistService {
     @Transactional
     public int expireAndPromote(LocalDateTime now) {
         int expired = 0;
-        for (WaitlistEntity entry : waitlistRepository.findByStatusAndExpiresAtBefore("NOTIFIED", now)) {
+        for (WaitlistEntity entry :
+                waitlistRepository.findByStatusAndExpiresAtBefore("NOTIFIED", now)) {
             entry.setStatus("EXPIRED");
             waitlistRepository.save(entry);
             expired++;
-            noShowService.record(entry.getUserId(), now,
-                    "WAITLIST", entry.getWaitlistId().toString());
+            noShowService.record(
+                    entry.getUserId(), now, "WAITLIST", entry.getWaitlistId().toString());
             if (entry.getReservedBarcode() == null) {
                 continue;
             }
@@ -170,11 +186,15 @@ public class WaitlistService {
             copy.setLockedUntil(null);
             copyRepository.save(copy);
             notificationService.createOnce(
-                    entry.getUserId(), "WAITLIST_EXPIRED",
+                    entry.getUserId(),
+                    "WAITLIST_EXPIRED",
                     "Lượt giữ sách trong hàng đợi đã hết hạn sau "
-                            + policyService.waitlistHoldHours() + " giờ.",
-                    "WAITLIST", entry.getWaitlistId().toString(),
-                    "WAITLIST_EXPIRED:" + entry.getWaitlistId(), now);
+                            + policyService.waitlistHoldHours()
+                            + " giờ.",
+                    "WAITLIST",
+                    entry.getWaitlistId().toString(),
+                    "WAITLIST_EXPIRED:" + entry.getWaitlistId(),
+                    now);
             promoteNext(copy, now);
         }
         return expired;
@@ -182,13 +202,19 @@ public class WaitlistService {
 
     private boolean isEligible(java.util.UUID userId, LocalDateTime now) {
         UserEntity user = userRepository.findById(userId).orElse(null);
-        if (user == null || Boolean.TRUE.equals(user.getDisciplineFlag())
+        if (user == null
+                || Boolean.TRUE.equals(user.getDisciplineFlag())
                 || !"ACTIVE".equalsIgnoreCase(user.getCardStatus())) {
             return false;
         }
-        boolean hasDebt = walletRepository.findByUserId(userId)
-                .map(wallet -> wallet.getTotalDebt() != null && wallet.getTotalDebt().signum() > 0)
-                .orElse(false);
+        boolean hasDebt =
+                walletRepository
+                        .findByUserId(userId)
+                        .map(
+                                wallet ->
+                                        wallet.getTotalDebt() != null
+                                                && wallet.getTotalDebt().signum() > 0)
+                        .orElse(false);
         if (hasDebt || detailRepository.countOverdueItemsByUserId(userId, now) > 0) {
             return false;
         }
@@ -196,8 +222,8 @@ public class WaitlistService {
             if (user.getCirculationLockedUntil().isAfter(now)) {
                 return false;
             }
-            return detailRepository.countOpenItemsByUserId(
-                    userId, List.of("BORROWING", "OVERDUE")) == 0;
+            return detailRepository.countOpenItemsByUserId(userId, List.of("BORROWING", "OVERDUE"))
+                    == 0;
         }
         return true;
     }
@@ -222,13 +248,15 @@ public class WaitlistService {
     }
 
     private boolean isClosed(LocalDate date) {
-        return holidayRepository.findById(date.toString())
+        return holidayRepository
+                .findById(date.toString())
                 .map(day -> Boolean.TRUE.equals(day.getIsClosed()))
                 .orElse(false);
     }
 
     private LocalTime openingTime(LocalDate date) {
-        return holidayRepository.findById(date.toString())
+        return holidayRepository
+                .findById(date.toString())
                 .map(HolidayCalendarEntity::getOverrideOpenTime)
                 .filter(value -> value != null && !value.isBlank())
                 .map(LocalTime::parse)
@@ -236,7 +264,8 @@ public class WaitlistService {
     }
 
     private LocalTime closingTime(LocalDate date) {
-        return holidayRepository.findById(date.toString())
+        return holidayRepository
+                .findById(date.toString())
                 .map(HolidayCalendarEntity::getOverrideCloseTime)
                 .filter(value -> value != null && !value.isBlank())
                 .map(LocalTime::parse)

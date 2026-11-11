@@ -57,9 +57,16 @@ public class LibrarianQrService {
             WalletRepository walletRepository,
             @Value("${library.qr.secret}") String secret,
             @Value("${library.qr.ttl-minutes:10}") long ttlMinutes) {
-        this(objectMapper, loanService, loanTicketRepository, loanStatusHistoryRepository,
-                userRepository, walletRepository,
-                secret, ttlMinutes, Clock.systemUTC());
+        this(
+                objectMapper,
+                loanService,
+                loanTicketRepository,
+                loanStatusHistoryRepository,
+                userRepository,
+                walletRepository,
+                secret,
+                ttlMinutes,
+                Clock.systemUTC());
     }
 
     LibrarianQrService(
@@ -73,7 +80,8 @@ public class LibrarianQrService {
             long ttlMinutes,
             Clock clock) {
         if (secret == null || secret.length() < 32) {
-            throw new IllegalArgumentException("library.qr.secret must contain at least 32 characters");
+            throw new IllegalArgumentException(
+                    "library.qr.secret must contain at least 32 characters");
         }
         if (ttlMinutes < 1 || ttlMinutes > 60) {
             throw new IllegalArgumentException("library.qr.ttl-minutes must be between 1 and 60");
@@ -91,18 +99,27 @@ public class LibrarianQrService {
 
     @Transactional(readOnly = true)
     public QrPayloadResponseDTO issueTicketPayload(Long ticketId, UserEntity requester) {
-        var ticket = loanTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Không tìm thấy phiếu mượn #" + ticketId));
+        var ticket =
+                loanTicketRepository
+                        .findById(ticketId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Không tìm thấy phiếu mượn #" + ticketId));
         boolean staff = hasStaffRole(requester);
         if (!staff && !Objects.equals(ticket.getUserId(), requester.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền tạo QR cho phiếu này");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Bạn không có quyền tạo QR cho phiếu này");
         }
         LoanTicketStatus status = LoanTicketStatus.fromDatabaseValue(ticket.getStatus());
         if (!isCounterActionStatus(status)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Phiếu #" + ticketId + " đã ở trạng thái " + status.name()
+                    "Phiếu #"
+                            + ticketId
+                            + " đã ở trạng thái "
+                            + status.name()
                             + " nên không còn thao tác tại quầy hợp lệ");
         }
         return issue("LOAN_TICKET", ticketId.toString(), ticket.getUserId());
@@ -141,16 +158,19 @@ public class LibrarianQrService {
         if (!isCounterActionStatus(status)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Phiếu #" + ticket.getTicketId() + " đã ở trạng thái " + status.name()
+                    "Phiếu #"
+                            + ticket.getTicketId()
+                            + " đã ở trạng thái "
+                            + status.name()
                             + " nên không còn thao tác tại quầy hợp lệ");
         }
         List<LoanItemDTO> items = ticket.getItems() == null ? List.of() : ticket.getItems();
-        var borrowedAt = loanStatusHistoryRepository
-                .findFirstByTicketIdAndToStatusOrderByCreatedAtAsc(
-                        ticketId,
-                        LoanTicketStatus.BORROWING)
-                .map(history -> history.getCreatedAt())
-                .orElse(null);
+        var borrowedAt =
+                loanStatusHistoryRepository
+                        .findFirstByTicketIdAndToStatusOrderByCreatedAtAsc(
+                                ticketId, LoanTicketStatus.BORROWING)
+                        .map(history -> history.getCreatedAt())
+                        .orElse(null);
         items.forEach(item -> item.setBorrowedAt(borrowedAt));
         if (status == LoanTicketStatus.BORROWING || status == LoanTicketStatus.OVERDUE) {
             items = items.stream().filter(this::isActiveReturnItem).toList();
@@ -184,17 +204,35 @@ public class LibrarianQrService {
         if (!userId.equals(claims.userId())) {
             throw invalidPayload("Chủ sở hữu QR không hợp lệ");
         }
-        UserEntity reader = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
-        int activeLoanCount = (int) loanTicketRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(ticket -> LoanTicketStatus.fromDatabaseValue(ticket.getStatus()))
-                .filter(status -> status == LoanTicketStatus.RESERVED
-                        || status == LoanTicketStatus.BORROWING
-                        || status == LoanTicketStatus.OVERDUE)
-                .count();
-        BigDecimal totalDebt = walletRepository.findByUserId(userId)
-                .map(wallet -> wallet.getTotalDebt() == null ? BigDecimal.ZERO : wallet.getTotalDebt())
-                .orElse(BigDecimal.ZERO);
+        UserEntity reader =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(
+                                () ->
+                                        new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND, "Không tìm thấy bạn đọc"));
+        int activeLoanCount =
+                (int)
+                        loanTicketRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                                .map(
+                                        ticket ->
+                                                LoanTicketStatus.fromDatabaseValue(
+                                                        ticket.getStatus()))
+                                .filter(
+                                        status ->
+                                                status == LoanTicketStatus.RESERVED
+                                                        || status == LoanTicketStatus.BORROWING
+                                                        || status == LoanTicketStatus.OVERDUE)
+                                .count();
+        BigDecimal totalDebt =
+                walletRepository
+                        .findByUserId(userId)
+                        .map(
+                                wallet ->
+                                        wallet.getTotalDebt() == null
+                                                ? BigDecimal.ZERO
+                                                : wallet.getTotalDebt())
+                        .orElse(BigDecimal.ZERO);
 
         return QrResolveResponseDTO.builder()
                 .type(claims.type())
@@ -231,9 +269,10 @@ public class LibrarianQrService {
         if (item == null || item.getReturnDate() != null || item.getPhysicalReturnAt() != null) {
             return false;
         }
-        String itemStatus = item.getItemStatus() == null
-                ? ""
-                : item.getItemStatus().trim().toUpperCase(Locale.ROOT);
+        String itemStatus =
+                item.getItemStatus() == null
+                        ? ""
+                        : item.getItemStatus().trim().toUpperCase(Locale.ROOT);
         return List.of("BORROWING", "OVERDUE").contains(itemStatus);
     }
 
@@ -241,11 +280,13 @@ public class LibrarianQrService {
         Instant expiresAt = clock.instant().plus(ttlMinutes, ChronoUnit.MINUTES);
         QrClaims claims = new QrClaims(1, type, id, userId, expiresAt.getEpochSecond());
         try {
-            String encodedClaims = Base64.getUrlEncoder().withoutPadding()
-                    .encodeToString(objectMapper.writeValueAsBytes(claims));
+            String encodedClaims =
+                    Base64.getUrlEncoder()
+                            .withoutPadding()
+                            .encodeToString(objectMapper.writeValueAsBytes(claims));
             String signingInput = TOKEN_PREFIX + "." + encodedClaims;
-            String signature = Base64.getUrlEncoder().withoutPadding()
-                    .encodeToString(sign(signingInput));
+            String signature =
+                    Base64.getUrlEncoder().withoutPadding().encodeToString(sign(signingInput));
             return QrPayloadResponseDTO.builder()
                     .payload(signingInput + "." + signature)
                     .expiresAt(expiresAt)
@@ -265,8 +306,8 @@ public class LibrarianQrService {
         }
         try {
             byte[] suppliedSignature = Base64.getUrlDecoder().decode(parts[2]);
-            String canonicalSignature = Base64.getUrlEncoder().withoutPadding()
-                    .encodeToString(suppliedSignature);
+            String canonicalSignature =
+                    Base64.getUrlEncoder().withoutPadding().encodeToString(suppliedSignature);
             if (!canonicalSignature.equals(parts[2])) {
                 throw invalidPayload("Chữ ký QR không ở dạng mã hóa chuẩn");
             }
@@ -274,10 +315,13 @@ public class LibrarianQrService {
             if (!MessageDigest.isEqual(expectedSignature, suppliedSignature)) {
                 throw invalidPayload("Chữ ký QR không hợp lệ");
             }
-            QrClaims claims = objectMapper.readValue(
-                    Base64.getUrlDecoder().decode(parts[1]), QrClaims.class);
-            if (claims.version() != 1 || claims.type() == null || claims.id() == null
-                    || claims.userId() == null || claims.expiresAt() <= 0) {
+            QrClaims claims =
+                    objectMapper.readValue(Base64.getUrlDecoder().decode(parts[1]), QrClaims.class);
+            if (claims.version() != 1
+                    || claims.type() == null
+                    || claims.id() == null
+                    || claims.userId() == null
+                    || claims.expiresAt() <= 0) {
                 throw invalidPayload("Dữ liệu QR không đầy đủ");
             }
             String normalizedType = claims.type().trim().toUpperCase(Locale.ROOT);
@@ -285,9 +329,15 @@ public class LibrarianQrService {
                 throw invalidPayload("Loại QR không được hỗ trợ");
             }
             if (!clock.instant().isBefore(Instant.ofEpochSecond(claims.expiresAt()))) {
-                throw new ResponseStatusException(HttpStatus.GONE, "QR đã hết hạn, vui lòng tạo mã mới");
+                throw new ResponseStatusException(
+                        HttpStatus.GONE, "QR đã hết hạn, vui lòng tạo mã mới");
             }
-            return new QrClaims(claims.version(), normalizedType, claims.id(), claims.userId(), claims.expiresAt());
+            return new QrClaims(
+                    claims.version(),
+                    normalizedType,
+                    claims.id(),
+                    claims.userId(),
+                    claims.expiresAt());
         } catch (ResponseStatusException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -310,6 +360,5 @@ public class LibrarianQrService {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, reason);
     }
 
-    record QrClaims(int version, String type, String id, UUID userId, long expiresAt) {
-    }
+    record QrClaims(int version, String type, String id, UUID userId, long expiresAt) {}
 }

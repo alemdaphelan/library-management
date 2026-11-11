@@ -1,13 +1,21 @@
 import { Injectable } from '@angular/core';
-import { CanActivate, CanActivateChild, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import {
+  CanActivate,
+  CanActivateChild,
+  ActivatedRouteSnapshot,
+  RouterStateSnapshot,
+  Router,
+} from '@angular/router';
 import { AuthService, Role } from '../services/auth.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthGuard implements CanActivate, CanActivateChild {
-
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+  ) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
     return this.checkAccess(route);
@@ -19,7 +27,7 @@ export class AuthGuard implements CanActivate, CanActivateChild {
 
   private checkAccess(route: ActivatedRouteSnapshot): boolean {
     const isLoggedIn = this.authService.isLoggedIn();
-    
+
     if (!isLoggedIn) {
       this.router.navigate(['/login']);
       return false;
@@ -30,7 +38,7 @@ export class AuthGuard implements CanActivate, CanActivateChild {
       const userRole = this.authService.getRole();
       if (!requiredRoles.includes(userRole)) {
         const isStaff = userRole === 'ADMIN' || userRole === 'LIBRARIAN';
-        this.router.navigate([isStaff ? route.data['staffRedirect'] ?? '/' : '/']);
+        this.router.navigate([isStaff ? (route.data['staffRedirect'] ?? '/') : '/']);
         return false;
       }
     }

@@ -26,19 +26,38 @@ class StaffNotificationServiceTest {
                 .thenReturn(List.of(admin, librarian));
         when(notificationService.createOnce(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(true);
-        StaffNotificationService service = new StaffNotificationService(userRepository, notificationService);
+        StaffNotificationService service =
+                new StaffNotificationService(userRepository, notificationService);
         LocalDateTime now = LocalDateTime.now();
 
-        int created = service.notifyAll(
-                "LOAN_REQUEST_PENDING", "Có phiếu mới", "LOAN_TICKET", "12", "loan:12", now);
+        int created =
+                service.notifyAll(
+                        "LOAN_REQUEST_PENDING",
+                        "Có phiếu mới",
+                        "LOAN_TICKET",
+                        "12",
+                        "loan:12",
+                        now);
 
         assertThat(created).isEqualTo(2);
-        verify(notificationService).createOnce(
-                eq(admin.getUserId()), eq("LOAN_REQUEST_PENDING"), eq("Có phiếu mới"),
-                eq("LOAN_TICKET"), eq("12"), eq("loan:12:" + admin.getUserId()), eq(now));
-        verify(notificationService).createOnce(
-                eq(librarian.getUserId()), eq("LOAN_REQUEST_PENDING"), eq("Có phiếu mới"),
-                eq("LOAN_TICKET"), eq("12"), eq("loan:12:" + librarian.getUserId()), eq(now));
+        verify(notificationService)
+                .createOnce(
+                        eq(admin.getUserId()),
+                        eq("LOAN_REQUEST_PENDING"),
+                        eq("Có phiếu mới"),
+                        eq("LOAN_TICKET"),
+                        eq("12"),
+                        eq("loan:12:" + admin.getUserId()),
+                        eq(now));
+        verify(notificationService)
+                .createOnce(
+                        eq(librarian.getUserId()),
+                        eq("LOAN_REQUEST_PENDING"),
+                        eq("Có phiếu mới"),
+                        eq("LOAN_TICKET"),
+                        eq("12"),
+                        eq("loan:12:" + librarian.getUserId()),
+                        eq(now));
     }
 
     private UserEntity staff(String role) {

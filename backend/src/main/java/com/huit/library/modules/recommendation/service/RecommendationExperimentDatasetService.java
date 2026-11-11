@@ -47,104 +47,142 @@ public class RecommendationExperimentDatasetService {
     @Transactional(readOnly = true)
     public RecommendationExperimentDataset buildDataset() {
         List<UserEntity> students = userRepository.findByUserTypeOrderByFullNameAsc("STUDENT");
-        List<BookEntity> eligibleBooks = bookRepository.findAll().stream()
-                .filter(book -> book.getBookId() != null)
-                .filter(book -> hasText(book.getTitle()))
-                .sorted(Comparator.comparing(BookEntity::getBookId))
-                .toList();
+        List<BookEntity> eligibleBooks =
+                bookRepository.findAll().stream()
+                        .filter(book -> book.getBookId() != null)
+                        .filter(book -> hasText(book.getTitle()))
+                        .sorted(Comparator.comparing(BookEntity::getBookId))
+                        .toList();
 
-        Set<UUID> studentIds = students.stream()
-                .map(UserEntity::getUserId)
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toCollection(HashSet::new));
-        Set<Long> bookIds = eligibleBooks.stream()
-                .map(BookEntity::getBookId)
-                .collect(Collectors.toCollection(HashSet::new));
+        Set<UUID> studentIds =
+                students.stream()
+                        .map(UserEntity::getUserId)
+                        .filter(java.util.Objects::nonNull)
+                        .collect(Collectors.toCollection(HashSet::new));
+        Set<Long> bookIds =
+                eligibleBooks.stream()
+                        .map(BookEntity::getBookId)
+                        .collect(Collectors.toCollection(HashSet::new));
 
-        List<EvaluationInteractionProjection> raw = loanDetailRepository.findEvaluationInteractions();
-        List<EvaluationInteractionProjection> validRaw = raw.stream()
-                .filter(row -> row.getUserId() != null && studentIds.contains(row.getUserId()))
-                .filter(row -> row.getBookId() != null && bookIds.contains(row.getBookId()))
-                .filter(row -> row.getInteractionAt() != null)
-                .toList();
+        List<EvaluationInteractionProjection> raw =
+                loanDetailRepository.findEvaluationInteractions();
+        List<EvaluationInteractionProjection> validRaw =
+                raw.stream()
+                        .filter(
+                                row ->
+                                        row.getUserId() != null
+                                                && studentIds.contains(row.getUserId()))
+                        .filter(row -> row.getBookId() != null && bookIds.contains(row.getBookId()))
+                        .filter(row -> row.getInteractionAt() != null)
+                        .toList();
 
         Map<UserBookKey, PairAccumulator> uniquePairs = new LinkedHashMap<>();
         for (EvaluationInteractionProjection row : validRaw) {
             UserBookKey key = new UserBookKey(row.getUserId(), row.getBookId());
-            uniquePairs.computeIfAbsent(key, ignored -> new PairAccumulator(key))
+            uniquePairs
+                    .computeIfAbsent(key, ignored -> new PairAccumulator(key))
                     .add(row.getInteractionAt(), safeNonNegative(row.getRenewalCount()));
         }
 
-        Map<UUID, List<PairAccumulator>> byUser = uniquePairs.values().stream()
-                .collect(Collectors.groupingBy(pair -> pair.key.userId(), LinkedHashMap::new,
-                        Collectors.toCollection(ArrayList::new)));
+        Map<UUID, List<PairAccumulator>> byUser =
+                uniquePairs.values().stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        pair -> pair.key.userId(),
+                                        LinkedHashMap::new,
+                                        Collectors.toCollection(ArrayList::new)));
         Map<UserBookKey, Split> splitByPair = new HashMap<>();
         Map<UUID, UserCohort> cohortByUser = new HashMap<>();
 
         for (UUID studentId : studentIds) {
-            List<PairAccumulator> history = byUser.getOrDefault(studentId, List.of()).stream()
-                    .sorted(Comparator.comparing((PairAccumulator pair) -> pair.firstInteractionAt)
-                            .thenComparing(pair -> pair.key.bookId()))
-                    .toList();
+            List<PairAccumulator> history =
+                    byUser.getOrDefault(studentId, List.of()).stream()
+                            .sorted(
+                                    Comparator.comparing(
+                                                    (PairAccumulator pair) ->
+                                                            pair.firstInteractionAt)
+                                            .thenComparing(pair -> pair.key.bookId()))
+                            .toList();
             assignChronologicalSplits(history, splitByPair);
-            long trainCount = history.stream()
-                    .filter(pair -> splitByPair.get(pair.key) == Split.TRAIN)
-                    .count();
+            long trainCount =
+                    history.stream()
+                            .filter(pair -> splitByPair.get(pair.key) == Split.TRAIN)
+                            .count();
             cohortByUser.put(studentId, cohortForTrainCount(trainCount));
         }
 
-        List<Interaction> interactions = uniquePairs.values().stream()
-                .map(pair -> pair.toInteraction(
-                        splitByPair.get(pair.key),
-                        cohortByUser.getOrDefault(pair.key.userId(), UserCohort.NEW)))
-                .sorted(Comparator.comparing(Interaction::userId)
-                        .thenComparing(Interaction::firstInteractionAt)
-                        .thenComparing(Interaction::bookId))
-                .toList();
+        List<Interaction> interactions =
+                uniquePairs.values().stream()
+                        .map(
+                                pair ->
+                                        pair.toInteraction(
+                                                splitByPair.get(pair.key),
+                                                cohortByUser.getOrDefault(
+                                                        pair.key.userId(), UserCohort.NEW)))
+                        .sorted(
+                                Comparator.comparing(Interaction::userId)
+                                        .thenComparing(Interaction::firstInteractionAt)
+                                        .thenComparing(Interaction::bookId))
+                        .toList();
         validateNoLeakage(interactions);
 
-        Set<UUID> usersWithHistory = interactions.stream()
-                .map(Interaction::userId)
-                .collect(Collectors.toSet());
-        Set<Long> borrowedBooks = interactions.stream()
-                .map(Interaction::bookId)
-                .collect(Collectors.toSet());
-        Set<Long> trainBooks = interactions.stream()
-                .filter(interaction -> interaction.split() == Split.TRAIN)
-                .map(Interaction::bookId)
-                .collect(Collectors.toSet());
-        Set<Long> departmentMappedBooks = new HashSet<>(bookRepository.findBookIdsWithActiveDepartmentMapping());
+        Set<UUID> usersWithHistory =
+                interactions.stream().map(Interaction::userId).collect(Collectors.toSet());
+        Set<Long> borrowedBooks =
+                interactions.stream().map(Interaction::bookId).collect(Collectors.toSet());
+        Set<Long> trainBooks =
+                interactions.stream()
+                        .filter(interaction -> interaction.split() == Split.TRAIN)
+                        .map(Interaction::bookId)
+                        .collect(Collectors.toSet());
+        Set<Long> departmentMappedBooks =
+                new HashSet<>(bookRepository.findBookIdsWithActiveDepartmentMapping());
 
-        List<UUID> newUserIds = studentIds.stream()
-                .filter(userId -> cohortByUser.getOrDefault(userId, UserCohort.NEW) == UserCohort.NEW)
-                .sorted()
-                .toList();
-        List<Long> newBookIds = bookIds.stream()
-                .filter(Predicate.not(trainBooks::contains))
-                .sorted()
-                .toList();
+        List<UUID> newUserIds =
+                studentIds.stream()
+                        .filter(
+                                userId ->
+                                        cohortByUser.getOrDefault(userId, UserCohort.NEW)
+                                                == UserCohort.NEW)
+                        .sorted()
+                        .toList();
+        List<Long> newBookIds =
+                bookIds.stream().filter(Predicate.not(trainBooks::contains)).sorted().toList();
 
-        Summary summary = new Summary(
-                studentIds.size(),
-                bookIds.size(),
-                validRaw.size(),
-                interactions.size(),
-                ratio(interactions.size(), studentIds.size()),
-                ratio(interactions.size(), bookIds.size()),
-                percent(studentIds.size() - usersWithHistory.size(), studentIds.size()),
-                percent(bookIds.size() - borrowedBooks.size(), bookIds.size()),
-                percent(countMissing(eligibleBooks, book -> book.getCategory() == null), bookIds.size()),
-                percent(countMissing(eligibleBooks, book -> !hasText(book.getAuthor())), bookIds.size()),
-                percent(bookIds.size() - departmentMappedBooks.stream().filter(bookIds::contains).count(), bookIds.size()),
-                percent(countMissing(eligibleBooks, book -> !hasText(book.getDescription())), bookIds.size()),
-                sparsity(interactions.size(), studentIds.size(), bookIds.size()),
-                countSplit(interactions, Split.TRAIN),
-                countSplit(interactions, Split.VALIDATION),
-                countSplit(interactions, Split.TEST),
-                countCohort(cohortByUser, UserCohort.WARM),
-                countCohort(cohortByUser, UserCohort.SPARSE),
-                newUserIds.size(),
-                newBookIds.size());
+        Summary summary =
+                new Summary(
+                        studentIds.size(),
+                        bookIds.size(),
+                        validRaw.size(),
+                        interactions.size(),
+                        ratio(interactions.size(), studentIds.size()),
+                        ratio(interactions.size(), bookIds.size()),
+                        percent(studentIds.size() - usersWithHistory.size(), studentIds.size()),
+                        percent(bookIds.size() - borrowedBooks.size(), bookIds.size()),
+                        percent(
+                                countMissing(eligibleBooks, book -> book.getCategory() == null),
+                                bookIds.size()),
+                        percent(
+                                countMissing(eligibleBooks, book -> !hasText(book.getAuthor())),
+                                bookIds.size()),
+                        percent(
+                                bookIds.size()
+                                        - departmentMappedBooks.stream()
+                                                .filter(bookIds::contains)
+                                                .count(),
+                                bookIds.size()),
+                        percent(
+                                countMissing(
+                                        eligibleBooks, book -> !hasText(book.getDescription())),
+                                bookIds.size()),
+                        sparsity(interactions.size(), studentIds.size(), bookIds.size()),
+                        countSplit(interactions, Split.TRAIN),
+                        countSplit(interactions, Split.VALIDATION),
+                        countSplit(interactions, Split.TEST),
+                        countCohort(cohortByUser, UserCohort.WARM),
+                        countCohort(cohortByUser, UserCohort.SPARSE),
+                        newUserIds.size(),
+                        newBookIds.size());
 
         return new RecommendationExperimentDataset(
                 DATASET_NAME,
@@ -157,8 +195,7 @@ public class RecommendationExperimentDatasetService {
     }
 
     private void assignChronologicalSplits(
-            List<PairAccumulator> history,
-            Map<UserBookKey, Split> splitByPair) {
+            List<PairAccumulator> history, Map<UserBookKey, Split> splitByPair) {
         int size = history.size();
         for (int index = 0; index < size; index++) {
             Split split;
@@ -179,22 +216,29 @@ public class RecommendationExperimentDatasetService {
         Map<UUID, LocalDateTime> earliestHoldout = new HashMap<>();
         for (Interaction interaction : interactions) {
             if (!seenPairs.add(new UserBookKey(interaction.userId(), interaction.bookId()))) {
-                throw new IllegalStateException("A user-book pair occurs in more than one dataset split");
+                throw new IllegalStateException(
+                        "A user-book pair occurs in more than one dataset split");
             }
             if (interaction.split() == Split.TRAIN) {
-                latestTrain.merge(interaction.userId(), interaction.firstInteractionAt(),
+                latestTrain.merge(
+                        interaction.userId(),
+                        interaction.firstInteractionAt(),
                         (left, right) -> left.isAfter(right) ? left : right);
             } else {
-                earliestHoldout.merge(interaction.userId(), interaction.firstInteractionAt(),
+                earliestHoldout.merge(
+                        interaction.userId(),
+                        interaction.firstInteractionAt(),
                         (left, right) -> left.isBefore(right) ? left : right);
             }
         }
-        latestTrain.forEach((userId, trainTime) -> {
-            LocalDateTime holdoutTime = earliestHoldout.get(userId);
-            if (holdoutTime != null && trainTime.isAfter(holdoutTime)) {
-                throw new IllegalStateException("Future interaction leaked into training for user " + userId);
-            }
-        });
+        latestTrain.forEach(
+                (userId, trainTime) -> {
+                    LocalDateTime holdoutTime = earliestHoldout.get(userId);
+                    if (holdoutTime != null && trainTime.isAfter(holdoutTime)) {
+                        throw new IllegalStateException(
+                                "Future interaction leaked into training for user " + userId);
+                    }
+                });
     }
 
     private long countMissing(List<BookEntity> books, Predicate<BookEntity> predicate) {
@@ -246,8 +290,7 @@ public class RecommendationExperimentDatasetService {
         return Math.round(value * 1_000_000.0) / 1_000_000.0;
     }
 
-    private record UserBookKey(UUID userId, Long bookId) {
-    }
+    private record UserBookKey(UUID userId, Long bookId) {}
 
     private final class PairAccumulator {
         private final UserBookKey key;
@@ -276,9 +319,10 @@ public class RecommendationExperimentDatasetService {
             if (split == null) {
                 throw new IllegalStateException("Missing dataset split for " + key);
             }
-            double preferenceWeight = 1.0
-                    + (0.15 * Math.min(renewalCount, 2))
-                    + (0.10 * Math.min(Math.max(occurrenceCount - 1, 0), 2));
+            double preferenceWeight =
+                    1.0
+                            + (0.15 * Math.min(renewalCount, 2))
+                            + (0.10 * Math.min(Math.max(occurrenceCount - 1, 0), 2));
             return new Interaction(
                     key.userId(),
                     key.bookId(),

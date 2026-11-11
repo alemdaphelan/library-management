@@ -1,8 +1,23 @@
 import { LoanItem } from '../../../services/circulation.service';
-import { createInspectionDraft, draftError, inspectionPayload, isActiveReturnItem, normalizeSettlement } from './return-inspection.form';
+import {
+  createInspectionDraft,
+  draftError,
+  inspectionPayload,
+  isActiveReturnItem,
+  normalizeSettlement,
+} from './return-inspection.form';
 
-const loan: LoanItem = { ticketId: 19, detailId: 29, barcode: 'BC-019', bookTitle: 'Clean Code',
-  ticketType: 'BORROW', status: 'BORROWING', itemStatus: 'BORROWING', renewalCount: 0, lateFineAccrued: 0 };
+const loan: LoanItem = {
+  ticketId: 19,
+  detailId: 29,
+  barcode: 'BC-019',
+  bookTitle: 'Clean Code',
+  ticketType: 'BORROW',
+  status: 'BORROWING',
+  itemStatus: 'BORROWING',
+  renewalCount: 0,
+  lateFineAccrued: 0,
+};
 
 describe('Return inspection form policy', () => {
   it('checks the item state independently from its borrowing ticket', () => {
@@ -32,8 +47,13 @@ describe('Return inspection form policy', () => {
     expect(draftError(draft)).toContain('hỏng nặng');
     draft.penalty.pagesAffected = 2;
     expect(draftError(draft)).toBeNull();
-    expect(inspectionPayload(draft).penalty).toMatchObject({ loanDetailId: 29, incidentType: 'DAMAGED',
-      description: 'Rách trang', repairFee: 200000, settlementMethod: 'REPAIR' });
+    expect(inspectionPayload(draft).penalty).toMatchObject({
+      loanDetailId: 29,
+      incidentType: 'DAMAGED',
+      description: 'Rách trang',
+      repairFee: 200000,
+      settlementMethod: 'REPAIR',
+    });
     expect(inspectionPayload(draft).penalty?.coverPrice).toBeUndefined();
     expect(inspectionPayload(draft).penalty?.fxRate).toBeUndefined();
     draft.penalty.repairFee = 0;

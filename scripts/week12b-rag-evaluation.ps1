@@ -20,17 +20,17 @@ if (-not (Test-Path -LiteralPath $parent)) {
 [System.IO.File]::WriteAllText($resolvedOutput, $json, [System.Text.UTF8Encoding]::new($false))
 
 [pscustomobject]@{
-    output = $resolvedOutput
-    datasetVersion = $report.datasetVersion
-    totalCases = $report.totalCases
+    output              = $resolvedOutput
+    datasetVersion      = $report.datasetVersion
+    totalCases          = $report.totalCases
     retrievalHitRateAtK = $report.retrievalHitRateAtK
-    retrievalRecallAtK = $report.retrievalRecallAtK
-    correctSourceRate = $report.correctSourceRate
-    groundedAnswerRate = $report.groundedAnswerRate
-    citationRate = $report.citationRate
-    correctRefusalRate = $report.correctRefusalRate
-    fallbackRate = $report.fallbackRate
-    p50LatencyMs = $report.p50LatencyMs
-    p95LatencyMs = $report.p95LatencyMs
-    unexpectedErrors = $report.unexpectedErrors
+    retrievalRecallAtK  = $report.retrievalRecallAtK
+    correctSourceRate   = $report.correctSourceRate
+    groundedAnswerRate  = $report.groundedAnswerRate
+    citationRate        = $report.citationRate
+    correctRefusalRate  = $report.correctRefusalRate
+    fallbackRate        = $report.fallbackRate
+    p50LatencyMs        = $report.p50LatencyMs
+    p95LatencyMs        = $report.p95LatencyMs
+    unexpectedErrors    = $report.unexpectedErrors
 } | ConvertTo-Json

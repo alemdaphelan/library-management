@@ -17,7 +17,8 @@ void main() {
     });
     submittedBodies = [];
     ApiService.testClient = MockClient((request) async {
-      if (request.method == 'GET' && request.url.path.endsWith('/proposals/majors')) {
+      if (request.method == 'GET' &&
+          request.url.path.endsWith('/proposals/majors')) {
         return http.Response(
           jsonEncode([
             {'majorId': 'CNTT', 'majorName': 'Công nghệ thông tin'},
@@ -73,9 +74,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   });
 
-  testWidgets('thông tin ít dùng được thu gọn', (
-    tester,
-  ) async {
+  testWidgets('thông tin ít dùng được thu gọn', (tester) async {
     await pumpForm(tester);
 
     expect(find.text('Tên sách *'), findsOneWidget);
@@ -97,7 +96,9 @@ void main() {
     expect(find.text('Liên kết tham khảo'), findsOneWidget);
   });
 
-  testWidgets('gửi mã ngành chính thức, bỏ thể loại và ưu tiên', (tester) async {
+  testWidgets('gửi mã ngành chính thức, bỏ thể loại và ưu tiên', (
+    tester,
+  ) async {
     await pumpForm(tester);
 
     await tester.enterText(

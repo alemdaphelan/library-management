@@ -26,16 +26,23 @@ class BookRecommendationServiceTest {
     void popularityBaselineNormalizesScoresAndFillsSparseHistoryFromCatalog() {
         BookRepository bookRepository = mock(BookRepository.class);
         LoanDetailRepository loanRepository = mock(LoanDetailRepository.class);
-        BookSubjectAssignmentRepository assignmentRepository = mock(BookSubjectAssignmentRepository.class);
-        BookRecommendationService service = new BookRecommendationService(
-                bookRepository, mock(BookCopyRepository.class), loanRepository, assignmentRepository, new TfIdfSimilarityEngine());
+        BookSubjectAssignmentRepository assignmentRepository =
+                mock(BookSubjectAssignmentRepository.class);
+        BookRecommendationService service =
+                new BookRecommendationService(
+                        bookRepository,
+                        mock(BookCopyRepository.class),
+                        loanRepository,
+                        assignmentRepository,
+                        new TfIdfSimilarityEngine());
         BookEntity popular = book(1L, "Java", "Công nghệ thông tin");
         BookEntity fallback = book(2L, "Cơ sở dữ liệu", "Công nghệ thông tin");
 
         when(loanRepository.findPopularityScores(any(), any(), anyDouble(), any(Pageable.class)))
                 .thenReturn(List.of(popularity(1L, 4, 3.5)));
         when(bookRepository.findAllById(any())).thenReturn(List.of(popular));
-        when(bookRepository.findRecommendationFallback(any(Pageable.class))).thenReturn(List.of(popular, fallback));
+        when(bookRepository.findRecommendationFallback(any(Pageable.class)))
+                .thenReturn(List.of(popular, fallback));
 
         RecommendationResponseDTO response = service.getPopularBooks(2, 365);
 
@@ -51,9 +58,15 @@ class BookRecommendationServiceTest {
     void similarBooksUsesTfIdfAndExcludesSourceBook() {
         BookRepository bookRepository = mock(BookRepository.class);
         LoanDetailRepository loanRepository = mock(LoanDetailRepository.class);
-        BookSubjectAssignmentRepository assignmentRepository = mock(BookSubjectAssignmentRepository.class);
-        BookRecommendationService service = new BookRecommendationService(
-                bookRepository, mock(BookCopyRepository.class), loanRepository, assignmentRepository, new TfIdfSimilarityEngine());
+        BookSubjectAssignmentRepository assignmentRepository =
+                mock(BookSubjectAssignmentRepository.class);
+        BookRecommendationService service =
+                new BookRecommendationService(
+                        bookRepository,
+                        mock(BookCopyRepository.class),
+                        loanRepository,
+                        assignmentRepository,
+                        new TfIdfSimilarityEngine());
         BookEntity source = book(1L, "Lập trình Java căn bản", "Công nghệ thông tin");
         BookEntity relevant = book(2L, "Lập trình Java Spring", "Công nghệ thông tin");
         BookEntity unrelated = book(3L, "Hóa sinh thực phẩm", "Công nghệ thông tin");
@@ -61,8 +74,10 @@ class BookRecommendationServiceTest {
         when(bookRepository.findById(1L)).thenReturn(Optional.of(source));
         when(assignmentRepository.findByBook_BookIdOrderByConfidenceDesc(1L)).thenReturn(List.of());
         when(bookRepository.findByCategory_CategoryIdAndBookIdNotOrderByBookIdAsc(
-                any(), any(), any(Pageable.class))).thenReturn(List.of(relevant, unrelated));
-        when(bookRepository.findByBookIdNotOrderByBookIdAsc(any(), any(Pageable.class))).thenReturn(List.of());
+                        any(), any(), any(Pageable.class)))
+                .thenReturn(List.of(relevant, unrelated));
+        when(bookRepository.findByBookIdNotOrderByBookIdAsc(any(), any(Pageable.class)))
+                .thenReturn(List.of());
         when(assignmentRepository.findByBook_BookIdIn(any())).thenReturn(List.of());
 
         RecommendationResponseDTO response = service.getSimilarBooks(1L, 10);
@@ -84,7 +99,8 @@ class BookRecommendationServiceTest {
         return book;
     }
 
-    private BookPopularityProjection popularity(Long bookId, long borrowCount, double weightedScore) {
+    private BookPopularityProjection popularity(
+            Long bookId, long borrowCount, double weightedScore) {
         return new BookPopularityProjection() {
             @Override
             public Long getBookId() {

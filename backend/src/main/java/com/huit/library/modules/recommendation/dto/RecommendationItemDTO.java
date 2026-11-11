@@ -15,6 +15,4 @@ public record RecommendationItemDTO(
         String reason,
         long availableCopies,
         long copies,
-        String status
-) {
-}
+        String status) {}

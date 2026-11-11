@@ -57,26 +57,28 @@ class CirculationTransactionServiceTest {
         userRepository = mock(UserRepository.class);
         operationRepository = mock(CirculationOperationRepository.class);
         lateFineService = mock(LateFineService.class);
-        lenient().when(lateFineService.accrueLateFine(any(), any(), any()))
+        lenient()
+                .when(lateFineService.accrueLateFine(any(), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
         LibraryPolicyService policyService = mock(LibraryPolicyService.class);
         lenient().when(policyService.maximumOpenItems()).thenReturn(3);
         lenient().when(policyService.homeLoanDays()).thenReturn(10);
-        service = new CirculationStateService(
-                ticketRepository,
-                detailRepository,
-                historyRepository,
-                copyRepository,
-                userRepository,
-                walletRepository,
-                operationRepository,
-                new CirculationStateMachine(),
-                lateFineService,
-                mock(WaitlistService.class),
-                mock(NotificationService.class),
-                mock(LibraryHoursService.class),
-                policyService,
-                mock(BorrowingValuePolicyService.class));
+        service =
+                new CirculationStateService(
+                        ticketRepository,
+                        detailRepository,
+                        historyRepository,
+                        copyRepository,
+                        userRepository,
+                        walletRepository,
+                        operationRepository,
+                        new CirculationStateMachine(),
+                        lateFineService,
+                        mock(WaitlistService.class),
+                        mock(NotificationService.class),
+                        mock(LibraryHoursService.class),
+                        policyService,
+                        mock(BorrowingValuePolicyService.class));
     }
 
     @Test
@@ -94,8 +96,10 @@ class CirculationTransactionServiceTest {
         when(walletRepository.findByUserId(readerId)).thenReturn(Optional.empty());
         when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(new UserEntity()));
         when(detailRepository.countOverdueItemsByUserId(eq(readerId), any())).thenReturn(0L);
-        when(detailRepository.countOpenItemsByUserId(readerId, List.of("BORROWING", "OVERDUE"))).thenReturn(0L);
-        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-010"))).thenReturn(List.of(copy));
+        when(detailRepository.countOpenItemsByUserId(readerId, List.of("BORROWING", "OVERDUE")))
+                .thenReturn(0L);
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-010")))
+                .thenReturn(List.of(copy));
         saveOperationWithTimestamp();
 
         LocalDateTime before = LocalDateTime.now().plusDays(10).minusSeconds(1);
@@ -127,14 +131,18 @@ class CirculationTransactionServiceTest {
         when(walletRepository.findByUserId(readerId)).thenReturn(Optional.empty());
         when(userRepository.findByIdForUpdate(readerId)).thenReturn(Optional.of(new UserEntity()));
         when(detailRepository.countOverdueItemsByUserId(eq(readerId), any())).thenReturn(0L);
-        when(detailRepository.countOpenItemsByUserId(readerId, List.of("BORROWING", "OVERDUE"))).thenReturn(0L);
-        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-011"))).thenReturn(List.of(copy));
-        when(operationRepository.saveAndFlush(any())).thenAnswer(invocation -> {
-            CirculationOperationEntity operation = invocation.getArgument(0);
-            operation.setProcessedAt(LocalDateTime.now());
-            saved.set(operation);
-            return operation;
-        });
+        when(detailRepository.countOpenItemsByUserId(readerId, List.of("BORROWING", "OVERDUE")))
+                .thenReturn(0L);
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-011")))
+                .thenReturn(List.of(copy));
+        when(operationRepository.saveAndFlush(any()))
+                .thenAnswer(
+                        invocation -> {
+                            CirculationOperationEntity operation = invocation.getArgument(0);
+                            operation.setProcessedAt(LocalDateTime.now());
+                            saved.set(operation);
+                            return operation;
+                        });
 
         CirculationOperationResponseDTO first = service.checkout(request, UUID.randomUUID());
         CirculationOperationResponseDTO replay = service.checkout(request, UUID.randomUUID());
@@ -158,7 +166,8 @@ class CirculationTransactionServiceTest {
         request.setReturnConditionNote("Tình trạng tốt");
 
         when(operationRepository.findByIdempotencyKey("return-12")).thenReturn(Optional.empty());
-        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-012"))).thenReturn(List.of(copy));
+        when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-012")))
+                .thenReturn(List.of(copy));
         when(detailRepository.findActiveReturnTargets(List.of("BC-012")))
                 .thenReturn(List.of(new ReturnTarget(12L, 12L, "BC-012", ticket.getUserId())));
         when(ticketRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(ticket));
@@ -189,12 +198,15 @@ class CirculationTransactionServiceTest {
         request.setIdempotencyKey("return-multi-ticket");
         request.setBarcodes(List.of("BC-021", "BC-022"));
 
-        when(operationRepository.findByIdempotencyKey("return-multi-ticket")).thenReturn(Optional.empty());
+        when(operationRepository.findByIdempotencyKey("return-multi-ticket"))
+                .thenReturn(Optional.empty());
         when(copyRepository.findAllByBarcodeInForUpdate(List.of("BC-021", "BC-022")))
                 .thenReturn(List.of(firstCopy, secondCopy));
         when(detailRepository.findActiveReturnTargets(List.of("BC-021", "BC-022")))
-                .thenReturn(List.of(new ReturnTarget(21L, 21L, "BC-021", firstTicket.getUserId()),
-                        new ReturnTarget(22L, 22L, "BC-022", secondTicket.getUserId())));
+                .thenReturn(
+                        List.of(
+                                new ReturnTarget(21L, 21L, "BC-021", firstTicket.getUserId()),
+                                new ReturnTarget(22L, 22L, "BC-022", secondTicket.getUserId())));
         when(ticketRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(firstTicket));
         when(ticketRepository.findByIdForUpdate(22L)).thenReturn(Optional.of(secondTicket));
         when(detailRepository.findByTicketIdForUpdate(21L)).thenReturn(List.of(firstDetail));
@@ -227,7 +239,8 @@ class CirculationTransactionServiceTest {
         wallet.setTotalDebt(BigDecimal.ZERO);
         when(detailRepository.countOverdueItemsByUserId(eq(readerId), any())).thenReturn(0L);
         when(detailRepository.countOpenItemsByUserId(
-                readerId, List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE"))).thenReturn(3L);
+                        readerId, List.of("PENDING", "RESERVED", "BORROWING", "OVERDUE")))
+                .thenReturn(3L);
 
         assertThatThrownBy(() -> service.ensureEligibleForReservation(readerId))
                 .isInstanceOf(ResponseStatusException.class)
@@ -235,11 +248,13 @@ class CirculationTransactionServiceTest {
     }
 
     private void saveOperationWithTimestamp() {
-        when(operationRepository.saveAndFlush(any())).thenAnswer(invocation -> {
-            CirculationOperationEntity operation = invocation.getArgument(0);
-            operation.setProcessedAt(LocalDateTime.now());
-            return operation;
-        });
+        when(operationRepository.saveAndFlush(any()))
+                .thenAnswer(
+                        invocation -> {
+                            CirculationOperationEntity operation = invocation.getArgument(0);
+                            operation.setProcessedAt(LocalDateTime.now());
+                            return operation;
+                        });
     }
 
     private CheckoutRequestDTO checkoutRequest(String key, Long ticketId, String barcode) {

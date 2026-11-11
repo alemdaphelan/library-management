@@ -14,6 +14,4 @@ public record DigitalAssetResponseDTO(
         String accessLevel,
         UUID uploadedBy,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
-) {
-}
+        LocalDateTime updatedAt) {}

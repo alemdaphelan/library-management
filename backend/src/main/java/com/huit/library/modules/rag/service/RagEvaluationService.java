@@ -41,7 +41,11 @@ public class RagEvaluationService {
             RagChatService chatService,
             RagKnowledgeIndexService indexService,
             ObjectMapper objectMapper) {
-        this(properties, chatService, indexService, objectMapper,
+        this(
+                properties,
+                chatService,
+                indexService,
+                objectMapper,
                 new ClassPathResource("rag/evaluation-dataset.json"));
     }
 
@@ -85,34 +89,49 @@ public class RagEvaluationService {
         } catch (ResponseStatusException exception) {
             boolean guardRejected = exception.getStatusCode() == HttpStatus.BAD_REQUEST;
             refused = guardRejected;
-            status = testCase.blockedByGuardExpected() && guardRejected
-                    ? "EXPECTED_GUARD_REJECTION"
-                    : "UNEXPECTED_HTTP_" + exception.getStatusCode().value();
+            status =
+                    testCase.blockedByGuardExpected() && guardRejected
+                            ? "EXPECTED_GUARD_REJECTION"
+                            : "UNEXPECTED_HTTP_" + exception.getStatusCode().value();
             answer = exception.getReason();
         } catch (RuntimeException exception) {
             status = "ERROR_" + exception.getClass().getSimpleName();
             answer = "Evaluation error: " + safeMessage(exception);
         }
 
-        List<String> retrievedKeys = response == null ? List.of() : response.sources().stream()
-                .map(source -> source.sourceKey())
-                .distinct()
-                .toList();
+        List<String> retrievedKeys =
+                response == null
+                        ? List.of()
+                        : response.sources().stream()
+                                .map(source -> source.sourceKey())
+                                .distinct()
+                                .toList();
         Set<String> retrievedSet = new HashSet<>(retrievedKeys);
-        long matched = testCase.expectedSourceKeys().stream()
-                .filter(expected -> retrievedSet.stream().anyMatch(actual -> sourceMatches(expected, actual)))
-                .count();
+        long matched =
+                testCase.expectedSourceKeys().stream()
+                        .filter(
+                                expected ->
+                                        retrievedSet.stream()
+                                                .anyMatch(
+                                                        actual -> sourceMatches(expected, actual)))
+                        .count();
         boolean retrievalHit = !testCase.expectedSourceKeys().isEmpty() && matched > 0;
-        double recall = testCase.expectedSourceKeys().isEmpty()
-                ? 0.0
-                : (double) matched / testCase.expectedSourceKeys().size();
-        boolean citationValid = response != null && hasValidCitation(response.answer(), response.sources().size());
-        boolean answerContentCorrect = testCase.answerExpected()
-                && containsExpectedTerms(answer, testCase.expectedAnswerTerms());
-        double topRetrievalScore = response == null ? 0.0 : response.sources().stream()
-                .mapToDouble(source -> source.score())
-                .max()
-                .orElse(0.0);
+        double recall =
+                testCase.expectedSourceKeys().isEmpty()
+                        ? 0.0
+                        : (double) matched / testCase.expectedSourceKeys().size();
+        boolean citationValid =
+                response != null && hasValidCitation(response.answer(), response.sources().size());
+        boolean answerContentCorrect =
+                testCase.answerExpected()
+                        && containsExpectedTerms(answer, testCase.expectedAnswerTerms());
+        double topRetrievalScore =
+                response == null
+                        ? 0.0
+                        : response.sources().stream()
+                                .mapToDouble(source -> source.score())
+                                .max()
+                                .orElse(0.0);
         long latencyMs = Math.max(0L, (System.nanoTime() - startedAt) / 1_000_000L);
 
         return new RagEvaluationCaseResultDTO(
@@ -138,34 +157,48 @@ public class RagEvaluationService {
     }
 
     private RagEvaluationReportDTO summarize(
-            EvaluationDataset dataset,
-            List<RagEvaluationCaseResultDTO> results) {
+            EvaluationDataset dataset, List<RagEvaluationCaseResultDTO> results) {
         RagIndexStatusDTO indexStatus = indexService.status();
-        List<RagEvaluationCaseResultDTO> answerCases = results.stream()
-                .filter(RagEvaluationCaseResultDTO::answerExpected)
-                .toList();
-        List<RagEvaluationCaseResultDTO> refusalCases = results.stream()
-                .filter(result -> !result.answerExpected())
-                .toList();
-        int retrievalHits = (int) answerCases.stream().filter(RagEvaluationCaseResultDTO::retrievalHit).count();
-        double recallSum = answerCases.stream()
-                .mapToDouble(RagEvaluationCaseResultDTO::retrievalRecallAtK)
-                .sum();
-        int sourceCorrect = (int) answerCases.stream().filter(RagEvaluationCaseResultDTO::sourceCorrect).count();
-        int groundedAnswers = (int) answerCases.stream()
-                .filter(RagEvaluationCaseResultDTO::answerContentCorrect)
-                .count();
-        int citations = (int) answerCases.stream().filter(RagEvaluationCaseResultDTO::citationValid).count();
-        int refusalsCorrect = (int) refusalCases.stream().filter(RagEvaluationCaseResultDTO::refused).count();
-        int fallbacks = (int) results.stream().filter(RagEvaluationCaseResultDTO::fallbackUsed).count();
-        int unexpectedErrors = (int) results.stream()
-                .filter(result -> result.status().startsWith("ERROR_")
-                        || result.status().startsWith("UNEXPECTED_"))
-                .count();
-        List<Long> latencies = results.stream()
-                .map(RagEvaluationCaseResultDTO::latencyMs)
-                .sorted()
-                .toList();
+        List<RagEvaluationCaseResultDTO> answerCases =
+                results.stream().filter(RagEvaluationCaseResultDTO::answerExpected).toList();
+        List<RagEvaluationCaseResultDTO> refusalCases =
+                results.stream().filter(result -> !result.answerExpected()).toList();
+        int retrievalHits =
+                (int) answerCases.stream().filter(RagEvaluationCaseResultDTO::retrievalHit).count();
+        double recallSum =
+                answerCases.stream()
+                        .mapToDouble(RagEvaluationCaseResultDTO::retrievalRecallAtK)
+                        .sum();
+        int sourceCorrect =
+                (int)
+                        answerCases.stream()
+                                .filter(RagEvaluationCaseResultDTO::sourceCorrect)
+                                .count();
+        int groundedAnswers =
+                (int)
+                        answerCases.stream()
+                                .filter(RagEvaluationCaseResultDTO::answerContentCorrect)
+                                .count();
+        int citations =
+                (int)
+                        answerCases.stream()
+                                .filter(RagEvaluationCaseResultDTO::citationValid)
+                                .count();
+        int refusalsCorrect =
+                (int) refusalCases.stream().filter(RagEvaluationCaseResultDTO::refused).count();
+        int fallbacks =
+                (int) results.stream().filter(RagEvaluationCaseResultDTO::fallbackUsed).count();
+        int unexpectedErrors =
+                (int)
+                        results.stream()
+                                .filter(
+                                        result ->
+                                                result.status().startsWith("ERROR_")
+                                                        || result.status()
+                                                                .startsWith("UNEXPECTED_"))
+                                .count();
+        List<Long> latencies =
+                results.stream().map(RagEvaluationCaseResultDTO::latencyMs).sorted().toList();
 
         return new RagEvaluationReportDTO(
                 Instant.now(),
@@ -232,13 +265,16 @@ public class RagEvaluationService {
         }
         String normalizedAnswer = normalize(answer);
         return expectedTerms.stream()
-                .allMatch(termGroup -> java.util.Arrays.stream(termGroup.split("\\|"))
-                        .map(this::normalize)
-                        .anyMatch(normalizedAnswer::contains));
+                .allMatch(
+                        termGroup ->
+                                java.util.Arrays.stream(termGroup.split("\\|"))
+                                        .map(this::normalize)
+                                        .anyMatch(normalizedAnswer::contains));
     }
 
     private String normalize(String value) {
-        return Normalizer.normalize(value == null ? "" : value.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+        return Normalizer.normalize(
+                        value == null ? "" : value.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .replace('đ', 'd')
                 .replaceAll("[^a-z0-9_]+", " ")
@@ -297,14 +333,13 @@ public class RagEvaluationService {
     }
 
     private String safeMessage(RuntimeException exception) {
-        return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
+        return exception.getMessage() == null
+                ? exception.getClass().getSimpleName()
+                : exception.getMessage();
     }
 
     private record EvaluationDataset(
-            String version,
-            String description,
-            List<EvaluationCase> cases) {
-    }
+            String version, String description, List<EvaluationCase> cases) {}
 
     private record EvaluationCase(
             String id,
@@ -313,6 +348,5 @@ public class RagEvaluationService {
             List<String> expectedSourceKeys,
             List<String> expectedAnswerTerms,
             boolean answerExpected,
-            boolean blockedByGuardExpected) {
-    }
+            boolean blockedByGuardExpected) {}
 }

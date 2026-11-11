@@ -12,5 +12,4 @@ public record CashDepositRequestDTO(
         @NotNull UUID userId,
         @NotNull @DecimalMin("1") @Digits(integer = 15, fraction = 0) BigDecimal amount,
         @NotNull UUID idempotencyKey,
-        @Size(max = 200) String note) {
-}
+        @Size(max = 200) String note) {}

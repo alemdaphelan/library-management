@@ -21,14 +21,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService userDetailsService;
     private final TokenService tokenService;
 
-    public JwtAuthFilter(JwtUtils jwtUtils, CustomUserDetailsService userDetailsService, TokenService tokenService) {
+    public JwtAuthFilter(
+            JwtUtils jwtUtils,
+            CustomUserDetailsService userDetailsService,
+            TokenService tokenService) {
         this.jwtUtils = jwtUtils;
         this.userDetailsService = userDetailsService;
         this.tokenService = tokenService;
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
             String jwt = parseJwt(request);
@@ -37,19 +41,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token is blacklisted");
                     return;
                 }
-                
+
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
                 long sessionVersion = jwtUtils.getSessionVersionFromJwtToken(jwt);
                 if (!tokenService.isSessionVersionCurrent(username, sessionVersion)) {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                    response.sendError(
+                            HttpServletResponse.SC_UNAUTHORIZED,
                             "Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.");
                     return;
                 }
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+                authentication.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

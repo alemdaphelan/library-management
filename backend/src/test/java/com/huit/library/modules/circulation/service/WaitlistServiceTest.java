@@ -47,8 +47,19 @@ class WaitlistServiceTest {
         noShows = mock(ReservationNoShowService.class);
         LibraryPolicyService policyService = mock(LibraryPolicyService.class);
         when(policyService.waitlistHoldHours()).thenReturn(48);
-        service = new WaitlistService(waitlists, copies, holidays, users, wallets, details,
-                notifications, noShows, policyService, "07:30", "17:00");
+        service =
+                new WaitlistService(
+                        waitlists,
+                        copies,
+                        holidays,
+                        users,
+                        wallets,
+                        details,
+                        notifications,
+                        noShows,
+                        policyService,
+                        "07:30",
+                        "17:00");
     }
 
     @Test
@@ -138,8 +149,10 @@ class WaitlistServiceTest {
     void directReservationRejectsAnotherPickupDay() {
         LocalDateTime now = LocalDateTime.of(2026, 10, 23, 10, 0);
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                service.calculateDirectReservationDeadline(now.toLocalDate().plusDays(1), now))
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () ->
+                                service.calculateDirectReservationDeadline(
+                                        now.toLocalDate().plusDays(1), now))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
                 .hasMessageContaining("chỉ có hiệu lực trong ngày hiện tại");
     }
@@ -189,7 +202,8 @@ class WaitlistServiceTest {
         copy.setBookId(22L);
         copy.setStatus("RESERVED");
         copy.setLockedByUser(userId);
-        when(waitlists.findByStatusAndExpiresAtBefore("NOTIFIED", now)).thenReturn(java.util.List.of(entry));
+        when(waitlists.findByStatusAndExpiresAtBefore("NOTIFIED", now))
+                .thenReturn(java.util.List.of(entry));
         when(copies.findById("BC-EXPIRED")).thenReturn(Optional.of(copy));
 
         assertThat(service.expireAndPromote(now)).isEqualTo(1);

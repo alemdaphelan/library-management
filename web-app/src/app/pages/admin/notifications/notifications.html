@@ -5,21 +5,40 @@
       <p>Tổng hợp yêu cầu mượn, đề xuất sách, nhập kho, quá hạn và các nghiệp vụ cần xử lý.</p>
     </div>
     <div class="header-actions">
-      <button type="button" class="btn secondary" (click)="loadNotifications()" [disabled]="isLoading">Làm mới</button>
-      <button type="button" class="btn primary" (click)="markAllAsRead()" [disabled]="unreadCount === 0 || markingAll">
+      <button
+        type="button"
+        class="btn secondary"
+        (click)="loadNotifications()"
+        [disabled]="isLoading"
+      >Làm mới</button>
+      <button
+        type="button"
+        class="btn primary"
+        (click)="markAllAsRead()"
+        [disabled]="unreadCount === 0 || markingAll"
+      >
         {{ markingAll ? 'Đang cập nhật...' : 'Đánh dấu tất cả đã đọc' }}
       </button>
     </div>
   </div>
 
   <div class="stats-row">
-    <div class="stat-card"><strong>{{ notifications.length }}</strong><span>Tổng thông báo</span></div>
-    <div class="stat-card unread"><strong>{{ unreadCount }}</strong><span>Chưa đọc</span></div>
-    <div class="stat-card overdue"><strong>{{ overdueCount }}</strong><span>Cảnh báo quá hạn</span></div>
+    <div class="stat-card">
+      <strong>{{ notifications.length }}</strong>
+      <span>Tổng thông báo</span>
+    </div>
+    <div class="stat-card unread">
+      <strong>{{ unreadCount }}</strong>
+      <span>Chưa đọc</span>
+    </div>
+    <div class="stat-card overdue">
+      <strong>{{ overdueCount }}</strong>
+      <span>Cảnh báo quá hạn</span>
+    </div>
   </div>
 
   <div class="filters">
-    <input type="search" [(ngModel)]="searchTerm" placeholder="Tìm trong nội dung hoặc mã phiếu">
+    <input type="search" [(ngModel)]="searchTerm" placeholder="Tìm trong nội dung hoặc mã phiếu" />
     <select [(ngModel)]="readFilter" aria-label="Lọc trạng thái đọc">
       <option value="ALL">Tất cả</option>
       <option value="UNREAD">Chưa đọc</option>
@@ -40,7 +59,8 @@
       tabindex="0"
       (click)="openNotification(notification)"
       (keyup.enter)="openNotification(notification)"
-      *ngFor="let notification of filteredNotifications">
+      *ngFor="let notification of filteredNotifications"
+    >
       <div class="notification-icon" [ngClass]="typeClass(notification.type)">!</div>
       <div class="notification-content">
         <div class="notification-heading">
@@ -50,7 +70,9 @@
         <p>{{ notification.content }}</p>
         <div class="meta">
           <span>{{ notification.sentAt || notification.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
-          <span *ngIf="notification.referenceType">{{ notification.referenceType }} #{{ notification.referenceId }}</span>
+          <span *ngIf="notification.referenceType"
+            >{{ notification.referenceType }} #{{ notification.referenceId }}</span
+          >
         </div>
       </div>
       <button
@@ -58,7 +80,8 @@
         class="mark-read"
         *ngIf="!notification.isRead"
         (click)="$event.stopPropagation(); markAsRead(notification)"
-        [disabled]="markingId === notification.notifId">
+        [disabled]="markingId === notification.notifId"
+      >
         {{ markingId === notification.notifId ? 'Đang cập nhật...' : 'Đánh dấu đã đọc' }}
       </button>
       <span class="read-label">{{ actionLabel(notification) }} →</span>

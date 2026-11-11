@@ -122,7 +122,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _user = updated);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Cập nhật thông tin cá nhân thành công.')));
+      ..showSnackBar(
+        const SnackBar(content: Text('Cập nhật thông tin cá nhân thành công.')),
+      );
   }
 
   @override

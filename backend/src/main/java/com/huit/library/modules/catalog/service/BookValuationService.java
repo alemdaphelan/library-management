@@ -17,12 +17,7 @@ import java.util.Locale;
 public class BookValuationService {
 
     public record BookValue(
-            BigDecimal amount,
-            boolean known,
-            String source,
-            String currency,
-            String message) {
-    }
+            BigDecimal amount, boolean known, String source, String currency, String message) {}
 
     private final CompensationRateRepository compensationRateRepository;
     private final boolean demoPricingEnabled;
@@ -32,13 +27,16 @@ public class BookValuationService {
     }
 
     @Autowired
-    public BookValuationService(CompensationRateRepository compensationRateRepository,
+    public BookValuationService(
+            CompensationRateRepository compensationRateRepository,
             @Value("${library.catalog.demo-pricing-enabled:false}") boolean demoPricingEnabled,
             Environment environment) {
         this.compensationRateRepository = compensationRateRepository;
-        if (demoPricingEnabled && (environment.acceptsProfiles(Profiles.of("prod", "production"))
-                || !environment.acceptsProfiles(Profiles.of("dev", "test")))) {
-            throw new IllegalStateException("Demo catalog pricing requires dev/test and must not run in production");
+        if (demoPricingEnabled
+                && (environment.acceptsProfiles(Profiles.of("prod", "production"))
+                        || !environment.acceptsProfiles(Profiles.of("dev", "test")))) {
+            throw new IllegalStateException(
+                    "Demo catalog pricing requires dev/test and must not run in production");
         }
         this.demoPricingEnabled = demoPricingEnabled;
     }
@@ -54,14 +52,22 @@ public class BookValuationService {
         BigDecimal manualPrice = book.getDefaultPrice();
         String status = normalize(book.getPriceStatus());
         String source = normalize(book.getPriceSource());
-        boolean realCatalogPrice = manualPrice != null && manualPrice.signum() > 0
-                && !"UNKNOWN".equals(status)
-                && !"CONFIGURED_FALLBACK".equals(source) && !"DEMO_GENERATED".equals(source);
+        boolean realCatalogPrice =
+                manualPrice != null
+                        && manualPrice.signum() > 0
+                        && !"UNKNOWN".equals(status)
+                        && !"CONFIGURED_FALLBACK".equals(source)
+                        && !"DEMO_GENERATED".equals(source);
         if (demoPricingEnabled && !realCatalogPrice && book.getBookId() != null) {
-            // Stable per-book value, matching migration 43 without rewriting catalog or money history.
+            // Stable per-book value, matching migration 43 without rewriting catalog or money
+            // history.
             long bucket = Math.floorMod(Math.floorMod(book.getBookId(), 51L) * 7919L, 51L);
-            return new BookValue(BigDecimal.valueOf(15000L + bucket * 1000L), true,
-                    "DEMO_GENERATED", "VND", null);
+            return new BookValue(
+                    BigDecimal.valueOf(15000L + bucket * 1000L),
+                    true,
+                    "DEMO_GENERATED",
+                    "VND",
+                    null);
         }
         if (manualPrice != null && manualPrice.signum() > 0 && !"UNKNOWN".equals(status)) {
             return new BookValue(
@@ -74,17 +80,19 @@ public class BookValuationService {
 
         String materialType = valueOrDefault(book.getMaterialType(), "BOOK");
         String languageCategory = isVietnamese(book.getLanguage()) ? "VIETNAMESE" : "FOREIGN";
-        return compensationRateRepository.findCurrent(materialType, languageCategory, LocalDate.now())
+        return compensationRateRepository
+                .findCurrent(materialType, languageCategory, LocalDate.now())
                 .filter(rate -> rate.getAmount() != null && rate.getAmount().signum() > 0)
-                .map(rate -> new BookValue(
-                        rate.getAmount(),
-                        true,
-                        "CONFIGURED_FALLBACK",
-                        "VND",
-                        null))
-                .orElseGet(() -> unknown(
-                        "Tài liệu \"" + valueOrDefault(book.getTitle(), "không rõ tên")
-                                + "\" chưa được xác định giá. Vui lòng liên hệ thủ thư để cập nhật giá trước khi mượn."));
+                .map(
+                        rate ->
+                                new BookValue(
+                                        rate.getAmount(), true, "CONFIGURED_FALLBACK", "VND", null))
+                .orElseGet(
+                        () ->
+                                unknown(
+                                        "Tài liệu \""
+                                                + valueOrDefault(book.getTitle(), "không rõ tên")
+                                                + "\" chưa được xác định giá. Vui lòng liên hệ thủ thư để cập nhật giá trước khi mượn."));
     }
 
     private BookValue unknown(String message) {

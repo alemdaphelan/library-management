@@ -22,6 +22,5 @@ public class LoanTicketEntity extends BaseEntity {
     private UUID processedBy;
     private String decisionNote;
 
-    @Version
-    private Long version;
+    @Version private Long version;
 }

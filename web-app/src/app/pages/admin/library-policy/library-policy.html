@@ -5,11 +5,17 @@
       <h1>Quy định mượn – trả và xử phạt</h1>
       <p class="subtitle">Điều chỉnh quy định tại một nơi, không cần sửa trực tiếp trong mã nguồn.</p>
     </div>
-    <button class="secondary" type="button" (click)="refresh()" [disabled]="loading || saving || loadingHistory">Làm mới</button>
+    <button
+      class="secondary"
+      type="button"
+      (click)="refresh()"
+      [disabled]="loading || saving || loadingHistory"
+    >Làm mới</button>
   </header>
 
   <div class="notice info">
-    Quy định mới áp dụng cho giao dịch phát sinh sau khi lưu. Phiếu mượn, hạn trả và công nợ đã tạo không bị thay đổi ngược.
+    Quy định mới áp dụng cho giao dịch phát sinh sau khi lưu. Phiếu mượn, hạn trả và công nợ đã tạo
+    không bị thay đổi ngược.
   </div>
   <div class="notice error" *ngIf="error">{{ error }}</div>
   <div class="notice success" *ngIf="success">{{ success }}</div>
@@ -21,66 +27,168 @@
       <article class="policy-card">
         <div class="card-heading">
           <span class="card-icon">📚</span>
-          <div><h2>Mượn, trả và gia hạn</h2><p>Giới hạn áp dụng cho sinh viên và các phiếu mượn mới.</p></div>
+          <div>
+            <h2>Mượn, trả và gia hạn</h2>
+            <p>Giới hạn áp dụng cho sinh viên và các phiếu mượn mới.</p>
+          </div>
         </div>
         <label>Tối đa tài liệu đang hoạt động
-          <input type="number" name="maximumOpenItems" [(ngModel)]="policy.maximumOpenItems" min="1" max="20" required>
+          <input
+            type="number"
+            name="maximumOpenItems"
+            [(ngModel)]="policy.maximumOpenItems"
+            min="1"
+            max="20"
+            required
+          />
           <small>Gồm phiếu chờ duyệt, chờ nhận, đang mượn và quá hạn.</small>
         </label>
         <label>Số ngày mượn về nhà
-          <input type="number" name="homeLoanDays" [(ngModel)]="policy.homeLoanDays" min="1" max="90" required>
+          <input
+            type="number"
+            name="homeLoanDays"
+            [(ngModel)]="policy.homeLoanDays"
+            min="1"
+            max="90"
+            required
+          />
         </label>
         <label>Số ngày cộng thêm khi gia hạn
-          <input type="number" name="renewalDays" [(ngModel)]="policy.renewalDays" min="1" max="90" required>
+          <input
+            type="number"
+            name="renewalDays"
+            [(ngModel)]="policy.renewalDays"
+            min="1"
+            max="90"
+            required
+          />
         </label>
         <label>Số lần gia hạn tối đa / tài liệu
-          <input type="number" name="maximumRenewalCount" [(ngModel)]="policy.maximumRenewalCount" min="0" max="20" required>
+          <input
+            type="number"
+            name="maximumRenewalCount"
+            [(ngModel)]="policy.maximumRenewalCount"
+            min="0"
+            max="20"
+            required
+          />
           <small>Nhập 0 nếu thư viện tạm thời không cho phép gia hạn.</small>
         </label>
         <label>Thời hạn giữ sách trong hàng đợi (giờ)
-          <input type="number" name="waitlistHoldHours" [(ngModel)]="policy.waitlistHoldHours" min="1" max="336" required>
+          <input
+            type="number"
+            name="waitlistHoldHours"
+            [(ngModel)]="policy.waitlistHoldHours"
+            min="1"
+            max="336"
+            required
+          />
           <small>Nếu hết hạn lúc thư viện đóng cửa, hệ thống dời đến lần mở cửa kế tiếp.</small>
         </label>
         <label>Thời hạn trả sách khi bị thu hồi (ngày)
-          <input type="number" name="recallReturnDays" [(ngModel)]="policy.recallReturnDays" min="1" max="30" required>
-          <small>Người mượn phải hoàn trả trong số ngày này kể từ lúc nhận thông báo thu hồi.</small>
+          <input
+            type="number"
+            name="recallReturnDays"
+            [(ngModel)]="policy.recallReturnDays"
+            min="1"
+            max="30"
+            required
+          />
+          <small>Người mượn phải hoàn trả trong số ngày này kể từ lúc nhận thông báo thu hồi.</small
+          >
         </label>
       </article>
 
       <article class="policy-card">
         <div class="card-heading">
           <span class="card-icon">₫</span>
-          <div><h2>Tiền phạt và đền bù</h2><p>Mức tiền được dùng khi hệ thống phát sinh khoản phạt mới.</p></div>
+          <div>
+            <h2>Tiền phạt và đền bù</h2>
+            <p>Mức tiền được dùng khi hệ thống phát sinh khoản phạt mới.</p>
+          </div>
         </div>
         <label>Phạt mượn về nhà quá hạn / ngày (VNĐ)
-          <input type="number" name="homeLateFinePerDay" [(ngModel)]="policy.homeLateFinePerDay" min="0" step="1000" required>
+          <input
+            type="number"
+            name="homeLateFinePerDay"
+            [(ngModel)]="policy.homeLateFinePerDay"
+            min="0"
+            step="1000"
+            required
+          />
         </label>
         <label>Phạt đọc tại chỗ quá hạn / ngày (VNĐ)
-          <input type="number" name="onsiteLateFinePerDay" [(ngModel)]="policy.onsiteLateFinePerDay" min="0" step="1000" required>
+          <input
+            type="number"
+            name="onsiteLateFinePerDay"
+            [(ngModel)]="policy.onsiteLateFinePerDay"
+            min="0"
+            step="1000"
+            required
+          />
         </label>
         <label>Phí xử lý kỹ thuật / tài liệu (VNĐ)
-          <input type="number" name="technicalProcessingFee" [(ngModel)]="policy.technicalProcessingFee" min="0" step="1000" required>
+          <input
+            type="number"
+            name="technicalProcessingFee"
+            [(ngModel)]="policy.technicalProcessingFee"
+            min="0"
+            step="1000"
+            required
+          />
         </label>
         <label>Tiền thế chân tối thiểu của sinh viên (VNĐ)
-          <input type="number" name="minimumSecurityDeposit" [(ngModel)]="policy.minimumSecurityDeposit" min="100000" step="10000" required>
-          <small>Tài khoản có số dư thế chân thấp hơn mức này không được tạo yêu cầu mượn mới.</small>
+          <input
+            type="number"
+            name="minimumSecurityDeposit"
+            [(ngModel)]="policy.minimumSecurityDeposit"
+            min="100000"
+            step="10000"
+            required
+          />
+          <small>Tài khoản có số dư thế chân thấp hơn mức này không được tạo yêu cầu mượn mới.</small
+          >
         </label>
         <label>Mức giá trị sách được vượt tiền thế chân (VNĐ)
-          <input type="number" name="borrowingValueMargin" [(ngModel)]="policy.borrowingValueMargin" min="0" step="10000" required>
-          <small>Tổng giá trị tài liệu đang giữ không được vượt tiền thế chân cộng khoản này.</small>
+          <input
+            type="number"
+            name="borrowingValueMargin"
+            [(ngModel)]="policy.borrowingValueMargin"
+            min="0"
+            step="10000"
+            required
+          />
+          <small>Tổng giá trị tài liệu đang giữ không được vượt tiền thế chân cộng khoản này.</small
+          >
         </label>
         <label>Xử lý công nợ sau quá hạn (ngày)
-          <input type="number" name="overdueDebtProcessingDays" [(ngModel)]="policy.overdueDebtProcessingDays" min="1" max="365" required>
+          <input
+            type="number"
+            name="overdueDebtProcessingDays"
+            [(ngModel)]="policy.overdueDebtProcessingDays"
+            min="1"
+            max="365"
+            required
+          />
           <small>Quá thời hạn này, quyền mượn/đặt giữ/gia hạn bị khóa cho đến khi hết nợ.</small>
         </label>
         <label>Thời hạn hoàn tất đền bù (ngày)
-          <input type="number" name="compensationSettlementDays" [(ngModel)]="policy.compensationSettlementDays" min="1" max="365" required>
+          <input
+            type="number"
+            name="compensationSettlementDays"
+            [(ngModel)]="policy.compensationSettlementDays"
+            min="1"
+            max="365"
+            required
+          />
         </label>
       </article>
     </div>
 
     <footer class="form-footer">
-      <span *ngIf="policy.updatedAt">Cập nhật gần nhất: {{ policy.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+      <span *ngIf="policy.updatedAt"
+        >Cập nhật gần nhất: {{ policy.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span
+      >
       <button class="primary" type="submit" [disabled]="saving">{{ saving ? 'Đang lưu...' : 'Lưu quy định' }}</button>
     </footer>
   </form>
@@ -102,7 +210,10 @@
     </div>
 
     <div class="history-list" *ngIf="!loadingHistory && history.length">
-      <article class="history-item" *ngFor="let item of history; let index = index; trackBy: trackHistory">
+      <article
+        class="history-item"
+        *ngFor="let item of history; let index = index; trackBy: trackHistory"
+      >
         <div class="history-marker"></div>
         <div class="history-content">
           <div class="history-meta">

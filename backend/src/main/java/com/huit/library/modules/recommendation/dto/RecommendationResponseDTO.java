@@ -8,6 +8,4 @@ public record RecommendationResponseDTO(
         boolean dataSufficient,
         int candidateCount,
         LocalDateTime generatedAt,
-        List<RecommendationItemDTO> items
-) {
-}
+        List<RecommendationItemDTO> items) {}

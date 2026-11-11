@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 import {
   HomeService,
   RecommendationItem,
-  RecommendationResponse
+  RecommendationResponse,
 } from '../../../services/home.service';
 
 export interface CarouselSlide {
@@ -41,17 +41,19 @@ export class Home implements OnInit, OnDestroy {
       image: '/assets/images/cover_1.jpg',
       badge: 'Cổng Tri thức Số HUIT 4.0',
       title: 'Khơi Nguồn Tri Thức - Phát Triển Sáng Tạo',
-      description: 'Tra cứu danh mục sách in, giáo trình và tài liệu số phục vụ học tập, nghiên cứu.',
+      description:
+        'Tra cứu danh mục sách in, giáo trình và tài liệu số phục vụ học tập, nghiên cứu.',
       ctaText: 'Tra cứu sách ngay',
-      ctaLink: '/search'
+      ctaLink: '/search',
     },
     {
       image: '/assets/images/cover_2.jpg',
       badge: 'Dịch vụ Bạn đọc Trực tuyến',
       title: 'Mượn, Theo dõi và Gia hạn Tài liệu',
-      description: 'Theo dõi từng tài liệu đang mượn, thời hạn trả và thực hiện gia hạn theo đúng điều kiện thư viện.',
+      description:
+        'Theo dõi từng tài liệu đang mượn, thời hạn trả và thực hiện gia hạn theo đúng điều kiện thư viện.',
       ctaText: 'Xem lịch sử mượn',
-      ctaLink: '/history'
+      ctaLink: '/history',
     },
     {
       image: '/assets/images/cover_3.jpg',
@@ -59,11 +61,14 @@ export class Home implements OnInit, OnDestroy {
       title: 'Kết nối Hàng triệu Luận văn & Bài báo Khoa học',
       description: 'Tra cứu các nguồn học liệu số và thông tin truy cập được thư viện công bố.',
       ctaText: 'Khám phá tài liệu số',
-      ctaLink: '/digital'
-    }
+      ctaLink: '/digital',
+    },
   ];
 
-  constructor(private homeService: HomeService, private router: Router) {}
+  constructor(
+    private homeService: HomeService,
+    private router: Router,
+  ) {}
 
   ngOnInit() {
     this.startCarouselAutoPlay();
@@ -79,7 +84,7 @@ export class Home implements OnInit, OnDestroy {
         console.error('Error fetching recommended books', err);
         this.recommendationError = true;
         this.recommendationLoading = false;
-      }
+      },
     });
   }
 

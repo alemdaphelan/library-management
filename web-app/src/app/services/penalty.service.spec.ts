@@ -23,34 +23,54 @@ describe('PenaltyService', () => {
   it('uses gated mock endpoints and never submits an amount when choosing the result', () => {
     const base = `${environment.apiUrl}/api/v1/mock-payments/sessions`;
     service.getPaymentCapabilities().subscribe();
-    http.expectOne(`${environment.apiUrl}/api/v1/online-payments/capabilities`).flush({ mockEnabled: true });
+    http
+      .expectOne(`${environment.apiUrl}/api/v1/online-payments/capabilities`)
+      .flush({ mockEnabled: true });
     const draft = { amount: 50000, purpose: 'DEPOSIT' as const, idempotencyKey: 'saved-key' };
     service.createMockPayment(draft).subscribe();
-    const create = http.expectOne(base); expect(create.request.method).toBe('POST'); expect(create.request.body).toEqual(draft); create.flush({});
-    service.getMockPayment('MOCK-ref').subscribe(); http.expectOne(`${base}/MOCK-ref`).flush({});
+    const create = http.expectOne(base);
+    expect(create.request.method).toBe('POST');
+    expect(create.request.body).toEqual(draft);
+    create.flush({});
+    service.getMockPayment('MOCK-ref').subscribe();
+    http.expectOne(`${base}/MOCK-ref`).flush({});
     service.finishMockPayment('MOCK-ref', 'SUCCESS').subscribe();
-    const finish = http.expectOne(`${base}/MOCK-ref/finish`); expect(finish.request.body).toEqual({ outcome: 'SUCCESS' }); finish.flush({});
+    const finish = http.expectOne(`${base}/MOCK-ref/finish`);
+    expect(finish.request.body).toEqual({ outcome: 'SUCCESS' });
+    finish.flush({});
   });
 
   it('loads and creates penalty cases through week 9 endpoints', () => {
     service.getCases().subscribe();
-    service.createCase({
-      loanDetailId: 3, incidentType: 'LOST', description: 'Mất sách',
-      materialType: 'BOOK', languageCategory: 'VIETNAMESE', stillInMarket: true,
-      settlementMethod: 'REPLACEMENT',
-    }).subscribe();
+    service
+      .createCase({
+        loanDetailId: 3,
+        incidentType: 'LOST',
+        description: 'Mất sách',
+        materialType: 'BOOK',
+        languageCategory: 'VIETNAMESE',
+        stillInMarket: true,
+        settlementMethod: 'REPLACEMENT',
+      })
+      .subscribe();
 
-    const list = http.expectOne(request => request.url === penaltyUrl && request.method === 'GET');
+    const list = http.expectOne(
+      (request) => request.url === penaltyUrl && request.method === 'GET',
+    );
     expect(list.request.method).toBe('GET');
     list.flush([]);
-    const create = http.expectOne(request => request.url === penaltyUrl && request.method === 'POST');
+    const create = http.expectOne(
+      (request) => request.url === penaltyUrl && request.method === 'POST',
+    );
     expect(create.request.method).toBe('POST');
     expect(create.request.body.loanDetailId).toBe(3);
     create.flush({});
   });
 
   it('records payment with idempotency and accepts a replacement barcode', () => {
-    service.recordPayment({ userId: 'user-1', amount: 50000, method: 'CASH', idempotencyKey: 'key-1' }).subscribe();
+    service
+      .recordPayment({ userId: 'user-1', amount: 50000, method: 'CASH', idempotencyKey: 'key-1' })
+      .subscribe();
     service.acceptReplacement(7, 'BC-NEW', 'Đã kiểm tra đúng tài liệu').subscribe();
 
     const payment = http.expectOne(`${transactionUrl}/payments`);

@@ -56,7 +56,11 @@ public class RagKnowledgeIndexService {
                 vectors.add(embeddingGateway.embedDocument(chunk, source.title()));
             }
             store.replace(source, hash, provider, chunks, vectors);
-            log.info("Indexed RAG source {} with {} chunks using {}", source.sourceKey(), chunks.size(), provider);
+            log.info(
+                    "Indexed RAG source {} with {} chunks using {}",
+                    source.sourceKey(),
+                    chunks.size(),
+                    provider);
         }
         return status();
     }
@@ -67,27 +71,34 @@ public class RagKnowledgeIndexService {
 
     private List<RagKnowledgeSource> loadSources() {
         try {
-            Resource[] resources = new PathMatchingResourcePatternResolver()
-                    .getResources("classpath*:rag/*.md");
+            Resource[] resources =
+                    new PathMatchingResourcePatternResolver().getResources("classpath*:rag/*.md");
             List<RagKnowledgeSource> sources = new ArrayList<>();
             for (Resource resource : resources) {
                 String filename = resource.getFilename();
                 String content = resource.getContentAsString(StandardCharsets.UTF_8).trim();
-                String title = content.lines()
-                        .filter(line -> line.startsWith("# "))
-                        .map(line -> line.substring(2).trim())
-                        .findFirst()
-                        .orElse(filename);
-                String sourceKey = filename == null ? sha256(content).substring(0, 16) : filename.replace(".md", "");
-                sources.add(new RagKnowledgeSource(
-                        sourceKey,
-                        title,
-                        "classpath:rag/" + filename,
-                        "2026.10",
-                        POLICY_EFFECTIVE_DATE,
-                        content));
+                String title =
+                        content.lines()
+                                .filter(line -> line.startsWith("# "))
+                                .map(line -> line.substring(2).trim())
+                                .findFirst()
+                                .orElse(filename);
+                String sourceKey =
+                        filename == null
+                                ? sha256(content).substring(0, 16)
+                                : filename.replace(".md", "");
+                sources.add(
+                        new RagKnowledgeSource(
+                                sourceKey,
+                                title,
+                                "classpath:rag/" + filename,
+                                "2026.10",
+                                POLICY_EFFECTIVE_DATE,
+                                content));
             }
-            return sources.stream().sorted(java.util.Comparator.comparing(RagKnowledgeSource::sourceKey)).toList();
+            return sources.stream()
+                    .sorted(java.util.Comparator.comparing(RagKnowledgeSource::sourceKey))
+                    .toList();
         } catch (Exception exception) {
             throw new IllegalStateException("Không thể đọc nguồn tri thức RAG", exception);
         }
@@ -95,8 +106,10 @@ public class RagKnowledgeIndexService {
 
     private String sha256(String value) {
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(value.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception exception) {
             throw new IllegalStateException("Không thể tạo SHA-256", exception);
         }

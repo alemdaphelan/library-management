@@ -28,9 +28,7 @@ class RecommendationExperimentDatasetServiceTest {
     private final BookRepository bookRepository = mock(BookRepository.class);
     private final RecommendationExperimentDatasetService service =
             new RecommendationExperimentDatasetService(
-                    loanDetailRepository,
-                    userRepository,
-                    bookRepository);
+                    loanDetailRepository, userRepository, bookRepository);
 
     @Test
     void buildsDeterministicChronologicalDatasetWithoutFutureLeakage() {
@@ -38,11 +36,13 @@ class RecommendationExperimentDatasetServiceTest {
         UUID sparseUser = uuid(2);
         UUID singleInteractionUser = uuid(3);
         UUID noHistoryUser = uuid(4);
-        when(userRepository.findByUserTypeOrderByFullNameAsc("STUDENT")).thenReturn(List.of(
-                student(warmUser),
-                student(sparseUser),
-                student(singleInteractionUser),
-                student(noHistoryUser)));
+        when(userRepository.findByUserTypeOrderByFullNameAsc("STUDENT"))
+                .thenReturn(
+                        List.of(
+                                student(warmUser),
+                                student(sparseUser),
+                                student(singleInteractionUser),
+                                student(noHistoryUser)));
 
         List<BookEntity> books = new ArrayList<>();
         for (long bookId = 1; bookId <= 9; bookId++) {
@@ -101,21 +101,30 @@ class RecommendationExperimentDatasetServiceTest {
         dataset.interactions().stream()
                 .map(Interaction::userId)
                 .distinct()
-                .forEach(userId -> {
-                    LocalDateTime latestTrain = dataset.interactions().stream()
-                            .filter(row -> row.userId().equals(userId) && row.split() == Split.TRAIN)
-                            .map(Interaction::firstInteractionAt)
-                            .max(LocalDateTime::compareTo)
-                            .orElse(null);
-                    LocalDateTime earliestHoldout = dataset.interactions().stream()
-                            .filter(row -> row.userId().equals(userId) && row.split() != Split.TRAIN)
-                            .map(Interaction::firstInteractionAt)
-                            .min(LocalDateTime::compareTo)
-                            .orElse(null);
-                    if (latestTrain != null && earliestHoldout != null) {
-                        assertThat(latestTrain).isBeforeOrEqualTo(earliestHoldout);
-                    }
-                });
+                .forEach(
+                        userId -> {
+                            LocalDateTime latestTrain =
+                                    dataset.interactions().stream()
+                                            .filter(
+                                                    row ->
+                                                            row.userId().equals(userId)
+                                                                    && row.split() == Split.TRAIN)
+                                            .map(Interaction::firstInteractionAt)
+                                            .max(LocalDateTime::compareTo)
+                                            .orElse(null);
+                            LocalDateTime earliestHoldout =
+                                    dataset.interactions().stream()
+                                            .filter(
+                                                    row ->
+                                                            row.userId().equals(userId)
+                                                                    && row.split() != Split.TRAIN)
+                                            .map(Interaction::firstInteractionAt)
+                                            .min(LocalDateTime::compareTo)
+                                            .orElse(null);
+                            if (latestTrain != null && earliestHoldout != null) {
+                                assertThat(latestTrain).isBeforeOrEqualTo(earliestHoldout);
+                            }
+                        });
     }
 
     private Interaction find(RecommendationExperimentDataset dataset, UUID userId, long bookId) {
@@ -142,10 +151,7 @@ class RecommendationExperimentDatasetServiceTest {
     }
 
     private EvaluationInteractionProjection interaction(
-            UUID userId,
-            Long bookId,
-            LocalDateTime interactionAt,
-            Integer renewalCount) {
+            UUID userId, Long bookId, LocalDateTime interactionAt, Integer renewalCount) {
         EvaluationInteractionProjection projection = mock(EvaluationInteractionProjection.class);
         when(projection.getUserId()).thenReturn(userId);
         when(projection.getBookId()).thenReturn(bookId);

@@ -11,18 +11,21 @@ import java.time.LocalDate;
 
 @Data
 public class WaiverReviewRequestDTO {
-    @NotBlank
-    private String action;
+    @NotBlank private String action;
+
     @NotBlank
     @Size(max = 255)
     private String externalDecisionMaker;
+
     @NotBlank
     @Size(max = 100)
     private String decisionDocumentNo;
-    @NotNull
-    private LocalDate decisionDate;
+
+    @NotNull private LocalDate decisionDate;
+
     @DecimalMin("0")
     private BigDecimal waiverAmount;
+
     @NotBlank
     @Size(max = 1000)
     private String reason;

@@ -27,11 +27,11 @@ class EmailNotificationServiceTest {
         when(preferences.isEmailEnabled(userId)).thenReturn(true);
         when(users.findById(userId)).thenReturn(Optional.of(user));
         when(user.getEmail()).thenReturn("nguyenbaohan8910@gmail.com");
-        EmailNotificationService service = new EmailNotificationService(
-                preferences, users, mailSender, "lamto20050505@gmail.com");
+        EmailNotificationService service =
+                new EmailNotificationService(
+                        preferences, users, mailSender, "lamto20050505@gmail.com");
 
-        service.send(new PushNotificationEvent(
-                userId, "DUE_SOON", "Sắp đến hạn", "LOAN", "1"));
+        service.send(new PushNotificationEvent(userId, "DUE_SOON", "Sắp đến hạn", "LOAN", "1"));
 
         var captor = forClass(SimpleMailMessage.class);
         verify(mailSender).send(captor.capture());
@@ -46,14 +46,16 @@ class EmailNotificationServiceTest {
         JavaMailSender mailSender = mock(JavaMailSender.class);
         UUID userId = UUID.randomUUID();
         when(preferences.isEmailEnabled(userId)).thenReturn(false);
-        EmailNotificationService service = new EmailNotificationService(
-                preferences, users, mailSender, "lamto20050505@gmail.com");
+        EmailNotificationService service =
+                new EmailNotificationService(
+                        preferences, users, mailSender, "lamto20050505@gmail.com");
 
-        service.send(new PushNotificationEvent(
-                userId, "DUE_SOON", "Sắp đến hạn", "LOAN", "1"));
+        service.send(new PushNotificationEvent(userId, "DUE_SOON", "Sắp đến hạn", "LOAN", "1"));
 
         verify(users, never()).findById(userId);
-        verify(mailSender, never()).send(
-                org.mockito.ArgumentMatchers.any(org.springframework.mail.SimpleMailMessage.class));
+        verify(mailSender, never())
+                .send(
+                        org.mockito.ArgumentMatchers.any(
+                                org.springframework.mail.SimpleMailMessage.class));
     }
 }

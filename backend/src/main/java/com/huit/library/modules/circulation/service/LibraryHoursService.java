@@ -51,14 +51,19 @@ public class LibraryHoursService {
         if (!isCounterOpen(now)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Quầy thư viện đã đóng cửa. Không thể " + operation
-                            + " ngoài giờ phục vụ " + openingTime(now.toLocalDate())
-                            + " - " + closingTime(now.toLocalDate()) + ".");
+                    "Quầy thư viện đã đóng cửa. Không thể "
+                            + operation
+                            + " ngoài giờ phục vụ "
+                            + openingTime(now.toLocalDate())
+                            + " - "
+                            + closingTime(now.toLocalDate())
+                            + ".");
         }
     }
 
     public LocalTime closingTime(LocalDate date) {
-        return holidayRepository.findById(date.toString())
+        return holidayRepository
+                .findById(date.toString())
                 .map(HolidayCalendarEntity::getOverrideCloseTime)
                 .filter(value -> value != null && !value.isBlank())
                 .map(LocalTime::parse)
@@ -66,7 +71,8 @@ public class LibraryHoursService {
     }
 
     private LocalTime openingTime(LocalDate date) {
-        return holidayRepository.findById(date.toString())
+        return holidayRepository
+                .findById(date.toString())
                 .map(HolidayCalendarEntity::getOverrideOpenTime)
                 .filter(value -> value != null && !value.isBlank())
                 .map(LocalTime::parse)
@@ -74,7 +80,8 @@ public class LibraryHoursService {
     }
 
     private boolean isClosed(LocalDate date) {
-        return holidayRepository.findById(date.toString())
+        return holidayRepository
+                .findById(date.toString())
                 .map(day -> Boolean.TRUE.equals(day.getIsClosed()))
                 .orElse(false);
     }

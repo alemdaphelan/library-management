@@ -29,16 +29,18 @@ class RecommendationCacheServiceTest {
         ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         RecommendationProperties properties = new RecommendationProperties();
         properties.setCacheTtlMinutes(45);
-        RecommendationCacheService service = new RecommendationCacheService(
-                redisTemplate, objectMapper, properties);
-        RecommendationResponseDTO response = new RecommendationResponseDTO(
-                "HYBRID_COLD_START", true, 10, LocalDateTime.now(), List.of());
+        RecommendationCacheService service =
+                new RecommendationCacheService(redisTemplate, objectMapper, properties);
+        RecommendationResponseDTO response =
+                new RecommendationResponseDTO(
+                        "HYBRID_COLD_START", true, 10, LocalDateTime.now(), List.of());
         String json = objectMapper.writeValueAsString(response);
 
         when(redisTemplate.opsForValue()).thenReturn(values);
         when(values.get(anyString())).thenReturn(json);
 
-        Optional<RecommendationResponseDTO> cached = service.get(UUID.randomUUID(), 10, "fingerprint");
+        Optional<RecommendationResponseDTO> cached =
+                service.get(UUID.randomUUID(), 10, "fingerprint");
         service.put(UUID.randomUUID(), 10, "fingerprint", response);
 
         assertThat(cached).isPresent();

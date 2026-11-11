@@ -6,5 +6,4 @@ public record RagSourceDTO(
         String sourceUri,
         String type,
         String snippet,
-        double score) {
-}
+        double score) {}

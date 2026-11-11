@@ -10,11 +10,14 @@ import java.util.UUID;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "library_orientation_enrollments",
+@Table(
+        name = "library_orientation_enrollments",
         uniqueConstraints = @UniqueConstraint(columnNames = {"class_id", "user_id"}))
 public class OrientationEnrollmentEntity extends BaseEntity {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long enrollmentId;
+
     private Long classId;
     private UUID userId;
     private String attendanceStatus;

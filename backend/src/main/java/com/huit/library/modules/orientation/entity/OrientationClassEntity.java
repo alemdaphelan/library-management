@@ -12,8 +12,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "library_orientation_classes")
 public class OrientationClassEntity extends BaseEntity {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long classId;
+
     private String classCode;
     private String title;
     private String location;

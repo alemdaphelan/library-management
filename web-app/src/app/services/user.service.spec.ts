@@ -23,6 +23,12 @@ describe('UserService', () => {
 
     const request = http.expectOne(`${environment.apiUrl}/users/students/2001%2F23/profile`);
     expect(request.request.method).toBe('GET');
-    request.flush({ student: { mssv: '2001/23' }, card: {}, loans: [], ledger: [], penaltyCases: [] });
+    request.flush({
+      student: { mssv: '2001/23' },
+      card: {},
+      loans: [],
+      ledger: [],
+      penaltyCases: [],
+    });
   });
 });

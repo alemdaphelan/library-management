@@ -36,8 +36,9 @@ class OverdueDebtServiceTest {
         userRepository = mock(UserRepository.class);
         notificationService = mock(NotificationService.class);
         policyService = mock(LibraryPolicyService.class);
-        service = new OverdueDebtService(
-                transactionRepository, userRepository, notificationService, policyService);
+        service =
+                new OverdueDebtService(
+                        transactionRepository, userRepository, notificationService, policyService);
         now = LocalDateTime.of(2026, 11, 3, 8, 0);
         when(policyService.overdueDebtProcessingDays()).thenReturn(30);
     }
@@ -66,9 +67,15 @@ class OverdueDebtServiceTest {
         assertThat(user.getCirculationLockedUntil()).isNull();
         verify(transactionRepository).save(debt);
         verify(userRepository).save(user);
-        verify(notificationService).createOnce(
-                eq(userId), eq("DEBT_OVERDUE"), anyString(),
-                eq("USER"), eq(userId.toString()), anyString(), eq(now));
+        verify(notificationService)
+                .createOnce(
+                        eq(userId),
+                        eq("DEBT_OVERDUE"),
+                        anyString(),
+                        eq("USER"),
+                        eq(userId.toString()),
+                        anyString(),
+                        eq(now));
     }
 
     @Test

@@ -10,8 +10,7 @@ import java.util.UUID;
 @Data
 @Document(collection = "user_events")
 public class UserEventDocument {
-    @Id
-    private String logId;
+    @Id private String logId;
 
     private UUID userId;
     private String eventType; // VIEW, CLICK, LOAN

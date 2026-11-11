@@ -11,11 +11,10 @@ import lombok.EqualsAndHashCode;
 @Entity
 @Table(
         name = "shelf_subject_rules",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_shelf_subject_rule",
-                columnNames = {"shelf_id", "subject_id"}
-        )
-)
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uk_shelf_subject_rule",
+                        columnNames = {"shelf_id", "subject_id"}))
 public class ShelfSubjectRuleEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

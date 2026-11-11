@@ -35,8 +35,9 @@ class LateFineServiceTest {
         LibraryPolicyService policyService = mock(LibraryPolicyService.class);
         when(policyService.homeLateFinePerDay()).thenReturn(new BigDecimal("1000"));
         when(policyService.onsiteLateFinePerDay()).thenReturn(new BigDecimal("5000"));
-        service = new LateFineService(
-                detailRepository, walletRepository, transactionRepository, policyService);
+        service =
+                new LateFineService(
+                        detailRepository, walletRepository, transactionRepository, policyService);
     }
 
     @Test
@@ -101,12 +102,23 @@ class LateFineServiceTest {
 
         assertThat(wallet.getDepositBalance()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(wallet.getTotalDebt()).isEqualByComparingTo("500");
-        verify(transactionRepository).save(argThat(transaction ->
-                transaction.getPaidAmount().compareTo(new BigDecimal("1500")) == 0
-                        && transaction.getDepositAppliedAmount().compareTo(new BigDecimal("1500")) == 0
-                        && calculatedAt.equals(transaction.getDepositAppliedAt())
-                        && "PARTIALLY_PAID".equals(transaction.getStatus())
-                        && "SECURITY_DEPOSIT".equals(transaction.getPaymentMethod())));
+        verify(transactionRepository)
+                .save(
+                        argThat(
+                                transaction ->
+                                        transaction
+                                                                .getPaidAmount()
+                                                                .compareTo(new BigDecimal("1500"))
+                                                        == 0
+                                                && transaction
+                                                                .getDepositAppliedAmount()
+                                                                .compareTo(new BigDecimal("1500"))
+                                                        == 0
+                                                && calculatedAt.equals(
+                                                        transaction.getDepositAppliedAt())
+                                                && "PARTIALLY_PAID".equals(transaction.getStatus())
+                                                && "SECURITY_DEPOSIT"
+                                                        .equals(transaction.getPaymentMethod())));
     }
 
     private LoanTicketEntity ticket(Long ticketId, UUID userId) {

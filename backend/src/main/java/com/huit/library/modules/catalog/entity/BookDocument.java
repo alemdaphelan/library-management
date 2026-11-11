@@ -11,8 +11,7 @@ import java.util.List;
 @Data
 @Document(indexName = "books")
 public class BookDocument {
-    @Id
-    private String bookId;
+    @Id private String bookId;
 
     @Field(type = FieldType.Text, analyzer = "standard")
     private String title;

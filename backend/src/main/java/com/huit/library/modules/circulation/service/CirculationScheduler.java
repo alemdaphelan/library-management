@@ -25,7 +25,9 @@ public class CirculationScheduler {
                 || result.dueSoonNotifications() > 0) {
             log.info(
                     "Circulation maintenance completed: expiredReservations={}, overdueTickets={}, dueSoonNotifications={}",
-                    result.expiredReservations(), result.overdueTickets(), result.dueSoonNotifications());
+                    result.expiredReservations(),
+                    result.overdueTickets(),
+                    result.dueSoonNotifications());
         }
     }
 }

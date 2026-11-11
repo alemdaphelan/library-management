@@ -29,8 +29,11 @@ class BookCopyServiceTest {
         repository = mock(BookCopyRepository.class);
         shelfRepository = mock(ShelfRepository.class);
         shelfSubjectRuleRepository = mock(ShelfSubjectRuleRepository.class);
-        service = new BookCopyService(
-                repository, shelfRepository, new ShelfPlacementService(shelfSubjectRuleRepository));
+        service =
+                new BookCopyService(
+                        repository,
+                        shelfRepository,
+                        new ShelfPlacementService(shelfSubjectRuleRepository));
     }
 
     @Test

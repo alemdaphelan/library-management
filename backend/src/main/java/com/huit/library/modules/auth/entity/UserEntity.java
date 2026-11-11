@@ -21,8 +21,7 @@ public class UserEntity extends BaseEntity {
     private UUID userId;
 
     private String roleId;
-    @JsonIgnore
-    private String passwordHash;
+    @JsonIgnore private String passwordHash;
     private Boolean isFirstLogin;
     private String fullName;
     private String mssv;

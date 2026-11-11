@@ -33,9 +33,14 @@ class BookServiceTest {
                 mock(DepartmentSubjectAffinityRepository.class);
         ReviewRepository reviewRepository = mock(ReviewRepository.class);
         LoanDetailRepository loanDetailRepository = mock(LoanDetailRepository.class);
-        BookService service = new BookService(
-                bookRepository, copyRepository, categoryRepository, departmentRepository,
-                reviewRepository, loanDetailRepository);
+        BookService service =
+                new BookService(
+                        bookRepository,
+                        copyRepository,
+                        categoryRepository,
+                        departmentRepository,
+                        reviewRepository,
+                        loanDetailRepository);
 
         BookEntity existing = new BookEntity();
         existing.setBookId(42L);
@@ -72,24 +77,28 @@ class BookServiceTest {
                 mock(DepartmentSubjectAffinityRepository.class);
         ReviewRepository reviewRepository = mock(ReviewRepository.class);
         LoanDetailRepository loanDetailRepository = mock(LoanDetailRepository.class);
-        BookService service = new BookService(
-                bookRepository, copyRepository, categoryRepository, departmentRepository,
-                reviewRepository, loanDetailRepository);
+        BookService service =
+                new BookService(
+                        bookRepository,
+                        copyRepository,
+                        categoryRepository,
+                        departmentRepository,
+                        reviewRepository,
+                        loanDetailRepository);
         BookEntity book = new BookEntity();
         book.setBookId(7L);
         book.setTitle("Nhập môn lập trình");
         var pageable = PageRequest.of(0, 10);
         when(bookRepository.searchByDepartment(
-                "khoa cong nghe thong tin", "java", "", null, "", "", pageable))
+                        "khoa cong nghe thong tin", "java", "", null, "", "", pageable))
                 .thenReturn(new PageImpl<>(List.of(book), pageable, 1));
         when(copyRepository.findByBookId(7L)).thenReturn(List.of());
 
-        var result = service.searchBooks(
-                "java", null, "Khoa Công nghệ Thông tin", null, pageable);
+        var result = service.searchBooks("java", null, "Khoa Công nghệ Thông tin", null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(bookRepository).searchByDepartment(
-                "khoa cong nghe thong tin", "java", "", null, "", "", pageable);
+        verify(bookRepository)
+                .searchByDepartment("khoa cong nghe thong tin", "java", "", null, "", "", pageable);
     }
 
     @Test
@@ -101,9 +110,14 @@ class BookServiceTest {
                 mock(DepartmentSubjectAffinityRepository.class);
         ReviewRepository reviewRepository = mock(ReviewRepository.class);
         LoanDetailRepository loanDetailRepository = mock(LoanDetailRepository.class);
-        BookService service = new BookService(
-                bookRepository, copyRepository, categoryRepository, departmentRepository,
-                reviewRepository, loanDetailRepository);
+        BookService service =
+                new BookService(
+                        bookRepository,
+                        copyRepository,
+                        categoryRepository,
+                        departmentRepository,
+                        reviewRepository,
+                        loanDetailRepository);
         BookEntity book = new BookEntity();
         book.setBookId(8L);
         book.setTitle("Trí tuệ nhân tạo");
@@ -114,7 +128,8 @@ class BookServiceTest {
 
         var result = service.searchBooks("K-NN", null, null, null, pageable);
 
-        assertThat(result.getContent()).extracting(BookResponseDTO::getTitle)
+        assertThat(result.getContent())
+                .extracting(BookResponseDTO::getTitle)
                 .containsExactly("Trí tuệ nhân tạo");
         verify(bookRepository).searchCatalog("K-NN", "IT_DATA_AI", null, "", "", pageable);
     }
@@ -123,10 +138,14 @@ class BookServiceTest {
     void contentSearchMapsVietnameseAiAbbreviationToTheAiSubjectTaxonomy() {
         BookRepository bookRepository = mock(BookRepository.class);
         BookCopyRepository copyRepository = mock(BookCopyRepository.class);
-        BookService service = new BookService(
-                bookRepository, copyRepository, mock(CategoryRepository.class),
-                mock(DepartmentSubjectAffinityRepository.class), mock(ReviewRepository.class),
-                mock(LoanDetailRepository.class));
+        BookService service =
+                new BookService(
+                        bookRepository,
+                        copyRepository,
+                        mock(CategoryRepository.class),
+                        mock(DepartmentSubjectAffinityRepository.class),
+                        mock(ReviewRepository.class),
+                        mock(LoanDetailRepository.class));
         var pageable = PageRequest.of(0, 10);
         when(bookRepository.searchCatalog("TTNT", "IT_DATA_AI", null, "", "", pageable))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
@@ -140,10 +159,14 @@ class BookServiceTest {
     void availableFilterIsAppliedBeforePagination() {
         BookRepository bookRepository = mock(BookRepository.class);
         BookCopyRepository copyRepository = mock(BookCopyRepository.class);
-        BookService service = new BookService(
-                bookRepository, copyRepository, mock(CategoryRepository.class),
-                mock(DepartmentSubjectAffinityRepository.class), mock(ReviewRepository.class),
-                mock(LoanDetailRepository.class));
+        BookService service =
+                new BookService(
+                        bookRepository,
+                        copyRepository,
+                        mock(CategoryRepository.class),
+                        mock(DepartmentSubjectAffinityRepository.class),
+                        mock(ReviewRepository.class),
+                        mock(LoanDetailRepository.class));
         BookEntity book = new BookEntity();
         book.setBookId(9L);
         book.setTitle("Sách còn bản");
@@ -162,10 +185,14 @@ class BookServiceTest {
     void exactIsbnLookupReturnsCatalogMetadataWithoutIncrementingViews() {
         BookRepository bookRepository = mock(BookRepository.class);
         BookCopyRepository copyRepository = mock(BookCopyRepository.class);
-        BookService service = new BookService(
-                bookRepository, copyRepository, mock(CategoryRepository.class),
-                mock(DepartmentSubjectAffinityRepository.class), mock(ReviewRepository.class),
-                mock(LoanDetailRepository.class));
+        BookService service =
+                new BookService(
+                        bookRepository,
+                        copyRepository,
+                        mock(CategoryRepository.class),
+                        mock(DepartmentSubjectAffinityRepository.class),
+                        mock(ReviewRepository.class),
+                        mock(LoanDetailRepository.class));
         BookEntity book = new BookEntity();
         book.setBookId(15L);
         book.setIsbn("9780132350884");
@@ -183,10 +210,14 @@ class BookServiceTest {
     void bookDetailReturnsTheRealFloorBookshelfAndShelfLocation() {
         BookRepository bookRepository = mock(BookRepository.class);
         BookCopyRepository copyRepository = mock(BookCopyRepository.class);
-        BookService service = new BookService(
-                bookRepository, copyRepository, mock(CategoryRepository.class),
-                mock(DepartmentSubjectAffinityRepository.class), mock(ReviewRepository.class),
-                mock(LoanDetailRepository.class));
+        BookService service =
+                new BookService(
+                        bookRepository,
+                        copyRepository,
+                        mock(CategoryRepository.class),
+                        mock(DepartmentSubjectAffinityRepository.class),
+                        mock(ReviewRepository.class),
+                        mock(LoanDetailRepository.class));
         BookEntity book = new BookEntity();
         book.setBookId(16L);
         book.setTitle("Cấu trúc dữ liệu và giải thuật");

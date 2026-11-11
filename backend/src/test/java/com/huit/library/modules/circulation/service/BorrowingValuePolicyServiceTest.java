@@ -39,17 +39,24 @@ class BorrowingValuePolicyServiceTest {
         bookRepository = mock(BookRepository.class);
         policyService = mock(LibraryPolicyService.class);
         bookValuationService = mock(BookValuationService.class);
-        service = new BorrowingValuePolicyService(
-                detailRepository, walletRepository, bookRepository, policyService, bookValuationService);
+        service =
+                new BorrowingValuePolicyService(
+                        detailRepository,
+                        walletRepository,
+                        bookRepository,
+                        policyService,
+                        bookValuationService);
         userId = UUID.randomUUID();
         requestedBookValue = "50000";
         when(policyService.minimumSecurityDeposit()).thenReturn(new BigDecimal("100000"));
         when(policyService.borrowingValueMargin()).thenReturn(new BigDecimal("50000"));
-        when(bookValuationService.resolve(any(BookEntity.class))).thenAnswer(invocation -> {
-            BookEntity book = invocation.getArgument(0);
-            return new BookValuationService.BookValue(
-                    book.getDefaultPrice(), true, "TEST", "VND", null);
-        });
+        when(bookValuationService.resolve(any(BookEntity.class)))
+                .thenAnswer(
+                        invocation -> {
+                            BookEntity book = invocation.getArgument(0);
+                            return new BookValuationService.BookValue(
+                                    book.getDefaultPrice(), true, "TEST", "VND", null);
+                        });
     }
 
     @Test
@@ -57,7 +64,8 @@ class BorrowingValuePolicyServiceTest {
         when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet("99999")));
         when(detailRepository.findOpenBookIdsByUserId(userId)).thenReturn(List.of());
-        when(bookRepository.findAllById(any())).thenAnswer(invocation -> booksFor(invocation.getArgument(0)));
+        when(bookRepository.findAllById(any()))
+                .thenAnswer(invocation -> booksFor(invocation.getArgument(0)));
 
         assertThatThrownBy(() -> service.ensureCanAddBooks(userId, List.of(10L)))
                 .isInstanceOf(ResponseStatusException.class)
@@ -70,7 +78,8 @@ class BorrowingValuePolicyServiceTest {
         when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet("100000")));
         when(detailRepository.findOpenBookIdsByUserId(userId)).thenReturn(List.of(20L));
-        when(bookRepository.findAllById(any())).thenAnswer(invocation -> booksFor(invocation.getArgument(0)));
+        when(bookRepository.findAllById(any()))
+                .thenAnswer(invocation -> booksFor(invocation.getArgument(0)));
 
         assertThatThrownBy(() -> service.ensureCanAddBooks(userId, List.of(10L)))
                 .isInstanceOf(ResponseStatusException.class)
@@ -82,7 +91,8 @@ class BorrowingValuePolicyServiceTest {
         when(walletRepository.findByUserIdForUpdate(userId))
                 .thenReturn(Optional.of(wallet("100000")));
         when(detailRepository.findOpenBookIdsByUserId(userId)).thenReturn(List.of(20L));
-        when(bookRepository.findAllById(any())).thenAnswer(invocation -> booksFor(invocation.getArgument(0)));
+        when(bookRepository.findAllById(any()))
+                .thenAnswer(invocation -> booksFor(invocation.getArgument(0)));
 
         service.ensureCanAddBooks(userId, List.of(10L));
 

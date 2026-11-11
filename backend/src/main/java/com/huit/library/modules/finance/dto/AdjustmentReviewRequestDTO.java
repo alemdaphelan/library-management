@@ -6,8 +6,8 @@ import lombok.Data;
 
 @Data
 public class AdjustmentReviewRequestDTO {
-    @NotBlank
-    private String action;
+    @NotBlank private String action;
+
     @Size(max = 1000)
     private String note;
 }

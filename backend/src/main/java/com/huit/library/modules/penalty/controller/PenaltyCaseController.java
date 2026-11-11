@@ -32,8 +32,8 @@ public class PenaltyCaseController {
     public ResponseEntity<?> createCase(
             @Valid @RequestBody PenaltyCaseRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
-        return ResponseEntity.ok(penaltyCaseService.createCase(
-                request, operator.getUser().getUserId()));
+        return ResponseEntity.ok(
+                penaltyCaseService.createCase(request, operator.getUser().getUserId()));
     }
 
     @GetMapping
@@ -51,10 +51,9 @@ public class PenaltyCaseController {
     @PostMapping("/{caseId}/review-request")
     @PreAuthorize("hasAnyRole('ADMIN', 'LIBRARIAN')")
     public ResponseEntity<?> submitForReview(
-            @PathVariable Long caseId,
-            @AuthenticationPrincipal CustomUserDetails operator) {
-        return ResponseEntity.ok(penaltyCaseService.submitForReview(
-                caseId, operator.getUser().getUserId()));
+            @PathVariable Long caseId, @AuthenticationPrincipal CustomUserDetails operator) {
+        return ResponseEntity.ok(
+                penaltyCaseService.submitForReview(caseId, operator.getUser().getUserId()));
     }
 
     @PatchMapping("/{caseId}/review")
@@ -63,8 +62,8 @@ public class PenaltyCaseController {
             @PathVariable Long caseId,
             @Valid @RequestBody WaiverReviewRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails admin) {
-        return ResponseEntity.ok(penaltyCaseService.reviewWaiver(
-                caseId, request, admin.getUser().getUserId()));
+        return ResponseEntity.ok(
+                penaltyCaseService.reviewWaiver(caseId, request, admin.getUser().getUserId()));
     }
 
     @PatchMapping("/{caseId}/replacement-acceptance")
@@ -73,8 +72,9 @@ public class PenaltyCaseController {
             @PathVariable Long caseId,
             @Valid @RequestBody ReplacementAcceptanceRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails operator) {
-        return ResponseEntity.ok(penaltyCaseService.acceptReplacement(
-                caseId, request, operator.getUser().getUserId()));
+        return ResponseEntity.ok(
+                penaltyCaseService.acceptReplacement(
+                        caseId, request, operator.getUser().getUserId()));
     }
 
     @PostMapping("/rates")
@@ -82,7 +82,7 @@ public class PenaltyCaseController {
     public ResponseEntity<?> createRate(
             @Valid @RequestBody CompensationRateRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails admin) {
-        return ResponseEntity.ok(penaltyCaseService.createRate(
-                request, admin.getUser().getUserId()));
+        return ResponseEntity.ok(
+                penaltyCaseService.createRate(request, admin.getUser().getUserId()));
     }
 }

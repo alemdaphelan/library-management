@@ -12,7 +12,7 @@ import { Faculty } from '../../../services/dashboard-analytics.models';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './books.html',
-  styleUrls: ['./books.css']
+  styleUrls: ['./books.css'],
 })
 export class Books implements OnInit {
   isDrawerOpen = false;
@@ -30,7 +30,7 @@ export class Books implements OnInit {
   isLoading = false;
   errorMessage = '';
   successMessage = '';
-  
+
   // Pagination State
   currentPage: number = 0;
   pageSize: number = 10;
@@ -46,11 +46,23 @@ export class Books implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.analytics.catalog().subscribe({next: catalog => {this.faculties = catalog.faculties; this.cdr.markForCheck();},
-      error: () => this.dialog.show({type:'error',message:'Không tải được bộ lọc khoa. Hãy tải lại danh mục.'})});
+    this.analytics.catalog().subscribe({
+      next: (catalog) => {
+        this.faculties = catalog.faculties;
+        this.cdr.markForCheck();
+      },
+      error: () =>
+        this.dialog.show({
+          type: 'error',
+          message: 'Không tải được bộ lọc khoa. Hãy tải lại danh mục.',
+        }),
+    });
     this.categoryService.getCategories().subscribe({
-      next: categories => { this.categories = categories; this.cdr.detectChanges(); },
-      error: err => console.error('Failed to load categories', err)
+      next: (categories) => {
+        this.categories = categories;
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load categories', err),
     });
     this.loadBooks();
   }
@@ -59,31 +71,33 @@ export class Books implements OnInit {
     const version = ++this.requestVersion;
     this.isLoading = true;
     this.errorMessage = '';
-    this.bookService.getBooks(
-      this.searchQuery,
-      this.currentPage,
-      this.pageSize,
-      this.selectedCategoryId,
-      this.selectedAvailability || undefined,
-      undefined,
-      this.selectedFaculty || undefined
-    ).subscribe({
-      next: (data) => {
-        if (version !== this.requestVersion) return;
-        this.books = data.content;
-        this.totalPages = data.totalPages;
-        this.totalElements = data.totalElements;
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        if (version !== this.requestVersion) return;
-        console.error('Failed to load books', err);
-        this.isLoading = false;
-        this.errorMessage = this.extractError(err, 'Không thể tải danh mục sách.');
-        this.cdr.detectChanges();
-      }
-    });
+    this.bookService
+      .getBooks(
+        this.searchQuery,
+        this.currentPage,
+        this.pageSize,
+        this.selectedCategoryId,
+        this.selectedAvailability || undefined,
+        undefined,
+        this.selectedFaculty || undefined,
+      )
+      .subscribe({
+        next: (data) => {
+          if (version !== this.requestVersion) return;
+          this.books = data.content;
+          this.totalPages = data.totalPages;
+          this.totalElements = data.totalElements;
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          if (version !== this.requestVersion) return;
+          console.error('Failed to load books', err);
+          this.isLoading = false;
+          this.errorMessage = this.extractError(err, 'Không thể tải danh mục sách.');
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   applyFilters() {
@@ -113,7 +127,7 @@ export class Books implements OnInit {
       this.currentBook = {
         ...book,
         categoryId: book.category?.categoryId,
-        imgError: false
+        imgError: false,
       };
     } else {
       this.currentBook = { imgError: false };
@@ -135,10 +149,19 @@ export class Books implements OnInit {
       });
       return;
     }
-    const { bookId, categoryId, copies, availableCopies, location, status, imgError, ...editableFields } = this.currentBook;
+    const {
+      bookId,
+      categoryId,
+      copies,
+      availableCopies,
+      location,
+      status,
+      imgError,
+      ...editableFields
+    } = this.currentBook;
     const payload = {
       ...editableFields,
-      category: categoryId ? { categoryId: Number(categoryId) } : null
+      category: categoryId ? { categoryId: Number(categoryId) } : null,
     };
     if (this.drawerMode === 'add') {
       this.bookService.createBook(payload).subscribe({
@@ -150,7 +173,7 @@ export class Books implements OnInit {
         error: (err) => {
           console.error('Failed to create book', err);
           this.errorMessage = this.extractError(err, 'Thêm sách thất bại.');
-        }
+        },
       });
     } else if (this.drawerMode === 'edit') {
       this.bookService.updateBook(String(bookId), payload).subscribe({
@@ -162,7 +185,7 @@ export class Books implements OnInit {
         error: (err) => {
           console.error('Failed to update book', err);
           this.errorMessage = this.extractError(err, 'Cập nhật sách thất bại.');
-        }
+        },
       });
     }
   }
@@ -181,20 +204,20 @@ export class Books implements OnInit {
         if (this.books.length === 1 && this.currentPage > 0) this.currentPage--;
         this.loadBooks();
       },
-      error: err => {
+      error: (err) => {
         console.error('Failed to delete book', err);
         this.errorMessage = this.extractError(
           err,
-          'Không thể xóa sách. Hãy kiểm tra các bản sao hoặc giao dịch đang liên kết.'
+          'Không thể xóa sách. Hãy kiểm tra các bản sao hoặc giao dịch đang liên kết.',
         );
-      }
+      },
     });
   }
 
   get visiblePages(): (number | string)[] {
     const total = this.totalPages;
     if (total === 0) return [];
-    
+
     const current = this.currentPage + 1;
     const delta = 2;
 
@@ -206,28 +229,28 @@ export class Books implements OnInit {
       }
     } else {
       pages.push(1);
-      
+
       let left = Math.max(2, current - delta);
       let right = Math.min(total - 1, current + delta);
-      
+
       if (left > 2) {
         pages.push('...');
       }
-      
+
       for (let i = left; i <= right; i++) {
         pages.push(i);
       }
-      
+
       if (right < total - 1) {
         pages.push('...');
       }
-      
+
       pages.push(total);
     }
-    
+
     return pages;
   }
-  
+
   onPageClick(p: number | string) {
     if (typeof p === 'number') {
       this.goToPage(p - 1);

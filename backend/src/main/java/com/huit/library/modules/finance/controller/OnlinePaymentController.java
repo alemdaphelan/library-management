@@ -35,23 +35,27 @@ public class OnlinePaymentController {
             HttpServletRequest httpRequest) {
         String forwarded = httpRequest.getHeader("X-Forwarded-For");
         String clientIp = forwarded == null ? httpRequest.getRemoteAddr() : forwarded;
-        return ResponseEntity.status(HttpStatus.CREATED).body(onlinePaymentService.create(
-                principal.getUser().getUserId(), request, clientIp));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(
+                        onlinePaymentService.create(
+                                principal.getUser().getUserId(), request, clientIp));
     }
 
     @GetMapping("/sessions/{reference}")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<OnlinePaymentSessionDTO> get(
-            @PathVariable String reference,
-            @AuthenticationPrincipal CustomUserDetails principal) {
-        return ResponseEntity.ok(onlinePaymentService.get(principal.getUser().getUserId(), reference));
+            @PathVariable String reference, @AuthenticationPrincipal CustomUserDetails principal) {
+        return ResponseEntity.ok(
+                onlinePaymentService.get(principal.getUser().getUserId(), reference));
     }
 
     @GetMapping("/vnpay-return")
     public ResponseEntity<Void> vnpayReturn(@RequestParam Map<String, String> params) {
         OnlinePaymentSessionDTO result = onlinePaymentService.processCallback(params);
         return ResponseEntity.status(HttpStatus.FOUND)
-                .header(HttpHeaders.LOCATION, URI.create(onlinePaymentService.frontendRedirect(result)).toString())
+                .header(
+                        HttpHeaders.LOCATION,
+                        URI.create(onlinePaymentService.frontendRedirect(result)).toString())
                 .build();
     }
 

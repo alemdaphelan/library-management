@@ -25,7 +25,8 @@
   height: 36px;
 }
 
-.topbar-left, .topbar-right {
+.topbar-left,
+.topbar-right {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -41,7 +42,9 @@
   color: #64748b;
   text-decoration: none;
 }
-.tb-link:hover { color: var(--primary-color); }
+.tb-link:hover {
+  color: var(--primary-color);
+}
 
 .lang-switch {
   font-weight: 500;
@@ -359,7 +362,7 @@
 }
 
 .footer-links a::before {
-  content: "›";
+  content: '›';
   margin-right: 8px;
   font-size: 1.2rem;
   color: #94a3b8;
@@ -420,7 +423,7 @@
   margin-top: 10px;
   background-color: white;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   min-width: 180px;
   z-index: 1000;
   display: flex;

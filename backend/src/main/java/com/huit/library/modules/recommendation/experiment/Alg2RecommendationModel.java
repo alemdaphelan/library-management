@@ -16,9 +16,7 @@ public interface Alg2RecommendationModel {
             boolean fallback,
             String fallbackReason,
             long latencyNanos,
-            List<RecommendationItem> items) {
-    }
+            List<RecommendationItem> items) {}
 
-    record RecommendationItem(Long bookId, double score, int rank) {
-    }
+    record RecommendationItem(Long bookId, double score, int rank) {}
 }

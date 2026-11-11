@@ -24,5 +24,4 @@ public record RagEvaluationReportDTO(
         double fallbackRate,
         long p50LatencyMs,
         long p95LatencyMs,
-        List<RagEvaluationCaseResultDTO> cases) {
-}
+        List<RagEvaluationCaseResultDTO> cases) {}
